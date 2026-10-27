@@ -113,6 +113,10 @@ def classify_model_failure(note: str) -> str:
         return "META_HTTP_" + match.group(1) if match else "META_HTTP_ERROR"
     if "transport failure" in note:
         return "META_TRANSPORT_ERROR"
+    if "MODEL_JSON_INVALID" in note:
+        return "MODEL_JSON_INVALID"
+    if "MODEL_SCHEMA_INVALID" in note:
+        return "MODEL_SCHEMA_INVALID"
     if "empty message content" in note:
         return "EMPTY_MODEL_RESPONSE"
     if "violated JSON schema" in note or "schema violation" in note:
