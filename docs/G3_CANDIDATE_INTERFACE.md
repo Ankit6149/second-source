@@ -1,9 +1,6 @@
 # G3-B Verifier Contract — independent evaluation implementer
 
-**Owner:** Codex (G3-B). **Status:** G3-A interface published, then revised by
-independent review on 28 October 2026 to match the actual G0 wire contract.
-No G3-B implementation is included here. **Applies to:** branch
-`g3/candidate-synthesis` and its eventual merge with reviewed `main`.
+**Owner:** Codex (G3-B). **Status:** G3-A interface is frozen after Muse implementation, ChatGPT hardening and Codex phase-1 audit. The hardened code checkpoint `b0c6e22843d21d3736f066d5f37c4528502fd398` passed GitHub run `40575747089` with 177 passed / 2 skipped / 0 failed on both Linux and Windows; branch synchronization with canonical `main` is recorded by merge `208aeb4e7ee5559e176daccd19fc2b7c1eb207d7`. Phase 2 is released on `g3/verifier`. G3 itself is NOT accepted.
 
 ## What G3-A guarantees
 
@@ -25,13 +22,8 @@ No G3-B implementation is included here. **Applies to:** branch
   in-memory executor implementing G0 `ReferenceProtocol`:
   `execute_sequence(actions, *, sequence_id=None) -> SequenceResult`.
   It performs no model-written code execution, filesystem or network access.
-- Resource caps fail closed:
-  `MAX_SEQUENCE_ACTIONS=64`, `MAX_RECORDS=10000`,
-  `MAX_OUTPUT_BYTES=131072`.
-- `candidate_generation` provides the generation boundary with immutable
-  origin meaning: `mock` vs `real`; author-written fixture provenance is
-  tracked separately. It accepts only the closed top-level generation context
-  and redacts again immediately before `ModelGateway`.
+- Interpreter-local caps exist (`MAX_SEQUENCE_ACTIONS=64`, `MAX_RECORDS=10000`, `MAX_OUTPUT_BYTES=131072`), but these are NOT sufficient evidence of OS-level wall/CPU/memory isolation. G3-B owns trusted execution limits and admission failure when stronger containment cannot be enforced.
+- `candidate_generation` provides the generation boundary with immutable origin meaning: `mock` vs `real`; author-written fixture provenance is tracked separately. It validates the nested public manifest, evidence envelopes/digests and evidence-linked hypotheses, rejects unknown nested fields, and redacts again immediately before `ModelGateway`.
 
 ## Exact action wire contract (normative)
 
@@ -61,10 +53,7 @@ against reference and candidate.
 
 ## How to evaluate
 
-G0 `DifferentialVerifier(reference_adapter, candidate_interpreter)` already
-accepts any `ReferenceProtocol`. G3-B should add only the adapter/storage and
-sealed-suite ownership needed around that existing verifier, not rewrite its
-comparison logic without a specific defect.
+G0 `DifferentialVerifier(reference_adapter, candidate_interpreter)` accepts any `ReferenceProtocol`, but Codex phase 1 reproduced a **specific comparator defect**: Python equality can false-pass JSON-type differences and malformed/inconsistent result envelopes. Therefore acceptance MUST NOT use the old comparator unchanged. G3-B may make a narrow, API-preserving `verifier.py` hardening patch with strict JSON typing and result-envelope validation, backed by regression tests.
 
 Call:
 
@@ -96,18 +85,9 @@ categories. No case IDs, hidden inputs or expected outputs.
 6. Any evaluator read attempt from generation/candidate context is a critical
    failure and invalidates the run.
 
-## Required Codex phase-1 audit before writes
+## Codex phase-1 audit — COMPLETE
 
-Codex must independently inspect the committed G3-A interface and report:
-- exact baseline SHA and read paths;
-- severity-ranked contract/security findings with file/line evidence;
-- whether the flat wire contract and reset semantics are now coherent;
-- evaluator-owned storage boundary and leakage attack tests;
-- proposed `CandidateReferenceAdapter` / `g3_verification` API;
-- deterministic Linux/Windows integration tests;
-- whether a disjoint code-write handoff is safe.
-
-Do not report a Codex audit as completed until that actual output exists.
+The completed audit is recorded in `docs/G3_B_PHASE1_AUDIT_2026-10-28.md`. It audited `8f881cd37...` and reproduced the action-wire mismatch, verifier false passes, contaminated generation context, unsafe DSL combinations, mutability/digest risks, resource-containment gaps and shared-suite mutation risk. Later G3-A commits address the interface/DSL/context findings; strict verifier correctness and evaluator-owned containment remain phase-2 work.
 
 ## Codex phase-2 allowed files
 
@@ -118,10 +98,9 @@ implement only:
 - `tests/test_g3_verifier_*.py`
 - evaluator-owned sealed fixture material in its restricted path
 - `docs/G3_VERIFIER_ACCEPTANCE.md`
+- narrow API-preserving changes to `src/second_source/verifier.py` and verifier regression tests solely for the reproduced strict-comparison/envelope defect.
 
-Do not rewrite `candidate_spec.py`, `candidate_runtime.py`,
-`candidate_generation.py`, G0 `verifier.py`, or reference source without a
-new cross-review.
+Do not modify `candidate_spec.py`, `candidate_runtime.py`, `candidate_generation.py`, reference source, scope contracts, provider code or G2 evidence during the phase-2 write window.
 
 ## Repair interface (G3-C, only after real baseline)
 

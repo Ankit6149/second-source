@@ -6,13 +6,13 @@
 
 | ID | Owner | Task | Current observed state | Gate to DONE |
 |---|---|---|---|---|
-| G2-REVIEW | ChatGPT + owner | Evaluate PR #1, G2 operator evidence, CI, merge decision | Live G2 *minimum* satisfied per operator-reported projection; PR open/unmerged; latest pre-doc SHA `6ee6698` CI green | Current PR SHA/CI checked, security diff approved, owner explicitly approves merge |
-| G3-A1 | Muse | Versioned typed CandidateSpec + ProposedFile manifest + schema validator | NOT STARTED/NOT VERIFIED at handoff | Rejects malformed DSL, overbuild, forbidden effects/paths and unknown commands |
-| G3-A2 | Muse | Trusted bounded JSONL DSL runtime with fresh state per sequence | NOT STARTED | Executes data-only rules, no eval/subprocess/network, deterministic outputs and resource limits |
-| G3-A3 | Muse | Real-provider candidate generation integration + MOCK mode | NOT STARTED | Exact curated model input only; mock end-to-end test; actual live run requires owner spending approval |
-| G3-B0 | Codex | **Read-only** contract/security audit and sealed-test plan while Muse works | NOT STARTED | Filed independent interface risks and evaluator expected result envelope without leaked gold cases |
-| G3-B1 | Codex | DifferentialVerifier adapter for trusted CandidateSpec runtime | BLOCKED on Muse G3-A interface checkpoint | `ReferenceProtocol.execute_sequence` works on identical reset/action sequences; no evaluator self-grading |
-| G3-B2 | Codex | Protected sealed-suite + positive/negative controls + leakage tests | BLOCKED on G3-B1 / isolation design | Accurate passed/failed/indeterminate/total, sealed inputs unavailable to model, mocks labeled |
+| G2-REVIEW | ChatGPT + owner | Evaluate PR #1, G2 operator evidence, CI, merge decision | **DONE / VERIFIED MERGE:** PR #1 merged to `main` at `9ed81cce406e0adf91ecc36e94d2263265366c30`; push CI run `40572246014` succeeded on Linux/Windows. Real G2 run remains `real-g2-20261027T192406Z-5482abee`; operator-reported estimated usage `$0.012715`, zero uncertain usage. | DONE |
+| G3-A1 | Muse | Versioned typed CandidateSpec + ProposedFile manifest + schema validator | **YELLOW / CODE GREEN:** original Muse checkpoint `8f881cd...` was independently rejected; corrected G3-A code frozen at `b0c6e22843d21d3736f066d5f37c4528502fd398`, then synchronized with `main` by merge `208aeb4e...`. Strict params, effect pinning, reserved keys, duplicate-key rejection and loader-owned digest are present. | Independent G3-B evaluator must accept the frozen interface; no real candidate claim yet |
+| G3-A2 | Muse | Trusted bounded JSONL DSL runtime with fresh state per sequence | **YELLOW / CODE GREEN:** exact flat G0 action wire fixed; trusted control now fails closed on mismatch; interpreter detaches mutable spec aliases. GitHub run `40575747089`: **177 passed, 2 skipped, 0 failed** on Ubuntu/Py3.11 and Windows/Py3.12; Windows bootstrap `BOOTSTRAP_OK`. | G3-B must prove evaluator-owned input/output/wall/CPU/memory containment; do not claim OS sandboxing yet |
+| G3-A3 | Muse | Real-provider candidate generation integration + MOCK mode | **YELLOW:** model adapter path exists; generation context now validates nested public-manifest/evidence/hypothesis provenance and re-redacts at final boundary. Mock/trusted controls only. **No paid G3 call; G3 spend `$0.00`.** | Real Muse CandidateSpec requires explicit owner spend authorization *after* G3-B sealed evaluator is green |
+| G3-B0 | Codex | **Read-only** contract/security audit and sealed-test plan while Muse works | **DONE:** Codex audited `8f881cd37...`, ran 164 non-billable Windows tests, reproduced public mock **0/3**, and filed severity-ranked wire/verifier/isolation/resource findings. Record: `docs/G3_B_PHASE1_AUDIT_2026-10-28.md`. | DONE |
+| G3-B1 | Codex | DifferentialVerifier adapter + strict comparator hardening for trusted CandidateSpec runtime | **READY / WRITE WINDOW RELEASED:** G3-A interface is frozen. Codex may implement on coordinator branch `g3/verifier`. A targeted `src/second_source/verifier.py` patch is explicitly allowed only for the reproduced JSON-type/envelope false-pass defect, preserving the public API. | Same immutable actions/reset on both sides; strict typed/envelope comparison; valid reference failure => indeterminate; candidate harness failure => failed; full G0/G2/G3 regression green |
+| G3-B2 | Codex | Protected sealed-suite + positive/negative controls + leakage tests | **BLOCKED on B1 implementation, not architecture:** phase-1 isolation plan accepted; no sealed cases have been published to inference. | Accurate nonempty totals; independent copies; positive/negative TRUSTED_CONTROLs; leakage/isolation probes; only aggregate `model_feedback()` crosses to inference |
 | G3-C | Muse + Codex reviewed by ChatGPT | Up to 2 bounded repair cycles, same sealed suite | NOT STARTED | Real observed before/after lift; no scope expansion; may be CUT if deadline |
 | G3-D | ChatGPT + assigned implementer | Reproducible single operator command + redacted G3 report, acceptance document | NOT STARTED | Real model receipts, spec hashes, scored independent run, documented false claims prevented |
 | DEMO | Owner with ChatGPT | <=180s recording, correct provenance, submission fields | Planning doc exists; recording/URLs NOT VERIFIED | Public working repo/video, exact metrics/limitations, logged submission confirmation |
@@ -42,9 +42,9 @@
 - **Nov 4:** public links/permission checks, submission, save receipt early.
 
 ## Decision ledger (no silent assumptions)
-- `D-001` G2 merge: **OWNER DECISION REQUIRED**. G2 minimum is evidenced in operator-provided local projection; independent live repeat not required, but final PR diff/CI must be checked.
+- `D-001` G2 merge: **DONE.** Owner authorized; PR #1 merged at `9ed81cce...` after green integration review.
 - `D-002` G3 execution style: **APPROVED ENGINEERING DIRECTION** (existing G3 spec): restricted declarative DSL, no model-generated code execution on Windows.
-- `D-003` G3 model spend: **NOT AUTHORIZED IN THIS HANDOFF**. Budget suggested in G3 spec is an example, not consent.
+- `D-003` G3 model spend: **NOT YET AUTHORIZED.** G3 spend remains `$0.00`; do not make a real synthesis/repair call until owner explicitly authorizes it after G3-B evaluator acceptance.
 - `D-004` Optional second target/browser/UI/cloud: **DEFER**, cut if G3 not independently evaluated by Oct 31.
 - `D-005` Actual selected G2 action payloads/outputs: **NOT PROVIDED HERE**. Do not infer from proposal name.
 

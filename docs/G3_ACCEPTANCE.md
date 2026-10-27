@@ -33,19 +33,18 @@ The follow-up branch fixes:
   the model boundary;
 - preserve mock / trusted-test-fixture / real origin separation.
 
-**New test counts and CI status must be taken from the next GitHub Actions run,
-not inferred from this document.**
+**VERIFIED G3-A code gate:** GitHub Actions run `40575747089` at `b0c6e22843d21d3736f066d5f37c4528502fd398` completed successfully on Ubuntu/Python 3.11 and Windows/Python 3.12 with **177 passed, 2 skipped, 0 failed** on each OS; Windows bootstrap returned `BOOTSTRAP_OK`. G3 branch was then synchronized with canonical `main` by merge `208aeb4e7ee5559e176daccd19fc2b7c1eb207d7`. No paid G3 model call has occurred; G3 spend is `$0.00`.
 
 ## G3-A deliverables now present on `g3/candidate-synthesis`
 
 | # | Deliverable | Files | Acceptance state |
 |---|---|---|---|
-| 1 | Versioned `CandidateSpec` / manifest + scope-pinned loader | `src/second_source/candidate_spec.py` | code present; CI pending |
-| 2 | Trusted data-only interpreter implementing G0 ReferenceProtocol | `src/second_source/candidate_runtime.py` | protocol mismatch fixed; CI pending |
-| 3 | Malformed/adversarial rejection and effect-smuggling tests | `tests/test_g3_candidate_*.py` | code present; CI pending |
-| 4 | Mock generation boundary + real adapter skeleton | `src/second_source/candidate_generation.py` | no billable call made |
-| 5 | Non-sealed trusted positive-control demo | `src/second_source/g3_mock_demo.py` | must report 3/3 or exit nonzero |
-| 6 | G3-B verifier contract | `docs/G3_CANDIDATE_INTERFACE.md` | ready for independent read-only audit after CI |
+| 1 | Versioned `CandidateSpec` / manifest + scope-pinned loader | `src/second_source/candidate_spec.py` | code green; hardened after independent findings |
+| 2 | Trusted data-only interpreter implementing G0 ReferenceProtocol | `src/second_source/candidate_runtime.py` | flat wire fixed; code green; OS-level containment still G3-B-owned |
+| 3 | Malformed/adversarial rejection and effect-smuggling tests | `tests/test_g3_candidate_*.py` | integrated in 177-pass cross-platform suite |
+| 4 | Mock generation boundary + real adapter skeleton | `src/second_source/candidate_generation.py` | nested provenance hardened; no billable call made |
+| 5 | Non-sealed trusted positive-control demo | `src/second_source/g3_mock_demo.py` | positive control required to be 3/3 or exit nonzero; never labeled AI/sealed |
+| 6 | Codex phase-1 independent audit | `docs/G3_B_PHASE1_AUDIT_2026-10-28.md` | **complete**; strict verifier/resource isolation findings remain for phase 2 |
 
 ## What this still does NOT prove
 
@@ -60,10 +59,8 @@ not inferred from this document.**
 
 1. Current branch passes full Linux/Windows CI and the trusted mock control is
    3/3 with explicit NON-AI / NON-SEALED labels.
-2. Codex performs the independent read-only G3-B audit against the committed
-   interface and publishes findings before writing evaluator files.
-3. Codex implements only its assigned evaluator/adaptor files after a disjoint
-   write handoff.
+2. **DONE:** Codex phase-1 audit is recorded and its reproduced findings are dispositioned.
+3. Codex phase 2 implements the candidate adapter, strict verifier hardening, sealed evaluator, TRUSTED_CONTROLs and leakage/resource tests on `g3/verifier` only.
 4. Owner explicitly authorizes a bounded paid Muse candidate-generation call.
 5. The real generated spec is validated, executed by the trusted interpreter,
    and scored by the sealed evaluator with exact counts.

@@ -1,6 +1,6 @@
 # Codex G3-B Independent Audit Brief — Second Source (2026-10-28)
 
-**Assignment phase 1: READ-ONLY independent technical audit. Do not edit shared G3-A files, push code, read credentials, or make paid calls.**
+**Phase 1 status: COMPLETE. Phase 2 write window: RELEASED by coordinator after G3-A hardening. Do not edit shared G3-A files, read credentials, make paid calls, or merge.**
 **Repository:** https://github.com/Ankit6149/second-source
 **Sources:** `docs/MASTER_PRD.md`, `docs/G3_IMPLEMENTATION_CONTRACT.md`, `docs/COORDINATION_CHARTER.md` and `docs/HANDOFF_2026-10-28.md`.
 
@@ -25,13 +25,14 @@ Ensure the candidate runtime is evaluated by a separate, trusted verifier. The a
 8. Propose deterministic mock-mode integration checks for Linux/Windows; never infer real accuracy from mock controls.
 9. Return explicit severity, file/line references, proposed test names, blockers and a candidate adapter interface proposal. No code changes until G3-A interface is published and integration owner approves a disjoint write window.
 
-## Implementation phase 2 (separately released by coordinator)
-Once Muse publishes the G3-A interface and the owner confirms the assigned file boundary, Codex may implement ONLY:
+## Implementation phase 2 — RELEASED
+Start from coordinator branch `g3/verifier`, created from the synchronized/hardened G3-A integration baseline. Fetch and report the exact SHA before writing. Codex may implement ONLY:
 - `src/second_source/candidate_adapter.py` and `src/second_source/g3_verification.py`;
 - `tests/test_g3_verifier_*.py` and evaluator-only fixtures in a restricted path;
-- `docs/G3_VERIFIER_ACCEPTANCE.md` with factual (not invented) tests.
+- `docs/G3_VERIFIER_ACCEPTANCE.md` with factual (not invented) tests;
+- **narrow exception:** `src/second_source/verifier.py` plus its existing/new verifier tests ONLY to fix the reproduced strict-comparison/result-envelope false-pass defect. Preserve `ReferenceProtocol`, `SealedCase`, `DifferentialVerifier.verify`, `EvaluationReport`, and `model_feedback()` APIs.
 
-Test via the existing `DifferentialVerifier` on the *same* ordered sequence and reset on both sides. Keep sealed suite out of inference context and candidate generation tool filesystem. Use one integration branch and commit window; no force pushes or duplicate `verifier.py` rewrite. Do not merge or run billable experiments.
+Test via the hardened existing `DifferentialVerifier` on the *same* ordered sequence and reset on both sides. Each side must receive an independent immutable/deep-copied representation of the same sealed actions. Keep sealed suite out of inference context and candidate generation tool filesystem. Use only `g3/verifier`; no force pushes, no G3-A edits, no merge and no billable experiments.
 
 ## Output response contract
 - Baseline SHA, actual read paths, found risks (severity + evidence).
@@ -39,3 +40,10 @@ Test via the existing `DifferentialVerifier` on the *same* ordered sequence and 
 - Proposed acceptance criteria and required G3-A interface.
 - Whether a code-write handoff can begin (normally NO until Muse interface checkpoint).
 - No optimistic claims, no estimated scores posed as real results.
+
+
+## Phase-2 mandatory first checks
+- Read `docs/G3_B_PHASE1_AUDIT_2026-10-28.md` and current `docs/G3_CANDIDATE_INTERFACE.md`.
+- Re-run the phase-1 false-pass probes against current code; convert every reproduced defect into a regression test before or with the fix.
+- Build positive and deliberately buggy `TRUSTED_CONTROL` paths before any real Meta candidate exists.
+- Return exact commit SHA, test counts, OS/Python, isolation evidence, remaining blockers and zero/nonzero cost. Do not claim G3 acceptance.
