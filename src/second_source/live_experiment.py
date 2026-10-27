@@ -232,6 +232,7 @@ def main(argv: list[str] | None = None) -> int:
         "run_id": report.run_id,
         "stop_reason": report.stop_reason,
         "failure_code": failure_code,
+        "rejection_codes": list(report.rejection_codes),
         "real_model_calls": report.real_model_calls,
         "actions_observed": sum(r.actions_executed for r in executed),
         "estimated_model_cost_usd": report.budget_summary["estimated_cost_usd"],
