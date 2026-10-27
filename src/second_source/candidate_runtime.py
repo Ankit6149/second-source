@@ -2,14 +2,14 @@
 
 Executes a validated `CandidateSpec` WITHOUT evaluating any model-supplied
 code: the interpreter implements a fixed operation allowlist (parse, validate,
-normalize, uniqueness, store, lookup, delete, aggregate, respond). Unknown
+trim, uniqueness, store, lookup, delete, aggregate, respond). Unknown
 operations cannot be expressed — the spec schema rejects them at load.
 
-The interpreter satisfies G0 `ReferenceProtocol`: it accepts the same ordered
-action dicts, returns `SequenceResult`/`Observation`, and honors the SAME
-reset boundary as the reference (fresh state per sequence). It runs
-in-process with isolated in-memory state: no subprocess, no filesystem, no
-network. Resource caps fail closed.
+The interpreter satisfies G0 `ReferenceProtocol`: it accepts the SAME flat
+action dictionaries as the owned reference fixture, returns
+`SequenceResult`/`Observation`, and honors the SAME reset boundary (fresh
+state per sequence). It runs in-process with isolated in-memory state: no
+subprocess, no filesystem, no network. Resource caps fail closed.
 """
 from __future__ import annotations
 
@@ -25,7 +25,6 @@ MAX_SEQUENCE_ACTIONS = 64
 MAX_RECORDS = 10_000
 MAX_OUTPUT_BYTES = 131_072
 RESOURCE_EXHAUSTED = "resource_exhausted"
-INVALID_JSON = "invalid_json"
 
 _ERROR_STATUS = "target_error"
 
@@ -41,21 +40,14 @@ class CandidateInterpreter:
         max_records: int = MAX_RECORDS,
         max_output_bytes: int = MAX_OUTPUT_BYTES,
     ) -> None:
+        if max_actions < 1 or max_records < 1 or max_output_bytes < 512:
+            raise ValueError("invalid candidate runtime resource limits")
         self._spec = spec
         self._max_actions = max_actions
         self._max_records = max_records
         self._max_output_bytes = max_output_bytes
         self._records: dict[str, dict[str, Any]] = {}
         self._next_id = 1
-
-    @property
-    def spec_digest(self) -> str:
-        from .candidate_spec import spec_digest_of
-
-        canonical = json.dumps(
-            self._spec.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
-        ).encode()
-        return spec_digest_of(canonical)
 
     def reset(self) -> None:
         """Fresh isolated state (mirrors the reference fresh-process boundary)."""
@@ -96,7 +88,7 @@ class CandidateInterpreter:
                 )
             duration_ms = max(0, round((time.monotonic() - started) * 1000))
             ok = isinstance(output, dict) and output.get("ok") is True
-            blob = json.dumps(output, sort_keys=True)
+            blob = json.dumps(output, sort_keys=True, ensure_ascii=False).encode("utf-8")
             if len(blob) > self._max_output_bytes:
                 return SequenceResult(
                     sequence_id=seq_id,
@@ -131,15 +123,18 @@ class CandidateInterpreter:
         cmd = self._spec.commands.get(command)
         if cmd is None:
             return {"ok": False, "error": self._spec.unknown_command_error}
-        params = action.get("params", {})
-        if not isinstance(params, dict):
-            return {"ok": False, "error": self._spec.invalid_input_error}
+
+        # ReferenceProtocol actions are flat JSON objects:
+        # {"command":"add","label":"A","amount":1}.  The exact same action
+        # object is handed to reference and candidate by DifferentialVerifier.
+        params = {key: value for key, value in action.items() if key != "command"}
         values, error = self._validate_params(cmd, params)
         if error is not None:
             return {"ok": False, "error": error}
         if cmd.unique_field is not None and self._is_duplicate(cmd, values):
             err = cmd.unique_error or self._spec.invalid_input_error
             return {"ok": False, "error": err}
+
         record: dict[str, Any] | None = None
         if cmd.lookup_by is not None:
             record = self._lookup(cmd, values)
@@ -148,6 +143,7 @@ class CandidateInterpreter:
                 return {"ok": False, "error": err}
             if cmd.delete_after_lookup:
                 del self._records[record["id"]]
+
         if cmd.store_record:
             if len(self._records) >= self._max_records:
                 return {"ok": False, "error": RESOURCE_EXHAUSTED}
@@ -157,13 +153,16 @@ class CandidateInterpreter:
             for key in values:
                 record[key] = values[key]
             self._records[record_id] = record
+
         aggregate: dict[str, Any] = {}
         if cmd.aggregate_count:
             aggregate["count"] = len(self._records)
             if cmd.aggregate_sum_field is not None:
                 aggregate["amount"] = sum(
-                    int(item.get(cmd.aggregate_sum_field, 0)) for item in self._records.values()
+                    int(item.get(cmd.aggregate_sum_field, 0))
+                    for item in self._records.values()
                 )
+
         return {"ok": True, **self._respond(cmd, values, record, aggregate)}
 
     def _validate_params(
@@ -193,6 +192,8 @@ class CandidateInterpreter:
                 if decl.maximum is not None and value > decl.maximum:
                     return {}, decl.error
             values[name] = value
+        # The owned reference ignores unrecognized extra fields; match that
+        # observable wire behavior rather than inventing a stricter candidate.
         return values, None
 
     def _fold(self, value: Any) -> Any:
@@ -203,11 +204,17 @@ class CandidateInterpreter:
         candidate = values.get(field)
         probe = self._fold(candidate) if cmd.unique_casefold else candidate
         for item in self._records.values():
-            if (self._fold(item.get(field)) if cmd.unique_casefold else item.get(field)) == probe:
+            existing = (
+                self._fold(item.get(field)) if cmd.unique_casefold else item.get(field)
+            )
+            if existing == probe:
                 return True
         return False
 
     def _lookup(self, cmd: CommandSpec, values: dict[str, Any]) -> dict[str, Any] | None:
+        # G3-A v1 intentionally supports only trusted in-memory id lookup.
+        if cmd.lookup_by != "id":
+            raise CandidateError(f"unsupported lookup field {cmd.lookup_by!r}")
         want = values.get(cmd.lookup_param or "")
         if not isinstance(want, str):
             return None
