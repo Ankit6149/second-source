@@ -109,7 +109,7 @@ def fixture_verifier_summary(reference: CLIReferenceAdapter) -> dict:
 def classify_model_failure(note: str) -> str:
     """Redaction-safe failure category for CLI output, never raw model text."""
     if "Meta API HTTP" in note:
-        match = re.search(r"Meta API HTTP\\s+(\\d{3})", note)
+        match = re.search(r"Meta API HTTP\s+(\d{3})", note)
         return "META_HTTP_" + match.group(1) if match else "META_HTTP_ERROR"
     if "transport failure" in note:
         return "META_TRANSPORT_ERROR"
