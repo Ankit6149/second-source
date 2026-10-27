@@ -160,7 +160,9 @@ def test_wire_format_and_usage_reconciled(monkeypatch):
     gateway = ModelGateway(provider, RunBudget(Budgets()))
     response = gateway.generate(request("hi", schema=SCHEMA))
     assert seen["url"] == "https://api.meta.ai/v1/chat/completions"
-    assert seen["payload"]["response_format"] == {"type": "json_object"}
+    assert seen["payload"]["response_format"]["type"] == "json_schema"
+    assert seen["payload"]["response_format"]["json_schema"]["strict"] is False
+    assert seen["payload"]["response_format"]["json_schema"]["schema"] == SCHEMA
     assert seen["payload"]["model"] == "muse-spark-1.3"
     assert seen["auth"] == "Bearer k"
     assert response.real is True
