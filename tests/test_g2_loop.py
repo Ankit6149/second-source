@@ -202,3 +202,31 @@ def test_retry_respects_model_budget_and_does_not_execute_denied_proposal(cli_sc
     assert report.mock_model_calls == 2
     assert budget.attempts == 2
     assert len(list(ledger.root.glob("*.json"))) == 2
+
+
+
+def test_real_muse_side_effect_phrase_runs_allowed_owned_experiment(cli_scope, reference, tmp_path):
+    """Real failure reproduction: verbose 'mutating:' is classified only by trusted manifest."""
+    import json
+    from pathlib import Path
+
+    manifest = json.loads(
+        (Path(__file__).resolve().parents[1] / "fixtures/owned_ledger/public_contract.json").read_text()
+    )
+    steps = [add_action("A", 5), add_action("A", 5)]
+    predictions = [pred("hyp-a", False, "duplicate_label"), pred("hyp-b", True)]
+    loop, ledger, budget, _, _ = wiring(
+        cli_scope, reference, tmp_path,
+        responder(hyp_ids=("hyp-a", "hyp-b"), actions=steps,
+                  predictions=predictions,
+                  side_effect="mutating: creates two ledger records within isolated session"),
+        max_rounds=1,
+        public_contract=manifest,
+    )
+    result = loop.run(list(SEED))
+    assert result.stop_reason == "stalled"
+    assert result.mock_model_calls == 2
+    assert result.rounds[0].actions_executed == 2
+    assert result.resolution_counts["supported"] == 1
+    assert result.resolution_counts["contradicted"] == 1
+    assert len(list(ledger.root.glob("*.json"))) == 4
