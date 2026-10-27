@@ -48,19 +48,18 @@ variable is positive AND `MODEL_API_KEY` is set.
 | P0-4 billing hard stop | `reserve` worst case before the call; `commit` actuals; `fail` books uncertain spend and a failed receipt; per-model pricing table; unknown models fail closed unless explicit rates are given | `test_failure_books_uncertain_spend`, `test_commit_releases_reservation`, `test_mock_schema_violation_rejected_and_booked`, `test_unknown_model_pricing_fail_closed`, `test_wire_format_and_usage_reconciled` (monkeypatched transport) |
 | P1-5 strict schemas | Meta-documented `json_schema` with `strict: false` (open params do not conform to the stricter subset), schema guidance included in prompts, and closed server-side enforcement via `schema_validate` | `tests/test_g2_schema.py`, `test_mock_schema_violation_rejected_and_booked` |
 | P1-6 credential boundary | `MetaProvider` rejects non-HTTPS and non-allowlisted hosts; loopback only with explicit `test_mode=True` (hermetic tests); key travels only on that TLS request | `test_http_endpoint_rejected`, `test_unexpected_host_rejected`, `test_loopback_requires_test_mode`, `test_meta_error_never_echoes_key` |
-| Gate-7 real call + CI | Operator-reported run `real-g2-20261027T192406Z-5482abee` completed 2 real model calls + 3 observed allowed actions; detailed local report awaiting read-only acceptance review. GitHub Actions [40567997741](https://github.com/Ankit6149/second-source/actions/runs/40567997741) successful on Linux/Python 3.11 and Windows/Python 3.12. | Model-generated experiment: OBSERVED; independent receipt review: PENDING |
+| Gate-7 real call + CI | Operator-reported run `real-g2-20261027T192406Z-5482abee` completed 2 real model calls + 3 observed allowed actions; sanitized receipt projection was reviewed on 28 October (see section below). Full raw bytes/provider billing not independently audited. GitHub Actions [40570078156](https://github.com/Ankit6149/second-source/actions/runs/40570078156) passed Linux/Python 3.11 and Windows/Python 3.12 at source head `6ee6698` before handoff docs. | G2 live minimum MET; merge approval PENDING |
 
 ## Observed suite result (27 Oct 2026, this branch)
 
-`python -m pytest` → **101 passed, 2 skipped, exit 0** (≈5s; 43 G0 + 58 G2).
-The 2 skips are `test_g2_smoke_real.py` (no key/budget configured).
+**Historical test snapshot (27 Oct):** `python -m pytest` → **101 passed, 2 skipped**, as recorded then. This is not the current suite count; use the latest GitHub CI and operator test output. The 2 key-gated smoke tests were skipped in that snapshot.
 
 ## Unresolved limitations (honest)
 
 - No guaranteed billing hard cap: the ledger bounds what WE attempt and books
   uncertainty fail-closed; provider-side charges are authoritative.
 - Provider uses Meta structured output with `strict: false` for flexible JSON schema,
-  plus server-side validation. A live call must confirm compatibility for this account.
+  plus server-side validation. A real call yielded valid parsed outputs, but comprehensive format robustness on this account is not established.
 - Hypothesis contradiction is single-step (final observation vs prediction);
   multi-step trajectory attribution is future work.
 - GitHub Actions CI exists on the integration branch. The first run (ID 40555328796)
@@ -173,7 +172,7 @@ are **not yet demonstrated**.
 - An explicit operator entrypoint `second_source.live_experiment` now bridges real Muse reasoning to bounded, approved reference execution. Its exit status distinguishes observed experiments from missing-key and model failures.
 - The same run also performs an evaluator-only negative-control using an intentionally faulty synthetic candidate and stores **only aggregated** `model_feedback()`; this is a harness check, not a reconstructed candidate result.
 - Test coverage adds no-credential, overspend rejection and schema-prompt assertions in `tests/test_g2_live_entry.py`.
-- These changes are not proof of a live model run; G2 stays **NOT COMPLETE** until an observed real receipt and an executed experiment are recorded.
+- **Historical note (before the fourth live run):** these code changes alone were not proof of a live run. The later fourth operator run and sanitized receipt review met the G2 *minimum*, as recorded above. Full raw-artifact/provider-billing verification remains separate.
 
 ## 28 October fix — operator-owned effect classification
 
@@ -181,4 +180,4 @@ are **not yet demonstrated**.
 - The planner derives the effective effect from this **trusted manifest**, even when Muse writes a verbose explanatory side-effect string. It never lets a model downgrade an owned mutation to read-only. An explicit `external`/`prohibited` model declaration remains restricted by ScopeGuard.
 - Missing/unknown commands and invalid trusted manifest effects fail closed. All chosen actions still require requirement, role, command and scope authorization.
 - Added no-network regression tests reproducing the exact real-model wording and observing the owned reference from a model-selected proposal. No new real model request has been made in this fix.
-- **G2 remains unaccepted** until the operator runs the updated code once and supplies a genuine reference-action receipt. Billable retries require explicit owner approval.
+- **Historical note (prior to the fourth run):** acceptance was pending a genuine executed action. That minimum has since been observed from an operator-supplied report; PR merge remains independently gated by owner approval and current CI.
