@@ -85,4 +85,5 @@ def test_model_failure_categories_are_safe_and_not_raw_error_text():
     ) == "META_HTTP_401"
     assert classify_model_failure("model stop: model output violated JSON schema: boom") == "MODEL_SCHEMA_ERROR"
     assert classify_model_failure("model stop: Meta API transport failure: TimeoutError") == "META_TRANSPORT_ERROR"
+    assert classify_model_failure("model stop: MODEL_JSON_INVALID: provider response invalid") == "MODEL_JSON_INVALID"
     assert classify_model_failure("model stop: strange response contains private text") == "MODEL_GATEWAY_ERROR"
