@@ -6,13 +6,16 @@ reference — with every artifact honestly labeled. The spec CONTENT here is an
 author-written trusted test fixture transported over a mock channel; it is
 NOT Muse output and this module never claims otherwise.
 
-Real generation uses `candidate_generation.request_candidate_spec` with a genuine
-`ModelGateway` response (explicit owner authorization required).
+The three public control cases are deliberately NON-SEALED. Their purpose is
+only to prove that the G3-A runtime implements the exact G0 ReferenceProtocol
+wire contract before Codex supplies evaluator-owned sealed cases.
+
+Real generation uses `candidate_generation.request_candidate_spec` with a
+genuine `ModelGateway` response (explicit owner authorization required).
 """
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -23,7 +26,7 @@ DEMO_CASES: list[dict[str, Any]] = [
         "case_id": "demo-add-total",
         "category": "value",
         "actions": [
-            {"command": "add", "params": {"label": "Milk", "amount": 2}},
+            {"command": "add", "label": "Milk", "amount": 2},
             {"command": "total"},
         ],
     },
@@ -31,16 +34,17 @@ DEMO_CASES: list[dict[str, Any]] = [
         "case_id": "demo-duplicate",
         "category": "errors",
         "actions": [
-            {"command": "add", "params": {"label": "Eggs", "amount": 1}},
-            {"command": "add", "params": {"label": "EGGS", "amount": 1}},
+            {"command": "add", "label": "Eggs", "amount": 1},
+            {"command": "add", "label": "EGGS", "amount": 1},
         ],
     },
     {
-        "case_id": "demo-invalid-remove",
-        "category": "errors",
+        "case_id": "demo-remove",
+        "category": "state",
         "actions": [
-            {"command": "add", "params": {"label": "X", "amount": 0}},
-            {"command": "remove", "params": {"id": "99"}},
+            {"command": "add", "label": "X", "amount": 4},
+            {"command": "remove", "id": "1"},
+            {"command": "total"},
         ],
     },
 ]
@@ -62,6 +66,7 @@ def run_demo(root: Path = ROOT) -> dict[str, Any]:
     spec_dict = json.loads(fixture_path.read_text(encoding="utf-8"))
     manifest_path = root / "fixtures" / "owned_ledger" / "public_contract.json"
     public = json.loads(manifest_path.read_text(encoding="utf-8"))
+
     contract = ScopeContract(
         target={
             "kind": "cli",
@@ -83,22 +88,38 @@ def run_demo(root: Path = ROOT) -> dict[str, Any]:
             "fidelity": ["behavioral"],
             "required_flows": ["counter-basics"],
         },
-        exclusions={"url_patterns": [], "subsystems": [], "external_side_effects": []},
+        exclusions={
+            "url_patterns": [],
+            "subsystems": [],
+            "external_side_effects": [],
+        },
         budgets={},
     )
+
     loaded, receipt = mock_propose_candidate(spec_dict, contract)
     reference = CLIReferenceAdapter(
-        [_sys.executable, str(root / "fixtures" / "owned_ledger" / "reference.py")],
+        [
+            _sys.executable,
+            str(root / "fixtures" / "owned_ledger" / "reference.py"),
+        ],
         cwd=root,
     )
     candidate = CandidateInterpreter(loaded.spec)
     verifier = DifferentialVerifier(reference, candidate)
-    report = verifier.verify([
-        SealedCase(case_id=c["case_id"], actions=list(c["actions"]), category=c["category"])
-        for c in DEMO_CASES
-    ])
+    report = verifier.verify(
+        [
+            SealedCase(
+                case_id=c["case_id"],
+                actions=list(c["actions"]),
+                category=c["category"],
+            )
+            for c in DEMO_CASES
+        ]
+    )
+
     return {
         "demo_kind": "mock_transport_of_trusted_fixture_not_AI",
+        "evaluation_kind": "NON_SEALED_TRUSTED_CONTROL",
         "origin": ORIGIN,
         "content_provenance": "trusted-test-fixture",
         "generation_receipt": receipt.model_dump(mode="json"),
@@ -108,7 +129,11 @@ def run_demo(root: Path = ROOT) -> dict[str, Any]:
 
 
 def main() -> int:
-    print(json.dumps(run_demo(), indent=2, sort_keys=True))
+    report = run_demo()
+    print(json.dumps(report, indent=2, sort_keys=True))
+    evaluation = report["evaluation"]
+    if evaluation["passed"] != evaluation["total"] or evaluation["failed"]:
+        raise SystemExit("trusted G3-A control candidate did not match public control cases")
     return 0
 
 
