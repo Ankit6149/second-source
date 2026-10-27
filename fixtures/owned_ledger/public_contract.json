@@ -1,0 +1,33 @@
+{
+  "version": "1",
+  "description": "Operator-authored CLI signatures and side-effect classifications only. Hidden validation and business rules deliberately omitted.",
+  "transport": "stdin_jsonl",
+  "reset_boundary": "fresh_process_per_sequence",
+  "commands": {
+    "add": {
+      "params": {
+        "label": "string",
+        "amount": "integer"
+      },
+      "purpose": "create a record",
+      "side_effect": "owned_mutation"
+    },
+    "list": {
+      "params": {},
+      "purpose": "list records",
+      "side_effect": "read_only"
+    },
+    "total": {
+      "params": {},
+      "purpose": "return count and aggregate amount",
+      "side_effect": "read_only"
+    },
+    "remove": {
+      "params": {
+        "id": "string"
+      },
+      "purpose": "remove record by identifier",
+      "side_effect": "owned_mutation"
+    }
+  }
+}
