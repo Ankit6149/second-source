@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "description": "Public, owner-authored CLI call signatures only. Business rules deliberately omitted.",
+  "description": "Operator-authored CLI signatures and side-effect classifications only. Hidden validation and business rules deliberately omitted.",
   "transport": "stdin_jsonl",
   "reset_boundary": "fresh_process_per_sequence",
   "commands": {
@@ -9,21 +9,25 @@
         "label": "string",
         "amount": "integer"
       },
-      "purpose": "create a record"
+      "purpose": "create a record",
+      "side_effect": "owned_mutation"
     },
     "list": {
       "params": {},
-      "purpose": "list records"
+      "purpose": "list records",
+      "side_effect": "read_only"
     },
     "total": {
       "params": {},
-      "purpose": "return count and aggregate amount"
+      "purpose": "return count and aggregate amount",
+      "side_effect": "read_only"
     },
     "remove": {
       "params": {
         "id": "string"
       },
-      "purpose": "remove record by identifier"
+      "purpose": "remove record by identifier",
+      "side_effect": "owned_mutation"
     }
   }
 }
