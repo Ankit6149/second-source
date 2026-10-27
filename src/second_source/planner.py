@@ -290,6 +290,7 @@ class ExperimentPlanner:
         *,
         reference_remaining: int,
         model_remaining: int,
+        rejection_codes: Sequence[str] = (),
     ) -> PlanResult:
         if not hypotheses:
             raise GatewayError("propose requires at least one hypothesis")
@@ -299,7 +300,33 @@ class ExperimentPlanner:
                 for h in hypotheses
             ],
             "requirement_id": requirement_id,
+            "operator_guidance": (
+                "This is an owned, synthetic CLI, not a production account. "
+                "Commands add/remove mutate only local in-process fixture state; "
+                "total/list read local state. Use exactly requirement_id as given, "
+                "role guest, requires_auth false, reset_boundary fresh_process_per_sequence, "
+                "side_effect owned_mutation when proposing add/remove or read_only "
+                "for total/list. Actions must contain CLI command labels, not shell commands. "
+                "Propose a test that gives distinguishable predicted outcomes, "
+                "and fill all required JSON schema properties."
+            ),
         }
+        if rejection_codes:
+            # Feedback is from *trusted deterministic validation*, never raw
+            # target text or model-provided prose. It cannot authorize actions.
+            safe_codes = sorted({code for code in rejection_codes if code in {
+                "COMMAND_NOT_ALLOWED", "ACTION_NOT_ALLOWED", "ROLE_NOT_ALLOWED",
+                "HUMAN_APPROVAL_REQUIRED", "SENSITIVE_ACTION_BLOCKED",
+                "AUTH_OUT_OF_SCOPE", "SCHEMA_ERROR", "RESET_BOUNDARY",
+                "OVER_BUDGET", "REQUIREMENT_NOT_IN_SCOPE", "SIDE_EFFECT",
+                "NO_PROPOSALS", "PREDICTION_INVALID",
+            }})
+            competing["prior_rejection_codes"] = safe_codes
+            competing["correction_instruction"] = (
+                "The previous proposal did not pass deterministic validation. "
+                "Choose a NEW permitted CLI action sequence, do not reuse blocked "
+                "commands or claim human approval. The scope guard remains authoritative."
+            )
         response = self._gateway.generate(
             ModelRequest(
                 stage="propose",
