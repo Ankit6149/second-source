@@ -3,11 +3,12 @@
 **Gate under test:** PRD FR-020..028 — a real Muse model selects a valid
 experiment and its result is observed and recorded.
 
-**Verdict: G2 NOT COMPLETE.** No real provider call has been executed. The G2
-engine below answers the independent review of PR #1 (27 Oct 2026) and is
-covered by mocked tests; the real-model leg is explicitly pending an API key
-and run budget. This log must not claim completion without a recorded receipt
-(model id, response id, latency, token usage).
+**Verdict: G2 NOT COMPLETE.** The operator attempted one real Meta model
+request on 27 Oct 2026, but the model/planner failed before selecting an
+experiment; the confirmed response, token usage and error classification are
+still unknown. The G2 engine has passing non-billable tests. Acceptance requires
+a valid model-selected experiment and its recorded observation. The earlier
+attempt must not be presented as successful inference.
 
 ## Design (integrated, no G0 duplication)
 
@@ -40,7 +41,7 @@ variable is positive AND `MODEL_API_KEY` is set.
 | P0-4 billing hard stop | `reserve` worst case before the call; `commit` actuals; `fail` books uncertain spend and a failed receipt; per-model pricing table; unknown models fail closed unless explicit rates are given | `test_failure_books_uncertain_spend`, `test_commit_releases_reservation`, `test_mock_schema_violation_rejected_and_booked`, `test_unknown_model_pricing_fail_closed`, `test_wire_format_and_usage_reconciled` (monkeypatched transport) |
 | P1-5 strict schemas | Meta-documented `json_schema` with `strict: false` (open params do not conform to the stricter subset), schema guidance included in prompts, and closed server-side enforcement via `schema_validate` | `tests/test_g2_schema.py`, `test_mock_schema_violation_rejected_and_booked` |
 | P1-6 credential boundary | `MetaProvider` rejects non-HTTPS and non-allowlisted hosts; loopback only with explicit `test_mode=True` (hermetic tests); key travels only on that TLS request | `test_http_endpoint_rejected`, `test_unexpected_host_rejected`, `test_loopback_requires_test_mode`, `test_meta_error_never_echoes_key` |
-| Gate-7 real call + CI | still pending key/budget (below); GitHub Actions workflow added on integration branch, Linux Python 3.11 + Windows Python 3.12 (first run verified successful, later changes must be checked again) | — |
+| Gate-7 real call + CI | Operator attempted one real call but no experiment was selected; inspect the existing local error note before spending again. GitHub Actions runs on Linux/Python 3.11 and Windows/Python 3.12 (latest workflow result should be checked). | — |
 
 ## Observed suite result (27 Oct 2026, this branch)
 
