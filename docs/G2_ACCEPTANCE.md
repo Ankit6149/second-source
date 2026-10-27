@@ -80,11 +80,11 @@ The 2 skips are `test_g2_smoke_real.py` (no key/budget configured).
 
 - Run ID: `real-g2-20261027T184607Z-73bbd66a`.
 - Result: `REAL_EXPERIMENT_INCOMPLETE`; reported stop `guard_blocked`, but code review shows a `GatewayError` was previously misclassified as a scope guard denial.
-- Provider receipts: 1 real-model *attempt*; stage failure details not yet extracted from the operator-local `run_report.json`.
+- Provider receipts: 1 real-model *attempt* in stage `hypothesize` (`muse-spark-1.3`), outcome `failed`, detail `model output violated JSON schema: not JSON`. The generated content was not retained; therefore whether it was truncated, fenced, or freeform remains unproven.
 - Guard-approved model-selected experiments executed: **0**.
 - Actual provider-reported successful usage estimate: **$0.00**.
 - Accounting reserve recorded as **uncertain**: **$0.006048**. This is **not proof of a provider charge**.
-- The operator did not share their key. No further paid request should be made until the local run note is read and the cause is fixed.
+- The operator did not share their key. Updated gateway now requests low reasoning effort and larger completion budgets; it reports sanitized `finish_reason`, token usage, and response metadata if validation fails. Re-run only after these changes pass CI and with explicit user approval. This change is a mitigation, not proof the root cause was truncation.
 
 ## Latest status
 
