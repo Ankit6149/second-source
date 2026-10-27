@@ -91,7 +91,7 @@ The 2 skips are `test_g2_smoke_real.py` (no key/budget configured).
 - Run ID: `real-g2-20261027T190454Z-f43553c6`.
 - Observed result: `REAL_EXPERIMENT_INCOMPLETE`; `guard_blocked`; two *successful* model calls, zero reference experiment actions.
 - Internal estimated provider usage: **$0.012054**, uncertain spend **$0**. Provider billing has not been independently checked.
-- Model stage likely completed hypothesis and experiment proposal; the exact deterministic rejection codes remain in the **operator-local** `.runs/<run_id>/run_report.json` and have not been supplied to this review. Do not claim the specific rejection is known.
+- Operator subsequently supplied the rejection: `schema: unknown side_effect 'mutating: creates two ledger records within isolated se...'`. This confirms a descriptive effect label instead of a canonical policy category; it does **not** indicate a prohibited mutation was executed.
 - G2 still **NOT ACCEPTED**. New code adds explicit owner-CLI scope hints and **at most one model-proposed corrective experiment** after the first rejected proposal. Budget remains bounded by an explicit `max_model_calls` limit and `SECOND_SOURCE_MAX_RUN_USD`.
 - Never substitute a hard-coded fallback sequence as if Muse selected it; the scope guard validates every model-selected action.
 
@@ -107,3 +107,11 @@ The 2 skips are `test_g2_smoke_real.py` (no key/budget configured).
 - The same run also performs an evaluator-only negative-control using an intentionally faulty synthetic candidate and stores **only aggregated** `model_feedback()`; this is a harness check, not a reconstructed candidate result.
 - Test coverage adds no-credential, overspend rejection and schema-prompt assertions in `tests/test_g2_live_entry.py`.
 - These changes are not proof of a live model run; G2 stays **NOT COMPLETE** until an observed real receipt and an executed experiment are recorded.
+
+## 28 October fix — operator-owned effect classification
+
+- Public owned-ledger command manifest now declares canonical `side_effect` per command: `add`/`remove` = `owned_mutation`, `list`/`total` = `read_only`. These are authorized policy declarations, not observations of hidden rules.
+- The planner derives the effective effect from this **trusted manifest**, even when Muse writes a verbose explanatory side-effect string. It never lets a model downgrade an owned mutation to read-only. An explicit `external`/`prohibited` model declaration remains restricted by ScopeGuard.
+- Missing/unknown commands and invalid trusted manifest effects fail closed. All chosen actions still require requirement, role, command and scope authorization.
+- Added no-network regression tests reproducing the exact real-model wording and observing the owned reference from a model-selected proposal. No new real model request has been made in this fix.
+- **G2 remains unaccepted** until the operator runs the updated code once and supplies a genuine reference-action receipt. Billable retries require explicit owner approval.
