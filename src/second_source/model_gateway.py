@@ -194,7 +194,7 @@ class MetaProvider:
         payload: dict[str, Any] = {
             "model": self._model,
             "messages": [dict(m) for m in request.messages],
-            "max_tokens": request.max_output_tokens,
+            "max_completion_tokens": request.max_output_tokens,
         }
         if request.json_schema is not None:
             payload["response_format"] = {
