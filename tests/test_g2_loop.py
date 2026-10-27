@@ -127,3 +127,18 @@ def test_guard_blocked_when_nothing_allowed(cli_scope, reference, tmp_path):
     report = loop.run(list(SEED))
     assert report.stop_reason == "guard_blocked"
     assert len(list(ledger.root.glob("*.json"))) == 2  # seed only
+
+
+def test_failed_model_request_is_not_reported_as_scope_guard_rejection(cli_scope, reference, tmp_path):
+    def invalid_hypothesis(_request):
+        # Mock provider fails schema validation on the first model call.
+        return {"content": {"unexpected": "bad"}}
+
+    loop, ledger, _, _, _ = wiring(
+        cli_scope, reference, tmp_path, invalid_hypothesis, max_rounds=1
+    )
+    report = loop.run(list(SEED))
+    assert report.stop_reason == "model_error"
+    assert report.real_model_calls == 0
+    assert report.rounds[-1].note.startswith("model stop:")
+    assert len(list(ledger.root.glob("*.json"))) == 2  # seed only
