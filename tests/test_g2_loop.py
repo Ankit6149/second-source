@@ -126,6 +126,7 @@ def test_guard_blocked_when_nothing_allowed(cli_scope, reference, tmp_path):
     )
     report = loop.run(list(SEED))
     assert report.stop_reason == "guard_blocked"
+    assert "COMMAND_NOT_ALLOWED" in report.rejection_codes
     assert len(list(ledger.root.glob("*.json"))) == 2  # seed only
 
 
