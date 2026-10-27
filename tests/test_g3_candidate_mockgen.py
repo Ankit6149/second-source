@@ -1,10 +1,11 @@
-"""G3-A generation-boundary tests: mock path, origins, loader isolation."""
+"""G3-A generation-boundary tests: mock path, origins, context isolation."""
 
 import json
 from pathlib import Path
 
 import pytest
 
+from second_source.budgets import RunBudget
 from second_source.candidate_generation import (
     build_generation_context,
     mock_propose_candidate,
@@ -12,13 +13,21 @@ from second_source.candidate_generation import (
     request_candidate_spec,
     validate_generated_spec,
 )
-from second_source.model_gateway import MockProvider, ModelGateway
-from second_source.budgets import RunBudget
 from second_source.contracts import Budgets
-from second_source.model_gateway import ModelResponse
+from second_source.model_gateway import (
+    GatewayError,
+    MockProvider,
+    ModelGateway,
+    ModelResponse,
+)
 
 FIXTURE = Path(__file__).resolve().parent / "g3_fixtures" / "valid_candidate.json"
-PUBLIC = Path(__file__).resolve().parents[1] / "fixtures" / "owned_ledger" / "public_contract.json"
+PUBLIC = (
+    Path(__file__).resolve().parents[1]
+    / "fixtures"
+    / "owned_ledger"
+    / "public_contract.json"
+)
 
 
 def context():
@@ -35,7 +44,12 @@ def context():
 
 def test_context_has_closed_top_level_keys():
     ctx = context()
-    assert set(ctx) == {"scope", "public_commands", "evidence", "hypotheses"}
+    assert set(ctx) == {
+        "scope",
+        "public_commands",
+        "evidence",
+        "hypotheses",
+    }
     assert ctx["scope"]["requirement_ids"] == ["REQ-LEDGER"]
     assert "payments" in ctx["scope"]["excluded_subsystems"]
 
@@ -47,13 +61,18 @@ def test_context_redacts_secrets():
         allowed_commands=["add"],
         excluded_subsystems=[],
         public_command_manifest={},
-        redacted_views=[{"digest": "d", "observation": {"authorization": "Bearer abc123"}}],
+        redacted_views=[
+            {
+                "digest": "d",
+                "observation": {"authorization": "Bearer abc123"},
+            }
+        ],
         hypotheses=[],
     )
     assert "abc123" not in json.dumps(ctx)
 
 
-def test_context_build_reads_no_restricted_paths(cli_scope, monkeypatch):
+def test_context_build_reads_no_restricted_paths(monkeypatch):
     """The builder takes explicit inputs; it must never open reference/gold paths."""
     import pathlib
 
@@ -86,30 +105,98 @@ def test_mock_path_rejects_invalid(cli_scope):
 def test_request_labels_mock_origin(cli_scope):
     spec_dict = json.loads(FIXTURE.read_text(encoding="utf-8"))
     gateway = ModelGateway(
-        MockProvider([{"content": spec_dict}]), RunBudget(Budgets())
+        MockProvider([{"content": spec_dict}]),
+        RunBudget(Budgets()),
     )
     parsed, receipt = request_candidate_spec(context(), gateway)
     assert receipt.origin == "mock"
     assert receipt.real is False
-    loaded, stamped = validate_generated_spec(parsed, cli_scope, receipt)
+
+    loaded, stamped = validate_generated_spec(
+        parsed, cli_scope, receipt
+    )
     assert stamped.spec_digest == loaded.digest
     assert stamped.origin == "mock"  # validation never upgrades origin
 
 
+def test_request_rejects_extra_generation_context_key():
+    spec_dict = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    gateway = ModelGateway(
+        MockProvider([{"content": spec_dict}]),
+        RunBudget(Budgets()),
+    )
+    unsafe = context()
+    unsafe["gold_cases"] = [{"case_id": "do-not-send"}]
+    with pytest.raises(GatewayError, match="generation context"):
+        request_candidate_spec(unsafe, gateway)
+
+
+def test_request_redacts_again_at_final_boundary():
+    captured = {}
+
+    def responder(request):
+        captured["rendered"] = "\n".join(
+            message["content"] for message in request.messages
+        )
+        return {
+            "content": json.loads(
+                FIXTURE.read_text(encoding="utf-8")
+            )
+        }
+
+    gateway = ModelGateway(
+        MockProvider(responder=responder),
+        RunBudget(Budgets()),
+    )
+    ctx = context()
+    ctx["evidence"].append(
+        {
+            "digest": "late",
+            "authorization": "Bearer late-secret-token",
+        }
+    )
+    request_candidate_spec(ctx, gateway)
+    assert "late-secret-token" not in captured["rendered"]
+
+
 def test_origin_mapping():
-    assert origin_of(ModelResponse(
-        provider="meta-direct", real=True, model="m", response_id="r",
-        content_text="{}", prompt_version="v")) == "real"
-    assert origin_of(ModelResponse(
-        provider="mock", real=False, model="m", response_id="r",
-        content_text="{}", prompt_version="v")) == "mock"
+    assert (
+        origin_of(
+            ModelResponse(
+                provider="meta-direct",
+                real=True,
+                model="m",
+                response_id="r",
+                content_text="{}",
+                prompt_version="v",
+            )
+        )
+        == "real"
+    )
+    assert (
+        origin_of(
+            ModelResponse(
+                provider="mock",
+                real=False,
+                model="m",
+                response_id="r",
+                content_text="{}",
+                prompt_version="v",
+            )
+        )
+        == "mock"
+    )
 
 
-def test_mock_demo_runs_labeled(cli_scope):
-    from second_source.g3_mock_demo import ORIGIN, run_demo
+def test_mock_demo_runs_labeled_and_matches_public_controls(cli_scope):
+    from second_source.g3_mock_demo import run_demo
 
     report = run_demo()
     assert report["origin"] == "mock"
     assert report["content_provenance"] == "trusted-test-fixture"
-    assert "NON-AI" in report["demo_kind"] or "not_AI" in report["demo_kind"]
+    assert report["evaluation_kind"] == "NON_SEALED_TRUSTED_CONTROL"
+    assert "not_AI" in report["demo_kind"]
     assert report["evaluation"]["total"] == 3
+    assert report["evaluation"]["passed"] == 3
+    assert report["evaluation"]["failed"] == 0
+    assert report["evaluation"]["indeterminate"] == 0
