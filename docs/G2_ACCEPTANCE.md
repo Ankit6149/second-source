@@ -3,12 +3,15 @@
 **Gate under test:** PRD FR-020..028 — a real Muse model selects a valid
 experiment and its result is observed and recorded.
 
-**Verdict: G2 NOT COMPLETE.** The operator attempted one real Meta model
-request on 27 Oct 2026, but the model/planner failed before selecting an
-experiment; the confirmed response, token usage and error classification are
-still unknown. The G2 engine has passing non-billable tests. Acceptance requires
-a valid model-selected experiment and its recorded observation. The earlier
-attempt must not be presented as successful inference.
+**Verdict: G2 REAL EXPERIMENT OBSERVED; EVIDENCE REVIEW PENDING.**
+On 27 October 2026 the operator ran Second Source in their own authorized
+Windows environment using real Muse Spark 1.3. The run returned
+`REAL_EXPERIMENT_OBSERVED` with 2 real model calls, 3 reference actions,
+no rejected codes, no uncertain cost and a $0.012715 model-cost estimate.
+These figures come from operator-shared command output. The detailed local
+`run_report.json` has not yet been reviewed independently for hypothesis
+outcomes, observation IDs and final receipts. Do not claim candidate
+reconstruction or measured equivalence; those remain G3.
 
 ## Design (integrated, no G0 duplication)
 
@@ -41,7 +44,7 @@ variable is positive AND `MODEL_API_KEY` is set.
 | P0-4 billing hard stop | `reserve` worst case before the call; `commit` actuals; `fail` books uncertain spend and a failed receipt; per-model pricing table; unknown models fail closed unless explicit rates are given | `test_failure_books_uncertain_spend`, `test_commit_releases_reservation`, `test_mock_schema_violation_rejected_and_booked`, `test_unknown_model_pricing_fail_closed`, `test_wire_format_and_usage_reconciled` (monkeypatched transport) |
 | P1-5 strict schemas | Meta-documented `json_schema` with `strict: false` (open params do not conform to the stricter subset), schema guidance included in prompts, and closed server-side enforcement via `schema_validate` | `tests/test_g2_schema.py`, `test_mock_schema_violation_rejected_and_booked` |
 | P1-6 credential boundary | `MetaProvider` rejects non-HTTPS and non-allowlisted hosts; loopback only with explicit `test_mode=True` (hermetic tests); key travels only on that TLS request | `test_http_endpoint_rejected`, `test_unexpected_host_rejected`, `test_loopback_requires_test_mode`, `test_meta_error_never_echoes_key` |
-| Gate-7 real call + CI | Operator attempted one real call but no experiment was selected; inspect the existing local error note before spending again. GitHub Actions runs on Linux/Python 3.11 and Windows/Python 3.12 (latest workflow result should be checked). | — |
+| Gate-7 real call + CI | Operator-reported run `real-g2-20261027T192406Z-5482abee` completed 2 real model calls + 3 observed allowed actions; detailed local report awaiting read-only acceptance review. GitHub Actions [40567997741](https://github.com/Ankit6149/second-source/actions/runs/40567997741) successful on Linux/Python 3.11 and Windows/Python 3.12. | Model-generated experiment: OBSERVED; independent receipt review: PENDING |
 
 ## Observed suite result (27 Oct 2026, this branch)
 
@@ -95,9 +98,19 @@ The 2 skips are `test_g2_smoke_real.py` (no key/budget configured).
 - G2 still **NOT ACCEPTED**. New code adds explicit owner-CLI scope hints and **at most one model-proposed corrective experiment** after the first rejected proposal. Budget remains bounded by an explicit `max_model_calls` limit and `SECOND_SOURCE_MAX_RUN_USD`.
 - Never substitute a hard-coded fallback sequence as if Muse selected it; the scope guard validates every model-selected action.
 
+## Fourth operator run — G2 breakthrough, 27 October 2026
+
+- Run ID: `real-g2-20261027T192406Z-5482abee`.
+- Operator-shared CLI result: `REAL_EXPERIMENT_OBSERVED`; `stop_reason=stalled` (one configured experiment round exhausted), `failure_code=null`, no `rejection_codes`.
+- Provider: Muse Spark 1.3 configured in the real operator runner; `real_model_calls=2` and `actions_observed=3`.
+- Estimated spend: **$0.012715**; uncertain spend: **$0.00**. Check provider billing separately before treating estimated spend as actual charge.
+- Actual artifacts remain on the operator's Windows machine at `.runs/real-g2-20261027T192406Z-5482abee/run_report.json`. No key was shared or committed.
+- **Still to review:** redacted per-call receipt metadata, actual proposal ID, observation IDs, final hypothesis resolution counts, and independent verifier negative-control feedback. These must be read from the run file, not inferred from the success label.
+- No new paid calls are necessary to complete this **read-only** evidence review. Retain `.runs/` outside Git.
+
 ## Latest status
 
-**G2 NOT COMPLETE.** The first real attempt made progress past the key/budget gate but failed before experiment execution. New code distinguishes `model_error` from `guard_blocked` and outputs a safe failure category; re-run only after confirming the precise error from the existing report.
+**G2 operational real-experiment gate observed.** Merge approval is conditional on reviewing the operator's sanitized detailed fourth-run receipt and confirming final CI against the current PR head. G3 candidate generation, sandboxed execution, independent candidate verification and repair remain pending.
 
 ## Integration acceptance addendum (27 Oct 2026)
 
