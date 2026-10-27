@@ -31,7 +31,7 @@ from .model_gateway import GatewayError
 from .planner import ExperimentPlanner, reconcile_predictions
 from .runner import BudgetExhausted, PolicyViolation, SafeCLIExperimentRunner
 
-STOP_REASONS = ("stalled", "budget", "guard_blocked")
+STOP_REASONS = ("stalled", "budget", "guard_blocked", "model_error")
 
 
 @dataclass(frozen=True)
@@ -232,7 +232,7 @@ class DiscoveryLoop:
                     self._hypotheses.resolution_counts(), f"model stop: {exc}",
                 )
             )
-            stop_reason = "guard_blocked"
+            stop_reason = "model_error"
 
         receipts = self._planner.receipts
         return LoopReport(
