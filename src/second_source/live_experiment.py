@@ -31,6 +31,7 @@ from .planner import ExperimentPlanner
 from .reference import CLIReferenceAdapter
 from .runner import SafeCLIExperimentRunner
 from .scope_guard import ScopeGuard
+from .verifier import DifferentialVerifier, SealedCase
 
 MAX_FIRST_RUN_USD = 0.25
 ROOT = Path(__file__).resolve().parents[2]
@@ -75,6 +76,33 @@ def _run_directory() -> Path:
     p = ROOT / ".runs" / ("real-g2-" + stamp + "-" + secrets.token_hex(4))
     p.mkdir(parents=True, exist_ok=False, mode=0o700)
     return p
+
+
+def fixture_verifier_summary(reference: CLIReferenceAdapter) -> dict:
+    """Trusted verifier-only check: the model never sees these cases or outputs.
+
+    The intentionally faulty candidate is only a harness negative-control,
+    NOT a Muse-generated reconstruction.
+    """
+    buggy = CLIReferenceAdapter(
+        [sys.executable, str(ROOT / "fixtures/candidates/buggy.py")],
+        cwd=ROOT,
+    )
+    cases = [
+        SealedCase(case_id="harness-empty", actions=({"command": "list"},)),
+        SealedCase(
+            case_id="harness-duplicate",
+            actions=(
+                {"command": "add", "label": "Alpha", "amount": 3},
+                {"command": "add", "label": "alpha", "amount": 4},
+            ),
+        ),
+    ]
+    result = DifferentialVerifier(reference, buggy).verify(cases)
+    return {
+        "kind": "trusted_harness_negative_control_not_generated_candidate",
+        "model_feedback": result.model_feedback(),
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -161,6 +189,7 @@ def main(argv: list[str] | None = None) -> int:
         "report": asdict(report),
         "model_receipts": [r.model_dump(mode="json") for r in gateway.receipts],
         "evidence_artifact_count": len(list(ledger.root.glob("*.json"))),
+        "independent_fixture_verifier": fixture_verifier_summary(reference),
         "real_vs_mock": "real",
         "note": (
             "Reference source and sealed test inputs are never sent to the model; "
