@@ -31,7 +31,7 @@ def test_live_scope_and_public_manifest_are_aligned():
         )
     )
     assert set(public["commands"]) == set(scope.observation.allowed_commands)
-    assert scope.budgets.max_model_calls == 2
+    assert scope.budgets.max_model_calls == 3
     assert scope.budgets.max_estimated_model_spend_usd == 0.25
     assert "private_dashboard" not in scope.implementation.allowed_subsystems
 
