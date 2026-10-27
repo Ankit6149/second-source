@@ -3,15 +3,19 @@
 **Gate under test:** PRD FR-020..028 — a real Muse model selects a valid
 experiment and its result is observed and recorded.
 
-**Verdict: G2 REAL EXPERIMENT OBSERVED; EVIDENCE REVIEW PENDING.**
+**Verdict: G2 LIVE DISCOVERY GATE MET — detailed sanitized report reviewed
+from operator-provided output, 28 October 2026. PR merge not yet authorized.**
 On 27 October 2026 the operator ran Second Source in their own authorized
 Windows environment using real Muse Spark 1.3. The run returned
 `REAL_EXPERIMENT_OBSERVED` with 2 real model calls, 3 reference actions,
 no rejected codes, no uncertain cost and a $0.012715 model-cost estimate.
-These figures come from operator-shared command output. The detailed local
-`run_report.json` has not yet been reviewed independently for hypothesis
-outcomes, observation IDs and final receipts. Do not claim candidate
-reconstruction or measured equivalence; those remain G3.
+A subsequently supplied sanitized report confirms a real proposal ID,
+three observation IDs, one supported hypothesis and a genuine per-call
+response ID and token receipt. This is evidence for an **operational real
+discovery loop**, NOT for recovered hidden internals, comparative experiment
+efficiency, a reconstructed candidate or independently measured fidelity;
+those remain unproven G3 work. Full local raw artifacts have not been
+independently opened here.
 
 ## Design (integrated, no G0 duplication)
 
@@ -105,12 +109,62 @@ The 2 skips are `test_g2_smoke_real.py` (no key/budget configured).
 - Provider: Muse Spark 1.3 configured in the real operator runner; `real_model_calls=2` and `actions_observed=3`.
 - Estimated spend: **$0.012715**; uncertain spend: **$0.00**. Check provider billing separately before treating estimated spend as actual charge.
 - Actual artifacts remain on the operator's Windows machine at `.runs/real-g2-20261027T192406Z-5482abee/run_report.json`. No key was shared or committed.
-- **Still to review:** redacted per-call receipt metadata, actual proposal ID, observation IDs, final hypothesis resolution counts, and independent verifier negative-control feedback. These must be read from the run file, not inferred from the success label.
+- **Detailed review completed:** operator provided the sanitized per-call receipt metadata, proposal ID, observation IDs, hypothesis status counts and verifier negative-control feedback. See the 28 October review section; actual action inputs/outputs were not included.
 - No new paid calls are necessary to complete this **read-only** evidence review. Retain `.runs/` outside Git.
+
+## Fourth run — sanitized operator report review (28 October 2026)
+
+**Provenance:** The operator shared a PowerShell JSON projection from the
+local `.runs/real-g2-20261027T192406Z-5482abee/run_report.json`. These are
+operator-observed fields, not a direct external audit of the original JSON
+bytes, provider billing or independently reproduced Meta calls.
+
+| Receipt attribute | Hypothesis call | Proposal call |
+|---|---|---|
+| Provider | `meta-direct` (real) | `meta-direct` (real) |
+| Model | `muse-spark-1.3` | `muse-spark-1.3` |
+| Response ID | `chatcmpl-01a17ed1-f2e4-74d6-b083-b02322104905` | `chatcmpl-01a17ed2-138c-764c-a60b-a4253349c220` |
+| Outcome | `ok` | `ok` |
+| Input tokens | 1068 | 1614 |
+| Output tokens | 539 | 1664 |
+| Internal estimated cost USD | 0.00362575 | 0.00908950 |
+
+**Model-selected proposal:** `P1-second-add-id-increment`.
+**Executed observations:** 3, IDs
+`658b367c4d744f3da685cf0e09099790:0`,
+`658b367c4d744f3da685cf0e09099790:1`,
+`658b367c4d744f3da685cf0e09099790:2`.
+
+**Reconciliation:** 1 hypothesis supported, 0 contradicted, 0 unresolved,
+0 still hypothesized; no rejection codes. One hypothesis passing a final
+check does **not establish active information gain against rival models**.
+The full action payload, predictions and observation values were **not**
+included in this projection; do not claim unseen behaviors from the proposal
+identifier alone.
+
+**Evidence ledger:** operator reported 5 evidence artifacts. The local
+`.runs/` files remain intentionally gitignored and unshared.
+
+**Verifier negative control:** 2 *synthetic, intentionally faulty* candidate
+cases: 1 pass, 1 fail, 0 indeterminate, error mismatch category 1.
+This only demonstrates the trusted evaluation harness detects a known defect.
+It is **not** a gold score for a Muse-generated candidate.
+
+**Provider billing:** internal estimated cost total is USD **0.012715**;
+uncertain cost **0**. The Meta billing console is authoritative for charges.
+
+**Gate disposition:** Real Muse `hypothesize → propose → validate → execute →
+observe → reconcile` path was observed and the live G2 minimum criterion is
+**satisfied**. Preserve residual limitations; obtain explicit PR-merge approval
+and verify latest CI. Move engineering effort to G3 candidate synthesis,
+constrained execution, independent verification and bounded repair.
 
 ## Latest status
 
-**G2 operational real-experiment gate observed.** Merge approval is conditional on reviewing the operator's sanitized detailed fourth-run receipt and confirming final CI against the current PR head. G3 candidate generation, sandboxed execution, independent candidate verification and repair remain pending.
+**G2 live discovery minimum criterion met** on the operator-provided detailed
+projection; latest CI and explicit human PR-merge approval remain required.
+G3 candidate generation, isolated execution, withheld evaluation and repair
+are **not yet demonstrated**.
 
 ## Integration acceptance addendum (27 Oct 2026)
 
