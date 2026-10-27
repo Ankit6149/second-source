@@ -164,6 +164,7 @@ def test_wire_format_and_usage_reconciled(monkeypatch):
     assert seen["payload"]["response_format"]["json_schema"]["strict"] is False
     assert seen["payload"]["response_format"]["json_schema"]["schema"] == SCHEMA
     assert seen["payload"]["model"] == "muse-spark-1.3"
+    assert seen["payload"]["reasoning_effort"] == "low"
     assert seen["auth"] == "Bearer k"
     assert response.real is True
     assert response.parsed == {"ok": True}
@@ -178,3 +179,54 @@ def test_mock_ping():
     response = gateway.ping()
     assert response.content_text == "ready"
     assert response.real is False
+
+
+def test_real_provider_non_json_preserves_safe_finish_reason_and_actual_usage(monkeypatch):
+    """Failed structured response must not lose observed provider token usage."""
+    text = "Not JSON: unexpected truncated response"
+
+    class FakeResponse:
+        def read(self):
+            return json.dumps({
+                "id": "resp-diagnostic-1",
+                "choices": [{
+                    "finish_reason": "length",
+                    "message": {"content": text},
+                }],
+                "usage": {
+                    "prompt_tokens": 150,
+                    "completion_tokens": 64,
+                    "completion_tokens_details": {"reasoning_tokens": 56},
+                },
+            }).encode("utf-8")
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    monkeypatch.setattr("urllib.request.urlopen", lambda *a, **kw: FakeResponse())
+    budget = RunBudget(Budgets(max_estimated_model_spend_usd=0.25))
+    gateway = ModelGateway(MetaProvider("local-fixture-key"), budget)
+    with pytest.raises(GatewayError, match="MODEL_JSON_INVALID.*finish_reason=length"):
+        gateway.generate(request("hi", schema=SCHEMA))
+    receipt = gateway.receipts[0]
+    assert receipt.real and receipt.outcome == "failed"
+    assert receipt.failure_code == "MODEL_JSON_INVALID"
+    assert receipt.finish_reason == "length"
+    assert receipt.response_id == "resp-diagnostic-1"
+    assert receipt.input_tokens == 150
+    assert receipt.output_tokens == 64
+    assert receipt.reasoning_tokens == 56
+    assert receipt.content_chars == len(text)
+    assert len(receipt.content_sha256) == 64
+    assert receipt.estimated_cost_usd > 0
+    assert receipt.uncertain_cost_usd == 0.0
+    assert budget.summary()["uncertain_cost_usd"] == 0.0
+    assert budget.summary()["estimated_cost_usd"] > 0
+    assert text not in receipt.model_dump_json()
+
+
+def test_model_request_defaults_to_low_reasoning_for_bounded_json():
+    assert request(schema=SCHEMA).reasoning_effort == "low"
