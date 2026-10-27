@@ -34,6 +34,32 @@ from .runner import BudgetExhausted, PolicyViolation, SafeCLIExperimentRunner
 STOP_REASONS = ("stalled", "budget", "guard_blocked", "model_error")
 
 
+def _trusted_rejection_codes(rejected: Sequence[tuple[str, str]]) -> tuple[str, ...]:
+    """Return only scope/shape codes, not untrusted model text."""
+    known = {
+        "COMMAND_NOT_ALLOWED", "ACTION_NOT_ALLOWED", "ROLE_NOT_ALLOWED",
+        "HUMAN_APPROVAL_REQUIRED", "SENSITIVE_ACTION_BLOCKED",
+        "AUTH_OUT_OF_SCOPE", "REQUIREMENT_NOT_IN_SCOPE", "OVER_BUDGET",
+    }
+    codes: set[str] = set()
+    if not rejected:
+        return ("NO_PROPOSALS",)
+    for _label, reason in rejected:
+        prefix = reason.split(":", 1)[0]
+        if prefix in known:
+            codes.add(prefix)
+        elif "reset_boundary" in reason:
+            codes.add("RESET_BOUNDARY")
+        elif "side_effect" in reason:
+            codes.add("SIDE_EFFECT")
+        elif "prediction" in reason:
+            codes.add("PREDICTION_INVALID")
+        else:
+            codes.add("SCHEMA_ERROR")
+    return tuple(sorted(codes))
+
+
+
 @dataclass(frozen=True)
 class LoopRound:
     round_no: int
@@ -152,8 +178,26 @@ class DiscoveryLoop:
                     reference_remaining=self._reference_remaining(),
                     model_remaining=self._budget.model_calls_remaining,
                 )
+                first_denials = _trusted_rejection_codes(plan.rejected) if not plan.ranked else ()
+                # One corrective MODEL-chosen proposal, not a deterministic
+                # fallback. No extra call for API/schema failures; only after a
+                # successful but guard-rejected model proposal.
+                if not plan.ranked and self._budget.model_calls_remaining > 0 and self._reference_remaining() > 0:
+                    plan = self._planner.propose(
+                        self._views(),
+                        self._hypotheses.competing(),
+                        self._requirement_id,
+                        reference_remaining=self._reference_remaining(),
+                        model_remaining=self._budget.model_calls_remaining,
+                        rejection_codes=first_denials,
+                    )
                 if not plan.ranked:
                     reasons = "; ".join(r for _, r in plan.rejected[:3])
+                    reasons = (
+                        f"first_denials={','.join(first_denials)}; "
+                        f"correction_denials={','.join(_trusted_rejection_codes(plan.rejected))}; "
+                        + (reasons or 'empty proposal list')
+                    )
                     rounds.append(
                         LoopRound(
                             round_no,
@@ -163,7 +207,7 @@ class DiscoveryLoop:
                             (),
                             "fresh_process_per_sequence",
                             self._hypotheses.resolution_counts(),
-                            f"no allowed experiment: {reasons or 'empty proposal list'}",
+                            f"no allowed experiment: {reasons}",
                         )
                     )
                     stop_reason = "guard_blocked"
