@@ -1,14 +1,19 @@
 """Versioned candidate specification, manifest, and trusted loader (G3-A).
 
 A `CandidateSpec` is a purely declarative JSON document: parameter shapes,
-normalization, uniqueness, storage, lookup, aggregation, and response shaping
-for the ledger command set. It contains NO code, NO imports, NO shell, NO
-eval, NO subprocess, NO file paths, and NO network operations — the trusted
+trimming, uniqueness, storage, lookup, aggregation, and response shaping for
+the ledger command set. It contains NO code, NO imports, NO shell, NO eval,
+NO subprocess, NO file paths, and NO network operations — the trusted
 interpreter (`candidate_runtime`) implements a fixed operation allowlist.
 
 Scope is pinned at load time: subsystem must be `cli_ledger` and every
-requirement id must belong to the run's `ScopeContract`. The file manifest is
-validated through G0 `ScopeGuard.validate_candidate_files`.
+requirement id must belong to the run's `ScopeContract`. The file manifest
+is validated through G0 `ScopeGuard.validate_candidate_files`.
+
+The v1 DSL also pins command effects to the operator-owned public contract:
+`add` may store, `remove` may delete by id, and `list`/`total` are
+read-only. A generated spec cannot smuggle state mutation behind a nominally
+read-only command.
 """
 from __future__ import annotations
 
@@ -19,9 +24,8 @@ from typing import Any, Literal
 
 from pydantic import Field, ValidationError
 
-from .contracts import StrictModel
+from .contracts import ProposedFile, ScopeContract, StrictModel
 from .scope_guard import ScopeGuard
-from .contracts import ProposedFile, ScopeContract
 
 SPEC_VERSION = "1"
 CANDIDATE_SUBSYSTEM = "cli_ledger"
@@ -51,7 +55,6 @@ class ParamSpec(StrictModel):
 
 class CommandSpec(StrictModel):
     params: dict[str, ParamSpec] = Field(default_factory=dict)
-    normalize_casefold: tuple[str, ...] = ()
     unique_field: str | None = None
     unique_casefold: bool = False
     unique_error: str | None = None
@@ -96,45 +99,104 @@ class LoadedCandidate(StrictModel):
 
 def _check_error_code(value: str, where: str) -> None:
     if not ERROR_CODE_RE.fullmatch(value):
-        raise CandidateError(f"{where}: error code {value!r} must match [a-z][a-z0-9_]*")
+        raise CandidateError(
+            f"{where}: error code {value!r} must match [a-z][a-z0-9_]*"
+        )
+
+
+def _has_uniqueness(cmd: CommandSpec) -> bool:
+    return (
+        cmd.unique_field is not None
+        or cmd.unique_error is not None
+        or cmd.unique_casefold
+    )
+
+
+def _has_lookup(cmd: CommandSpec) -> bool:
+    return (
+        cmd.lookup_by is not None
+        or cmd.lookup_param is not None
+        or cmd.not_found_error is not None
+        or cmd.delete_after_lookup
+    )
+
+
+def _has_aggregate(cmd: CommandSpec) -> bool:
+    return cmd.aggregate_count or cmd.aggregate_sum_field is not None
 
 
 def _check_command(name: str, cmd: CommandSpec) -> None:
     if name not in ALLOWED_COMMANDS:
-        raise CandidateError(f"command {name!r} is not in the authorized set {ALLOWED_COMMANDS}")
+        raise CandidateError(
+            f"command {name!r} is not in the authorized set {ALLOWED_COMMANDS}"
+        )
+
     for param_name, param in cmd.params.items():
         if not PARAM_NAME_RE.fullmatch(param_name):
             raise CandidateError(f"command {name!r}: bad param name {param_name!r}")
         _check_error_code(param.error, f"command {name!r} param {param_name!r}")
         if param.type == "string":
             if param.minimum is not None or param.maximum is not None:
-                raise CandidateError(f"command {name!r} param {param_name!r}: numeric bounds on a string")
+                raise CandidateError(
+                    f"command {name!r} param {param_name!r}: numeric bounds on a string"
+                )
+            if (
+                param.min_length is not None
+                and param.max_length is not None
+                and param.min_length > param.max_length
+            ):
+                raise CandidateError(
+                    f"command {name!r} param {param_name!r}: min_length exceeds max_length"
+                )
         else:
             if param.min_length is not None or param.max_length is not None:
-                raise CandidateError(f"command {name!r} param {param_name!r}: length bounds on an integer")
+                raise CandidateError(
+                    f"command {name!r} param {param_name!r}: length bounds on an integer"
+                )
+            if (
+                param.minimum is not None
+                and param.maximum is not None
+                and param.minimum > param.maximum
+            ):
+                raise CandidateError(
+                    f"command {name!r} param {param_name!r}: minimum exceeds maximum"
+                )
+
     if cmd.unique_field is not None:
         if cmd.unique_field not in cmd.params:
-            raise CandidateError(f"command {name!r}: unique_field {cmd.unique_field!r} not a declared param")
+            raise CandidateError(
+                f"command {name!r}: unique_field {cmd.unique_field!r} not a declared param"
+            )
         if cmd.unique_error is None:
             raise CandidateError(f"command {name!r}: unique_field needs unique_error")
         _check_error_code(cmd.unique_error, f"command {name!r}")
     elif cmd.unique_error is not None or cmd.unique_casefold:
         raise CandidateError(f"command {name!r}: uniqueness options need unique_field")
-    for field in cmd.normalize_casefold:
-        if field not in cmd.params:
-            raise CandidateError(f"command {name!r}: normalize_casefold {field!r} not a declared param")
+
     if (cmd.lookup_by is None) != (cmd.lookup_param is None):
-        raise CandidateError(f"command {name!r}: lookup_by and lookup_param go together")
+        raise CandidateError(
+            f"command {name!r}: lookup_by and lookup_param go together"
+        )
     if cmd.lookup_by is not None:
+        if cmd.lookup_by != "id":
+            raise CandidateError(
+                f"command {name!r}: v1 lookup_by supports only 'id'"
+            )
         if cmd.lookup_param not in cmd.params:
-            raise CandidateError(f"command {name!r}: lookup_param not a declared param")
+            raise CandidateError(
+                f"command {name!r}: lookup_param not a declared param"
+            )
         if cmd.not_found_error is None:
             raise CandidateError(f"command {name!r}: lookup needs not_found_error")
         _check_error_code(cmd.not_found_error, f"command {name!r}")
     elif cmd.not_found_error is not None or cmd.delete_after_lookup:
         raise CandidateError(f"command {name!r}: lookup options need lookup_by")
+
     if cmd.aggregate_sum_field is not None and not cmd.aggregate_count:
-        raise CandidateError(f"command {name!r}: aggregate_sum_field needs aggregate_count")
+        raise CandidateError(
+            f"command {name!r}: aggregate_sum_field needs aggregate_count"
+        )
+
     allowed_sources = {
         "add": {"id", "label", "amount"},
         "list": {"items"},
@@ -148,19 +210,48 @@ def _check_command(name: str, cmd: CommandSpec) -> None:
             raise CandidateError(
                 f"command {name!r}: respond source {source!r} unresolvable"
             )
+
+    # Command effects are pinned to the trusted public command manifest.
     if name == "add":
         for required in ("label", "amount"):
             if required not in cmd.params:
                 raise CandidateError(f"command 'add' requires param {required!r}")
         if not cmd.store_record or cmd.unique_field is None:
-            raise CandidateError("command 'add' must store records with a uniqueness rule")
-        if "id" not in cmd.respond:
-            raise CandidateError("command 'add' must respond with the record id")
-    if name == "remove":
-        if cmd.lookup_by is None or not cmd.delete_after_lookup:
+            raise CandidateError(
+                "command 'add' must store records with a uniqueness rule"
+            )
+        if _has_lookup(cmd) or _has_aggregate(cmd):
+            raise CandidateError(
+                "command 'add' cannot lookup/delete or aggregate in v1"
+            )
+        if "id" not in cmd.respond.values():
+            raise CandidateError(
+                "command 'add' must respond with the generated record id"
+            )
+
+    elif name == "list":
+        if (
+            cmd.params
+            or _has_uniqueness(cmd)
+            or cmd.store_record
+            or _has_lookup(cmd)
+            or _has_aggregate(cmd)
+        ):
+            raise CandidateError("command 'list' must be read-only in v1")
+
+    elif name == "total":
+        if cmd.params or _has_uniqueness(cmd) or cmd.store_record or _has_lookup(cmd):
+            raise CandidateError("command 'total' must be read-only in v1")
+        if not cmd.aggregate_count:
+            raise CandidateError("command 'total' must aggregate a count")
+
+    elif name == "remove":
+        if _has_uniqueness(cmd) or cmd.store_record or _has_aggregate(cmd):
+            raise CandidateError(
+                "command 'remove' may only lookup and delete in v1"
+            )
+        if cmd.lookup_by != "id" or not cmd.delete_after_lookup:
             raise CandidateError("command 'remove' must lookup and delete by id")
-    if name == "total" and not cmd.aggregate_count:
-        raise CandidateError("command 'total' must aggregate a count")
 
 
 def _check_spec_semantics(spec: CandidateSpec) -> None:
@@ -170,11 +261,23 @@ def _check_spec_semantics(spec: CandidateSpec) -> None:
         )
     _check_error_code(spec.unknown_command_error, "spec")
     _check_error_code(spec.invalid_input_error, "spec")
+
     missing = [c for c in ALLOWED_COMMANDS if c not in spec.commands]
     if missing:
-        raise CandidateError(f"spec omits authorized commands {missing}: declare all four")
+        raise CandidateError(
+            f"spec omits authorized commands {missing}: declare all four"
+        )
     for name, cmd in spec.commands.items():
         _check_command(name, cmd)
+
+    add_params = spec.commands["add"].params
+    sum_field = spec.commands["total"].aggregate_sum_field
+    if sum_field is not None:
+        declared = add_params.get(sum_field)
+        if declared is None or declared.type != "integer":
+            raise CandidateError(
+                "command 'total': aggregate_sum_field must name an integer add parameter"
+            )
 
 
 def spec_digest_of(canonical: bytes) -> str:
@@ -182,13 +285,21 @@ def spec_digest_of(canonical: bytes) -> str:
 
 
 def parse_spec(raw: str | bytes | dict[str, Any]) -> tuple[CandidateSpec, str]:
-    """Parse and semantically validate a candidate spec. Returns (spec, digest)."""
+    """Parse and semantically validate a candidate spec. Returns (spec, digest).
+
+    The digest is over the exact canonicalized generated object (dict inputs
+    are key-sorted; textual inputs retain their exact bytes). G3 reports use
+    this loader-owned digest rather than recomputing it inside the runtime.
+    """
     if isinstance(raw, dict):
-        canonical = json.dumps(raw, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        canonical = json.dumps(
+            raw, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8")
     elif isinstance(raw, str):
         canonical = raw.encode("utf-8")
     else:
         canonical = bytes(raw)
+
     if len(canonical) > MAX_SPEC_BYTES:
         raise CandidateError(f"spec exceeds {MAX_SPEC_BYTES} bytes")
     try:
@@ -200,7 +311,10 @@ def parse_spec(raw: str | bytes | dict[str, Any]) -> tuple[CandidateSpec, str]:
     try:
         spec = CandidateSpec.model_validate(doc)
     except ValidationError as exc:
-        raise CandidateError(f"spec schema violation: {exc.errors()[0]['msg']}") from exc
+        raise CandidateError(
+            f"spec schema violation: {exc.errors()[0]['msg']}"
+        ) from exc
+
     _check_spec_semantics(spec)
     return spec, spec_digest_of(canonical)
 
@@ -215,9 +329,14 @@ def load_candidate(
             f"subsystem {spec.subsystem!r} not in scope subsystems "
             f"{sorted(contract.implementation.allowed_subsystems)}"
         )
-    unknown = sorted(set(spec.requirement_ids) - set(contract.implementation.requirements))
+    unknown = sorted(
+        set(spec.requirement_ids) - set(contract.implementation.requirements)
+    )
     if unknown:
-        raise CandidateError(f"requirement ids {unknown} not in scope requirements")
+        raise CandidateError(
+            f"requirement ids {unknown} not in scope requirements"
+        )
+
     manifest = CandidateManifest(
         manifest_version=MANIFEST_VERSION,
         spec_digest=digest,
@@ -229,14 +348,18 @@ def load_candidate(
             ),
         ),
     )
-    decision = ScopeGuard(contract).validate_candidate_files([
-        ProposedFile(
-            path=item.path,
-            subsystem=item.subsystem,
-            requirement_ids=item.requirement_ids,
-        )
-        for item in manifest.files
-    ])
+    decision = ScopeGuard(contract).validate_candidate_files(
+        [
+            ProposedFile(
+                path=item.path,
+                subsystem=item.subsystem,
+                requirement_ids=item.requirement_ids,
+            )
+            for item in manifest.files
+        ]
+    )
     if not decision.allowed:
-        raise CandidateError(f"manifest rejected: {decision.code}: {decision.reason}")
+        raise CandidateError(
+            f"manifest rejected: {decision.code}: {decision.reason}"
+        )
     return LoadedCandidate(spec=spec, manifest=manifest, digest=digest)
