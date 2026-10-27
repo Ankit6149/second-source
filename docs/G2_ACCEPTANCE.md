@@ -75,10 +75,19 @@ The 2 skips are `test_g2_smoke_real.py` (no key/budget configured).
 5. Attach the sanitized receipt, scope-run report and verifier `model_feedback()`
    summary (observed values only). Do not commit keys, raw private data or gold cases.
 
-## Real-usage record (empty until observed)
+## Real-provider attempt — operator-observed 27 Oct 2026 (incomplete)
 
-- Meta usage this session: **none — zero billable requests sent.**
-- Receipts: none.
+- Run ID: `real-g2-20261027T184607Z-73bbd66a`.
+- Result: `REAL_EXPERIMENT_INCOMPLETE`; reported stop `guard_blocked`, but code review shows a `GatewayError` was previously misclassified as a scope guard denial.
+- Provider receipts: 1 real-model *attempt*; stage failure details not yet extracted from the operator-local `run_report.json`.
+- Guard-approved model-selected experiments executed: **0**.
+- Actual provider-reported successful usage estimate: **$0.00**.
+- Accounting reserve recorded as **uncertain**: **$0.006048**. This is **not proof of a provider charge**.
+- The operator did not share their key. No further paid request should be made until the local run note is read and the cause is fixed.
+
+## Latest status
+
+**G2 NOT COMPLETE.** The first real attempt made progress past the key/budget gate but failed before experiment execution. New code distinguishes `model_error` from `guard_blocked` and outputs a safe failure category; re-run only after confirming the precise error from the existing report.
 
 ## Integration acceptance addendum (27 Oct 2026)
 
