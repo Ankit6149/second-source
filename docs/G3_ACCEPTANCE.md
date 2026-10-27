@@ -33,7 +33,7 @@ The follow-up branch fixes:
   the model boundary;
 - preserve mock / trusted-test-fixture / real origin separation.
 
-**VERIFIED G3-A code gate:** GitHub Actions run `40575747089` at `b0c6e22843d21d3736f066d5f37c4528502fd398` completed successfully on Ubuntu/Python 3.11 and Windows/Python 3.12 with **177 passed, 2 skipped, 0 failed** on each OS; Windows bootstrap returned `BOOTSTRAP_OK`. G3 branch was then synchronized with canonical `main` by merge `208aeb4e7ee5559e176daccd19fc2b7c1eb207d7`. No paid G3 model call has occurred; G3 spend is `$0.00`.
+**VERIFIED G3-A code gate:** final interface SHA `a1a137649a51178e30f438e1069788a0e8b2de81`; GitHub Actions run `40576855908` completed successfully on Ubuntu/Python 3.11 and Windows/Python 3.12 with **179 passed, 2 skipped, 0 failed** on each OS; Windows bootstrap returned `BOOTSTRAP_OK`. Canonical-main synchronization is contained in history at `208aeb4e7ee5559e176daccd19fc2b7c1eb207d7`. No paid G3 model call has occurred; G3 spend is `$0.00`.
 
 ## G3-A deliverables now present on `g3/candidate-synthesis`
 

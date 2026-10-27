@@ -1,6 +1,6 @@
 # G3-B Verifier Contract — independent evaluation implementer
 
-**Owner:** Codex (G3-B). **Status:** G3-A interface is frozen after Muse implementation, ChatGPT hardening and Codex phase-1 audit. The hardened code checkpoint `b0c6e22843d21d3736f066d5f37c4528502fd398` passed GitHub run `40575747089` with 177 passed / 2 skipped / 0 failed on both Linux and Windows; branch synchronization with canonical `main` is recorded by merge `208aeb4e7ee5559e176daccd19fc2b7c1eb207d7`. Phase 2 is released on `g3/verifier`. G3 itself is NOT accepted.
+**Owner:** Codex (G3-B). **Status:** G3-A interface is frozen after Muse implementation, ChatGPT hardening and Codex phase-1 audit. The final G3-A freeze is `a1a137649a51178e30f438e1069788a0e8b2de81`; GitHub run `40576855908` passed with 179 passed / 2 skipped / 0 failed on both Linux and Windows and Windows bootstrap `BOOTSTRAP_OK`. Canonical-main synchronization is recorded by `208aeb4e7ee5559e176daccd19fc2b7c1eb207d7`. Phase 2 is released on `g3/verifier` from the coordinator freeze baseline. G3 itself is NOT accepted.
 
 ## What G3-A guarantees
 
