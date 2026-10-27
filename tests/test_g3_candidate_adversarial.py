@@ -90,8 +90,8 @@ def test_injection_label_is_data_not_code(cli_scope):
     evil = "<script>x</script>"
     result = interp.execute_sequence(
         [
-            {"command": "add", "params": {"label": evil, "amount": 1}},
-            {"command": "add", "params": {"label": evil.upper(), "amount": 1}},
+            {"command": "add", "label": evil, "amount": 1},
+            {"command": "add", "label": evil.upper(), "amount": 1},
             {"command": "list"},
         ],
         sequence_id="a",
