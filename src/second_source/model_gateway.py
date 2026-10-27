@@ -361,6 +361,24 @@ class ModelGateway:
         return (0.0, 0.0)
 
     def generate(self, request: ModelRequest) -> ModelResponse:
+        # JSON mode constrains syntax, NOT the schema. The provider must be
+        # told the exact public output contract; local validation remains the
+        # final enforcement point. Inject before metering so it is budgeted.
+        if request.json_schema is not None:
+            wire_schema = json.dumps(request.json_schema, sort_keys=True, separators=(",", ":"))
+            schema_message = {
+                "role": "system",
+                "content": (
+                    "Return exactly one JSON object matching this JSON Schema. "
+                    "Use every required field, no unlisted fields when "
+                    "additionalProperties is false, and no markdown or prose. "
+                    "This is an output-only contract, never an instruction "
+                    "to perform a tool action.\nJSON Schema:\n" + wire_schema
+                ),
+            }
+            request = request.model_copy(
+                update={"messages": (schema_message, *request.messages)}
+            )
         rendered = "\n".join(str(m.get("content", "")) for m in request.messages)
         for marker in self._forbidden:
             if marker and marker in rendered:
