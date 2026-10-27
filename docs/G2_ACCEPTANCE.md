@@ -40,7 +40,7 @@ variable is positive AND `MODEL_API_KEY` is set.
 | P0-4 billing hard stop | `reserve` worst case before the call; `commit` actuals; `fail` books uncertain spend and a failed receipt; per-model pricing table; unknown models fail closed unless explicit rates are given | `test_failure_books_uncertain_spend`, `test_commit_releases_reservation`, `test_mock_schema_violation_rejected_and_booked`, `test_unknown_model_pricing_fail_closed`, `test_wire_format_and_usage_reconciled` (monkeypatched transport) |
 | P1-5 strict schemas | non-strict `json_object` on the wire (open experiment params cannot satisfy Meta's strict subset) + closed server-side enforcement via `schema_validate`; wire shape vs semantic strictness split documented in `planner.py` | `tests/test_g2_schema.py`, `test_mock_schema_violation_rejected_and_booked` |
 | P1-6 credential boundary | `MetaProvider` rejects non-HTTPS and non-allowlisted hosts; loopback only with explicit `test_mode=True` (hermetic tests); key travels only on that TLS request | `test_http_endpoint_rejected`, `test_unexpected_host_rejected`, `test_loopback_requires_test_mode`, `test_meta_error_never_echoes_key` |
-| Gate-7 real call + CI | still pending key/budget (below); CI workflow added (`.github/workflows/test.yml`, ubuntu+windows × py3.11/3.12, pytest + demo) — **added but never observed green** | — |
+| Gate-7 real call + CI | still pending key/budget (below); CI workflow **deferred** — the OAuth token lacks `workflow` scope so GitHub rejects workflow files from this client; re-add in a follow-up with widened scope | — |
 
 ## Observed suite result (27 Oct 2026, this branch)
 
@@ -55,7 +55,7 @@ The 2 skips are `test_g2_smoke_real.py` (no key/budget configured).
   the enforcement point until experiment params fit Meta's strict subset.
 - Hypothesis contradiction is single-step (final observation vs prediction);
   multi-step trajectory attribution is future work.
-- CI workflow added but not yet observed running on GitHub.
+- No CI yet: the workflow file was deferred (token lacks `workflow` scope).
 - Cross-sequence state persistence is unavailable on the current fixture by
   design (fresh process per sequence); the loop never claims otherwise.
 
