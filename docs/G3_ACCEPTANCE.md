@@ -14,9 +14,9 @@ plus the exact interface Codex needs for G3-B. Nothing here is Muse output.
 |---|---|---|---|
 | 1 | Versioned `CandidateSpec`/`CandidateManifest`, scope-pinned loader | `src/second_source/candidate_spec.py` | 16 tests pass |
 | 2 | Trusted DSL interpreter (`ReferenceProtocol`, in-memory, no code execution) | `src/second_source/candidate_runtime.py` | 14 tests pass |
-| 3 | Malformed/adversarial rejection (shell, egress, eval, imports, overbuild, oversize) | `tests/test_g3_adversarial.py` | 11 tests pass |
-| 4 | Mock generation path + real adapter skeleton (no billable calls) | `src/second_source/candidate_gen.py`, `src/second_source/g3_mock_demo.py` | 8 tests pass |
-| 5 | G3-B verifier contract for the independent evaluator | `docs/G3B_VERIFIER_CONTRACT.md` | written, unimplemented by design |
+| 3 | Malformed/adversarial rejection (shell, egress, eval, imports, overbuild, oversize) | `tests/test_g3_candidate_adversarial.py` | 11 tests pass |
+| 4 | Mock generation path + real adapter skeleton (no billable calls) | `src/second_source/candidate_generation.py`, `src/second_source/g3_mock_demo.py` | 8 tests pass |
+| 5 | G3-B verifier contract for the independent evaluator | `docs/G3_CANDIDATE_INTERFACE.md` | written, unimplemented by design |
 
 ## Mock-only evidence (all artifacts labeled, none is model output)
 

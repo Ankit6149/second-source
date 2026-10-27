@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from second_source.candidate_gen import (
+from second_source.candidate_generation import (
     build_generation_context,
     mock_propose_candidate,
     origin_of,

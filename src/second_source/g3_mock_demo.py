@@ -6,7 +6,7 @@ reference — with every artifact honestly labeled. The spec CONTENT here is an
 author-written trusted test fixture transported over a mock channel; it is
 NOT Muse output and this module never claims otherwise.
 
-Real generation uses `candidate_gen.request_candidate_spec` with a genuine
+Real generation uses `candidate_generation.request_candidate_spec` with a genuine
 `ModelGateway` response (explicit owner authorization required).
 """
 from __future__ import annotations
@@ -52,7 +52,7 @@ def run_demo(root: Path = ROOT) -> dict[str, Any]:
     import sys as _sys
 
     _sys.path.insert(0, str(root / "src"))
-    from second_source.candidate_gen import mock_propose_candidate
+    from second_source.candidate_generation import mock_propose_candidate
     from second_source.candidate_runtime import CandidateInterpreter
     from second_source.contracts import ScopeContract
     from second_source.reference import CLIReferenceAdapter

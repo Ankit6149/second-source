@@ -24,7 +24,7 @@ here, only the exact boundary to build against. **Applies to:** branch
   `observation_id == f"{sequence_id}:{i}"`, `exit_code` 0, status
   `ok`/`target_error`/`protocol_error`). Resource caps fail closed
   (`MAX_SEQUENCE_ACTIONS=64`, `MAX_RECORDS=10000`, `MAX_OUTPUT_BYTES=131072`).
-- `candidate_gen` — generation boundary with origin labels
+- `candidate_generation` — generation boundary with origin labels
   (`mock`/`trusted-test-fixture`/`real`); context builder takes explicit
   inputs only and never reads reference source, sealed cases, or secrets.
 
