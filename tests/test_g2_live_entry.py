@@ -4,7 +4,7 @@ import json
 
 from second_source.budgets import RunBudget
 from second_source.contracts import Budgets
-from second_source.live_experiment import ROOT, create_scope, main, fixture_verifier_summary
+from second_source.live_experiment import ROOT, create_scope, main, fixture_verifier_summary, classify_model_failure
 from second_source.model_gateway import MockProvider, ModelGateway, ModelRequest
 
 
@@ -74,3 +74,15 @@ def test_independent_harness_negative_control(reference):
     assert feedback["passed"] >= 1
     assert feedback["failed"] >= 1
     assert "case_id" not in json.dumps(feedback)
+
+
+def test_model_failure_categories_are_safe_and_not_raw_error_text():
+    assert classify_model_failure(
+        "model stop: provider attempt failed and booked as uncertain: Meta API HTTP 400: Bad Request"
+    ) == "META_HTTP_400"
+    assert classify_model_failure(
+        "model stop: provider attempt failed and booked as uncertain: Meta API HTTP 401: Unauthorized"
+    ) == "META_HTTP_401"
+    assert classify_model_failure("model stop: model output violated JSON schema: boom") == "MODEL_SCHEMA_ERROR"
+    assert classify_model_failure("model stop: Meta API transport failure: TimeoutError") == "META_TRANSPORT_ERROR"
+    assert classify_model_failure("model stop: strange response contains private text") == "MODEL_GATEWAY_ERROR"
