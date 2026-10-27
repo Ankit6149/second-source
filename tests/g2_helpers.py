@@ -80,12 +80,13 @@ def responder(hyp_ids=("hyp-1", "hyp-2"), actions=None, predictions=None, **kw):
     return respond
 
 
-def wiring(cli_scope, reference, tmp_path, mock, budgets=None, max_rounds=2):
+def wiring(cli_scope, reference, tmp_path, mock, budgets=None, max_rounds=2, public_contract=None):
     ledger = EvidenceLedger(tmp_path / "ev")
     budget = RunBudget(budgets or cli_scope.budgets)
     gateway = ModelGateway(MockProvider(responder=mock), budget)
     store = HypothesisStore()
-    plan = ExperimentPlanner(gateway, ScopeGuard(cli_scope), store, budget, cli_scope)
+    plan = ExperimentPlanner(gateway, ScopeGuard(cli_scope), store, budget, cli_scope,
+                             public_contract=public_contract)
     runner = SafeCLIExperimentRunner(cli_scope, reference, ledger)
     loop = DiscoveryLoop(
         run_id="run_t", requirement_id="REQ-LEDGER", contract=cli_scope,
