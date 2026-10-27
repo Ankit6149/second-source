@@ -1,16 +1,11 @@
 """G3-A spec schema, manifest, and loader tests."""
 
-import copy
 import json
 from pathlib import Path
 
 import pytest
 
-from second_source.candidate_spec import (
-    CandidateError,
-    load_candidate,
-    parse_spec,
-)
+from second_source.candidate_spec import CandidateError, load_candidate, parse_spec
 
 FIXTURE = Path(__file__).resolve().parent / "g3_fixtures" / "valid_candidate.json"
 
@@ -103,13 +98,76 @@ def test_add_without_uniqueness_rejected(cli_scope):
         load_candidate(doc, cli_scope)
 
 
+def test_read_only_list_cannot_mutate(cli_scope):
+    doc = valid_doc()
+    doc["commands"]["list"]["store_record"] = True
+    with pytest.raises(CandidateError, match="read-only"):
+        load_candidate(doc, cli_scope)
+
+
+def test_read_only_total_cannot_lookup_or_delete(cli_scope):
+    doc = valid_doc()
+    doc["commands"]["total"]["params"] = {
+        "id": {"type": "string", "error": "not_found"}
+    }
+    doc["commands"]["total"]["lookup_by"] = "id"
+    doc["commands"]["total"]["lookup_param"] = "id"
+    doc["commands"]["total"]["not_found_error"] = "not_found"
+    doc["commands"]["total"]["delete_after_lookup"] = True
+    with pytest.raises(CandidateError, match="read-only"):
+        load_candidate(doc, cli_scope)
+
+
+def test_remove_cannot_store_or_aggregate(cli_scope):
+    doc = valid_doc()
+    doc["commands"]["remove"]["store_record"] = True
+    with pytest.raises(CandidateError, match="lookup and delete"):
+        load_candidate(doc, cli_scope)
+
+
+def test_unsupported_lookup_field_rejected(cli_scope):
+    doc = valid_doc()
+    doc["commands"]["remove"]["lookup_by"] = "label"
+    with pytest.raises(CandidateError, match="supports only 'id'"):
+        load_candidate(doc, cli_scope)
+
+
+def test_total_sum_field_must_be_integer_add_param(cli_scope):
+    doc = valid_doc()
+    doc["commands"]["total"]["aggregate_sum_field"] = "label"
+    with pytest.raises(CandidateError, match="integer add parameter"):
+        load_candidate(doc, cli_scope)
+
+
+def test_inverted_string_bounds_rejected(cli_scope):
+    doc = valid_doc()
+    doc["commands"]["add"]["params"]["label"]["min_length"] = 10
+    doc["commands"]["add"]["params"]["label"]["max_length"] = 2
+    with pytest.raises(CandidateError, match="min_length exceeds"):
+        load_candidate(doc, cli_scope)
+
+
+def test_inverted_integer_bounds_rejected(cli_scope):
+    doc = valid_doc()
+    doc["commands"]["add"]["params"]["amount"]["minimum"] = 10
+    doc["commands"]["add"]["params"]["amount"]["maximum"] = 2
+    with pytest.raises(CandidateError, match="minimum exceeds"):
+        load_candidate(doc, cli_scope)
+
+
 def test_malformed_manifest_path_rejected(cli_scope):
     from second_source.contracts import ProposedFile
     from second_source.scope_guard import ScopeGuard
 
-    decision = ScopeGuard(cli_scope).validate_candidate_files([
-        ProposedFile(path="../escape.json", subsystem="cli_ledger", requirement_ids={"REQ-LEDGER"}),
-    ])
+    decision = ScopeGuard(cli_scope).validate_candidate_files(
+        [
+            ProposedFile(
+                path="../escape.json",
+                subsystem="cli_ledger",
+                requirement_ids={"REQ-LEDGER"},
+            ),
+        ]
+    )
     assert not decision.allowed
 
 
@@ -117,9 +175,15 @@ def test_overbuild_subsystem_rejected(cli_scope):
     from second_source.contracts import ProposedFile
     from second_source.scope_guard import ScopeGuard
 
-    decision = ScopeGuard(cli_scope).validate_candidate_files([
-        ProposedFile(path="payments.py", subsystem="payments", requirement_ids={"REQ-LEDGER"}),
-    ])
+    decision = ScopeGuard(cli_scope).validate_candidate_files(
+        [
+            ProposedFile(
+                path="payments.py",
+                subsystem="payments",
+                requirement_ids={"REQ-LEDGER"},
+            ),
+        ]
+    )
     assert not decision.allowed
 
 
