@@ -51,6 +51,43 @@ State accumulates WITHIN a sequence only. An explicit `reset()` exists for
 harness control. G3-B MUST use the same sequence list, in the same order,
 against reference and candidate.
 
+## Validation precedence (normative)
+
+`load_candidate` applies checks in this fixed order; the FIRST failure wins so
+digests and errors are deterministic:
+
+1. Spec byte-size cap (`MAX_SPEC_BYTES`).
+2. JSON parse (must decode to an object).
+3. Pydantic schema (closed shapes, enums, literal versions).
+4. Per-command semantics (exact param sets, op-compatibility matrix:
+   `add` stores with uniqueness; `remove` looks up and deletes;
+   `list`/`total` neither store nor look up; pinned respond sources).
+5. Scope mapping (subsystem `cli_ledger` in scope; requirement ids ⊆ scope).
+6. File manifest through `ScopeGuard.validate_candidate_files`.
+
+The loader owns the single spec digest (canonical input bytes). The runtime
+never recomputes digests; manifest digest == loaded digest, asserted by test.
+
+## Failure semantics (normative)
+
+| Input | Candidate output | Status |
+|---|---|---|
+| `actions` not a list / sequence over cap | `protocol_error`, no observations | harness fault |
+| Action not a JSON object | `{ok:false,error:invalid_json}` | `target_error` |
+| Missing/non-string `command` | `{ok:false,error:<unknown_command_error>}` | `target_error` |
+| Unknown command label | `{ok:false,error:<unknown_command_error>}` | `target_error` |
+| Param missing/invalid per declaration | `{ok:false,error:<param.error>}` | `target_error` |
+| Duplicate label (casefolded) | `{ok:false,error:duplicate_label}` | `target_error` |
+| Lookup miss / non-string id | `{ok:false,error:not_found}` | `target_error` |
+| Record store over cap | `{ok:false,error:resource_exhausted}` | `target_error` |
+| Serialized output over byte cap | `protocol_error` (prior observations kept) | harness fault |
+
+Malformed inputs NEVER raise: every action yields an observation or a
+harness-level `protocol_error` sequence (pinned by fuzz test). The
+action-level rows mirror the reference fixture's observable mappings; a
+divergence there is a candidate defect, not a harness difference. The
+harness-level rows are fail-closed guards on both sides.
+
 ## How to evaluate
 
 G0 `DifferentialVerifier(reference_adapter, candidate_interpreter)` accepts any `ReferenceProtocol`, but Codex phase 1 reproduced a **specific comparator defect**: Python equality can false-pass JSON-type differences and malformed/inconsistent result envelopes. Therefore acceptance MUST NOT use the old comparator unchanged. G3-B may make a narrow, API-preserving `verifier.py` hardening patch with strict JSON typing and result-envelope validation, backed by regression tests.

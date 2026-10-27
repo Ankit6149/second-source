@@ -25,6 +25,8 @@ MAX_SEQUENCE_ACTIONS = 64
 MAX_RECORDS = 10_000
 MAX_OUTPUT_BYTES = 131_072
 RESOURCE_EXHAUSTED = "resource_exhausted"
+# Wire-compat literal mirroring the reference fixture for non-object actions.
+INVALID_JSON = "invalid_json"
 
 _ERROR_STATUS = "target_error"
 
@@ -118,11 +120,15 @@ class CandidateInterpreter:
     # -- operation allowlist ------------------------------------------------
 
     def _apply(self, action: Any) -> dict[str, Any]:
+        # Wire-compatibility mirror of the reference fixture: a JSON value
+        # that is not an object is an invalid_json observation (target_error),
+        # and a missing/non-string command falls through to unknown_command.
+        # Neither case is a harness fault, so neither is protocol_error.
         if not isinstance(action, dict):
-            raise CandidateError("each action must be a JSON object")
+            return {"ok": False, "error": INVALID_JSON}
         command = action.get("command")
         if not isinstance(command, str):
-            raise CandidateError("action needs a string command")
+            return {"ok": False, "error": self._spec.unknown_command_error}
         cmd = self._spec.commands.get(command)
         if cmd is None:
             return {"ok": False, "error": self._spec.unknown_command_error}

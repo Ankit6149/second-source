@@ -123,11 +123,24 @@ def test_unknown_command(cli_scope):
     }
 
 
-def test_malformed_action_protocol_error(cli_scope):
+def test_malformed_action_invalid_json_observation(cli_scope):
+    # Mirrors the reference fixture: a non-object JSON value is an
+    # invalid_json observation, not a harness protocol error.
     interp = interpreter(cli_scope)
-    result = interp.execute_sequence(["not-a-dict"], sequence_id="s")
-    assert result.status == "protocol_error"
-    assert result.observations == ()
+    result = interp.execute_sequence(["not-a-dict", 42, None], sequence_id="s")
+    assert result.status == "ok"
+    assert [o.output for o in result.observations] == [
+        {"ok": False, "error": "invalid_json"}
+    ] * 3
+    assert all(o.status == "target_error" for o in result.observations)
+
+
+def test_missing_command_is_unknown_command(cli_scope):
+    interp = interpreter(cli_scope)
+    result = interp.execute_sequence([{"label": "A"}, {"command": None}], sequence_id="s")
+    assert [o.output for o in result.observations] == [
+        {"ok": False, "error": "unknown_command"}
+    ] * 2
 
 
 def test_empty_sequence_ok(cli_scope):
@@ -197,6 +210,26 @@ def test_state_record_cap(cli_scope):
         "ok": False,
         "error": "resource_exhausted",
     }
+
+
+def test_garbage_actions_never_crash(cli_scope):
+    """Fuzz the wire boundary: every input yields a valid SequenceResult."""
+    interp = interpreter(cli_scope)
+    garbage = [
+        None, 0, -1, 10**30, "", "add", [], {}, [[]], {"command": []},
+        {"command": "add"}, {"command": "add", "params": None},
+        {"command": "add", "params": {"label": ["x"], "amount": {}}},
+        {"command": "ADD"}, {"COMMAND": "add", "label": "A", "amount": 1},
+        {"command": "add", "label": "A", "amount": 1, "extra": {"deep": [1, {"x": None}]}},
+        "é" * 5000, {"command": "list", "params": {"unexpected": 1}},
+    ]
+    result = interp.execute_sequence(garbage, sequence_id="fuzz")
+    assert result.status == "ok"
+    assert len(result.observations) == len(garbage)
+    for obs in result.observations:
+        assert isinstance(obs.output, dict) and "ok" in obs.output
+        assert obs.status in ("ok", "target_error")
+        assert obs.exit_code == 0
 
 
 def test_observation_ids_and_exit_codes(cli_scope):
