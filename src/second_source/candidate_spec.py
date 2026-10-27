@@ -22,7 +22,7 @@ import json
 import re
 from typing import Any, Literal
 
-from pydantic import Field, ValidationError
+from pydantic import Field, StrictBool, StrictInt, StrictStr, ValidationError
 
 from .contracts import ProposedFile, ScopeContract, StrictModel
 from .scope_guard import ScopeGuard
@@ -44,36 +44,36 @@ class CandidateError(ValueError):
 
 class ParamSpec(StrictModel):
     type: Literal["string", "integer"]
-    required: bool = True
-    trim: bool = False
-    min_length: int | None = None
-    max_length: int | None = None
-    minimum: int | None = None
-    maximum: int | None = None
-    error: str = Field(min_length=1, max_length=64)
+    required: StrictBool = True
+    trim: StrictBool = False
+    min_length: StrictInt | None = None
+    max_length: StrictInt | None = None
+    minimum: StrictInt | None = None
+    maximum: StrictInt | None = None
+    error: StrictStr = Field(min_length=1, max_length=64)
 
 
 class CommandSpec(StrictModel):
     params: dict[str, ParamSpec] = Field(default_factory=dict)
-    unique_field: str | None = None
-    unique_casefold: bool = False
-    unique_error: str | None = None
-    store_record: bool = False
-    lookup_by: str | None = None
-    lookup_param: str | None = None
-    not_found_error: str | None = None
-    delete_after_lookup: bool = False
-    aggregate_count: bool = False
-    aggregate_sum_field: str | None = None
-    respond: dict[str, str] = Field(default_factory=dict)
+    unique_field: StrictStr | None = None
+    unique_casefold: StrictBool = False
+    unique_error: StrictStr | None = None
+    store_record: StrictBool = False
+    lookup_by: StrictStr | None = None
+    lookup_param: StrictStr | None = None
+    not_found_error: StrictStr | None = None
+    delete_after_lookup: StrictBool = False
+    aggregate_count: StrictBool = False
+    aggregate_sum_field: StrictStr | None = None
+    respond: dict[str, StrictStr] = Field(default_factory=dict)
 
 
 class CandidateSpec(StrictModel):
     spec_version: Literal["1"] = "1"
-    subsystem: str = Field(min_length=1, max_length=64)
-    requirement_ids: frozenset[str] = Field(min_length=1)
-    unknown_command_error: str = Field(min_length=1, max_length=64)
-    invalid_input_error: str = Field(min_length=1, max_length=64)
+    subsystem: StrictStr = Field(min_length=1, max_length=64)
+    requirement_ids: frozenset[StrictStr] = Field(min_length=1)
+    unknown_command_error: StrictStr = Field(min_length=1, max_length=64)
+    invalid_input_error: StrictStr = Field(min_length=1, max_length=64)
     commands: dict[str, CommandSpec] = Field(min_length=1)
 
 
@@ -206,6 +206,10 @@ def _check_command(name: str, cmd: CommandSpec) -> None:
     for key, source in cmd.respond.items():
         if not PARAM_NAME_RE.fullmatch(key):
             raise CandidateError(f"command {name!r}: bad respond key {key!r}")
+        if key in {"ok", "error"}:
+            raise CandidateError(
+                f"command {name!r}: respond key {key!r} is protocol-reserved"
+            )
         if source not in allowed_sources:
             raise CandidateError(
                 f"command {name!r}: respond source {source!r} unresolvable"
@@ -213,9 +217,10 @@ def _check_command(name: str, cmd: CommandSpec) -> None:
 
     # Command effects are pinned to the trusted public command manifest.
     if name == "add":
-        for required in ("label", "amount"):
-            if required not in cmd.params:
-                raise CandidateError(f"command 'add' requires param {required!r}")
+        if set(cmd.params) != {"label", "amount"}:
+            raise CandidateError(
+                "command 'add' params must be exactly {'label', 'amount'}"
+            )
         if not cmd.store_record or cmd.unique_field is None:
             raise CandidateError(
                 "command 'add' must store records with a uniqueness rule"
@@ -246,6 +251,8 @@ def _check_command(name: str, cmd: CommandSpec) -> None:
             raise CandidateError("command 'total' must aggregate a count")
 
     elif name == "remove":
+        if set(cmd.params) != {"id"}:
+            raise CandidateError("command 'remove' params must be exactly {'id'}")
         if _has_uniqueness(cmd) or cmd.store_record or _has_aggregate(cmd):
             raise CandidateError(
                 "command 'remove' may only lookup and delete in v1"
@@ -302,8 +309,21 @@ def parse_spec(raw: str | bytes | dict[str, Any]) -> tuple[CandidateSpec, str]:
 
     if len(canonical) > MAX_SPEC_BYTES:
         raise CandidateError(f"spec exceeds {MAX_SPEC_BYTES} bytes")
+    def reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in out:
+                raise CandidateError(f"spec contains duplicate JSON key {key!r}")
+            out[key] = value
+        return out
+
     try:
-        doc = json.loads(canonical.decode("utf-8"))
+        doc = json.loads(
+            canonical.decode("utf-8"),
+            object_pairs_hook=reject_duplicate_keys,
+        )
+    except CandidateError:
+        raise
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise CandidateError(f"spec is not valid JSON: {exc}") from exc
     if not isinstance(doc, dict):
