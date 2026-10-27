@@ -1,38 +1,30 @@
 """Candidate generation boundary (G3-A).
 
-Generation context is built EXPLICITLY from caller-supplied inputs only: the
-scope public projection, the operator-owned public command manifest, redacted
-observation views, and G2 hypotheses. This module NEVER reads reference
-source, sealed cases, gold fixtures, local machine paths, or secrets — there
-is no file access here at all, and a regression test pins that property.
+Generation context is built EXPLICITLY from caller-supplied, already-authorized
+inputs only: the scope public projection, the operator-owned public command
+manifest, redacted observation views, and G2 hypotheses. This module NEVER
+reads reference source, sealed cases, gold fixtures, local machine paths, or
+secrets — there is no file access here at all.
 
 Origin labels (never relabeled):
 - `mock`: scripted/responder transport; exercises the typed boundary only.
 - `trusted-test-fixture`: author-written spec (tests/g3_fixtures).
 - `real`: a genuine Meta response received through `ModelGateway`.
 
-`request_candidate_spec` prepares everything for a real call but performs NO
-billable request itself beyond `gateway.generate`, which enforces its own
-key + spend gates. Tests use `MockProvider` exclusively.
+`request_candidate_spec` revalidates the closed top-level context shape and
+redacts it immediately before serialization. It still relies on the trusted
+orchestrator to supply only approved evidence; sealed evaluator material must
+remain physically outside the generation path.
 """
 from __future__ import annotations
 
 import json
 from typing import Any, Literal, Sequence
 
-from .candidate_spec import (
-    CandidateError,
-    LoadedCandidate,
-    load_candidate,
-)
+from .candidate_spec import LoadedCandidate, load_candidate
 from .contracts import ScopeContract, StrictModel
 from .evidence import redact
-from .model_gateway import (
-    GatewayError,
-    ModelGateway,
-    ModelRequest,
-    ModelResponse,
-)
+from .model_gateway import GatewayError, ModelGateway, ModelRequest, ModelResponse
 
 SYNTHESIZE_STAGE = "synthesize"
 SYNTHESIZE_PROMPT_VERSION = "synthesize-v1"
@@ -42,7 +34,7 @@ PARAM_SCHEMA: dict[str, Any] = {
     "additionalProperties": False,
     "required": ["type", "error"],
     "properties": {
-        "type": {"type": "string"},
+        "type": {"type": "string", "enum": ["string", "integer"]},
         "required": {"type": "boolean"},
         "trim": {"type": "boolean"},
         "min_length": {"type": "integer"},
@@ -58,13 +50,14 @@ COMMAND_SCHEMA: dict[str, Any] = {
     "additionalProperties": False,
     "required": ["respond"],
     "properties": {
+        # The provider schema keeps parameter names open; the trusted Pydantic
+        # loader validates every parameter object and all semantic relations.
         "params": {"type": "object"},
-        "normalize_casefold": {"type": "array", "items": {"type": "string"}},
         "unique_field": {"type": "string"},
         "unique_casefold": {"type": "boolean"},
         "unique_error": {"type": "string"},
         "store_record": {"type": "boolean"},
-        "lookup_by": {"type": "string"},
+        "lookup_by": {"type": "string", "enum": ["id"]},
         "lookup_param": {"type": "string"},
         "not_found_error": {"type": "string"},
         "delete_after_lookup": {"type": "boolean"},
@@ -78,18 +71,27 @@ CANDIDATE_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "required": [
-        "spec_version", "subsystem", "requirement_ids",
-        "unknown_command_error", "invalid_input_error", "commands",
+        "spec_version",
+        "subsystem",
+        "requirement_ids",
+        "unknown_command_error",
+        "invalid_input_error",
+        "commands",
     ],
     "properties": {
         "spec_version": {"const": "1"},
         "subsystem": {"type": "string"},
-        "requirement_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "requirement_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string"},
+        },
         "unknown_command_error": {"type": "string"},
         "invalid_input_error": {"type": "string"},
         "commands": {
             "type": "object",
-            "minProperties": 4,
+            "additionalProperties": False,
+            "required": ["add", "list", "total", "remove"],
             "properties": {
                 "add": COMMAND_SCHEMA,
                 "list": COMMAND_SCHEMA,
@@ -103,14 +105,23 @@ CANDIDATE_JSON_SCHEMA: dict[str, Any] = {
 SYNTHESIZE_SYSTEM = (
     "You are a behavioral specification author. Output ONE CandidateSpec JSON "
     "object for subsystem cli_ledger using ONLY these declarative operations: "
-    "typed params (string/integer with bounds), trim/casefold normalization, "
-    "case-insensitive uniqueness rejection, sequential record storage, id "
-    "lookup with not_found errors, deletion, count/sum aggregation, and ok/error "
-    "response shaping. Declare all four commands (add, list, total, remove). "
-    "Derive validation rules ONLY from the attached authorized observations. "
-    "Do not invent hidden internals, approvals, file paths, imports, shell, "
-    "network, or code of any kind. Output JSON only."
+    "typed params (string/integer with bounds), trimming, case-insensitive "
+    "uniqueness rejection, sequential record storage, id lookup with not_found "
+    "errors, deletion, count/sum aggregation, and ok/error response shaping. "
+    "Declare all four commands (add, list, total, remove). add may store; remove "
+    "may delete by id; list and total are read-only. Derive validation and "
+    "response rules ONLY from the attached authorized observations. Do not "
+    "invent hidden internals, approvals, file paths, imports, shell, network, "
+    "or code of any kind. Output JSON only."
 )
+
+_CONTEXT_KEYS = {"scope", "public_commands", "evidence", "hypotheses"}
+_SCOPE_KEYS = {
+    "goal",
+    "requirement_ids",
+    "allowed_commands",
+    "excluded_subsystems",
+}
 
 
 class GenerationReceipt(StrictModel):
@@ -152,6 +163,29 @@ def build_generation_context(
     }
 
 
+def _validate_context_shape(context: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(context, dict) or set(context) != _CONTEXT_KEYS:
+        raise GatewayError(
+            "synthesize: generation context must contain only "
+            + ", ".join(sorted(_CONTEXT_KEYS))
+        )
+    scope = context.get("scope")
+    if not isinstance(scope, dict) or set(scope) != _SCOPE_KEYS:
+        raise GatewayError(
+            "synthesize: scope context must contain only "
+            + ", ".join(sorted(_SCOPE_KEYS))
+        )
+    if not isinstance(context.get("public_commands"), dict):
+        raise GatewayError("synthesize: public_commands must be an object")
+    if not isinstance(context.get("evidence"), list):
+        raise GatewayError("synthesize: evidence must be a list")
+    if not isinstance(context.get("hypotheses"), list):
+        raise GatewayError("synthesize: hypotheses must be a list")
+    # Defense in depth: redact again at the final model boundary, so a caller
+    # cannot bypass build_generation_context by mutating/injecting a secret.
+    return redact(context)
+
+
 def mock_propose_candidate(
     spec_dict: dict[str, Any],
     contract: ScopeContract,
@@ -184,18 +218,24 @@ def request_candidate_spec(
     *,
     max_output_tokens: int = 2000,
 ) -> tuple[dict[str, Any], GenerationReceipt]:
-    """Ask the model for ONE CandidateSpec. Performs no key handling here.
+    """Ask the model for ONE CandidateSpec.
 
     Billable only when the gateway's own key + spend gates pass. Returns the
-    parsed spec dict (STILL UNVALIDATED — the caller must run load_candidate)
+    parsed spec dict (STILL UNVALIDATED — caller must run load_candidate)
     plus a receipt whose origin derives from the response's real flag.
     """
+    safe_context = _validate_context_shape(context)
     response = gateway.generate(
         ModelRequest(
             stage=SYNTHESIZE_STAGE,
             messages=(
                 {"role": "system", "content": SYNTHESIZE_SYSTEM},
-                {"role": "user", "content": json.dumps(context, sort_keys=True, default=str)},
+                {
+                    "role": "user",
+                    "content": json.dumps(
+                        safe_context, sort_keys=True, default=str
+                    ),
+                },
             ),
             json_schema=CANDIDATE_JSON_SCHEMA,
             max_output_tokens=max_output_tokens,
@@ -218,7 +258,9 @@ def request_candidate_spec(
 
 
 def validate_generated_spec(
-    spec_dict: dict[str, Any], contract: ScopeContract, receipt: GenerationReceipt
+    spec_dict: dict[str, Any],
+    contract: ScopeContract,
+    receipt: GenerationReceipt,
 ) -> tuple[LoadedCandidate, GenerationReceipt]:
     """Load a generated spec and stamp the receipt digest. Origin untouched."""
     loaded = load_candidate(spec_dict, contract)
