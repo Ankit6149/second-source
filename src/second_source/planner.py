@@ -274,7 +274,7 @@ class ExperimentPlanner:
                     {"role": "user", "content": self._model_context(evidence)},
                 ),
                 json_schema=HYPOTHESIZE_JSON_SCHEMA,
-                max_output_tokens=1200,
+                max_output_tokens=2400,
                 prompt_version=PROMPT_VERSION_HYPOTHESIZE,
             )
         )
@@ -308,7 +308,7 @@ class ExperimentPlanner:
                     {"role": "user", "content": self._model_context(evidence, competing)},
                 ),
                 json_schema=PROPOSE_JSON_SCHEMA,
-                max_output_tokens=1500,
+                max_output_tokens=2800,
                 prompt_version=PROMPT_VERSION_PROPOSE,
             )
         )
