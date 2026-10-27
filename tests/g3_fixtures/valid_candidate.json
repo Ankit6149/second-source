@@ -10,7 +10,6 @@
         "label": {"type": "string", "required": true, "trim": true, "min_length": 1, "max_length": 24, "error": "invalid_label"},
         "amount": {"type": "integer", "required": true, "minimum": 1, "maximum": 100, "error": "invalid_amount"}
       },
-      "normalize_casefold": ["label"],
       "unique_field": "label",
       "unique_casefold": true,
       "unique_error": "duplicate_label",
@@ -33,7 +32,7 @@
       "lookup_param": "id",
       "not_found_error": "not_found",
       "delete_after_lookup": true,
-      "respond": {}
+      "respond": {"removed": "id"}
     }
   }
 }
