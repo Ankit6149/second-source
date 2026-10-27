@@ -30,15 +30,40 @@ PUBLIC = (
 )
 
 
+def _observation(output=None):
+    return {
+        "observation_id": "obs-1",
+        "sequence_id": "seq-1",
+        "action_index": 0,
+        "input_action": {"command": "list"},
+        "output": {"ok": True} if output is None else output,
+        "exit_code": 0,
+        "duration_ms": 1,
+        "status": "ok",
+    }
+
+
 def context():
+    digest = "a" * 64
     return build_generation_context(
         scope_goal="reconstruct ledger behavior",
         requirement_ids=["REQ-LEDGER"],
         allowed_commands=["add", "list", "total", "remove"],
         excluded_subsystems=["payments"],
         public_command_manifest=json.loads(PUBLIC.read_text(encoding="utf-8")),
-        redacted_views=[{"digest": "d1", "observation": {"ok": True}}],
-        hypotheses=[{"id": "hyp-1", "statement": "duplicates rejected"}],
+        redacted_views=[
+            {"digest": digest, "observation": _observation()}
+        ],
+        hypotheses=[
+            {
+                "id": "hyp-1",
+                "statement": "duplicates rejected",
+                "evidence_ids": [digest],
+                "status": "hypothesized",
+                "alternatives": [],
+                "unresolved_questions": [],
+            }
+        ],
     )
 
 
@@ -63,11 +88,19 @@ def test_context_redacts_secrets():
         public_command_manifest={},
         redacted_views=[
             {
-                "digest": "d",
-                "observation": {"authorization": "Bearer abc123"},
+                "digest": "b" * 64,
+                "observation": _observation(
+                    {"ok": True, "authorization": "Bearer abc123"}
+                ),
             }
         ],
-        hypotheses=[],
+        hypotheses=[
+            {
+                "id": "hyp-secret",
+                "statement": "redaction boundary",
+                "evidence_ids": ["b" * 64],
+            }
+        ],
     )
     assert "abc123" not in json.dumps(ctx)
 
@@ -119,6 +152,28 @@ def test_request_labels_mock_origin(cli_scope):
     assert stamped.origin == "mock"  # validation never upgrades origin
 
 
+def test_context_rejects_hypothesis_with_unknown_evidence():
+    ctx = context()
+    ctx["hypotheses"][0]["evidence_ids"] = ["f" * 64]
+    gateway = ModelGateway(
+        MockProvider([{"content": json.loads(FIXTURE.read_text(encoding="utf-8"))}]),
+        RunBudget(Budgets()),
+    )
+    with pytest.raises(GatewayError, match="unavailable evidence"):
+        request_candidate_spec(ctx, gateway)
+
+
+def test_context_rejects_nested_evidence_injection():
+    ctx = context()
+    ctx["evidence"][0]["gold_case"] = {"secret": 1}
+    gateway = ModelGateway(
+        MockProvider([{"content": json.loads(FIXTURE.read_text(encoding="utf-8"))}]),
+        RunBudget(Budgets()),
+    )
+    with pytest.raises(GatewayError, match="malformed evidence"):
+        request_candidate_spec(ctx, gateway)
+
+
 def test_request_rejects_extra_generation_context_key():
     spec_dict = json.loads(FIXTURE.read_text(encoding="utf-8"))
     gateway = ModelGateway(
@@ -151,8 +206,17 @@ def test_request_redacts_again_at_final_boundary():
     ctx = context()
     ctx["evidence"].append(
         {
-            "digest": "late",
-            "authorization": "Bearer late-secret-token",
+            "digest": "c" * 64,
+            "observation": _observation(
+                {"ok": True, "authorization": "Bearer late-secret-token"}
+            ),
+        }
+    )
+    ctx["hypotheses"].append(
+        {
+            "id": "hyp-late",
+            "statement": "late evidence",
+            "evidence_ids": ["c" * 64],
         }
     )
     request_candidate_spec(ctx, gateway)
