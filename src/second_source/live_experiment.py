@@ -14,6 +14,7 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 import json
 import os
+import re
 from pathlib import Path
 import secrets
 import sys
@@ -105,6 +106,24 @@ def fixture_verifier_summary(reference: CLIReferenceAdapter) -> dict:
     }
 
 
+def classify_model_failure(note: str) -> str:
+    """Redaction-safe failure category for CLI output, never raw model text."""
+    if "Meta API HTTP" in note:
+        match = re.search(r"Meta API HTTP\\s+(\\d{3})", note)
+        return "META_HTTP_" + match.group(1) if match else "META_HTTP_ERROR"
+    if "transport failure" in note:
+        return "META_TRANSPORT_ERROR"
+    if "empty message content" in note:
+        return "EMPTY_MODEL_RESPONSE"
+    if "violated JSON schema" in note or "schema violation" in note:
+        return "MODEL_SCHEMA_ERROR"
+    if "missing choices/message/usage" in note:
+        return "META_RESPONSE_SHAPE_ERROR"
+    if "forbidden marker" in note:
+        return "PROMPT_ISOLATION_ERROR"
+    return "MODEL_GATEWAY_ERROR"
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Explicitly billable G2 smoke: real Muse hypotheses and a guarded experiment"
@@ -183,8 +202,14 @@ def main(argv: list[str] | None = None) -> int:
         report.real_model_calls >= 2 and executed
     ) else "REAL_EXPERIMENT_INCOMPLETE"
 
+    failure_code = None
+    if report.stop_reason == "model_error":
+        notes = [r.note for r in report.rounds if r.note.startswith("model stop:")]
+        failure_code = classify_model_failure(notes[-1]) if notes else "MODEL_GATEWAY_ERROR"
+
     output = {
         "result": status,
+        "failure_code": failure_code,
         "run_id": report.run_id,
         "report": asdict(report),
         "model_receipts": [r.model_dump(mode="json") for r in gateway.receipts],
@@ -202,6 +227,7 @@ def main(argv: list[str] | None = None) -> int:
         "result": status,
         "run_id": report.run_id,
         "stop_reason": report.stop_reason,
+        "failure_code": failure_code,
         "real_model_calls": report.real_model_calls,
         "actions_observed": sum(r.actions_executed for r in executed),
         "estimated_model_cost_usd": report.budget_summary["estimated_cost_usd"],
