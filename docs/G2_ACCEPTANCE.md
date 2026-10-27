@@ -85,5 +85,6 @@ The 2 skips are `test_g2_smoke_real.py` (no key/budget configured).
 - The owned fixture now has `fixtures/owned_ledger/public_contract.json`, listing only operator-approved CLI signatures; hidden business rules remain outside model context.
 - The planner may pass this public schema to Muse; raw reference source and evaluator-only cases remain outside prompts.
 - An explicit operator entrypoint `second_source.live_experiment` now bridges real Muse reasoning to bounded, approved reference execution. Its exit status distinguishes observed experiments from missing-key and model failures.
+- The same run also performs an evaluator-only negative-control using an intentionally faulty synthetic candidate and stores **only aggregated** `model_feedback()`; this is a harness check, not a reconstructed candidate result.
 - Test coverage adds no-credential, overspend rejection and schema-prompt assertions in `tests/test_g2_live_entry.py`.
 - These changes are not proof of a live model run; G2 stays **NOT COMPLETE** until an observed real receipt and an executed experiment are recorded.
