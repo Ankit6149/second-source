@@ -1,7 +1,7 @@
 """Typed Meta Model API gateway (G2).
 
 - `MetaProvider`: real OpenAI-compatible HTTPS calls to the Meta Model API
-  (default muse-spark-1.3), non-strict `json_object` output with rigorous
+  (default muse-spark-1.3), non-strict JSON-schema constrained output with additional
   server-side schema validation, usage + latency receipts, per-model pricing.
 - `MockProvider`: deterministic scripted or responder-driven stand-in for
   tests. Every response is labeled real=false; a mock success can never be
@@ -188,16 +188,23 @@ class MetaProvider:
         return self._rates
 
     def complete(self, request: ModelRequest) -> ModelResponse:
-        # Non-strict structured output: discriminating-experiment params are
-        # open shapes Meta's strict subset cannot express. The closed contract
-        # is enforced server-side by validate_json_schema below.
+        # Meta supports non-strict JSON Schema output even with flexible
+        # nested fields. Constrain decoding at the provider AND validate it
+        # locally; strict=True is not valid for our open params shapes.
         payload: dict[str, Any] = {
             "model": self._model,
             "messages": [dict(m) for m in request.messages],
             "max_tokens": request.max_output_tokens,
         }
         if request.json_schema is not None:
-            payload["response_format"] = {"type": "json_object"}
+            payload["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "second_source_" + request.stage.replace("-", "_")[:45],
+                    "strict": False,
+                    "schema": request.json_schema,
+                },
+            }
         body = json.dumps(payload).encode("utf-8")
         http_req = urllib.request.Request(
             f"{self._base_url}/chat/completions",
