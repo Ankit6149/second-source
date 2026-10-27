@@ -1,4 +1,6 @@
-"""G2 gateway tests: mock labeling, budgets, isolation."""
+"""G2 gateway tests: labeling, reservation, pricing, endpoints, schema checks."""
+
+import json
 
 import pytest
 
@@ -13,6 +15,13 @@ from second_source.model_gateway import (
 )
 from second_source.runner import BudgetExhausted
 
+SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["ok"],
+    "properties": {"ok": {"type": "boolean"}},
+}
+
 
 def request(content="hello", schema=None):
     return ModelRequest(
@@ -26,19 +35,33 @@ def request(content="hello", schema=None):
 
 def test_mock_labeled_not_real():
     gateway = ModelGateway(MockProvider([{"content": {"ok": True}}]), RunBudget(Budgets()))
-    response = gateway.generate(request("hi", schema={"type": "object"}))
+    response = gateway.generate(request("hi", schema=SCHEMA))
     assert response.real is False
     assert response.provider == "mock"
     assert response.parsed == {"ok": True}
+    assert response.outcome == "ok"
     assert response.estimated_cost_usd == 0.0
     assert len(gateway.receipts) == 1
     assert gateway.receipts[0].real is False
 
 
-def test_mock_script_exhaustion_errors():
+def test_mock_schema_violation_rejected_and_booked():
+    gateway = ModelGateway(
+        MockProvider([{"content": {"bogus": 1}}]), RunBudget(Budgets())
+    )
+    with pytest.raises(GatewayError, match="violated JSON schema"):
+        gateway.generate(request("hi", schema=SCHEMA))
+    receipt = gateway.receipts[0]
+    assert receipt.outcome == "failed"
+    assert gateway._budget.attempts == 1
+    assert gateway._budget.model_calls == 0
+
+
+def test_mock_script_exhaustion_books_failure():
     gateway = ModelGateway(MockProvider([]), RunBudget(Budgets()))
-    with pytest.raises(GatewayError):
+    with pytest.raises(GatewayError, match="uncertain"):
         gateway.generate(request("hi"))
+    assert gateway.receipts[0].outcome == "failed"
 
 
 def test_call_cap_blocks_mock():
@@ -47,6 +70,7 @@ def test_call_cap_blocks_mock():
     )
     with pytest.raises(BudgetExhausted):
         gateway.generate(request("hi"))
+    assert gateway.receipts == ()
 
 
 def test_mock_ignores_spend_budget():
@@ -64,7 +88,7 @@ def test_forbidden_marker_refused():
 
 
 def test_real_call_blocked_at_zero_spend_before_http():
-    provider = MetaProvider("key-unused", base_url="http://127.0.0.1:1")
+    provider = MetaProvider("key-unused", base_url="http://127.0.0.1:1", test_mode=True)
     gateway = ModelGateway(provider, RunBudget(Budgets(max_estimated_model_spend_usd=0)))
     with pytest.raises(GatewayError, match="spend budget"):
         gateway.generate(request("hi"))
@@ -75,12 +99,76 @@ def test_meta_provider_requires_key():
         MetaProvider("")
 
 
+def test_http_endpoint_rejected():
+    with pytest.raises(GatewayError, match="non-HTTPS"):
+        MetaProvider("k", base_url="http://api.meta.ai/v1")
+
+
+def test_unexpected_host_rejected():
+    with pytest.raises(GatewayError, match="unexpected model host"):
+        MetaProvider("k", base_url="https://evil.example/v1")
+
+
+def test_loopback_requires_test_mode():
+    with pytest.raises(GatewayError):
+        MetaProvider("k", base_url="http://127.0.0.1:1")
+    provider = MetaProvider("k", base_url="http://127.0.0.1:1", test_mode=True)
+    assert provider.model == "muse-spark-1.3"
+
+
+def test_unknown_model_pricing_fail_closed():
+    with pytest.raises(GatewayError, match="unknown pricing"):
+        MetaProvider("k", model="muse-future-9")
+    provider = MetaProvider("k", model="muse-future-9", rates=(9.0, 9.0))
+    assert provider.rates == (9.0, 9.0)
+
+
 def test_meta_error_never_echoes_key():
-    provider = MetaProvider("live-secret-key-123", base_url="http://127.0.0.1:1")
+    provider = MetaProvider("live-secret-key-123", base_url="http://127.0.0.1:1", test_mode=True)
     gateway = ModelGateway(provider, RunBudget(Budgets()))
     with pytest.raises(GatewayError) as excinfo:
         gateway.generate(request("hi"))
     assert "live-secret-key-123" not in str(excinfo.value)
+    assert gateway.receipts[0].outcome == "failed"
+
+
+def test_wire_format_and_usage_reconciled(monkeypatch):
+    seen = {}
+
+    class FakeResp:
+        def read(self):
+            return json.dumps({
+                "id": "resp-1",
+                "choices": [{"message": {"content": json.dumps({"ok": True})}}],
+                "usage": {"prompt_tokens": 100, "completion_tokens": 20},
+            }).encode()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def fake_urlopen(req, timeout=None):
+        seen["url"] = req.full_url
+        seen["payload"] = json.loads(req.data.decode())
+        seen["auth"] = req.get_header("Authorization")
+        return FakeResp()
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    provider = MetaProvider("k", test_mode=True, base_url="https://api.meta.ai/v1")
+    gateway = ModelGateway(provider, RunBudget(Budgets()))
+    response = gateway.generate(request("hi", schema=SCHEMA))
+    assert seen["url"] == "https://api.meta.ai/v1/chat/completions"
+    assert seen["payload"]["response_format"] == {"type": "json_object"}
+    assert seen["payload"]["model"] == "muse-spark-1.3"
+    assert seen["auth"] == "Bearer k"
+    assert response.real is True
+    assert response.parsed == {"ok": True}
+    assert response.input_tokens == 100
+    assert gateway._budget.input_tokens == 100
+    assert gateway._budget.output_tokens == 20
+    assert gateway._budget.model_calls == 1
 
 
 def test_mock_ping():

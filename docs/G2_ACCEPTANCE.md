@@ -4,39 +4,71 @@
 experiment and its result is observed and recorded.
 
 **Verdict: G2 NOT COMPLETE.** No real provider call has been executed. The G2
-engine below is implemented on top of the preserved G0 foundation and covered
-by mocked tests; the real-model leg is explicitly pending an API key and run
-budget. This log must not claim completion without a recorded receipt (model
-id, response id, latency, token usage).
+engine below answers the independent review of PR #1 (27 Oct 2026) and is
+covered by mocked tests; the real-model leg is explicitly pending an API key
+and run budget. This log must not claim completion without a recorded receipt
+(model id, response id, latency, token usage).
 
 ## Design (integrated, no G0 duplication)
 
 G0 files (`contracts`, `scope_guard`, `evidence`, `reference`, `runner`,
 `verifier`, `demo`, all G0 tests, fixtures, acceptance record) are preserved
-untouched. G2 adds five modules that build on G0 types:
+untouched. G2 adds six modules that build on G0 types:
 
 | # | Requirement | Implementation | Tests |
 |---|---|---|---|
-| 1 | Typed Meta gateway, Muse Spark 1.3 | `src/second_source/model_gateway.py` (`MetaProvider`, `MockProvider` script-or-responder, `ModelGateway` receipts with real-vs-mock flags) | `tests/test_g2_gateway.py` |
+| 1 | Typed Meta gateway, Muse Spark 1.3 | `src/second_source/model_gateway.py` (`MetaProvider`, `MockProvider` script-or-responder, `ModelGateway` receipts with real-vs-mock flags and ok/failed outcomes) | `tests/test_g2_gateway.py` |
 | 2 | Schema-validated hypotheses + evidence digests | `src/second_source/hypotheses.py` (pydantic batch, unknown-digest rejection, store) | `tests/test_g2_hypotheses.py` |
-| 3 | Discriminating planner through the guard | `src/second_source/planner.py` (closed JSON schemas, heuristic utility, `ScopeGuard.validate_action` dry-run, ranked/rejected split; emits `ProposedAction`, the runner's only input) | `tests/test_g2_planner.py` |
-| 4 | Bounded observe→hypothesize→experiment→update loop | `src/second_source/loop.py` (model zone = redacted ledger views only; stops `stalled`/`budget`/`guard_blocked`) | `tests/test_g2_loop.py` (2-round mock loop on `owned_ledger`) |
-| 5 | Model-call / token / cost limits | `src/second_source/budgets.py` (`RunBudget` over contract `Budgets` + `TokenCaps`; reuses the runner's `BudgetExhausted`) | `tests/test_g2_budgets.py` |
-| 6 | Separation + adversarial edge cases | gateway forbidden-marker guard, `redact()` on all model context, no subprocess/shell in G2, injection-as-data | `tests/test_g2_adversarial.py` |
-| 7 | Real-provider smoke | `tests/test_g2_smoke_real.py` (skips as `BLOCKED_REAL_MODEL` without key + budget) | run with `MODEL_API_KEY` + `SECOND_SOURCE_MAX_RUN_USD` |
+| 3 | Discriminating planner through the guard | `src/second_source/planner.py` (closed wire shapes + strict per-item checks, heuristic utility, `ScopeGuard.validate_action` on EVERY action, ranked/rejected split; emits `ProposedAction` lists, the runner's only input) | `tests/test_g2_planner.py` |
+| 4 | Bounded observe→hypothesize→experiment→update loop | `src/second_source/loop.py` (model zone = redacted ledger views only; one proposal = one fresh-process sequence; prediction/outcome reconciliation updates hypothesis statuses; stops `stalled`/`budget`/`guard_blocked`) | `tests/test_g2_loop.py` |
+| 5 | Model-call / token / cost limits with failure booking | `src/second_source/budgets.py` (`reserve` worst case before the call, `commit` actuals on success, `fail` books uncertain spend; per-model pricing; reuses the runner's `BudgetExhausted`) | `tests/test_g2_budgets.py` |
+| 6 | Server-side schema enforcement | `src/second_source/schema_validate.py` (closed-subset checker applied to every parsed model/mock output) | `tests/test_g2_schema.py` |
+| 7 | Separation + adversarial edge cases | gateway forbidden-marker guard + HTTPS/host allowlist, `redact()` on all model context, no subprocess/shell in G2, injection-as-data | `tests/test_g2_adversarial.py` |
+| 8 | Real-provider smoke | `tests/test_g2_smoke_real.py` (skips as `BLOCKED_REAL_MODEL` without key + budget) | run with `MODEL_API_KEY` + `SECOND_SOURCE_MAX_RUN_USD` |
 
 Budgets honor the repo's existing `SECOND_SOURCE_MAX_RUN_USD` variable; no new
 credential names were introduced. No billable request is sent unless that
 variable is positive AND `MODEL_API_KEY` is set.
+
+## Review findings → fixes (all with regression tests)
+
+| Review # | Fix | Evidence |
+|---|---|---|
+| P0-1 model self-approval | `approval_granted` removed from the model schema; `_to_action` strips smuggled values and forces `False`; external mutations always hit `HUMAN_APPROVAL_REQUIRED` | `test_model_approval_is_stripped_and_external_denied`, `test_smuggled_approval_never_authorizes` (seed-only ledger proves nothing executed) |
+| P0-2 multi-action sequences | proposals carry bounded action lists (≤8) with declared `reset_boundary`; every action guard-validated; one sequence per fresh process; `add A → add A → total` demo vs fresh reset | `test_propose_returns_ordered_action_sequence`, `test_second_action_denial_rejects_sequence`, `test_stateful_sequence_vs_fresh_reset`, `test_wrong_reset_boundary_rejected` |
+| P0-3 hypothesis resolution | checkable predictions (`expects_ok` + optional `expects_contains`) reconciled against the final-step output; `supported`/`contradicted` update the store; timeouts/protocol leave hypotheses open (never punished for harness faults) | `test_mock_loop_resolves_hypotheses` (1 supported + 1 contradicted), `test_conclusive_error_contradicts`, `test_timeout_leaves_hypotheses_unresolved`, `test_reconcile_*` |
+| P0-4 billing hard stop | `reserve` worst case before the call; `commit` actuals; `fail` books uncertain spend and a failed receipt; per-model pricing table; unknown models fail closed unless explicit rates are given | `test_failure_books_uncertain_spend`, `test_commit_releases_reservation`, `test_mock_schema_violation_rejected_and_booked`, `test_unknown_model_pricing_fail_closed`, `test_wire_format_and_usage_reconciled` (monkeypatched transport) |
+| P1-5 strict schemas | non-strict `json_object` on the wire (open experiment params cannot satisfy Meta's strict subset) + closed server-side enforcement via `schema_validate`; wire shape vs semantic strictness split documented in `planner.py` | `tests/test_g2_schema.py`, `test_mock_schema_violation_rejected_and_booked` |
+| P1-6 credential boundary | `MetaProvider` rejects non-HTTPS and non-allowlisted hosts; loopback only with explicit `test_mode=True` (hermetic tests); key travels only on that TLS request | `test_http_endpoint_rejected`, `test_unexpected_host_rejected`, `test_loopback_requires_test_mode`, `test_meta_error_never_echoes_key` |
+| Gate-7 real call + CI | still pending key/budget (below); CI workflow added (`.github/workflows/test.yml`, ubuntu+windows × py3.11/3.12, pytest + demo) — **added but never observed green** | — |
+
+## Observed suite result (27 Oct 2026, this branch)
+
+`python -m pytest` → **101 passed, 2 skipped, exit 0** (≈5s; 43 G0 + 58 G2).
+The 2 skips are `test_g2_smoke_real.py` (no key/budget configured).
+
+## Unresolved limitations (honest)
+
+- No guaranteed billing hard cap: the ledger bounds what WE attempt and books
+  uncertainty fail-closed; provider-side charges are authoritative.
+- Strict-mode structured output deferred (see P1-5): server-side validation is
+  the enforcement point until experiment params fit Meta's strict subset.
+- Hypothesis contradiction is single-step (final observation vs prediction);
+  multi-step trajectory attribution is future work.
+- CI workflow added but not yet observed running on GitHub.
+- Cross-sequence state persistence is unavailable on the current fixture by
+  design (fresh process per sequence); the loop never claims otherwise.
 
 ## How to complete the gate
 
 1. `python -m pytest` — full suite green (real smoke reports SKIPPED).
 2. Set `MODEL_API_KEY` and `SECOND_SOURCE_MAX_RUN_USD=0.25`.
 3. `python -m pytest tests/test_g2_smoke_real.py -v` — record model id,
-   response id, latency, tokens, estimated cost below.
-4. Run a budgeted real loop and attach the receipt + loop report + verifier
-   `model_feedback()` output (observed values only).
+   response id, latency, tokens, estimated cost below. Must include one
+   structured hypothesize call validated against `HYPOTHESIZE_JSON_SCHEMA`
+   and one guard-accepted experiment executed with its observation recorded.
+4. Attach the receipt + loop report + verifier `model_feedback()` output
+   (observed values only).
 
 ## Real-usage record (empty until observed)
 

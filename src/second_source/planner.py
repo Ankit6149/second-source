@@ -2,10 +2,19 @@
 
 The planner asks the model (through `ModelGateway`) for hypothesis batches and
 discriminating experiments, validates every output against closed schemas,
-scores candidates with the documented heuristic, and routes each proposal
-through `ScopeGuard.validate_action` BEFORE anything executes. Rejected
+scores candidates with the documented heuristic, and routes EACH proposed
+action through `ScopeGuard.validate_action` BEFORE anything executes. Rejected
 proposals return with machine-readable codes so the loop can revise or stop
-honestly. Planner output is always `ProposedAction`: the runner's only input.
+honestly. Planner output is a list of `ProposedAction`: the runner's only input.
+
+Security: the model schema contains NO approval field. Any `approval_granted`
+smuggled into raw output is stripped and ignored — approvals must come from a
+trusted operator-controlled grant path that does not exist in G2, so external
+mutations are always denied here.
+
+Semantics: one proposal = one ordered action list (at most 8 steps) executed
+as ONE fresh-process adapter sequence with NO persisted state between
+sequences. The proposal must declare this reset boundary explicitly.
 """
 from __future__ import annotations
 
@@ -28,6 +37,9 @@ from .model_gateway import (
 )
 from .scope_guard import ScopeGuard
 
+MAX_SEQUENCE_ACTIONS = 8
+RESET_BOUNDARY = "fresh_process_per_sequence"
+
 HYPOTHESIZE_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
@@ -41,17 +53,43 @@ HYPOTHESIZE_JSON_SCHEMA: dict[str, Any] = {
             "items": {
                 "type": "object",
                 "additionalProperties": False,
-                "required": ["id", "statement", "evidence_ids"],
+                "required": ["id", "statement", "evidence_ids", "status", "alternatives", "unresolved_questions"],
                 "properties": {
                     "id": {"type": "string", "minLength": 1, "maxLength": 64},
                     "statement": {"type": "string", "minLength": 1, "maxLength": 500},
                     "evidence_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
-                    "status": {"type": "string", "default": "hypothesized"},
-                    "alternatives": {"type": "array", "items": {"type": "string"}, "default": []},
-                    "unresolved_questions": {"type": "array", "items": {"type": "string"}, "default": []},
+                    "status": {"type": "string", "enum": ["hypothesized"]},
+                    "alternatives": {"type": "array", "items": {"type": "string"}},
+                    "unresolved_questions": {"type": "array", "items": {"type": "string"}},
                 },
             },
         },
+    },
+}
+
+PREDICTION_SCHEMA: dict[str, Any] = {
+    # Wire shape only: required keys present, no extras. Semantic strictness
+    # (boolean expects_ok, reset_boundary const, known side_effect) is enforced
+    # per proposal in _to_actions so one bad item rejects instead of killing
+    # the whole batch.
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["hypothesis_id", "expects_ok"],
+    "properties": {
+        "hypothesis_id": {"type": "string", "minLength": 1},
+        "expects_ok": {},
+        "expects_contains": {"type": "string"},
+    },
+}
+
+ACTION_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["command"],
+    "properties": {
+        "command": {"type": "string", "minLength": 1},
+        "kind": {"type": "string", "minLength": 1},
+        "params": {"type": "object"},
     },
 }
 
@@ -67,22 +105,26 @@ PROPOSE_JSON_SCHEMA: dict[str, Any] = {
             "items": {
                 "type": "object",
                 "additionalProperties": False,
-                "required": ["proposal_id", "requirement_id", "hypothesis_ids", "command", "predictions", "side_effect"],
+                "required": [
+                    "proposal_id", "requirement_id", "hypothesis_ids", "question",
+                    "reset_boundary", "actions", "predictions",
+                    "expected_information_gain", "side_effect", "role", "requires_auth",
+                ],
                 "properties": {
                     "proposal_id": {"type": "string", "minLength": 1, "maxLength": 64},
                     "requirement_id": {"type": "string", "minLength": 1},
                     "hypothesis_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
-                    "question": {"type": "string", "default": ""},
-                    "command": {"type": "string", "minLength": 1},
-                    "kind": {"type": "string", "default": "cli"},
-                    "params": {"type": "object", "default": {}},
-                    "role": {"type": "string", "default": "guest"},
-                    "requires_auth": {"type": "boolean", "default": False},
-                    "predictions": {"type": "object", "minProperties": 1},
-                    "expected_information_gain": {"type": "string", "default": ""},
-                    "estimated_reference_calls": {"type": "integer", "minimum": 1, "default": 1},
-                    "side_effect": {"type": "string", "default": "read_only"},
-                    "approval_granted": {"type": "boolean", "default": False},
+                    "question": {"type": "string"},
+                    "reset_boundary": {"type": "string", "minLength": 1},
+                    "actions": {"type": "array", "minItems": 1, "maxItems": MAX_SEQUENCE_ACTIONS, "items": ACTION_SCHEMA},
+                    "predictions": {"type": "array", "minItems": 1, "items": PREDICTION_SCHEMA},
+                    "expected_information_gain": {"type": "string"},
+                    "side_effect": {"type": "string", "minLength": 1},
+                    "role": {"type": "string", "minLength": 1},
+                    "requires_auth": {"type": "boolean"},
+                    # Structurally tolerated so one smuggled field cannot kill
+                    # the batch; _to_actions strips it and the guard denies.
+                    "approval_granted": {},
                 },
             },
         }
@@ -98,12 +140,19 @@ MODEL_SIDE_EFFECTS = {
 
 
 @dataclass(frozen=True)
+class Prediction:
+    hypothesis_id: str
+    expects_ok: bool
+    expects_contains: str | None
+
+
+@dataclass(frozen=True)
 class RankedProposal:
-    action: ProposedAction
+    actions: tuple[ProposedAction, ...]
     proposal_id: str
     utility: float
-    decision_code: str
-    predictions: tuple[tuple[str, str], ...]
+    decision_codes: tuple[str, ...]
+    predictions: tuple[Prediction, ...]
 
 
 @dataclass(frozen=True)
@@ -142,6 +191,35 @@ def score_utility(
     )
 
 
+def reconcile_predictions(
+    predictions: Sequence[Prediction],
+    final_output: Any,
+    final_status: str,
+) -> dict[str, str]:
+    """Compare checkable predictions against the observed final-step output.
+
+    Returns {hypothesis_id: supported|contradicted|unresolved}. Harness-level
+    failures (timeout/protocol) leave hypotheses unresolved rather than
+    punishing them for inconclusive evidence.
+    """
+    if final_status not in ("ok", "target_error"):
+        return {p.hypothesis_id: "unresolved" for p in predictions}
+    actual_ok = final_status == "ok"
+    try:
+        canonical = json.dumps(final_output, sort_keys=True, default=str)
+    except (TypeError, ValueError):
+        canonical = str(final_output)
+    verdicts: dict[str, str] = {}
+    for pred in predictions:
+        if pred.expects_ok != actual_ok:
+            verdicts[pred.hypothesis_id] = "contradicted"
+        elif pred.expects_contains is not None and pred.expects_contains not in canonical:
+            verdicts[pred.hypothesis_id] = "contradicted"
+        else:
+            verdicts[pred.hypothesis_id] = "supported"
+    return verdicts
+
+
 class ExperimentPlanner:
     def __init__(
         self,
@@ -169,6 +247,7 @@ class ExperimentPlanner:
             "requirement_ids": sorted(self._contract.implementation.requirements),
             "allowed_commands": sorted(self._contract.observation.allowed_commands),
             "excluded_subsystems": sorted(self._contract.exclusions.subsystems),
+            "reset_boundary": RESET_BOUNDARY,
             "evidence": [redact(dict(item)) for item in evidence],
             "budget_remaining": {
                 "model_calls": self._budget.model_calls_remaining,
@@ -225,7 +304,7 @@ class ExperimentPlanner:
                     {"role": "user", "content": self._model_context(evidence, competing)},
                 ),
                 json_schema=PROPOSE_JSON_SCHEMA,
-                max_output_tokens=1200,
+                max_output_tokens=1500,
                 prompt_version=PROMPT_VERSION_PROPOSE,
             )
         )
@@ -240,79 +319,128 @@ class ExperimentPlanner:
         for raw in raw_list:
             label = raw.get("proposal_id", "?") if isinstance(raw, dict) else "?"
             try:
-                action, proposal_id, predictions = self._to_action(raw, requirement_id)
+                actions, proposal_id, predictions = self._to_actions(raw, requirement_id)
             except (ValueError, TypeError, AttributeError) as exc:
                 rejected.append((str(label), f"schema: {exc}"))
                 continue
-            decision = self._guard.validate_action(action)
-            if not decision.allowed:
-                rejected.append((proposal_id, f"{decision.code}: {decision.reason}"))
+            decisions: list[str] = []
+            denied: str | None = None
+            for action in actions:
+                decision = self._guard.validate_action(action)
+                decisions.append(decision.code)
+                if not decision.allowed:
+                    denied = f"{decision.code}: {decision.reason}"
+                    break
+            if denied is not None:
+                rejected.append((proposal_id, denied))
                 continue
             if reference_remaining < 1 or model_remaining < 1:
                 rejected.append((proposal_id, "OVER_BUDGET: no reference/model budget remains"))
                 continue
-            utility = self._score(action, predictions, hypotheses)
-            ranked.append(RankedProposal(action, proposal_id, utility, decision.code, predictions))
+            utility = self._score(actions, predictions, hypotheses)
+            ranked.append(RankedProposal(tuple(actions), proposal_id, utility, tuple(decisions), tuple(predictions)))
         ranked.sort(key=lambda r: r.utility, reverse=True)
         return PlanResult(ranked=tuple(ranked), rejected=tuple(rejected))
 
-    def _to_action(
+    def _to_actions(
         self, raw: Any, requirement_id: str
-    ) -> tuple[ProposedAction, str, tuple[tuple[str, str], ...]]:
+    ) -> tuple[list[ProposedAction], str, list[Prediction]]:
         if not isinstance(raw, dict):
             raise ValueError("proposal must be an object")
+        # Defense in depth: approvals are NEVER model-supplied. Strip silently;
+        # the guard denies anything needing approval without a trusted grant.
+        raw = {k: v for k, v in raw.items() if k != "approval_granted"}
         try:
             proposal_id = str(raw["proposal_id"])
-            command = str(raw["command"])
             hyp_ids = raw["hypothesis_ids"]
-            predictions = raw["predictions"]
-            params = raw.get("params", {})
+            raw_actions = raw["actions"]
+            raw_predictions = raw["predictions"]
         except KeyError as exc:
             raise ValueError(f"missing field {exc}") from exc
+        if raw.get("reset_boundary", RESET_BOUNDARY) != RESET_BOUNDARY:
+            raise ValueError(f"reset_boundary must be {RESET_BOUNDARY!r}")
         if not isinstance(hyp_ids, list) or not hyp_ids or not all(isinstance(h, str) for h in hyp_ids):
             raise ValueError("hypothesis_ids must be a non-empty string list")
-        if not isinstance(predictions, dict) or not predictions:
-            raise ValueError("predictions must be a non-empty object")
-        if not isinstance(params, dict):
-            raise ValueError("params must be an object")
-        if "command" in params:
-            raise ValueError("params cannot override the approved command label")
+        if not isinstance(raw_actions, list) or not raw_actions:
+            raise ValueError("actions must be a non-empty list")
+        if len(raw_actions) > MAX_SEQUENCE_ACTIONS:
+            raise ValueError(f"actions exceed bound of {MAX_SEQUENCE_ACTIONS}")
+        if not isinstance(raw_predictions, list) or not raw_predictions:
+            raise ValueError("predictions must be a non-empty list")
         side_effect = MODEL_SIDE_EFFECTS.get(str(raw.get("side_effect", "read_only")))
         if side_effect is None:
             raise ValueError(f"unknown side_effect {raw.get('side_effect')!r}")
-        kind = str(raw.get("kind", "cli"))
-        action = ProposedAction(
-            kind=kind,
-            target=command,
-            requirement_id=str(raw.get("requirement_id", requirement_id)),
-            role=str(raw.get("role", "guest")),
-            requires_auth=bool(raw.get("requires_auth", False)),
-            side_effect=side_effect,
-            approval_granted=bool(raw.get("approval_granted", False)),
-            payload=dict(params),
-        )
-        return action, proposal_id, tuple((str(k), str(v)) for k, v in predictions.items())
+        requirement = str(raw.get("requirement_id", requirement_id))
+        role = str(raw.get("role", "guest"))
+        requires_auth = bool(raw.get("requires_auth", False))
+        actions: list[ProposedAction] = []
+        for step in raw_actions:
+            if not isinstance(step, dict):
+                raise ValueError("each action must be an object")
+            command = step.get("command")
+            if not isinstance(command, str) or not command:
+                raise ValueError("each action needs a non-empty command")
+            params = step.get("params", {})
+            if not isinstance(params, dict):
+                raise ValueError("action params must be an object")
+            if "command" in params:
+                raise ValueError("params cannot override the approved command label")
+            actions.append(
+                ProposedAction(
+                    kind=str(step.get("kind", "cli")),
+                    target=command,
+                    requirement_id=requirement,
+                    role=role,
+                    requires_auth=requires_auth,
+                    side_effect=side_effect,
+                    approval_granted=False,
+                    payload=dict(params),
+                )
+            )
+        predictions: list[Prediction] = []
+        for item in raw_predictions:
+            if not isinstance(item, dict):
+                raise ValueError("each prediction must be an object")
+            hid = item.get("hypothesis_id")
+            ok = item.get("expects_ok")
+            contains = item.get("expects_contains")
+            if not isinstance(hid, str) or not hid:
+                raise ValueError("prediction needs a hypothesis_id")
+            if not isinstance(ok, bool):
+                raise ValueError("prediction expects_ok must be boolean")
+            if contains is not None and (not isinstance(contains, str) or not contains):
+                raise ValueError("prediction expects_contains must be a non-empty string")
+            predictions.append(Prediction(hid, ok, contains))
+        return actions, proposal_id, predictions
 
     def _score(
         self,
-        action: ProposedAction,
-        predictions: Sequence[tuple[str, str]],
+        actions: Sequence[ProposedAction],
+        predictions: Sequence[Prediction],
         hypotheses: Sequence[Hypothesis],
     ) -> float:
-        predicted = {k for k, _ in predictions}
+        predicted = {p.hypothesis_id for p in predictions}
         discrimination = len([h for h in hypotheses if h.id in predicted]) / max(
             1, len(hypotheses)
         )
         scope_relevance = (
-            1.0 if action.requirement_id in self._contract.implementation.requirements else 0.0
+            1.0
+            if all(a.requirement_id in self._contract.implementation.requirements for a in actions)
+            else 0.0
         )
-        signature = action.target + ":" + json.dumps(action.payload, sort_keys=True)
+        signature = "|".join(
+            a.target + ":" + json.dumps(a.payload, sort_keys=True) for a in actions
+        )
         novelty = 0.0 if signature in self._executed_signatures else 1.0
-        coverage_gain = min(1.0, (1 + len(action.payload)) / 4.0)
+        coverage_gain = min(1.0, len(actions) / 4.0)
         normalized_cost = min(
-            1.0, 1 / max(1, self._contract.budgets.max_reference_experiments)
+            1.0, len(actions) / max(1, self._contract.budgets.max_reference_experiments)
         )
-        risk_penalty = 0.0 if action.side_effect == SideEffect.READ_ONLY else 0.5
+        risk_penalty = (
+            0.0
+            if all(a.side_effect == SideEffect.READ_ONLY for a in actions)
+            else 0.5
+        )
         return score_utility(
             discrimination=discrimination,
             scope_relevance=scope_relevance,
@@ -322,7 +450,7 @@ class ExperimentPlanner:
             risk_penalty=risk_penalty,
         )
 
-    def mark_executed(self, action: ProposedAction) -> None:
+    def mark_executed(self, actions: Sequence[ProposedAction]) -> None:
         self._executed_signatures.add(
-            action.target + ":" + json.dumps(action.payload, sort_keys=True)
+            "|".join(a.target + ":" + json.dumps(a.payload, sort_keys=True) for a in actions)
         )

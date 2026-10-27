@@ -7,12 +7,16 @@ Separation, enforced in code:
   sealed evaluation cases. Only the adapter, ledger, runner, and verifier
   touch these; they are never serialized into a `ModelRequest`.
 
+One proposal = one ordered action list executed as ONE fresh-process adapter
+sequence: state accumulates WITHIN the sequence and resets BETWEEN sequences
+(the fixture starts empty on each process launch). The loop records this
+boundary on every round; cross-sequence persistence claims are never made.
+
 Reference and wall-clock budgets stay enforced by `SafeCLIExperimentRunner`;
 model budgets by `RunBudget`. Exhaustion stops the run with an explicit
 `budget` reason, never false success. Stop reasons: `stalled` (rounds
 exhausted with hypotheses still open), `budget`, `guard_blocked` (no allowed
-proposal). Hypothesis contradiction analysis stays future work: the loop does
-not invent resolutions, it records them.
+proposal).
 """
 from __future__ import annotations
 
@@ -24,7 +28,7 @@ from .contracts import ProposedAction, ScopeContract
 from .evidence import EvidenceLedger
 from .hypotheses import HypothesisStore
 from .model_gateway import GatewayError
-from .planner import ExperimentPlanner
+from .planner import ExperimentPlanner, reconcile_predictions
 from .runner import BudgetExhausted, PolicyViolation, SafeCLIExperimentRunner
 
 STOP_REASONS = ("stalled", "budget", "guard_blocked")
@@ -35,7 +39,9 @@ class LoopRound:
     round_no: int
     hypothesis_ids: tuple[str, ...]
     proposal_id: str | None
+    actions_executed: int
     observation_ids: tuple[str, ...]
+    reset_boundary: str
     resolution: dict[str, int]
     note: str
 
@@ -89,11 +95,29 @@ class DiscoveryLoop:
     def _known_ids(self) -> frozenset[str]:
         return frozenset(self._digests)
 
+    def _execute(
+        self, actions: Sequence[ProposedAction]
+    ) -> tuple[list[str], Any | None]:
+        """Run ONE guard-validated sequence.
+
+        Returns (observation ids, final observation or None). A sequence with
+        zero observations (timeout/protocol) yields None so reconciliation
+        marks hypotheses unresolved instead of reusing stale evidence.
+        """
+        result = self._runner.run(list(actions))
+        obs_ids: list[str] = []
+        for observation in result.observations:
+            receipt = self._ledger.store(observation)
+            self._digests.append(receipt["sha256"])
+            obs_ids.append(observation.observation_id)
+        final = result.observations[-1] if result.observations else None
+        return obs_ids, final
+
     def _seed(self, seed_actions: Sequence[dict[str, Any]]) -> None:
         """Baseline observations through the guarded runner (budget-counted)."""
         if not seed_actions:
             raise GatewayError("loop requires at least one seed action")
-        proposed = [
+        self._execute([
             ProposedAction(
                 kind="cli",
                 target=str(item["command"]),
@@ -101,11 +125,7 @@ class DiscoveryLoop:
                 payload={k: v for k, v in item.items() if k != "command"},
             )
             for item in seed_actions
-        ]
-        result = self._runner.run(proposed)
-        for observation in result.observations:
-            receipt = self._ledger.store(observation)
-            self._digests.append(receipt["sha256"])
+        ])
 
     def _reference_remaining(self) -> int:
         return max(
@@ -139,7 +159,9 @@ class DiscoveryLoop:
                             round_no,
                             tuple(h.id for h in batch.hypotheses),
                             None,
+                            0,
                             (),
+                            "fresh_process_per_sequence",
                             self._hypotheses.resolution_counts(),
                             f"no allowed experiment: {reasons or 'empty proposal list'}",
                         )
@@ -148,48 +170,66 @@ class DiscoveryLoop:
                     break
                 top = plan.ranked[0]
                 try:
-                    result = self._runner.run([top.action])
+                    obs_ids, final = self._execute(top.actions)
                 except PolicyViolation as exc:
                     rounds.append(
                         LoopRound(
                             round_no,
                             tuple(h.id for h in batch.hypotheses),
                             top.proposal_id,
+                            0,
                             (),
+                            "fresh_process_per_sequence",
                             self._hypotheses.resolution_counts(),
                             f"runner refused: {exc}",
                         )
                     )
                     stop_reason = "guard_blocked"
                     break
-                self._planner.mark_executed(top.action)
-                obs_ids: list[str] = []
-                for observation in result.observations:
-                    receipt = self._ledger.store(observation)
-                    self._digests.append(receipt["sha256"])
-                    obs_ids.append(observation.observation_id)
+                self._planner.mark_executed(top.actions)
+                # UPDATE: reconcile checkable predictions against the observed
+                # FINAL step output; harness failures leave hypotheses open.
+                if final is None:
+                    verdicts = {p.hypothesis_id: "unresolved" for p in top.predictions}
+                else:
+                    last_view = self._ledger.model_view(self._digests[-1])
+                    verdicts = reconcile_predictions(
+                        top.predictions,
+                        last_view.get("output"),
+                        str(last_view.get("status", "")),
+                    )
+                for hyp_id, verdict in verdicts.items():
+                    if verdict in ("supported", "contradicted"):
+                        try:
+                            self._hypotheses.update_status(hyp_id, verdict)
+                        except KeyError:
+                            pass
                 rounds.append(
                     LoopRound(
                         round_no,
                         tuple(h.id for h in batch.hypotheses),
                         top.proposal_id,
+                        len(top.actions),
                         tuple(obs_ids),
+                        "fresh_process_per_sequence",
                         self._hypotheses.resolution_counts(),
                         f"executed {top.proposal_id} utility={top.utility:.3f} "
-                        f"obs={len(obs_ids)}",
+                        f"steps={len(top.actions)} verdicts={verdicts}",
                     )
                 )
         except BudgetExhausted as exc:
             rounds.append(
                 LoopRound(
-                    0, (), None, (), self._hypotheses.resolution_counts(), f"budget stop: {exc}"
+                    0, (), None, 0, (), "fresh_process_per_sequence",
+                    self._hypotheses.resolution_counts(), f"budget stop: {exc}",
                 )
             )
             stop_reason = "budget"
         except GatewayError as exc:
             rounds.append(
                 LoopRound(
-                    0, (), None, (), self._hypotheses.resolution_counts(), f"model stop: {exc}"
+                    0, (), None, 0, (), "fresh_process_per_sequence",
+                    self._hypotheses.resolution_counts(), f"model stop: {exc}",
                 )
             )
             stop_reason = "guard_blocked"
