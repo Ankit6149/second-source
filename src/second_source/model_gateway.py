@@ -18,6 +18,7 @@ placed in model context.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import time
 import urllib.error
@@ -52,6 +53,26 @@ class GatewayError(RuntimeError):
     """Provider, schema, budget, credential-boundary, or isolation failure."""
 
 
+class ProviderResponseError(GatewayError):
+    """Sanitized failure after a provider response with known usage metadata."""
+
+    def __init__(
+        self, failure_code: str, detail: str, *, response_id: str,
+        finish_reason: str, input_tokens: int, output_tokens: int,
+        reasoning_tokens: int, content_chars: int, content_sha256: str,
+    ) -> None:
+        super().__init__(detail)
+        self.failure_code = failure_code
+        self.response_id = response_id
+        self.finish_reason = finish_reason
+        self.input_tokens = input_tokens
+        self.output_tokens = output_tokens
+        self.reasoning_tokens = reasoning_tokens
+        self.content_chars = content_chars
+        self.content_sha256 = content_sha256
+
+
+
 class ModelRequest(StrictModel):
     stage: str
     messages: tuple[dict[str, str], ...]
@@ -59,6 +80,7 @@ class ModelRequest(StrictModel):
     max_output_tokens: int = Field(default=1500, ge=1, le=8000)
     prompt_version: str = ""
     estimated_input_tokens: int = 0
+    reasoning_effort: Literal["minimal", "low", "medium", "high", "xhigh", "max"] = "low"
 
 
 class ModelResponse(StrictModel):
@@ -90,6 +112,12 @@ class CallReceipt(StrictModel):
     estimated_cost_usd: float = 0.0
     uncertain_cost_usd: float = 0.0
     outcome: Literal["ok", "failed"] = "ok"
+    response_id: str = ""
+    finish_reason: str = ""
+    reasoning_tokens: int = 0
+    content_chars: int = 0
+    content_sha256: str = ""
+    failure_code: str = ""
 
 
 def _estimate_tokens(text: str) -> int:
@@ -195,6 +223,7 @@ class MetaProvider:
             "model": self._model,
             "messages": [dict(m) for m in request.messages],
             "max_completion_tokens": request.max_output_tokens,
+            "reasoning_effort": request.reasoning_effort,
         }
         if request.json_schema is not None:
             payload["response_format"] = {
@@ -230,16 +259,42 @@ class MetaProvider:
         except json.JSONDecodeError as exc:
             raise GatewayError("Meta API returned non-JSON payload") from exc
         try:
-            choice = doc["choices"][0]["message"]["content"]
-            response_id = str(doc.get("id", f"meta-{int(time.time() * 1000)}"))
-            usage = doc.get("usage", {})
+            choice_info = doc["choices"][0]
+            choice = choice_info["message"]["content"]
+            response_id = str(doc.get("id", ""))
+            usage = doc.get("usage") or {}
             in_tok = int(usage.get("prompt_tokens", 0))
             out_tok = int(usage.get("completion_tokens", 0))
-        except (KeyError, IndexError, TypeError, ValueError) as exc:
+            details = usage.get("completion_tokens_details") or {}
+            reasoning_tok = int(details.get("reasoning_tokens", 0) or 0)
+            raw_finish_reason = choice_info.get("finish_reason", "unknown")
+            # The provider controls this value; only store bounded categories.
+            finish_reason = raw_finish_reason if raw_finish_reason in (
+                "stop", "length", "content_filter", "tool_calls",
+            ) else "other"
+        except (KeyError, IndexError, TypeError, ValueError, AttributeError) as exc:
             raise GatewayError("Meta API payload missing choices/message/usage") from exc
-        if not isinstance(choice, str) or not choice.strip():
-            raise GatewayError("Meta API returned empty message content")
-        parsed = self._validate_parsed(choice, request)
+        if not isinstance(choice, str):
+            choice = ""
+        response_meta = {
+            "response_id": response_id,
+            "finish_reason": finish_reason,
+            "input_tokens": max(0, in_tok),
+            "output_tokens": max(0, out_tok),
+            "reasoning_tokens": max(0, reasoning_tok),
+            "content_chars": len(choice),
+            "content_sha256": hashlib.sha256(choice.encode("utf-8")).hexdigest(),
+        }
+        if not choice.strip():
+            raise ProviderResponseError(
+                "EMPTY_MODEL_RESPONSE", "Meta API returned empty message content",
+                **response_meta,
+            )
+        try:
+            parsed = self._validate_parsed(choice, request)
+        except GatewayError as exc:
+            failure_code = "MODEL_JSON_INVALID" if "not JSON" in str(exc) else "MODEL_SCHEMA_INVALID"
+            raise ProviderResponseError(failure_code, str(exc), **response_meta) from exc
         return ModelResponse(
             provider=self.provider_name,
             real=True,
@@ -405,6 +460,44 @@ class ModelGateway:
         reservation = self._budget.reserve(est_in, est_out, self._rates())
         try:
             response = self._provider.complete(request)
+        except ProviderResponseError as exc:
+            # Provider reported actual usage, even if content fails validation.
+            # Do not mislabel it as unknown cost, and do not persist raw output.
+            has_usage = exc.input_tokens > 0 or exc.output_tokens > 0
+            usage_estimate = (
+                estimate_cost_usd(exc.input_tokens, exc.output_tokens, self._rates())
+                if has_usage else 0.0
+            )
+            if has_usage:
+                self._budget.commit(reservation, exc.input_tokens, exc.output_tokens, usage_estimate)
+            else:
+                self._budget.fail(reservation)
+            self._receipts.append(
+                CallReceipt(
+                    seq=len(self._receipts) + 1,
+                    stage=request.stage,
+                    provider=self._provider.provider_name,
+                    real=self.is_real,
+                    model=getattr(self._provider, "model", "unknown"),
+                    prompt_version=request.prompt_version,
+                    response_id=exc.response_id,
+                    finish_reason=exc.finish_reason,
+                    reasoning_tokens=exc.reasoning_tokens,
+                    content_chars=exc.content_chars,
+                    content_sha256=exc.content_sha256,
+                    failure_code=exc.failure_code,
+                    input_tokens=exc.input_tokens,
+                    output_tokens=exc.output_tokens,
+                    estimated_cost_usd=usage_estimate,
+                    uncertain_cost_usd=0.0 if has_usage else reservation.est_cost_usd,
+                    outcome="failed",
+                )
+            )
+            raise GatewayError(
+                f"{exc.failure_code}: provider response invalid; "
+                f"finish_reason={exc.finish_reason}; output_chars={exc.content_chars}; "
+                f"usage={'reported' if has_usage else 'unavailable'}"
+            ) from exc
         except GatewayError as exc:
             self._budget.fail(reservation)
             self._receipts.append(
@@ -441,6 +534,7 @@ class ModelGateway:
                 input_tokens=response.input_tokens,
                 output_tokens=response.output_tokens,
                 estimated_cost_usd=actual_cost,
+                response_id=response.response_id,
                 outcome="ok",
             )
         )
