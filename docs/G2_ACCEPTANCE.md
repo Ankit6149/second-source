@@ -22,7 +22,7 @@ untouched. G2 adds six modules that build on G0 types:
 | 3 | Discriminating planner through the guard | `src/second_source/planner.py` (closed wire shapes + strict per-item checks, heuristic utility, `ScopeGuard.validate_action` on EVERY action, ranked/rejected split; emits `ProposedAction` lists, the runner's only input) | `tests/test_g2_planner.py` |
 | 4 | Bounded observe→hypothesize→experiment→update loop | `src/second_source/loop.py` (model zone = redacted ledger views only; one proposal = one fresh-process sequence; prediction/outcome reconciliation updates hypothesis statuses; stops `stalled`/`budget`/`guard_blocked`) | `tests/test_g2_loop.py` |
 | 5 | Model-call / token / cost limits with failure booking | `src/second_source/budgets.py` (`reserve` worst case before the call, `commit` actuals on success, `fail` books uncertain spend; per-model pricing; reuses the runner's `BudgetExhausted`) | `tests/test_g2_budgets.py` |
-| 6 | Server-side schema enforcement | `src/second_source/schema_validate.py` (closed-subset checker applied to every parsed model/mock output) | `tests/test_g2_schema.py` |
+| 6 | Structured-output enforcement | `src/second_source/model_gateway.py` (Meta `json_schema` with `strict: false`, full schema instructions and server-side revalidation) plus `schema_validate.py` (closed-subset checker) | `tests/test_g2_schema.py`, `tests/test_g2_gateway.py`, `tests/test_g2_live_entry.py` |
 | 7 | Separation + adversarial edge cases | gateway forbidden-marker guard + HTTPS/host allowlist, `redact()` on all model context, no subprocess/shell in G2, injection-as-data | `tests/test_g2_adversarial.py` |
 | 8 | Real-provider smoke | `tests/test_g2_smoke_real.py` (skips as `BLOCKED_REAL_MODEL` without key + budget) | run with `MODEL_API_KEY` + `SECOND_SOURCE_MAX_RUN_USD` |
 
@@ -38,9 +38,9 @@ variable is positive AND `MODEL_API_KEY` is set.
 | P0-2 multi-action sequences | proposals carry bounded action lists (≤8) with declared `reset_boundary`; every action guard-validated; one sequence per fresh process; `add A → add A → total` demo vs fresh reset | `test_propose_returns_ordered_action_sequence`, `test_second_action_denial_rejects_sequence`, `test_stateful_sequence_vs_fresh_reset`, `test_wrong_reset_boundary_rejected` |
 | P0-3 hypothesis resolution | checkable predictions (`expects_ok` + optional `expects_contains`) reconciled against the final-step output; `supported`/`contradicted` update the store; timeouts/protocol leave hypotheses open (never punished for harness faults) | `test_mock_loop_resolves_hypotheses` (1 supported + 1 contradicted), `test_conclusive_error_contradicts`, `test_timeout_leaves_hypotheses_unresolved`, `test_reconcile_*` |
 | P0-4 billing hard stop | `reserve` worst case before the call; `commit` actuals; `fail` books uncertain spend and a failed receipt; per-model pricing table; unknown models fail closed unless explicit rates are given | `test_failure_books_uncertain_spend`, `test_commit_releases_reservation`, `test_mock_schema_violation_rejected_and_booked`, `test_unknown_model_pricing_fail_closed`, `test_wire_format_and_usage_reconciled` (monkeypatched transport) |
-| P1-5 strict schemas | non-strict `json_object` on the wire (open experiment params cannot satisfy Meta's strict subset) + closed server-side enforcement via `schema_validate`; wire shape vs semantic strictness split documented in `planner.py` | `tests/test_g2_schema.py`, `test_mock_schema_violation_rejected_and_booked` |
+| P1-5 strict schemas | Meta-documented `json_schema` with `strict: false` (open params do not conform to the stricter subset), schema guidance included in prompts, and closed server-side enforcement via `schema_validate` | `tests/test_g2_schema.py`, `test_mock_schema_violation_rejected_and_booked` |
 | P1-6 credential boundary | `MetaProvider` rejects non-HTTPS and non-allowlisted hosts; loopback only with explicit `test_mode=True` (hermetic tests); key travels only on that TLS request | `test_http_endpoint_rejected`, `test_unexpected_host_rejected`, `test_loopback_requires_test_mode`, `test_meta_error_never_echoes_key` |
-| Gate-7 real call + CI | still pending key/budget (below); CI workflow **deferred** — the OAuth token lacks `workflow` scope so GitHub rejects workflow files from this client; re-add in a follow-up with widened scope | — |
+| Gate-7 real call + CI | still pending key/budget (below); GitHub Actions workflow added on integration branch, Linux Python 3.11 + Windows Python 3.12 (first run verified successful, later changes must be checked again) | — |
 
 ## Observed suite result (27 Oct 2026, this branch)
 
@@ -51,11 +51,13 @@ The 2 skips are `test_g2_smoke_real.py` (no key/budget configured).
 
 - No guaranteed billing hard cap: the ledger bounds what WE attempt and books
   uncertainty fail-closed; provider-side charges are authoritative.
-- Strict-mode structured output deferred (see P1-5): server-side validation is
-  the enforcement point until experiment params fit Meta's strict subset.
+- Provider uses Meta structured output with `strict: false` for flexible JSON schema,
+  plus server-side validation. A live call must confirm compatibility for this account.
 - Hypothesis contradiction is single-step (final observation vs prediction);
   multi-step trajectory attribution is future work.
-- No CI yet: the workflow file was deferred (token lacks `workflow` scope).
+- GitHub Actions CI exists on the integration branch. The first run (ID 40555328796)
+  was independently verified successful on Linux/Python 3.11 and Windows/Python 3.12;
+  recheck subsequent run results before marking the final branch green.
 - Cross-sequence state persistence is unavailable on the current fixture by
   design (fresh process per sequence); the loop never claims otherwise.
 
@@ -63,14 +65,25 @@ The 2 skips are `test_g2_smoke_real.py` (no key/budget configured).
 
 1. `python -m pytest` — full suite green (real smoke reports SKIPPED).
 2. Set `MODEL_API_KEY` and `SECOND_SOURCE_MAX_RUN_USD=0.25`.
-3. `python -m pytest tests/test_g2_smoke_real.py -v` — record model id,
-   response id, latency, tokens, estimated cost below. Must include one
-   structured hypothesize call validated against `HYPOTHESIZE_JSON_SCHEMA`
-   and one guard-accepted experiment executed with its observation recorded.
-4. Attach the receipt + loop report + verifier `model_feedback()` output
-   (observed values only).
+3. `python -m pytest tests/test_g2_smoke_real.py -v` — check a real Meta ping
+   and schema-constrained hypothesis request; record only redacted receipt data.
+4. `python -m second_source.live_experiment --max-usd 0.25 --rounds 1` —
+   run one **real Muse-selected in-scope experiment** against the owned fixture.
+   This requires BOTH `MODEL_API_KEY` and `SECOND_SOURCE_MAX_RUN_USD=0.25`
+   in the local trusted environment and writes a sanitized report beneath `.runs/`.
+   The command exits nonzero if the model cannot propose a safe executable experiment.
+5. Attach the sanitized receipt, scope-run report and verifier `model_feedback()`
+   summary (observed values only). Do not commit keys, raw private data or gold cases.
 
 ## Real-usage record (empty until observed)
 
 - Meta usage this session: **none — zero billable requests sent.**
 - Receipts: none.
+
+## Integration acceptance addendum (27 Oct 2026)
+
+- The owned fixture now has `fixtures/owned_ledger/public_contract.json`, listing only operator-approved CLI signatures; hidden business rules remain outside model context.
+- The planner may pass this public schema to Muse; raw reference source and evaluator-only cases remain outside prompts.
+- An explicit operator entrypoint `second_source.live_experiment` now bridges real Muse reasoning to bounded, approved reference execution. Its exit status distinguishes observed experiments from missing-key and model failures.
+- Test coverage adds no-credential, overspend rejection and schema-prompt assertions in `tests/test_g2_live_entry.py`.
+- These changes are not proof of a live model run; G2 stays **NOT COMPLETE** until an observed real receipt and an executed experiment are recorded.
