@@ -68,6 +68,37 @@ COMMAND_SCHEMA: dict[str, Any] = {
     },
 }
 
+def _command_schema_with_params(
+    properties: dict[str, Any],
+    required: list[str] | None = None,
+) -> dict[str, Any]:
+    schema = {
+        **COMMAND_SCHEMA,
+        "properties": dict(COMMAND_SCHEMA["properties"]),
+    }
+    param_schema: dict[str, Any] = {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": properties,
+    }
+    if required:
+        param_schema["required"] = required
+    schema["properties"]["params"] = param_schema
+    return schema
+
+
+ADD_COMMAND_SCHEMA = _command_schema_with_params(
+    {"label": PARAM_SCHEMA, "amount": PARAM_SCHEMA},
+    required=["label", "amount"],
+)
+LIST_COMMAND_SCHEMA = _command_schema_with_params({})
+TOTAL_COMMAND_SCHEMA = _command_schema_with_params({})
+REMOVE_COMMAND_SCHEMA = _command_schema_with_params(
+    {"id": PARAM_SCHEMA},
+    required=["id"],
+)
+
+
 CANDIDATE_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
@@ -94,10 +125,10 @@ CANDIDATE_JSON_SCHEMA: dict[str, Any] = {
             "additionalProperties": False,
             "required": ["add", "list", "total", "remove"],
             "properties": {
-                "add": COMMAND_SCHEMA,
-                "list": COMMAND_SCHEMA,
-                "total": COMMAND_SCHEMA,
-                "remove": COMMAND_SCHEMA,
+                "add": ADD_COMMAND_SCHEMA,
+                "list": LIST_COMMAND_SCHEMA,
+                "total": TOTAL_COMMAND_SCHEMA,
+                "remove": REMOVE_COMMAND_SCHEMA,
             },
         },
     },
