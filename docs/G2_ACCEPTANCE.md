@@ -86,6 +86,15 @@ The 2 skips are `test_g2_smoke_real.py` (no key/budget configured).
 - Accounting reserve recorded as **uncertain**: **$0.006048**. This is **not proof of a provider charge**.
 - The operator did not share their key. Updated gateway now requests low reasoning effort and larger completion budgets; it reports sanitized `finish_reason`, token usage, and response metadata if validation fails. Re-run only after these changes pass CI and with explicit user approval. This change is a mitigation, not proof the root cause was truncation.
 
+## Third owner-run evidence — 27 October 2026
+
+- Run ID: `real-g2-20261027T190454Z-f43553c6`.
+- Observed result: `REAL_EXPERIMENT_INCOMPLETE`; `guard_blocked`; two *successful* model calls, zero reference experiment actions.
+- Internal estimated provider usage: **$0.012054**, uncertain spend **$0**. Provider billing has not been independently checked.
+- Model stage likely completed hypothesis and experiment proposal; the exact deterministic rejection codes remain in the **operator-local** `.runs/<run_id>/run_report.json` and have not been supplied to this review. Do not claim the specific rejection is known.
+- G2 still **NOT ACCEPTED**. New code adds explicit owner-CLI scope hints and **at most one model-proposed corrective experiment** after the first rejected proposal. Budget remains bounded by an explicit `max_model_calls` limit and `SECOND_SOURCE_MAX_RUN_USD`.
+- Never substitute a hard-coded fallback sequence as if Muse selected it; the scope guard validates every model-selected action.
+
 ## Latest status
 
 **G2 NOT COMPLETE.** The first real attempt made progress past the key/budget gate but failed before experiment execution. New code distinguishes `model_error` from `guard_blocked` and outputs a safe failure category; re-run only after confirming the precise error from the existing report.
