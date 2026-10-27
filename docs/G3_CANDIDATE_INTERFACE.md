@@ -73,7 +73,7 @@ never recomputes digests; manifest digest == loaded digest, asserted by test.
 | Input | Candidate output | Status |
 |---|---|---|
 | `actions` not a list / sequence over cap | `protocol_error`, no observations | harness fault |
-| Action not a JSON object | `{ok:false,error:invalid_json}` | `target_error` |
+| Any non-object action in a sequence | `protocol_error`, no observations | harness fault / outside dict-only `ReferenceProtocol` |
 | Missing/non-string `command` | `{ok:false,error:<unknown_command_error>}` | `target_error` |
 | Unknown command label | `{ok:false,error:<unknown_command_error>}` | `target_error` |
 | Param missing/invalid per declaration | `{ok:false,error:<param.error>}` | `target_error` |
@@ -82,11 +82,10 @@ never recomputes digests; manifest digest == loaded digest, asserted by test.
 | Record store over cap | `{ok:false,error:resource_exhausted}` | `target_error` |
 | Serialized output over byte cap | `protocol_error` (prior observations kept) | harness fault |
 
-Malformed inputs NEVER raise: every action yields an observation or a
-harness-level `protocol_error` sequence (pinned by fuzz test). The
-action-level rows mirror the reference fixture's observable mappings; a
-divergence there is a candidate defect, not a harness difference. The
-harness-level rows are fail-closed guards on both sides.
+Dict-shaped malformed inputs never raise: each in-contract action yields an
+observation or the sequence fails closed at the harness level. Non-dict JSON
+values are outside `SealedCase.actions` / `ReferenceProtocol`; both trusted
+sides must reject such a sequence as `protocol_error` before comparison.
 
 ## How to evaluate
 

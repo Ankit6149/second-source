@@ -25,8 +25,6 @@ MAX_SEQUENCE_ACTIONS = 64
 MAX_RECORDS = 10_000
 MAX_OUTPUT_BYTES = 131_072
 RESOURCE_EXHAUSTED = "resource_exhausted"
-# Wire-compat literal mirroring the reference fixture for non-object actions.
-INVALID_JSON = "invalid_json"
 
 _ERROR_STATUS = "target_error"
 
@@ -78,6 +76,17 @@ class CandidateInterpreter:
                 status="protocol_error",
                 stderr=f"sequence exceeds {self._max_actions} actions",
             )
+        # ReferenceProtocol and SealedCase define actions as JSON objects.
+        # Reject an out-of-contract sequence before executing any step so the
+        # behavior matches CLIReferenceAdapter, which cannot construct a
+        # trusted Observation with a non-dict input_action.
+        if any(not isinstance(action, dict) for action in actions):
+            return SequenceResult(
+                sequence_id=sequence_id or uuid.uuid4().hex,
+                observations=(),
+                status="protocol_error",
+                stderr="actions must contain JSON objects",
+            )
         seq_id = sequence_id or uuid.uuid4().hex
         observations: list[Observation] = []
         for index, action in enumerate(actions):
@@ -120,12 +129,10 @@ class CandidateInterpreter:
     # -- operation allowlist ------------------------------------------------
 
     def _apply(self, action: Any) -> dict[str, Any]:
-        # Wire-compatibility mirror of the reference fixture: a JSON value
-        # that is not an object is an invalid_json observation (target_error),
-        # and a missing/non-string command falls through to unknown_command.
-        # Neither case is a harness fault, so neither is protocol_error.
         if not isinstance(action, dict):
-            return {"ok": False, "error": INVALID_JSON}
+            raise CandidateError("each action must be a JSON object")
+        # Within the dict-only ReferenceProtocol, missing/non-string commands
+        # mirror the owned fixture's unknown_command behavior.
         command = action.get("command")
         if not isinstance(command, str):
             return {"ok": False, "error": self._spec.unknown_command_error}

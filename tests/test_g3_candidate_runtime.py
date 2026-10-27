@@ -123,16 +123,16 @@ def test_unknown_command(cli_scope):
     }
 
 
-def test_malformed_action_invalid_json_observation(cli_scope):
-    # Mirrors the reference fixture: a non-object JSON value is an
-    # invalid_json observation, not a harness protocol error.
+def test_non_object_action_is_protocol_error(cli_scope):
+    # SealedCase/ReferenceProtocol actions are dict-only. CLIReferenceAdapter
+    # cannot form a trusted Observation for non-dict input_action values, so
+    # the candidate fails the whole sequence closed before executing any step.
     interp = interpreter(cli_scope)
-    result = interp.execute_sequence(["not-a-dict", 42, None], sequence_id="s")
-    assert result.status == "ok"
-    assert [o.output for o in result.observations] == [
-        {"ok": False, "error": "invalid_json"}
-    ] * 3
-    assert all(o.status == "target_error" for o in result.observations)
+    result = interp.execute_sequence(
+        [{"command": "list"}, "not-a-dict"], sequence_id="s"
+    )
+    assert result.status == "protocol_error"
+    assert result.observations == ()
 
 
 def test_missing_command_is_unknown_command(cli_scope):
@@ -212,16 +212,19 @@ def test_state_record_cap(cli_scope):
     }
 
 
-def test_garbage_actions_never_crash(cli_scope):
-    """Fuzz the wire boundary: every input yields a valid SequenceResult."""
+def test_dict_wire_garbage_never_crashes(cli_scope):
+    """Fuzz only the dict-shaped action boundary defined by ReferenceProtocol."""
     interp = interpreter(cli_scope)
     garbage = [
-        None, 0, -1, 10**30, "", "add", [], {}, [[]], {"command": []},
-        {"command": "add"}, {"command": "add", "params": None},
+        {}, {"command": []}, {"command": "add"},
+        {"command": "add", "params": None},
         {"command": "add", "params": {"label": ["x"], "amount": {}}},
         {"command": "ADD"}, {"COMMAND": "add", "label": "A", "amount": 1},
-        {"command": "add", "label": "A", "amount": 1, "extra": {"deep": [1, {"x": None}]}},
-        "é" * 5000, {"command": "list", "params": {"unexpected": 1}},
+        {
+            "command": "add", "label": "A", "amount": 1,
+            "extra": {"deep": [1, {"x": None}]},
+        },
+        {"command": "list", "params": {"unexpected": 1}},
     ]
     result = interp.execute_sequence(garbage, sequence_id="fuzz")
     assert result.status == "ok"
