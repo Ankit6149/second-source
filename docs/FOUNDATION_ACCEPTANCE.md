@@ -8,7 +8,7 @@
 | Component | Path | What is actually implemented |
 |---|---|---|
 | ScopeContract | `src/second_source/contracts.py` | Strict typed target/observation/implementation/exclusion scope, budgets, actor constraints, CLI command identifiers |
-| ScopeGuard | `src/second_source/scope_guard.py` | Reject missing permission mappings, excluded routes, foreign origins, role/auth violations, unapproved external effects, out-of-scope candidate modules, unsafe generated paths |
+| ScopeGuard | `src/second_source/scope_guard.py` | Reject missing permission mappings, excluded routes, foreign origins, role/auth violations, unapproved query strings/external effects, out-of-scope candidate modules, unsafe generated paths |
 | Original reference fixture | `fixtures/owned_ledger/reference.py` | Stateful JSONL program with deterministic fresh-process reset; duplicate rules, numeric constraints, item IDs and removal |
 | CLI target adapter | `src/second_source/reference.py` | Fixed trusted process argv, no shell, bounded time/output, strict JSONL parsing, stable per-sequence observations |
 | Safe experiment boundary | `src/second_source/runner.py` | Validates *all* proposed actions before invoking the reference, blocks command overriding, counts attempts against budget |
@@ -25,7 +25,7 @@ python -m pytest
 python -m second_source.demo
 ```
 
-**Observed results in authoring environment:** Python 3.13.5, pytest 9.0.2: **42 passed**; deterministic verifier demo **1 passed / 3 failed / 0 indeterminate**. No model calls, billable services, deployments or candidate generation were performed. Python 3.11/Windows are declared compatibility targets but not yet exercised here.
+**Observed results in authoring environment:** Python 3.13.5, pytest 9.0.2: **43 passed**; deterministic verifier demo **1 passed / 3 failed / 0 indeterminate**. No model calls, billable services, deployments or candidate generation were performed. Python 3.11/Windows are declared compatibility targets but not yet exercised here.
 
 ## Explicit blockers and limitations
 
