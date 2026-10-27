@@ -133,3 +133,104 @@ def test_reconcile_harness_failure_unresolved():
     from second_source.planner import Prediction
     preds = [Prediction("a", True, None)]
     assert reconcile_predictions(preds, {}, "timeout") == {"a": "unresolved"}
+
+
+
+def test_real_muse_descriptive_mutation_phrase_uses_trusted_owned_manifest(cli_scope, reference, tmp_path):
+    """Regression: observed real Muse phrase must not block a genuine allowed local experiment."""
+    import json
+    from pathlib import Path
+    from second_source.budgets import RunBudget
+    from second_source.model_gateway import MockProvider, ModelGateway
+    from second_source.hypotheses import HypothesisStore
+    from second_source.planner import ExperimentPlanner
+    from second_source.scope_guard import ScopeGuard
+    from second_source.contracts import SideEffect
+
+    manifest = json.loads(
+        (Path(__file__).resolve().parents[1] / "fixtures/owned_ledger/public_contract.json").read_text()
+    )
+    budget = RunBudget(cli_scope.budgets)
+    store = HypothesisStore()
+    mock = responder(
+        actions=[add_action("Case", 5), add_action("Case", 5)],
+        predictions=[pred("hyp-1", False, "duplicate_label"), pred("hyp-2", True)],
+        side_effect="mutating: creates two ledger records within isolated session",
+    )
+    planner = ExperimentPlanner(
+        ModelGateway(MockProvider(responder=mock), budget),
+        ScopeGuard(cli_scope), store, budget, cli_scope,
+        public_contract=manifest,
+    )
+    evidence = [{"digest": "d1", "observation": {}}]
+    store.add_batch(planner.hypothesize(evidence, frozenset({"d1"})))
+    result = planner.propose(
+        evidence, store.competing(), "REQ-LEDGER",
+        reference_remaining=10, model_remaining=5,
+    )
+    assert len(result.ranked) == 1
+    assert result.rejected == ()
+    assert all(a.side_effect == SideEffect.LOCAL_MUTATION for a in result.ranked[0].actions)
+    assert result.ranked[0].decision_codes == ("ALLOWED", "ALLOWED")
+
+
+def test_trusted_manifest_never_downgrades_external_or_prohibited(cli_scope, reference, tmp_path):
+    """An explicit model declaration of external/sensitive still triggers the guard."""
+    import json
+    from pathlib import Path
+    from second_source.budgets import RunBudget
+    from second_source.model_gateway import MockProvider, ModelGateway
+    from second_source.hypotheses import HypothesisStore
+    from second_source.planner import ExperimentPlanner
+    from second_source.scope_guard import ScopeGuard
+
+    manifest = json.loads(
+        (Path(__file__).resolve().parents[1] / "fixtures/owned_ledger/public_contract.json").read_text()
+    )
+    for effect, expected_code in (
+        ("external", "HUMAN_APPROVAL_REQUIRED"),
+        ("prohibited", "SENSITIVE_ACTION_BLOCKED"),
+    ):
+        budget = RunBudget(cli_scope.budgets)
+        store = HypothesisStore()
+        p = ExperimentPlanner(
+            ModelGateway(MockProvider(responder=responder(side_effect=effect)), budget),
+            ScopeGuard(cli_scope), store, budget, cli_scope,
+            public_contract=manifest,
+        )
+        obs = [{"digest": "d1", "observation": {}}]
+        store.add_batch(p.hypothesize(obs, frozenset({"d1"})))
+        plan = p.propose(obs, store.competing(), "REQ-LEDGER",
+                         reference_remaining=10, model_remaining=5)
+        assert plan.ranked == ()
+        assert expected_code in plan.rejected[0][1]
+
+
+def test_public_manifest_rejects_unknown_command_even_with_verbose_effect(cli_scope, reference, tmp_path):
+    import json
+    from pathlib import Path
+    from second_source.budgets import RunBudget
+    from second_source.model_gateway import MockProvider, ModelGateway
+    from second_source.hypotheses import HypothesisStore
+    from second_source.planner import ExperimentPlanner
+    from second_source.scope_guard import ScopeGuard
+
+    manifest = json.loads(
+        (Path(__file__).resolve().parents[1] / "fixtures/owned_ledger/public_contract.json").read_text()
+    )
+    budget = RunBudget(cli_scope.budgets)
+    store = HypothesisStore()
+    p = ExperimentPlanner(
+        ModelGateway(MockProvider(responder=responder(
+            actions=[{"command": "shell", "params": {"args": "anything"}}],
+            side_effect="mutating: ambiguous",
+        )), budget),
+        ScopeGuard(cli_scope), store, budget, cli_scope,
+        public_contract=manifest,
+    )
+    obs = [{"digest": "d1", "observation": {}}]
+    store.add_batch(p.hypothesize(obs, frozenset({"d1"})))
+    plan = p.propose(obs, store.competing(), "REQ-LEDGER",
+                     reference_remaining=10, model_remaining=5)
+    assert plan.ranked == ()
+    assert "COMMAND_NOT_ALLOWED" in plan.rejected[0][1]
