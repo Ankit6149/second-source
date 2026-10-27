@@ -42,7 +42,10 @@ class CandidateInterpreter:
     ) -> None:
         if max_actions < 1 or max_records < 1 or max_output_bytes < 512:
             raise ValueError("invalid candidate runtime resource limits")
-        self._spec = spec
+        # Detach execution semantics from caller-owned mutable nested mappings.
+        # CandidateSpec is frozen at the model level, but Python dict values are
+        # otherwise still mutable aliases.
+        self._spec = CandidateSpec.model_validate(spec.model_dump(mode="json"))
         self._max_actions = max_actions
         self._max_records = max_records
         self._max_output_bytes = max_output_bytes
