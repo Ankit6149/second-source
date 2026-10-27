@@ -83,9 +83,9 @@ def test_context_redacts_secrets():
     ctx = build_generation_context(
         scope_goal="reconstruct ledger behavior",
         requirement_ids=["REQ-LEDGER"],
-        allowed_commands=["add"],
+        allowed_commands=["add", "list", "total", "remove"],
         excluded_subsystems=[],
-        public_command_manifest={},
+        public_command_manifest=json.loads(PUBLIC.read_text(encoding="utf-8")),
         redacted_views=[
             {
                 "digest": "b" * 64,
