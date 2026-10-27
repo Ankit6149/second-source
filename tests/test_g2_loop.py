@@ -142,3 +142,62 @@ def test_failed_model_request_is_not_reported_as_scope_guard_rejection(cli_scope
     assert report.real_model_calls == 0
     assert report.rounds[-1].note.startswith("model stop:")
     assert len(list(ledger.root.glob("*.json"))) == 2  # seed only
+
+
+def test_live_pattern_corrects_denied_first_proposal_with_one_model_retry(cli_scope, reference, tmp_path):
+    """First Muse proposal is valid JSON but disallowed; second is model-selected."""
+    import json
+    from g2_helpers import hyp_doc, propose_doc
+
+    stages = []
+
+    def adaptive(request):
+        stages.append(request.stage)
+        context = json.loads(next(m["content"] for m in request.messages if m["role"] == "user"))
+        if request.stage == "hypothesize":
+            return {"content": hyp_doc(("hyp-a", "hyp-b"), context["evidence"][0]["digest"])}
+        ids = [h["id"] for h in context["extra"]["hypotheses"]]
+        if "prior_rejection_codes" not in context["extra"]:
+            bad = propose_doc(
+                "first-denied", ids, [add_action("X", 5)],
+                [pred("hyp-a", True), pred("hyp-b", False)], side_effect="external",
+            )
+            return {"content": {"proposals": [bad]}}
+        assert context["extra"]["prior_rejection_codes"] == ["HUMAN_APPROVAL_REQUIRED"]
+        good = propose_doc(
+            "model-corrected", ids,
+            [add_action("A", 5), add_action("A", 5)],
+            [pred("hyp-a", False, "duplicate_label"), pred("hyp-b", True)],
+            side_effect="owned_mutation",
+        )
+        return {"content": {"proposals": [good]}}
+
+    loop, ledger, budget, _, store = wiring(
+        cli_scope, reference, tmp_path, adaptive, max_rounds=1,
+    )
+    report = loop.run(list(SEED))
+    assert stages == ["hypothesize", "propose", "propose"]
+    assert report.stop_reason == "stalled"
+    assert report.mock_model_calls == 3
+    assert budget.attempts == 3
+    assert report.rounds[0].proposal_id == "model-corrected"
+    assert report.rounds[0].actions_executed == 2
+    assert report.resolution_counts["supported"] == 1
+    assert report.resolution_counts["contradicted"] == 1
+    assert len(list(ledger.root.glob("*.json"))) >= 4
+
+
+def test_retry_respects_model_budget_and_does_not_execute_denied_proposal(cli_scope, reference, tmp_path):
+    from second_source.budgets import RunBudget
+
+    loop, ledger, budget, _, _ = wiring(
+        cli_scope, reference, tmp_path,
+        responder(actions=[{"command": "unapproved", "params": {}}]),
+        budgets=cli_scope.budgets.model_copy(update={"max_model_calls": 2}),
+        max_rounds=1,
+    )
+    report = loop.run(list(SEED))
+    assert report.stop_reason == "guard_blocked"
+    assert report.mock_model_calls == 2
+    assert budget.attempts == 2
+    assert len(list(ledger.root.glob("*.json"))) == 2
