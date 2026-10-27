@@ -40,3 +40,7 @@ jobs:
         run: python -m pytest -q
       - name: Deterministic demonstration
         run: python -m second_source.demo
+      - name: Verify operator Windows bootstrap script
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap-windows.ps1
