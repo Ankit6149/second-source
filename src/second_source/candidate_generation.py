@@ -19,10 +19,11 @@ remain physically outside the generation path.
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, Literal, Sequence
 
 from .candidate_spec import LoadedCandidate, load_candidate
-from .contracts import ScopeContract, StrictModel
+from .contracts import Observation, ScopeContract, StrictModel
 from .evidence import redact
 from .model_gateway import GatewayError, ModelGateway, ModelRequest, ModelResponse
 
@@ -164,6 +165,13 @@ def build_generation_context(
 
 
 def _validate_context_shape(context: dict[str, Any]) -> dict[str, Any]:
+    """Validate the complete nested model-visible projection, then redact it.
+
+    This is an admission boundary, not merely a top-level key check: evidence
+    must be a real Observation envelope keyed by a ledger digest; hypotheses
+    may cite only admitted evidence digests; and the public command manifest
+    must exactly match the scope command allowlist.
+    """
     if not isinstance(context, dict) or set(context) != _CONTEXT_KEYS:
         raise GatewayError(
             "synthesize: generation context must contain only "
@@ -175,14 +183,100 @@ def _validate_context_shape(context: dict[str, Any]) -> dict[str, Any]:
             "synthesize: scope context must contain only "
             + ", ".join(sorted(_SCOPE_KEYS))
         )
-    if not isinstance(context.get("public_commands"), dict):
+
+    requirement_ids = scope.get("requirement_ids")
+    allowed_commands = scope.get("allowed_commands")
+    excluded_subsystems = scope.get("excluded_subsystems")
+    if (
+        not isinstance(scope.get("goal"), str)
+        or not scope["goal"].strip()
+        or not isinstance(requirement_ids, list)
+        or not requirement_ids
+        or not all(isinstance(x, str) and x for x in requirement_ids)
+        or not isinstance(allowed_commands, list)
+        or not allowed_commands
+        or not all(isinstance(x, str) and x for x in allowed_commands)
+        or not isinstance(excluded_subsystems, list)
+        or not all(isinstance(x, str) for x in excluded_subsystems)
+    ):
+        raise GatewayError("synthesize: malformed scope projection")
+
+    public = context.get("public_commands")
+    if not isinstance(public, dict):
         raise GatewayError("synthesize: public_commands must be an object")
-    if not isinstance(context.get("evidence"), list):
-        raise GatewayError("synthesize: evidence must be a list")
-    if not isinstance(context.get("hypotheses"), list):
-        raise GatewayError("synthesize: hypotheses must be a list")
-    # Defense in depth: redact again at the final model boundary, so a caller
-    # cannot bypass build_generation_context by mutating/injecting a secret.
+    if set(public) != {
+        "version", "description", "transport", "reset_boundary", "commands"
+    }:
+        raise GatewayError("synthesize: malformed public command manifest")
+    if public.get("transport") != "stdin_jsonl":
+        raise GatewayError("synthesize: unexpected public transport")
+    if public.get("reset_boundary") != "fresh_process_per_sequence":
+        raise GatewayError("synthesize: unexpected reset boundary")
+    commands = public.get("commands")
+    if not isinstance(commands, dict) or set(commands) != set(allowed_commands):
+        raise GatewayError(
+            "synthesize: public commands must exactly match allowed_commands"
+        )
+    for name, definition in commands.items():
+        if not isinstance(definition, dict):
+            raise GatewayError(f"synthesize: malformed public command {name!r}")
+        if set(definition) != {"params", "purpose", "side_effect"}:
+            raise GatewayError(f"synthesize: malformed public command {name!r}")
+        if not isinstance(definition.get("params"), dict):
+            raise GatewayError(f"synthesize: malformed params for {name!r}")
+        if definition.get("side_effect") not in {
+            "read_only", "owned_mutation", "external", "prohibited"
+        }:
+            raise GatewayError(f"synthesize: malformed side_effect for {name!r}")
+
+    evidence = context.get("evidence")
+    if not isinstance(evidence, list) or not evidence:
+        raise GatewayError("synthesize: evidence must be a non-empty list")
+    evidence_ids: set[str] = set()
+    for item in evidence:
+        if not isinstance(item, dict) or set(item) != {"digest", "observation"}:
+            raise GatewayError("synthesize: malformed evidence view")
+        digest = item.get("digest")
+        if (
+            not isinstance(digest, str)
+            or re.fullmatch(r"[0-9a-f]{64}", digest) is None
+        ):
+            raise GatewayError("synthesize: invalid evidence digest")
+        try:
+            Observation.model_validate(item.get("observation"))
+        except Exception as exc:
+            raise GatewayError("synthesize: invalid observation envelope") from exc
+        evidence_ids.add(digest)
+
+    hypotheses = context.get("hypotheses")
+    if not isinstance(hypotheses, list) or not hypotheses:
+        raise GatewayError("synthesize: hypotheses must be a non-empty list")
+    allowed_hypothesis_keys = {
+        "id", "statement", "evidence_ids", "status",
+        "alternatives", "unresolved_questions",
+    }
+    for hyp in hypotheses:
+        if not isinstance(hyp, dict) or not set(hyp).issubset(allowed_hypothesis_keys):
+            raise GatewayError("synthesize: malformed hypothesis view")
+        if not isinstance(hyp.get("id"), str) or not hyp["id"]:
+            raise GatewayError("synthesize: hypothesis id missing")
+        if not isinstance(hyp.get("statement"), str) or not hyp["statement"]:
+            raise GatewayError("synthesize: hypothesis statement missing")
+        cited = hyp.get("evidence_ids")
+        if not isinstance(cited, (list, tuple, set, frozenset)) or not cited:
+            raise GatewayError("synthesize: hypothesis evidence_ids missing")
+        if not all(isinstance(x, str) for x in cited):
+            raise GatewayError("synthesize: malformed hypothesis evidence_ids")
+        if not set(cited).issubset(evidence_ids):
+            raise GatewayError("synthesize: hypothesis cites unavailable evidence")
+        status = hyp.get("status", "hypothesized")
+        if status not in {
+            "hypothesized", "supported", "contradicted", "unresolved"
+        }:
+            raise GatewayError("synthesize: malformed hypothesis status")
+
+    # Defense in depth: redact again at the final model boundary so later
+    # caller mutation cannot bypass the context builder.
     return redact(context)
 
 
