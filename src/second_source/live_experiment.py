@@ -65,7 +65,7 @@ def create_scope(max_usd: float, max_rounds: int) -> ScopeContract:
         ),
         budgets=Budgets(
             max_reference_experiments=max_rounds + 2,
-            max_model_calls=2 * max_rounds,
+            max_model_calls=2 * max_rounds + 1,  # one guarded corrective propose
             max_wall_seconds=240,
             max_estimated_model_spend_usd=max_usd,
         ),
