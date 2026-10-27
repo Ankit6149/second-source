@@ -4,7 +4,7 @@ import json
 
 from second_source.budgets import RunBudget
 from second_source.contracts import Budgets
-from second_source.live_experiment import ROOT, create_scope, main
+from second_source.live_experiment import ROOT, create_scope, main, fixture_verifier_summary
 from second_source.model_gateway import MockProvider, ModelGateway, ModelRequest
 
 
@@ -64,3 +64,13 @@ def test_model_gateway_instructs_json_schema_before_mock_call():
     assert "JSON Schema:" in observed[0].messages[0]["content"]
     assert '"required":["ok"]' in observed[0].messages[0]["content"]
     assert observed[0].messages[1]["content"] == "A public test only"
+
+
+def test_independent_harness_negative_control(reference):
+    result = fixture_verifier_summary(reference)
+    assert result["kind"] == "trusted_harness_negative_control_not_generated_candidate"
+    feedback = result["model_feedback"]
+    assert feedback["total"] == 2
+    assert feedback["passed"] >= 1
+    assert feedback["failed"] >= 1
+    assert "case_id" not in json.dumps(feedback)
