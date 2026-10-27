@@ -1,0 +1,29 @@
+{
+  "version": "1",
+  "description": "Public, owner-authored CLI call signatures only. Business rules deliberately omitted.",
+  "transport": "stdin_jsonl",
+  "reset_boundary": "fresh_process_per_sequence",
+  "commands": {
+    "add": {
+      "params": {
+        "label": "string",
+        "amount": "integer"
+      },
+      "purpose": "create a record"
+    },
+    "list": {
+      "params": {},
+      "purpose": "list records"
+    },
+    "total": {
+      "params": {},
+      "purpose": "return count and aggregate amount"
+    },
+    "remove": {
+      "params": {
+        "id": "string"
+      },
+      "purpose": "remove record by identifier"
+    }
+  }
+}
