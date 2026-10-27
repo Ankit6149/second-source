@@ -228,12 +228,15 @@ class ExperimentPlanner:
         hypotheses: HypothesisStore,
         budget: RunBudget,
         contract: ScopeContract,
+        public_contract: dict[str, Any] | None = None,
     ) -> None:
         self._gateway = gateway
         self._guard = guard
         self._hypotheses = hypotheses
         self._budget = budget
         self._contract = contract
+        # Operator-authored public action signatures, NEVER reference source.
+        self._public_contract = public_contract or {}
         self._executed_signatures: set[str] = set()
 
     @property
@@ -248,6 +251,7 @@ class ExperimentPlanner:
             "allowed_commands": sorted(self._contract.observation.allowed_commands),
             "excluded_subsystems": sorted(self._contract.exclusions.subsystems),
             "reset_boundary": RESET_BOUNDARY,
+            "public_command_contract": redact(self._public_contract),
             "evidence": [redact(dict(item)) for item in evidence],
             "budget_remaining": {
                 "model_calls": self._budget.model_calls_remaining,
