@@ -25,6 +25,7 @@ def test_public_route_allowed(web_scope):
     ("/%2e%2e/admin", "UNSAFE_URL"),
     ("/%252e%252e/login", "UNSAFE_URL"),
     ("/pricing#secret", "UNSAFE_URL"),
+    ("/pricing?redirect=https://evil.net", "UNSAFE_URL"),
     ("/pricing\\admin", "UNSAFE_URL"),
 ])
 def test_reject_unsafe_or_excluded_targets(web_scope, target, expected_code):
