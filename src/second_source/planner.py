@@ -119,7 +119,10 @@ PROPOSE_JSON_SCHEMA: dict[str, Any] = {
                     "actions": {"type": "array", "minItems": 1, "maxItems": MAX_SEQUENCE_ACTIONS, "items": ACTION_SCHEMA},
                     "predictions": {"type": "array", "minItems": 1, "items": PREDICTION_SCHEMA},
                     "expected_information_gain": {"type": "string"},
-                    "side_effect": {"type": "string", "minLength": 1},
+                    "side_effect": {
+                        "type": "string", "minLength": 1,
+                        "description": "A category only: read_only, owned_mutation, external, prohibited. No prose.",
+                    },
                     "role": {"type": "string", "minLength": 1},
                     "requires_auth": {"type": "boolean"},
                     # Structurally tolerated so one smuggled field cannot kill
@@ -398,9 +401,40 @@ class ExperimentPlanner:
             raise ValueError(f"actions exceed bound of {MAX_SEQUENCE_ACTIONS}")
         if not isinstance(raw_predictions, list) or not raw_predictions:
             raise ValueError("predictions must be a non-empty list")
-        side_effect = MODEL_SIDE_EFFECTS.get(str(raw.get("side_effect", "read_only")))
-        if side_effect is None:
-            raise ValueError(f"unknown side_effect {raw.get('side_effect')!r}")
+        # A model can describe effects imprecisely, but must never be the
+        # authority classifying the risk of a trusted fixture command.
+        # If the owner published command-level effects, derive that risk
+        # from the PUBLIC contract. Unknown commands still reach ScopeGuard
+        # only with known effects and are denied there.
+        declared_label = raw.get("side_effect", "read_only")
+        model_effect = MODEL_SIDE_EFFECTS.get(declared_label) if isinstance(declared_label, str) else None
+        known_commands = self._public_contract.get("commands")
+        if isinstance(known_commands, dict) and known_commands:
+            trusted_labels: list[str] = []
+            for step in raw_actions:
+                if not isinstance(step, dict):
+                    raise ValueError("each action must be an object")
+                command = step.get("command")
+                policy = known_commands.get(command) if isinstance(command, str) else None
+                if not isinstance(policy, dict):
+                    raise ValueError("COMMAND_NOT_ALLOWED: missing trusted command policy")
+                label = policy.get("side_effect")
+                if label not in ("read_only", "owned_mutation", "external", "prohibited"):
+                    raise ValueError("SIDE_EFFECT: trusted command policy missing a valid effect")
+                trusted_labels.append(label)
+            # Maximum risk is determined by the owner. An explicitly
+            # more-restrictive model category cannot downgrade this policy.
+            priority = {"read_only": 0, "owned_mutation": 1, "external": 2, "prohibited": 3}
+            authoritative = max(trusted_labels, key=priority.__getitem__)
+            if model_effect in (SideEffect.EXTERNAL_MUTATION, SideEffect.SENSITIVE):
+                # Explicit external/sensitive request still denied by guard.
+                side_effect = model_effect
+            else:
+                side_effect = MODEL_SIDE_EFFECTS[authoritative]
+        else:
+            side_effect = model_effect
+            if side_effect is None:
+                raise ValueError("SIDE_EFFECT: use a recognized side_effect category")
         requirement = str(raw.get("requirement_id", requirement_id))
         role = str(raw.get("role", "guest"))
         requires_auth = bool(raw.get("requires_auth", False))
