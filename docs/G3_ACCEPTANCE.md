@@ -1,49 +1,71 @@
-# G3 Acceptance Log — independently generated candidate (MOCK ONLY)
+# G3 Acceptance Log — candidate synthesis mechanism (MOCK/TRUSTED CONTROL ONLY)
 
 **Gate under test:** G3 contract — a real Muse model generates a runnable
 candidate spec from authorized black-box observations; a trusted runtime
 executes it; the independent verifier scores it on a sealed suite.
 
 **Verdict: G3 NOT DEMONSTRATED.** No real candidate generation has occurred.
-Everything below is mock/trusted-fixture evidence for the G3-A mechanism,
-plus the exact interface Codex needs for G3-B. Nothing here is Muse output.
+Everything in this branch is engineering evidence for the G3-A mechanism.
+Nothing below is a Muse-generated candidate score.
 
-## What exists (branch `g3/candidate-synthesis`)
+## Independent review correction — 28 October 2026
 
-| # | Deliverable | Files | Status |
+ChatGPT reviewed Muse's first G3-A checkpoint at
+`8f881cd37c99acb5c8045bf9c3441e06920d373e` and found a **blocking protocol
+mismatch**: `CandidateInterpreter` accepted nested
+`{"command":"add","params":{...}}` actions while the trusted G0 reference
+and sealed verifier use flat `{"command":"add","label":"...","amount":...}`
+actions. The original mock demo asserted only `total == 3`, so its tests
+could pass even when all candidate/reference comparisons failed.
+
+That checkpoint is therefore **not accepted as a clean G3-A interface** even
+though its document reported 49 local G3 tests. Those local counts were not
+GitHub-CI verified because the branch had no PR/workflow run.
+
+The follow-up branch fixes:
+- pin the candidate runtime to the exact flat G0 ReferenceProtocol action wire;
+- make the non-sealed trusted control demo fail unless all public control cases
+  pass;
+- pin generated command effects to the operator-owned public contract so
+  `list`/`total` cannot mutate state and `remove` cannot create/aggregate;
+- restrict v1 lookup to in-memory id lookup and reject contradictory bounds;
+- close the top-level generation context and redact again immediately before
+  the model boundary;
+- preserve mock / trusted-test-fixture / real origin separation.
+
+**New test counts and CI status must be taken from the next GitHub Actions run,
+not inferred from this document.**
+
+## G3-A deliverables now present on `g3/candidate-synthesis`
+
+| # | Deliverable | Files | Acceptance state |
 |---|---|---|---|
-| 1 | Versioned `CandidateSpec`/`CandidateManifest`, scope-pinned loader | `src/second_source/candidate_spec.py` | 16 tests pass |
-| 2 | Trusted DSL interpreter (`ReferenceProtocol`, in-memory, no code execution) | `src/second_source/candidate_runtime.py` | 14 tests pass |
-| 3 | Malformed/adversarial rejection (shell, egress, eval, imports, overbuild, oversize) | `tests/test_g3_candidate_adversarial.py` | 11 tests pass |
-| 4 | Mock generation path + real adapter skeleton (no billable calls) | `src/second_source/candidate_generation.py`, `src/second_source/g3_mock_demo.py` | 8 tests pass |
-| 5 | G3-B verifier contract for the independent evaluator | `docs/G3_CANDIDATE_INTERFACE.md` | written, unimplemented by design |
+| 1 | Versioned `CandidateSpec` / manifest + scope-pinned loader | `src/second_source/candidate_spec.py` | code present; CI pending |
+| 2 | Trusted data-only interpreter implementing G0 ReferenceProtocol | `src/second_source/candidate_runtime.py` | protocol mismatch fixed; CI pending |
+| 3 | Malformed/adversarial rejection and effect-smuggling tests | `tests/test_g3_candidate_*.py` | code present; CI pending |
+| 4 | Mock generation boundary + real adapter skeleton | `src/second_source/candidate_generation.py` | no billable call made |
+| 5 | Non-sealed trusted positive-control demo | `src/second_source/g3_mock_demo.py` | must report 3/3 or exit nonzero |
+| 6 | G3-B verifier contract | `docs/G3_CANDIDATE_INTERFACE.md` | ready for independent read-only audit after CI |
 
-## Mock-only evidence (all artifacts labeled, none is model output)
+## What this still does NOT prove
 
-- `python -m pytest tests/test_g3_*.py` → **49 passed** (16 spec + 14 runtime
-  + 11 adversarial + 8 mockgen), exit 0, on the project venv.
-- `python -m second_source.g3_mock_demo` runs a mock-transported
-  trusted-test-fixture spec against the owned reference on 3 demo cases and
-  prints `origin: mock`, `content_provenance: trusted-test-fixture`, spec
-  digest, and per-case outcomes. Deterministic and non-billable.
-- Origin discipline: `mock` (scripted transport) vs `trusted-test-fixture`
-  (author-written content) vs `real` (genuine Meta response) are distinct
-  labels asserted by tests; validation never upgrades an origin.
+- No genuine Muse-generated CandidateSpec exists.
+- No Codex-authored G3-B sealed suite or adapter has been committed.
+- No sealed candidate score exists.
+- No real repair or before/after lift exists.
+- No active-vs-fixed baseline result exists.
+- No production sandbox or website adapter exists.
 
-## Unresolved limitations (honest)
+## Next acceptance sequence
 
-- No genuine Muse-generated candidate exists; DSL expressiveness against real
-  model output is unproven (server-side validation fails closed, but the
-  repair loop is untested).
-- Sealed G3-B suite not yet authored; demo cases are NOT sealed evaluation.
-- Reconciliation/trajectory attribution beyond final-step matching is future work.
-- No guaranteed billing hard cap (ledger bounds attempts, provider billing
-  is authoritative).
-
-## Remaining real-model requirements
-
-1. Owner-authorized `request_candidate_spec` run with key + budget → genuine
-   receipt + spec digest.
-2. Sealed G3-B evaluation with exact passed/failed/indeterminate counts.
-3. Bounded repair (≤2) with before/after `delta_passed` on the identical suite.
-4. Record observed values only; never relabel mock/fixture content as generated.
+1. Current branch passes full Linux/Windows CI and the trusted mock control is
+   3/3 with explicit NON-AI / NON-SEALED labels.
+2. Codex performs the independent read-only G3-B audit against the committed
+   interface and publishes findings before writing evaluator files.
+3. Codex implements only its assigned evaluator/adaptor files after a disjoint
+   write handoff.
+4. Owner explicitly authorizes a bounded paid Muse candidate-generation call.
+5. The real generated spec is validated, executed by the trusted interpreter,
+   and scored by the sealed evaluator with exact counts.
+6. Repair is optional and may be claimed only with a genuine unchanged-suite
+   before/after result.
