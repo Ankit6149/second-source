@@ -81,6 +81,7 @@ class LoopReport:
     mock_model_calls: int
     budget_summary: dict[str, Any]
     resolution_counts: dict[str, int]
+    rejection_codes: tuple[str, ...] = ()
 
 
 class DiscoveryLoop:
@@ -162,6 +163,7 @@ class DiscoveryLoop:
     def run(self, seed_actions: Sequence[dict[str, Any]]) -> LoopReport:
         rounds: list[LoopRound] = []
         stop_reason = "stalled"
+        rejection_codes: tuple[str, ...] = ()
         try:
             self._seed(seed_actions)
             for round_no in range(1, self._max_rounds + 1):
@@ -192,6 +194,7 @@ class DiscoveryLoop:
                         rejection_codes=first_denials,
                     )
                 if not plan.ranked:
+                    rejection_codes = tuple(sorted(set(first_denials) | set(_trusted_rejection_codes(plan.rejected))))
                     reasons = "; ".join(r for _, r in plan.rejected[:3])
                     reasons = (
                         f"first_denials={','.join(first_denials)}; "
@@ -287,4 +290,5 @@ class DiscoveryLoop:
             mock_model_calls=sum(1 for r in receipts if not r.real),
             budget_summary=self._budget.summary(),
             resolution_counts=self._hypotheses.resolution_counts(),
+            rejection_codes=rejection_codes,
         )
