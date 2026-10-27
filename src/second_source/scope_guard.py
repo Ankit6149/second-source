@@ -40,7 +40,7 @@ def _safe_url_path(raw: str, root: str) -> str | None:
                 return None
             if candidate.username or candidate.password:
                 return None
-        if candidate.fragment or candidate.username or candidate.password:
+        if candidate.fragment or candidate.query or candidate.username or candidate.password:
             return None
         if "\\" in raw:
             return None
