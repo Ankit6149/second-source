@@ -33,9 +33,10 @@ class Engine(Protocol):
 def _terminate(process: subprocess.Popen) -> None:
     if process.poll() is not None:
         return
-    # POSIX process group contains reference/evaluator subprocesses as well.
-    # Windows uses bounded existing DSL workers; parent termination is best effort,
-    # not an OS sandbox or certified complete job-object cancellation boundary.
+    # Kill the POSIX wrapper group, but independently sessioned staged workers
+    # may outlive it until their existing resource/time bounds stop them.
+    # Complete descendant cancellation is best effort on both platforms; this
+    # is not an OS sandbox or a certified Job Object/process-tree boundary.
     if os.name == "posix":
         try:
             os.killpg(process.pid, signal.SIGKILL)
