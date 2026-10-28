@@ -270,8 +270,9 @@ def test_invalid_runtime_limits_rejected(cli_scope):
             raise AssertionError(f"expected ValueError for {kwargs}")
 
 
-def test_param_error_precedence_representation_independent(cli_scope):
-    """Identical spec content as JSON bytes vs reordered mapping: same first error."""
+def test_param_error_precedence_matches_reference(cli_scope, reference):
+    """Trusted semantic order (add: label then amount) matches the owned
+    reference, independent of JSON-bytes vs reordered-mapping representation."""
     doc = json.loads(FIXTURE.read_text(encoding="utf-8"))
     rev = copy.deepcopy(doc)
     add_params = rev["commands"]["add"]["params"]
@@ -283,13 +284,24 @@ def test_param_error_precedence_representation_independent(cli_scope):
     probes = [
         {"command": "add"},
         {"command": "add", "label": "", "amount": 0},
+        {"command": "add", "label": "K", "amount": 0},
     ]
-    for probe in probes:
+    ref_outs = [
+        o.output
+        for o in reference.execute_sequence(
+            [dict(probe) for probe in probes], sequence_id="pref"
+        ).observations
+    ]
+    assert ref_outs == [
+        {"ok": False, "error": "invalid_label"},
+        {"ok": False, "error": "invalid_label"},
+        {"ok": False, "error": "invalid_amount"},
+    ]
+    for probe, ref_out in zip(probes, ref_outs):
         outs = []
         for loaded in (first, second):
             interp = CandidateInterpreter(loaded.spec)
             res = interp.execute_sequence([dict(probe)], sequence_id="prec")
             assert res.status == "ok"
             outs.append(res.observations[0].output)
-        assert outs[0] == outs[1]
-    assert outs[0] == {"ok": False, "error": "invalid_amount"}
+        assert outs[0] == outs[1] == ref_out

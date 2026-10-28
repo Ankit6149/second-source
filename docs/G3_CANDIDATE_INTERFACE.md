@@ -68,9 +68,12 @@ digests and errors are deterministic:
 The loader owns the single spec digest (canonical input bytes). The runtime
 never recomputes digests; manifest digest == loaded digest, asserted by test.
 
-Param/command validation iterates sorted names, so identical spec content
-loaded as JSON bytes or as a mapping with different key order yields the
-same first error (regression: `test_param_error_precedence_representation_independent`).
+Load-time checks iterate sorted names so identical content validates
+identically regardless of key order. Runtime param precedence follows the
+trusted per-command semantic order matching the owned reference (`add`:
+`label` then `amount`; `remove`: `id`), never mapping order, so
+both-missing/both-invalid probes match the reference in every
+representation (regression: `test_param_error_precedence_matches_reference`).
 
 G3-D provenance binding (Muse-owned `candidate_generation`): a context is
 broker-bound only when its scope projection equals the pinned `ScopeContract`,
@@ -78,7 +81,9 @@ its public manifest digest matches the pinned manifest, and every evidence
 view equals the ledger-backed approved registry byte for byte. The exact
 inspected `ModelRequest` is built by `build_synthesize_request`; the
 credential-owning broker delivers it with only its deterministic
-schema-preamble prepended.
+schema-preamble prepended. Real provider dispatch requires all
+provenance pins before transport; unpinned calls serve MockProvider
+nonbillable paths only.
 
 ## Failure semantics (normative)
 
