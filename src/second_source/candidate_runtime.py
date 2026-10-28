@@ -28,6 +28,14 @@ RESOURCE_EXHAUSTED = "resource_exhausted"
 
 _ERROR_STATUS = "target_error"
 
+# Trusted per-command parameter validation order. This mirrors the
+# owned reference's observable precedence (e.g. `add` validates
+# `label` before `amount`) and NEVER follows spec mapping/JSON key
+# order, so identical spec content validates identically in every
+# representation AND matches reference behavior on multi-bad inputs.
+_PARAM_PRECEDENCE = {"add": ("label", "amount"), "remove": ("id",),
+                      "list": (), "total": ()}
+
 
 class CandidateInterpreter:
     """In-memory ledger implementing exactly the validated spec."""
@@ -144,7 +152,7 @@ class CandidateInterpreter:
         # {"command":"add","label":"A","amount":1}.  The exact same action
         # object is handed to reference and candidate by DifferentialVerifier.
         params = {key: value for key, value in action.items() if key != "command"}
-        values, error = self._validate_params(cmd, params)
+        values, error = self._validate_params(command, cmd, params)
         if error is not None:
             return {"ok": False, "error": error}
         if cmd.unique_field is not None and self._is_duplicate(cmd, values):
@@ -182,13 +190,12 @@ class CandidateInterpreter:
         return {"ok": True, **self._respond(cmd, values, record, aggregate)}
 
     def _validate_params(
-        self, cmd: CommandSpec, params: dict[str, Any]
+        self, command: str, cmd: CommandSpec, params: dict[str, Any]
     ) -> tuple[dict[str, Any], str | None]:
-        # Deterministic precedence: identical spec content yields the same
-        # first param error regardless of JSON/dict key order. Spec mapping
-        # order is a transport representation detail, never semantics.
         values: dict[str, Any] = {}
-        for name in sorted(cmd.params):
+        ordered = list(_PARAM_PRECEDENCE.get(command, ()))
+        ordered.extend(sorted(set(cmd.params) - set(ordered)))
+        for name in ordered:
             decl = cmd.params[name]
             if name not in params:
                 if decl.required:

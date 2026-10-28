@@ -353,6 +353,16 @@ def request_candidate_spec(
     parsed spec dict (STILL UNVALIDATED — caller must run load_candidate)
     plus a receipt whose origin derives from the response's real flag.
     """
+    if gateway.is_real and (
+        contract is None
+        or public_manifest_digest is None
+        or approved_evidence is None
+    ):
+        raise GatewayError(
+            "synthesize: real inference requires provenance pins "
+            "(contract, manifest digest, approved registry); "
+            "refusing provider transport"
+        )
     pinned = (contract is not None, public_manifest_digest is not None,
               approved_evidence is not None)
     if any(pinned) and not all(pinned):

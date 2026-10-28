@@ -200,6 +200,56 @@ def test_bound_rejects_partial_pins(cli_scope):
         request_candidate_spec(ctx, gateway, contract=cli_scope)
 
 
+def _real_gateway(monkeypatch):
+    from second_source.model_gateway import MetaProvider
+
+    calls = []
+    provider = MetaProvider(
+        "test-key-000", base_url="http://127.0.0.1:9", test_mode=True
+    )
+
+    def _no_transport(request):
+        calls.append(request)
+        raise AssertionError("provider transport must not be reached")
+
+    monkeypatch.setattr(provider, "complete", _no_transport)
+    return ModelGateway(provider, RunBudget(Budgets())), calls
+
+
+def test_real_gateway_rejects_missing_pins_before_transport(
+    cli_scope, monkeypatch
+):
+    gateway, calls = _real_gateway(monkeypatch)
+    assert gateway.is_real
+    ctx, _, _ = bound_inputs(cli_scope)
+    with pytest.raises(GatewayError):
+        request_candidate_spec(ctx, gateway)
+    assert calls == []
+
+
+def test_real_gateway_rejects_partial_pins_before_transport(
+    cli_scope, monkeypatch
+):
+    gateway, calls = _real_gateway(monkeypatch)
+    ctx, manifest_digest, registry = bound_inputs(cli_scope)
+    with pytest.raises(GatewayError):
+        request_candidate_spec(
+            ctx,
+            gateway,
+            contract=cli_scope,
+            public_manifest_digest=manifest_digest,
+        )
+    with pytest.raises(GatewayError):
+        request_candidate_spec(
+            ctx,
+            gateway,
+            contract=cli_scope,
+            public_manifest_digest=manifest_digest,
+            approved_evidence={"dead": "registry"},
+        )
+    assert calls == []
+
+
 def test_generation_report_sanitized(cli_scope):
     ctx, manifest_digest, registry = bound_inputs(cli_scope)
     gateway = ModelGateway(
