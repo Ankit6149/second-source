@@ -67,6 +67,89 @@ def test_unknown_fixture_rejected(tmp_path):
                  str(tmp_path / "x")]) == 2
 
 
+def _manifest_inputs(tmp_path, cli_scope, reference):
+    from test_g2_persistence import run_recorded
+
+    _, recorder, _, _, _ = run_recorded(
+        cli_scope, reference, tmp_path, ledger_name="g2/evidence"
+    )
+    manifest_path = recorder.write(tmp_path / "g2/run")
+    manifest = json.loads(manifest_path.read_bytes().decode("utf-8"))
+    digests = sorted(
+        {d for record in manifest["rounds"] for d in record["evidence_digests"]}
+    )
+    hypotheses_file = tmp_path / "g2" / "hypotheses.json"
+    hypotheses_file.write_text(
+        json.dumps({"hypotheses": manifest["final_hypotheses"]}),
+        encoding="utf-8",
+    )
+    return manifest_path, tmp_path / "g2/evidence", hypotheses_file, digests
+
+
+def test_preflight_with_manifest_passes(tmp_path, cli_scope, reference):
+    manifest_path, ledger_dir, hypotheses_file, digests = _manifest_inputs(
+        tmp_path, cli_scope, reference
+    )
+    code = main([
+        "--mode", "preflight", "--max-usd", "0.5",
+        "--ledger-dir", str(ledger_dir),
+        "--hypotheses-file", str(hypotheses_file),
+        "--observation-digests", ",".join(digests),
+        "--seal-dir", str(tmp_path / "sealed"),
+        "--g2-manifest", str(manifest_path),
+        "--run-dir", str(tmp_path / "preflight-run"),
+    ])
+    assert code == 0
+    receipt = json.loads(
+        (tmp_path / "preflight-run" / "G3_preflight.json").read_text(
+            encoding="utf-8")
+    )
+    import hashlib
+
+    assert receipt["g2_manifest_digest"] == (
+        "sha256:" + hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+    )
+
+
+def test_preflight_with_stripped_manifest_blocked(
+    tmp_path, cli_scope, reference
+):
+    manifest_path, ledger_dir, hypotheses_file, digests = _manifest_inputs(
+        tmp_path, cli_scope, reference
+    )
+    doc = json.loads(manifest_path.read_bytes().decode("utf-8"))
+    doc["model_receipts"] = []
+    stripped = tmp_path / "stripped.json"
+    stripped.write_text(json.dumps(doc), encoding="utf-8")
+    code = main([
+        "--mode", "preflight", "--max-usd", "0.5",
+        "--ledger-dir", str(ledger_dir),
+        "--hypotheses-file", str(hypotheses_file),
+        "--observation-digests", ",".join(digests),
+        "--seal-dir", str(tmp_path / "sealed"),
+        "--g2-manifest", str(stripped),
+        "--run-dir", str(tmp_path / "preflight-run"),
+    ])
+    assert code == 2
+
+
+def test_real_requires_manifest(monkeypatch, tmp_path):
+    _no_transport(monkeypatch)
+    monkeypatch.setenv("MODEL_API_KEY", "test-key-000")
+    monkeypatch.setenv("SECOND_SOURCE_MAX_RUN_USD", "0.5")
+    code = main([
+        "--mode", "real", "--max-usd", "0.5", "--confirm-real-run",
+        "--operator-context-pin", "sha256:" + "0" * 64,
+        "--ledger-dir", str(tmp_path / "ledger"),
+        "--hypotheses-file", str(tmp_path / "hyp.json"),
+        "--observation-digests", "a" * 64,
+        "--suite", str(tmp_path / "suite.json"),
+        "--suite-digest", "sha256:" + "b" * 64,
+        "--run-dir", str(tmp_path / "x"),
+    ])
+    assert code == 2
+
+
 def _no_transport(monkeypatch):
     def _boom(*args, **kwargs):
         raise AssertionError("provider transport must not be reached")

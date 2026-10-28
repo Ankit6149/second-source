@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
+import hashlib
 import json
 import math
 import os
@@ -575,6 +576,38 @@ def run_mock(args: argparse.Namespace) -> int:
     return 0
 
 
+def _check_g2_manifest(
+    manifest_path: str, digests: tuple[str, ...], batch_doc: dict[str, Any]
+) -> Any:
+    """Bind operator inputs to an approvable discovery manifest; fail closed."""
+    from .g2_persistence import (
+        PersistenceError, load_manifest, manifest_approvable,
+    )
+
+    try:
+        manifest = load_manifest(manifest_path)
+    except PersistenceError as exc:
+        raise RuntimeError(f"g2 manifest rejected: {exc}") from exc
+    blockers = manifest_approvable(manifest)
+    if blockers:
+        raise RuntimeError(f"g2 manifest not approvable: {blockers[0]}")
+    known = {d for record in manifest.rounds for d in record.evidence_digests}
+    if set(digests) != known:
+        raise RuntimeError("operator digests differ from manifest evidence")
+    finals = {h.id: h for h in manifest.final_hypotheses}
+    for item in batch_doc.get("hypotheses", []):
+        origin = finals.get(item.get("id"))
+        if (
+            origin is None
+            or origin.statement != item.get("statement")
+            or set(origin.evidence_ids) != set(item.get("evidence_ids", []))
+        ):
+            raise RuntimeError(
+                "operator hypotheses differ from manifest final batch"
+            )
+    return manifest
+
+
 def _load_operator_evidence(args: argparse.Namespace) -> tuple[EvidenceLedger, HypothesisStore, tuple[str, ...]]:
     try:
         digests = tuple(d.strip() for d in args.observation_digests.split(",") if d.strip())
@@ -629,13 +662,17 @@ def run_real(args: argparse.Namespace) -> int:
     if not args.operator_context_pin:
         return _blocked("pass --operator-context-pin with the approved G2 context digest.")
     for missing in ("ledger_dir", "hypotheses_file", "observation_digests",
-                    "suite", "suite_digest"):
+                    "suite", "suite_digest", "g2_manifest"):
         if not getattr(args, missing, None):
             return _blocked(f"real runs require --{missing.replace('_', '-')}.")
 
     scope = create_scope(args.max_usd)
     try:
         ledger, store, digests = _load_operator_evidence(args)
+        batch_doc = json.loads(
+            Path(args.hypotheses_file).read_text(encoding="utf-8")
+        )
+        _check_g2_manifest(args.g2_manifest, digests, batch_doc)
         suite = load_sealed_suite(args.suite, args.suite_digest, scope)
     except (RuntimeError, OSError) as exc:
         print(f"BLOCKED_EVIDENCE: {exc}", file=sys.stderr)
@@ -773,6 +810,15 @@ def run_preflight(args: argparse.Namespace) -> int:
         return 2
     try:
         ledger, store, digests = _load_operator_evidence(args)
+        manifest_digest = ""
+        if args.g2_manifest:
+            batch_doc = json.loads(
+                Path(args.hypotheses_file).read_text(encoding="utf-8")
+            )
+            _check_g2_manifest(args.g2_manifest, digests, batch_doc)
+            manifest_digest = "sha256:" + hashlib.sha256(
+                Path(args.g2_manifest).read_bytes()
+            ).hexdigest()
     except (RuntimeError, OSError) as exc:
         print(f"BLOCKED_EVIDENCE: {exc}", file=sys.stderr)
         return 2
@@ -827,6 +873,7 @@ def run_preflight(args: argparse.Namespace) -> int:
         "reference_identity": manifest["reference_identity"],
         "reference_source_digest": manifest["reference_source_digest"],
         "suite_digest": manifest["suite_digest"],
+        "g2_manifest_digest": manifest_digest,
         "evidence_artifact_count": len(digests),
         "max_approved_usd": run_limit,
         "stop_reason": "preflight_ready",
@@ -885,6 +932,9 @@ def build_parser() -> argparse.ArgumentParser:
                         help="frozen sealed suite path (real only)")
     parser.add_argument("--suite-digest", default=None,
                         help="frozen sealed suite digest (real only)")
+    parser.add_argument("--g2-manifest", default=None,
+                        help=("approvable discovery manifest path; cross-checked "
+                              "in preflight, required for real runs"))
     return parser
 
 

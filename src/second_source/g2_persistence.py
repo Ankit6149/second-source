@@ -62,6 +62,8 @@ class G2RoundRecord(StrictModel):
     proposal: G2ProposalRecord | None = None
     evidence_digests: tuple[str, ...] = ()
     verdicts: dict[str, str] = Field(default_factory=dict)
+    error: str | None = None
+    receipt_seqs: tuple[int, ...] = ()
 
 
 class G2RunManifest(StrictModel):
@@ -77,9 +79,38 @@ class G2RunManifest(StrictModel):
     stop_reason: str = Field(min_length=1)
 
 
+_SET_ORIGIN_KEYS = frozenset({
+    "allowed_roles", "permitted_actions", "allowed_commands", "requirements",
+    "allowed_subsystems", "fidelity", "subsystems", "external_side_effects",
+    "requirement_ids",
+})
+
+
+def _canonicalize(value: Any) -> Any:
+    """Sort set-origin lists so identical contracts hash identically everywhere.
+
+    Pydantic serializes frozensets as lists in hash-seed order; sorting exactly
+    the set-origin fields (and recursing everywhere else) keeps the pin stable
+    across fresh processes without touching ordered tuple fields.
+    """
+    if isinstance(value, dict):
+        return {
+            key: (sorted(val) if key in _SET_ORIGIN_KEYS and isinstance(val, list)
+                  else _canonicalize(val))
+            for key, val in sorted(value.items())
+        }
+    if isinstance(value, list):
+        return [_canonicalize(item) for item in value]
+    return value
+
+
 def scope_digest_of(contract: Any) -> str:
     """Local content pin for the run's scope contract (G2-local, not a G3 pin)."""
-    raw = contract.model_dump_json().encode("utf-8")
+    raw = json.dumps(
+        _canonicalize(contract.model_dump(mode="json")),
+        sort_keys=True, separators=(",", ":"),
+        ensure_ascii=False, allow_nan=False,
+    ).encode("utf-8")
     return "sha256:" + hashlib.sha256(raw).hexdigest()
 
 
@@ -97,9 +128,13 @@ class G2Recorder:
         if not isinstance(event, dict) or "event" not in event:
             raise PersistenceError("recorder accepts only loop event mappings")
         if event["event"] == "round":
-            self._rounds.append(event)
+            self._rounds.append(_freeze_citations(event))
         elif event["event"] == "final":
-            self._final = event
+            final = dict(event)
+            final["final_hypotheses"] = _freeze_hypotheses(
+                event.get("final_hypotheses", ())
+            )
+            self._final = final
         else:
             raise PersistenceError(f"unknown loop event {event['event']!r}")
 
@@ -121,11 +156,7 @@ class G2Recorder:
             )
             final = tuple(
                 Hypothesis.model_validate(h)
-                for h in (
-                    final_hypotheses.all()
-                    if isinstance(final_hypotheses, HypothesisStore)
-                    else final_hypotheses
-                )
+                for h in _freeze_hypotheses(final_hypotheses)
             )
             manifest = G2RunManifest(
                 run_id=self._run_id,
@@ -160,13 +191,53 @@ class G2Recorder:
         )
         path = Path(run_dir) / MANIFEST_FILENAME
         path.parent.mkdir(parents=True, exist_ok=True)
-        raw = manifest.model_dump_json(indent=2).encode("utf-8")
-        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        with os.fdopen(fd, "wb") as stream:
-            stream.write(raw)
-            stream.flush()
-            os.fsync(stream.fileno())
+        raw = json.dumps(
+            manifest.model_dump(mode="json"), indent=2, sort_keys=True,
+        ).encode("utf-8")
+        import tempfile as _tempfile
+
+        fd, staging = _tempfile.mkstemp(
+            dir=path.parent, prefix=path.name + ".", suffix=".staging"
+        )
+        try:
+            with os.fdopen(fd, "wb") as stream:
+                stream.write(raw)
+                stream.flush()
+                os.fsync(stream.fileno())
+            try:
+                os.link(staging, path)
+            except FileExistsError:
+                raise PersistenceError(
+                    "a discovery manifest already exists; refusing overwrite"
+                ) from None
+        finally:
+            try:
+                os.unlink(staging)
+            except OSError:
+                pass
         return path
+
+
+def _freeze_hypotheses(hypotheses: Any) -> list[dict[str, Any]]:
+    """Sort citation lists so identical batches persist identically everywhere."""
+    frozen: list[dict[str, Any]] = []
+    items = hypotheses.all() if isinstance(hypotheses, HypothesisStore) else hypotheses
+    for hyp in items:
+        doc = hyp.model_dump(mode="json") if hasattr(hyp, "model_dump") else dict(hyp)
+        doc = dict(doc)
+        doc["evidence_ids"] = sorted(doc.get("evidence_ids", []))
+        frozen.append(doc)
+    return frozen
+
+
+def _freeze_citations(event: dict[str, Any]) -> dict[str, Any]:
+    event = dict(event)
+    batch = event.get("hypothesis_batch")
+    if isinstance(batch, dict):
+        batch = dict(batch)
+        batch["hypotheses"] = _freeze_hypotheses(batch.get("hypotheses", ()))
+        event["hypothesis_batch"] = batch
+    return event
 
 
 def _round_record(event: dict[str, Any]) -> dict[str, Any]:
@@ -176,6 +247,8 @@ def _round_record(event: dict[str, Any]) -> dict[str, Any]:
         "proposal": event.get("proposal"),
         "evidence_digests": tuple(event.get("evidence_digests", ())),
         "verdicts": dict(event.get("verdicts", {})),
+        "error": event.get("error"),
+        "receipt_seqs": tuple(event.get("receipt_seqs", ())),
     }
 
 
@@ -198,17 +271,21 @@ def load_manifest(path: str | Path) -> G2RunManifest:
 
 
 def rebuild_store(manifest: G2RunManifest) -> HypothesisStore:
-    """Restore final statuses so an approved follow-up can cite prior evidence."""
-    store = HypothesisStore()
+    """Restore batch content with final statuses; text/citations never promoted.
+
+    The resumed store is built from the recorded per-round batches. Final
+    records contribute ONLY their independently derived statuses, and only
+    for hypotheses whose statement and citations still match the batch.
+    """
     by_id: dict[str, Hypothesis] = {}
     for record in manifest.rounds:
         for hyp in record.hypothesis_batch.hypotheses:
             by_id[hyp.id] = hyp
-    for hyp in manifest.final_hypotheses:
-        by_id[hyp.id] = hyp
     if not by_id:
         raise PersistenceError("manifest carries no hypotheses to resume")
+    finals = {hyp.id: hyp for hyp in manifest.final_hypotheses}
     ordered = sorted(by_id.values(), key=lambda h: h.id)
+    store = HypothesisStore()
     store.add_batch(
         validate_batch(
             {"hypotheses": [h.model_dump(mode="json") for h in ordered]},
@@ -216,8 +293,14 @@ def rebuild_store(manifest: G2RunManifest) -> HypothesisStore:
         )
     )
     for hyp in ordered:
-        if hyp.status != "hypothesized":
-            store.update_status(hyp.id, hyp.status)
+        final = finals.get(hyp.id)
+        if (
+            final is not None
+            and final.statement == hyp.statement
+            and set(final.evidence_ids) == set(hyp.evidence_ids)
+            and final.status != "hypothesized"
+        ):
+            store.update_status(hyp.id, final.status)
     return store
 
 
@@ -229,7 +312,11 @@ def _manifest_evidence_ids(manifest: G2RunManifest) -> frozenset[str]:
 
 
 def manifest_completeness(manifest: G2RunManifest) -> list[str]:
-    """Gaps disqualifying the manifest as authentic G3 input; empty means complete."""
+    """Structural gaps; empty means the manifest is well-formed and loadable.
+
+    Well-formed is NOT approvable: failed/interrupted rounds persist durably
+    here and are disqualified separately by `manifest_approvable`.
+    """
     gaps: list[str] = []
     if not manifest.rounds:
         return ["no rounds recorded"]
@@ -246,10 +333,32 @@ def manifest_completeness(manifest: G2RunManifest) -> list[str]:
                     f"round {record.round_no}: hypothesis {hyp.id} cites "
                     f"unrecorded evidence {unknown}"
                 )
-        if record.proposal is None and record.round_no > 0:
+        if record.proposal is None and record.error is None and record.round_no > 0:
             gaps.append(f"round {record.round_no}: executed round has no proposal record")
-    if not manifest.final_hypotheses:
+    finals = {hyp.id: hyp for hyp in manifest.final_hypotheses}
+    if not finals:
         gaps.append("no final hypothesis statuses recorded")
+    for hyp_id, final in sorted(finals.items()):
+        origins = [
+            hyp for record in manifest.rounds
+            for hyp in record.hypothesis_batch.hypotheses if hyp.id == hyp_id
+        ]
+        if not origins:
+            gaps.append(f"final hypothesis {hyp_id} has no recorded batch origin")
+        elif not any(
+            origin.statement == final.statement
+            and set(origin.evidence_ids) == set(final.evidence_ids)
+            for origin in origins
+        ):
+            gaps.append(
+                f"final hypothesis {hyp_id} diverges from its recorded batch; "
+                "only status changes are allowed"
+            )
+    if not manifest.model_receipts:
+        gaps.append("no model receipts recorded")
+    stages = {receipt.stage for receipt in manifest.model_receipts}
+    if "hypothesize" not in stages:
+        gaps.append("hypothesize stage receipt missing")
     for receipt in manifest.model_receipts:
         if not receipt.response_id:
             gaps.append(f"receipt seq {receipt.seq}: missing provider response id")
@@ -258,6 +367,27 @@ def manifest_completeness(manifest: G2RunManifest) -> list[str]:
     if not manifest.scope_digest:
         gaps.append("missing scope digest")
     return gaps
+
+
+def manifest_approvable(manifest: G2RunManifest) -> list[str]:
+    """Reasons the manifest must NOT back a G3 approval; empty means approvable.
+
+    A manifest can be complete and durable yet unusable as authentic input:
+    any failed/interrupted round, or a run that never executed its rounds,
+    stays clearly incomplete until an approved recovery re-runs discovery.
+    """
+    blockers = list(manifest_completeness(manifest))
+    for record in manifest.rounds:
+        if record.error is not None:
+            blockers.append(
+                f"round {record.round_no}: {record.error}; "
+                "recovery required before approval"
+            )
+    if manifest.stop_reason != "stalled":
+        blockers.append(
+            f"stop reason {manifest.stop_reason!r} is not an approvable completion"
+        )
+    return blockers
 
 
 def verify_ledger_coverage(manifest: G2RunManifest, ledger: EvidenceLedger) -> list[str]:

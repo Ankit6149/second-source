@@ -134,6 +134,10 @@ class DiscoveryLoop:
         self._recorded = len(self._digests)
         return fresh
 
+    def _receipt_seqs(self, receipt_base: int) -> tuple[int, ...]:
+        """1-based receipt seqs issued since the round started (audit trail)."""
+        return tuple(range(receipt_base + 1, len(self._planner.receipts) + 1))
+
     @staticmethod
     def _proposal_record(top: Any, *, executed: bool) -> dict[str, Any]:
         return {
@@ -194,10 +198,15 @@ class DiscoveryLoop:
         stop_reason = "stalled"
         rejection_codes: tuple[str, ...] = ()
         current_batch: Any = None
+        receipt_base: int = 0
         try:
             self._seed(seed_actions)
             for round_no in range(1, self._max_rounds + 1):
+                receipt_base = len(self._planner.receipts)
                 batch = self._planner.hypothesize(self._views(), self._known_ids())
+                # The validated batch is durable from here: a later proposal
+                # failure must not lose it.
+                current_batch = batch
                 for hyp in batch.hypotheses:
                     if hyp.id not in self._hypotheses.ids():
                         self._hypotheses.add_batch(
@@ -224,7 +233,6 @@ class DiscoveryLoop:
                         rejection_codes=first_denials,
                     )
                 if not plan.ranked:
-                    current_batch = batch
                     rejection_codes = tuple(sorted(set(first_denials) | set(_trusted_rejection_codes(plan.rejected))))
                     reasons = "; ".join(r for _, r in plan.rejected[:3])
                     reasons = (
@@ -252,9 +260,10 @@ class DiscoveryLoop:
                         "proposal": None,
                         "evidence_digests": self._new_digests(),
                         "verdicts": {},
+                        "error": "guard_blocked",
+                        "receipt_seqs": self._receipt_seqs(receipt_base),
                     })
                     break
-                current_batch = batch
                 top = plan.ranked[0]
                 try:
                     obs_ids, final = self._execute(top.actions)
@@ -266,6 +275,8 @@ class DiscoveryLoop:
                         "proposal": self._proposal_record(top, executed=False),
                         "evidence_digests": self._new_digests(),
                         "verdicts": {},
+                        "error": "policy_violation",
+                        "receipt_seqs": self._receipt_seqs(receipt_base),
                     })
                     rounds.append(
                         LoopRound(
@@ -319,6 +330,8 @@ class DiscoveryLoop:
                     "proposal": self._proposal_record(top, executed=True),
                     "evidence_digests": self._new_digests(),
                     "verdicts": dict(verdicts),
+                    "error": None,
+                    "receipt_seqs": self._receipt_seqs(receipt_base),
                 })
         except BudgetExhausted as exc:
             if current_batch is not None:
@@ -329,6 +342,8 @@ class DiscoveryLoop:
                     "proposal": None,
                     "evidence_digests": self._new_digests(),
                     "verdicts": {},
+                    "error": "budget_exhausted",
+                    "receipt_seqs": self._receipt_seqs(receipt_base),
                 })
             rounds.append(
                 LoopRound(
@@ -346,6 +361,8 @@ class DiscoveryLoop:
                     "proposal": None,
                     "evidence_digests": self._new_digests(),
                     "verdicts": {},
+                    "error": "provider_failed",
+                    "receipt_seqs": self._receipt_seqs(receipt_base),
                 })
             rounds.append(
                 LoopRound(

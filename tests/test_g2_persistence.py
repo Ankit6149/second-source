@@ -26,8 +26,8 @@ from second_source.scope_guard import ScopeGuard
 SEED = ({"command": "add", "label": "Seed", "amount": 7}, {"command": "total"})
 
 
-def run_recorded(cli_scope, reference, tmp_path, **kw):
-    ledger = EvidenceLedger(tmp_path / "ev")
+def run_recorded(cli_scope, reference, tmp_path, ledger_name="ev", **kw):
+    ledger = EvidenceLedger(tmp_path / ledger_name)
     budget = RunBudget(cli_scope.budgets)
     steps = [add_action("Dup", 3), add_action("Dup", 3)]
     preds = [pred("hyp-a", False, "duplicate_label"), pred("hyp-b", True)]
@@ -126,3 +126,109 @@ def test_ledger_tamper_detected(cli_scope, reference, tmp_path):
     victim.unlink()
     missing = verify_ledger_coverage(manifest, ledger)
     assert len(missing) == 1 and victim.stem in missing[0]
+
+
+def _manifest_json(tmp_path, name="run"):
+    path = tmp_path / name / "g2_manifest.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_missing_receipts_invalidate_approval(cli_scope, reference, tmp_path):
+    _, recorder, _, _, _ = run_recorded(cli_scope, reference, tmp_path)
+    recorder.write(tmp_path / "run")
+    doc = _manifest_json(tmp_path)
+    assert doc["model_receipts"]
+    doc["model_receipts"] = []
+    stripped = tmp_path / "stripped" / "g2_manifest.json"
+    stripped.parent.mkdir(parents=True)
+    stripped.write_text(json.dumps(doc), encoding="utf-8")
+    with pytest.raises(PersistenceError, match="no model receipts"):
+        load_manifest(stripped)
+
+
+def test_final_statement_substitution_rejected(cli_scope, reference, tmp_path):
+    from second_source.g2_persistence import G2RunManifest, manifest_approvable
+
+    _, recorder, _, _, _ = run_recorded(cli_scope, reference, tmp_path)
+    manifest = load_manifest(recorder.write(tmp_path / "run"))
+    original = manifest.final_hypotheses[0].statement
+    assert manifest_approvable(manifest) == []
+    doc = _manifest_json(tmp_path)
+    doc["final_hypotheses"][0]["statement"] = "fabricated replacement statement"
+    forged = tmp_path / "forged" / "g2_manifest.json"
+    forged.parent.mkdir(parents=True)
+    forged.write_text(json.dumps(doc), encoding="utf-8")
+    with pytest.raises(PersistenceError, match="diverges"):
+        load_manifest(forged)
+    tampered = G2RunManifest.model_validate(doc)
+    resumed = rebuild_store(tampered)
+    assert resumed.get("hyp-a").statement != "fabricated replacement statement"
+    assert resumed.get("hyp-a").status == "hypothesized"
+
+
+def test_proposal_failure_preserves_batch_and_receipts(
+    cli_scope, reference, tmp_path, monkeypatch
+):
+    from second_source.g2_persistence import manifest_approvable
+    from second_source.model_gateway import GatewayError
+    from second_source.planner import ExperimentPlanner
+
+    def fail_propose(self, *args, **kwargs):
+        raise GatewayError("SYNTHETIC_PROPOSE_FAILURE")
+
+    monkeypatch.setattr(ExperimentPlanner, "propose", fail_propose)
+    _, recorder, _, _, _ = run_recorded(cli_scope, reference, tmp_path)
+    manifest = load_manifest(recorder.write(tmp_path / "run"))
+    assert manifest.rounds[0].error == "provider_failed"
+    assert manifest.rounds[0].hypothesis_batch.hypotheses
+    assert manifest.rounds[0].receipt_seqs
+    assert manifest.model_receipts
+    blockers = manifest_approvable(manifest)
+    assert blockers and any("recovery required" in b for b in blockers)
+
+
+def test_scope_digest_stable_across_hash_seeds(tmp_path):
+    import os
+    import subprocess
+    import sys
+
+    script = tmp_path / "pin_seeds.py"
+    script.write_text(
+        "import json\n"
+        "from second_source.contracts import (\n"
+        "    ImplementationScope, ObservationScope, ScopeContract, ScopeMode,\n"
+        "    TargetKind, TargetSpec,\n"
+        ")\n"
+        "from second_source.g2_persistence import scope_digest_of\n"
+        "scope = ScopeContract(\n"
+        "    target=TargetSpec(kind=TargetKind.CLI,\n"
+        "                      reference_command_id='owned-ledger-v1',\n"
+        "                      permission_ref='owned-fixture'),\n"
+        "    goal='Reconstruct only the synthetic ledger CLI behaviors',\n"
+        "    mode=ScopeMode.SELECTED_FLOWS,\n"
+        "    observation=ObservationScope(\n"
+        "        permitted_actions=frozenset({'cli'}),\n"
+        "        allowed_commands=frozenset({'add', 'list', 'total', 'remove'})),\n"
+        "    implementation=ImplementationScope(\n"
+        "        requirements=frozenset({'REQ-LEDGER'}),\n"
+        "        allowed_subsystems=frozenset({'cli_ledger'})),\n"
+        ")\n"
+        "print(scope_digest_of(scope))\n",
+        encoding="utf-8",
+    )
+    from pathlib import Path as _Path
+
+    root = _Path(__file__).resolve().parents[1]
+    digests = set()
+    for seed in ("1", "37", "99"):
+        env = {k: v for k, v in os.environ.items()
+               if k.upper() in {"SYSTEMROOT", "WINDIR", "PATH", "TEMP", "TMP"}}
+        env.update(PYTHONPATH=str(root / "src"), PYTHONHASHSEED=seed,
+                   PYTHONDONTWRITEBYTECODE="1")
+        result = subprocess.run(
+            [sys.executable, "-B", str(script)],
+            env=env, capture_output=True, text=True, timeout=60,
+        )
+        assert result.returncode == 0, result.stderr
+        digests.add(result.stdout.strip())
+    assert len(digests) == 1

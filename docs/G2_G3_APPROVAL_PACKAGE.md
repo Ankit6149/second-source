@@ -22,6 +22,35 @@ payloads, or response content. It is **not usable** as G3 input. A new G2
 discovery with durable persistence is the only authentic path; nothing here
 recreates the missing text.
 
+Read-only recovery audit (report SHA-256 recomputed from the local `.runs/`
+archives; statements/citations absent in all four):
+
+| Run | Report SHA-256 | Observations | Usable as G3 input |
+|---|---|---|---|
+| `real-g2-20261027T184607Z-73bbd66a` | `8e39a104…a4c1a7` | 5 hash-valid, no hygiene/digest check | No: hypotheses/receipts absent |
+| `real-g2-20261027T190034Z-530e42f8` | `6ad25013…d2dd0b` | 5 hash-valid | No: hypotheses/receipts absent |
+| `real-g2-20261027T190454Z-f43553c6` | `ac8519c8…8a30` | 5 hash-valid | No: hypotheses/receipts absent |
+| `real-g2-20261027T192406Z-5482abee` | `05aa16f0…c2c0e` | 5 hash-valid + 2 real receipts | No: statements/citations absent |
+
+## 1b. Discovery manifest gate (new discoveries)
+
+Every new G2 run writes a validated create-once `g2_manifest.json`
+(`src/second_source/g2_persistence.py`): complete batches, executed
+proposals, evidence digests, per-stage model receipts, budget state.
+Inspect any archive with zero calls before approval:
+
+```powershell
+.venv/Scripts/python.exe -m second_source.g2_inspect <run-dir>
+```
+
+Exit 0 with `"approvable": true` is required. The gate rejects: missing
+receipts or hypothesize coverage, substituted final statements/citations
+(only status changes allowed; resume promotes statuses only), failed or
+interrupted rounds (preserved durably, never approvable until an approved
+recovery re-runs discovery), cross-process pin drift, and ledger tampering.
+`--mode preflight` cross-checks the manifest when `--g2-manifest` is given;
+`--mode real` requires it.
+
 ## 2. Expected API operations (from committed code)
 
 - Exactly **1** synthesize call (`attempt_limit = min(max_model_calls,

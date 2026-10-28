@@ -39,10 +39,10 @@ above does not assert CI for an unknown later commit.
 
 | Item / owner | Code delivered | Engineering gate | Real inference / evidence | Demo / UI | Submission |
 |---|---|---|---|---|---|
-| G2 discovery / Muse | Merged observation/hypothesis/planning path | Existing tests pass | Historical local report + five hash-valid observations; original hypothesis batch missing | Historical receipts only | Insufficient authentic input package |
+| G2 discovery / Muse | Merged observation/hypothesis/planning path + durable `g2_manifest.json` (batches, proposals, receipts, budget) with reload/resume, `g2_inspect` verdict, four convergence defects closed | Existing tests pass | Historical local report + five hash-valid observations; original hypothesis batch missing | Historical receipts only | Insufficient authentic input package |
 | G3-A candidate / Muse | Typed DSL, runtime, gated generation | PASS in combined source | No genuine generated candidate | Trusted/mock controls only | No reconstruction-success claim |
 | G3-B verification / Codex | Pinned strict sealed evaluator, provenance, bounded isolation | PASS; 25/25 and 2/2/1 controls | Genuine candidate score absent | NON_AI behavior comparison | Engineering evidence available |
-| G3-D workflow / Muse + Codex verification | Mock, zero-call preflight, gated real path, immutable archives/reports | PASS at source above; seven defects closed | Authentic complete G2 approval and owner spend still missing | Working local mock CLI/report; full product UX incomplete | Engineering milestone ready for review |
+| G3-D workflow / Muse + Codex verification | Mock, zero-call preflight, gated real path, immutable archives/reports, `--g2-manifest` approval gate (required for real), ordered progress + readable summaries | PASS at source above; seven + four defects closed | Authentic complete G2 approval and owner spend still missing | Working local mock CLI/report; full product UX incomplete | Engineering milestone ready for review |
 | G3-C repair / Muse + independent review | Broker bounds/aggregate feedback exist; operator repair loop deferred | Bounds tested; no real repair acceptance | NOT STARTED; needs genuine baseline first | No before/after claim | Optional cut |
 | Product/demo/release / owner + Muse | Partial CLI experience | Fresh setup verified; release checklist incomplete | No real G3 baseline | No deployed polished UI/video verified | NOT SUBMITTED |
 
