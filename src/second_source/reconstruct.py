@@ -42,7 +42,7 @@ from .contracts import (
     Budgets, ImplementationScope, ObservationScope, ScopeContract,
     ScopeMode, TargetKind, TargetSpec,
 )
-from .evidence import EvidenceLedger
+from .evidence import EvidenceLedger, publish_once as _write_once
 from .hypotheses import HypothesisStore, validate_batch
 from .model_gateway import MetaProvider
 
@@ -222,7 +222,7 @@ def _blocked(message: str) -> int:
 
 
 def _progress(stage: str, run_id: str, detail: str = "") -> None:
-    """One durable workflow event per completed stage; stderr, JSON, no secrets."""
+    """One stderr notification per completed stage; no claim of durable history."""
     print(
         json.dumps({"progress": stage, "run_id": run_id, "detail": detail}),
         file=sys.stderr,
@@ -249,37 +249,6 @@ def _readable_summary(evaluation: dict[str, Any], mode: str) -> list[str]:
             "harness fault, not candidate verdict"
         )
     return lines
-
-
-def _write_once(path: Path, raw: bytes) -> Path:
-    """Atomic create-once publish: staging write, then no-clobber link.
-
-    Bytes travel through a uniquely named staging file in the same directory
-    (same filesystem): a partial or failed write can never appear under the
-    final name, and an existing receipt is never overwritten or replaced.
-    """
-    import tempfile as _tempfile
-
-    parent = path.parent
-    parent.mkdir(parents=True, exist_ok=True)
-    fd, staging = _tempfile.mkstemp(
-        dir=parent, prefix=path.name + ".", suffix=".staging"
-    )
-    try:
-        with os.fdopen(fd, "wb") as stream:
-            stream.write(raw)
-            stream.flush()
-            os.fsync(stream.fileno())
-        try:
-            os.link(staging, path)
-        except FileExistsError:
-            raise
-        return path
-    finally:
-        try:
-            os.unlink(staging)
-        except OSError:
-            pass
 
 
 def _observe_mock_evidence(ledger: EvidenceLedger) -> list[str]:
@@ -658,9 +627,9 @@ def run_real(args: argparse.Namespace) -> int:
         return 2
     run_dir = _run_directory(args.run_dir)
     _progress("evidence_ready", run_dir.name, f"{len(digests)} approved observations")
-    _progress("inspected", run_dir.name, "broker request inspected, spend reserved")
     try:
         ticket = run.prepare()
+        _progress("inspected", run_dir.name, "broker request inspected, zero calls")
         artifact = run.generate(
             ticket, MetaProvider(key), budget, spending_approved=True
         )
@@ -840,7 +809,7 @@ def run_preflight(args: argparse.Namespace) -> int:
     }
     _write_once(run_dir / "G3_preflight.json",
                 json.dumps(receipt, indent=2, sort_keys=True).encode("utf-8"))
-    _progress("inspected", run_dir.name, "genuine inputs inspected, zero calls")
+    _progress("inspected", run_dir.name, "operator inputs inspected, zero calls")
     _progress("reported", run_dir.name, "G3_preflight.json")
     print(json.dumps({
         "result": "preflight_ready",

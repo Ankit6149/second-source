@@ -21,12 +21,12 @@ proposal).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Callable, Sequence
+from typing import Any, Sequence
 
 from .budgets import RunBudget
 from .contracts import ProposedAction, ScopeContract
 from .evidence import EvidenceLedger
-from .hypotheses import HypothesisStore
+from .hypotheses import HypothesisError, HypothesisStore
 from .model_gateway import GatewayError
 from .planner import ExperimentPlanner, reconcile_predictions
 from .runner import BudgetExhausted, PolicyViolation, SafeCLIExperimentRunner
@@ -99,7 +99,7 @@ class DiscoveryLoop:
         planner: ExperimentPlanner,
         budget: RunBudget,
         max_rounds: int = 6,
-        recorder: Callable[[dict[str, Any]], None] | None = None,
+        journal=None,
     ) -> None:
         self._run_id = run_id
         self._requirement_id = requirement_id
@@ -110,9 +110,8 @@ class DiscoveryLoop:
         self._planner = planner
         self._budget = budget
         self._max_rounds = max_rounds
-        self._recorder = recorder
         self._digests: list[str] = []
-        self._recorded = 0
+        self._journal = journal
 
     def _views(self) -> list[dict[str, Any]]:
         # Digest-keyed redacted views: the mock/real model cites digests, and
@@ -124,32 +123,6 @@ class DiscoveryLoop:
 
     def _known_ids(self) -> frozenset[str]:
         return frozenset(self._digests)
-
-    def _record(self, event: dict[str, Any]) -> None:
-        if self._recorder is not None:
-            self._recorder(event)
-
-    def _new_digests(self) -> tuple[str, ...]:
-        fresh = tuple(self._digests[self._recorded:])
-        self._recorded = len(self._digests)
-        return fresh
-
-    @staticmethod
-    def _proposal_record(top: Any, *, executed: bool) -> dict[str, Any]:
-        return {
-            "proposal_id": top.proposal_id,
-            "actions": [a.model_dump(mode="json") for a in top.actions],
-            "predictions": [
-                {
-                    "hypothesis_id": p.hypothesis_id,
-                    "expects_ok": p.expects_ok,
-                    "expects_contains": p.expects_contains,
-                }
-                for p in top.predictions
-            ],
-            "utility": float(top.utility),
-            "executed": executed,
-        }
 
     def _execute(
         self, actions: Sequence[ProposedAction]
@@ -164,6 +137,8 @@ class DiscoveryLoop:
         obs_ids: list[str] = []
         for observation in result.observations:
             receipt = self._ledger.store(observation)
+            if self._journal is not None:
+                self._journal.observation(receipt)
             self._digests.append(receipt["sha256"])
             obs_ids.append(observation.observation_id)
         final = result.observations[-1] if result.observations else None
@@ -191,13 +166,18 @@ class DiscoveryLoop:
 
     def run(self, seed_actions: Sequence[dict[str, Any]]) -> LoopReport:
         rounds: list[LoopRound] = []
+        def record_round(record: LoopRound) -> None:
+            rounds.append(record)
+            if self._journal is not None:
+                self._journal.round(record)
         stop_reason = "stalled"
         rejection_codes: tuple[str, ...] = ()
-        current_batch: Any = None
         try:
             self._seed(seed_actions)
             for round_no in range(1, self._max_rounds + 1):
                 batch = self._planner.hypothesize(self._views(), self._known_ids())
+                if self._journal is not None:
+                    self._journal.hypothesis_batch(batch, self._known_ids(), len(self._planner.receipts))
                 for hyp in batch.hypotheses:
                     if hyp.id not in self._hypotheses.ids():
                         self._hypotheses.add_batch(
@@ -224,7 +204,6 @@ class DiscoveryLoop:
                         rejection_codes=first_denials,
                     )
                 if not plan.ranked:
-                    current_batch = batch
                     rejection_codes = tuple(sorted(set(first_denials) | set(_trusted_rejection_codes(plan.rejected))))
                     reasons = "; ".join(r for _, r in plan.rejected[:3])
                     reasons = (
@@ -232,7 +211,7 @@ class DiscoveryLoop:
                         f"correction_denials={','.join(_trusted_rejection_codes(plan.rejected))}; "
                         + (reasons or 'empty proposal list')
                     )
-                    rounds.append(
+                    record_round(
                         LoopRound(
                             round_no,
                             tuple(h.id for h in batch.hypotheses),
@@ -245,29 +224,12 @@ class DiscoveryLoop:
                         )
                     )
                     stop_reason = "guard_blocked"
-                    self._record({
-                        "event": "round",
-                        "round_no": round_no,
-                        "hypothesis_batch": batch.model_dump(mode="json"),
-                        "proposal": None,
-                        "evidence_digests": self._new_digests(),
-                        "verdicts": {},
-                    })
                     break
-                current_batch = batch
                 top = plan.ranked[0]
                 try:
                     obs_ids, final = self._execute(top.actions)
                 except PolicyViolation as exc:
-                    self._record({
-                        "event": "round",
-                        "round_no": round_no,
-                        "hypothesis_batch": batch.model_dump(mode="json"),
-                        "proposal": self._proposal_record(top, executed=False),
-                        "evidence_digests": self._new_digests(),
-                        "verdicts": {},
-                    })
-                    rounds.append(
+                    record_round(
                         LoopRound(
                             round_no,
                             tuple(h.id for h in batch.hypotheses),
@@ -299,7 +261,7 @@ class DiscoveryLoop:
                             self._hypotheses.update_status(hyp_id, verdict)
                         except KeyError:
                             pass
-                rounds.append(
+                record_round(
                     LoopRound(
                         round_no,
                         tuple(h.id for h in batch.hypotheses),
@@ -312,42 +274,16 @@ class DiscoveryLoop:
                         f"steps={len(top.actions)} verdicts={verdicts}",
                     )
                 )
-                self._record({
-                    "event": "round",
-                    "round_no": round_no,
-                    "hypothesis_batch": batch.model_dump(mode="json"),
-                    "proposal": self._proposal_record(top, executed=True),
-                    "evidence_digests": self._new_digests(),
-                    "verdicts": dict(verdicts),
-                })
         except BudgetExhausted as exc:
-            if current_batch is not None:
-                self._record({
-                    "event": "round",
-                    "round_no": 0,
-                    "hypothesis_batch": current_batch.model_dump(mode="json"),
-                    "proposal": None,
-                    "evidence_digests": self._new_digests(),
-                    "verdicts": {},
-                })
-            rounds.append(
+            record_round(
                 LoopRound(
                     0, (), None, 0, (), "fresh_process_per_sequence",
                     self._hypotheses.resolution_counts(), f"budget stop: {exc}",
                 )
             )
             stop_reason = "budget"
-        except GatewayError as exc:
-            if current_batch is not None:
-                self._record({
-                    "event": "round",
-                    "round_no": 0,
-                    "hypothesis_batch": current_batch.model_dump(mode="json"),
-                    "proposal": None,
-                    "evidence_digests": self._new_digests(),
-                    "verdicts": {},
-                })
-            rounds.append(
+        except (GatewayError, HypothesisError) as exc:
+            record_round(
                 LoopRound(
                     0, (), None, 0, (), "fresh_process_per_sequence",
                     self._hypotheses.resolution_counts(), f"model stop: {exc}",
@@ -356,15 +292,6 @@ class DiscoveryLoop:
             stop_reason = "model_error"
 
         receipts = self._planner.receipts
-        self._record({
-            "event": "final",
-            "stop_reason": stop_reason,
-            "receipts": [r.model_dump(mode="json") for r in receipts],
-            "budget_summary": dict(self._budget.summary()),
-            "final_hypotheses": [
-                h.model_dump(mode="json") for h in self._hypotheses.all()
-            ],
-        })
         return LoopReport(
             run_id=self._run_id,
             rounds=tuple(rounds),
