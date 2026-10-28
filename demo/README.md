@@ -1,5 +1,7 @@
 # Second Source — read-only investigation console
 
+**Status pointer - 29 October 2026 IST.** Use the [single current delivery board](../docs/G3_DELIVERY_BOARD.md) for exact published SHA/CI, both consumed real G3 attempts, evidence and backend acceptance. This document does not authorize inference, credentials or deployment.
+
 This is a working, dependency-free, responsive investigation and result viewer for the **hackathon demo**, not the G2/G3 inference operator. It provides clickable run selection, independent score visualization, evidence/provenance metadata, detail tabs, local JSON import and a strictly sanitized JSON summary download.
 
 ## Run
@@ -8,7 +10,7 @@ From the repo root, `python -m http.server 8000 --directory demo`, then visit `h
 
 Select built-in example records to inspect:
 - **Real G2 discovery** — summary numbers from an operator-reported genuine Meta run, not a signed or portable provider attestation.
-- **Real G3 failed synthesis** — one consumed attempt with no admitted candidate and **no sealed score**.
+- **Real G3 failed synthesis** — a historical consumed attempt; both genuine attempts consumed, with no admitted candidate and **no sealed score**.
 - **NON_AI scripted baseline** — 22/25 in an independent evaluator; it is *not* Meta-generated model performance.
 
 To inspect your own run, generate a nonbillable report using `python -m second_source.reconstruct --mode mock`. Click **Import report** and select the generated `.runs/<id>/G3_report.json` from your local filesystem. The viewer also accepts a summary-form G2 run report with its available counters. Imported values are labeled unverified locally; to authenticate them, use the existing CLI journal receipt and evaluator verification workflow.

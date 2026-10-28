@@ -1,5 +1,7 @@
 # G3-B Verifier Contract — independent evaluation implementer
 
+**Status pointer - 29 October 2026 IST.** Use the [single current delivery board](G3_DELIVERY_BOARD.md) for exact published SHA/CI, both consumed real G3 attempts, evidence and backend acceptance. This document does not authorize inference, credentials or deployment.
+
 **Owner:** Codex (G3-B). **Status:** G3-A interface is frozen after Muse implementation, ChatGPT hardening and Codex phase-1 audit. The final G3-A freeze is `a1a137649a51178e30f438e1069788a0e8b2de81`; GitHub run `40576855908` passed with 179 passed / 2 skipped / 0 failed on both Linux and Windows and Windows bootstrap `BOOTSTRAP_OK`. Canonical-main synchronization is recorded by `208aeb4e7ee5559e176daccd19fc2b7c1eb207d7`. Phase 2 is released on `g3/verifier` from the coordinator freeze baseline. G3 itself is NOT accepted.
 
 ## What G3-A guarantees

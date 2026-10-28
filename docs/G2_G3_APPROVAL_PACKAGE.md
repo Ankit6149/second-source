@@ -1,4 +1,18 @@
-# G2 to G3 execution approval package
+# G2 to G3 approval package - current boundary and historical records
+
+**Status pointer - 29 October 2026 IST.** Use the [single current delivery board](G3_DELIVERY_BOARD.md) for exact published SHA/CI, both consumed real G3 attempts, evidence and backend acceptance. This document does not authorize inference, credentials or deployment.
+
+## CURRENT - 29 October 2026 IST
+
+The [delivery board](G3_DELIVERY_BOARD.md) owns status. Genuine G2 now exists: `real-g2-20261028T163538Z-fd60310f`, receipt witness `947910b0f645b78b9234859a899db3412171cbbbb3c400e072c9f661840e31f8`, original batch SHA `8fb04fa0dcf9e86b5fac5716bea2693966bc6144851ee34a785ca8071e7e615f`. Original batch/receipts independently checked. Missing27 October hypotheses remain unrecovered, never guessed.
+
+**Both G3 one-attempt grants consumed. No candidate/evaluation/score; no retry/repair/new inference authorized.** Second packet SHA `a970f53eb955f6761c80d65eb0233a33c63d312f1631f49e6e3d32d50a5c1b5a` allowed one attempt at `ceb28b6f2f2292f75f766fbd3fbefc0822cfef98`, USD0.50 ceiling, no retry/repair. It is not reusable. Original authorization/claim/outcome stays in operator `.runs/g3-main-postmerge-preflight-20261028T181223Z-256a7dfb/`.
+
+Historical context `sha256:8c65ba3baf30f4b08328200b6b27e77cc64cab3b23ff40c06e72c1294996493e`; unchanged private 25-case suite `sha256:0423935021db574bb68f654c1c37896c6ad4f6e5c40707c1bbe38459178b015b`. Changed main/backend requires fresh exact-source zero-call inspection and separate owner approval. No current paid proposal is open: resolve admission nonbillably first. Receipt identity is not provider-signed billing; missing raw candidate/field cause cannot be fabricated.
+
+## ARCHIVED - 28 October consolidation/recovery and approval preparation
+
+Everything below is dated historical preparation. Earlier missing-input stops, branch/PR states and proposed future calls apply only to their checkpoint; they do not authorize repeating consumed operations. Validate recipes against current CLI and complete authentic evidence. Routine engineering merges follow current [charter](COORDINATION_CHARTER.md).
 
 Prepared 28 October 2026 for the consolidated engineering milestone on
 `integrate/g3-reconstruct`, [PR #5](https://github.com/Ankit6149/second-source/pull/5).
@@ -370,7 +384,7 @@ observations/hypotheses, and published G3 input provenance before dispatch.
 Default scripted candidate:22 passed/3 failed/0 indeterminate/25, one mock
 generation attempt,1774 synthetic input/236 output tokens. Estimated/uncertain
 spendUSD0, genuine calls0, real candidate absent. The independently tested
-hand-authored25/25 and defect sensitivity2/2/1 remain separate NON_AI controls.
+hand-authored25/25 and defect sensitivity 2/2/1 remain separate NON_AI controls.
 
 Reproduce using the same CLI, after Stage A mock export (never real mode):
 

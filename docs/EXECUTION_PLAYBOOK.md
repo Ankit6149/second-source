@@ -1,5 +1,7 @@
 # Second Source — Engineering Execution & Experimental Discovery Playbook
 
+**Status pointer - 29 October 2026 IST.** Use the [single current delivery board](G3_DELIVERY_BOARD.md) for exact published SHA/CI, both consumed real G3 attempts, evidence and backend acceptance. This document does not authorize inference, credentials or deployment.
+
 **Document ID:** SS-EXEC-001  
 **Revision:** 1.0 · 27 October 2026  
 **Parent:** [Second Source Master PRD v2.0](./MASTER_PRD.md)  
@@ -605,7 +607,7 @@ Cloud and partner budgets are separate: $150 Meta grant is not automatically cre
 
 **Persistent worker:** only after local work is reliable. Lease tasks durably, heartbeat and checkpoint; resume from the last safe state; never blindly repeat side effects; expose pause/stop via authenticated API; obtain human approval for external mutations or auth challenges. LLM calls execute only when necessary, not constantly.
 
-**Human involvement required for:** target authorization, sign-in challenges, scope expansion, unexpected billed resource creation, production writes/payments/emails, branch/main merge, public deployment, untrusted dependencies and submission.
+**Human involvement required for:** target authorization, sign-in challenges, scope expansion, unexpected billed resource creation, production writes/payments/emails, merges outside ADR-009 standing engineering authorization, public deployment, untrusted dependencies and submission.
 
 **Monitoring:** repository inspection checks code/PR/tests only when explicitly invoked or via configured automation. Do not claim passive continuous monitoring from a chat. Design a dedicated periodic repo-check automation if needed.
 

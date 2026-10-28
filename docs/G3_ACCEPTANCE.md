@@ -1,42 +1,16 @@
-# G3 acceptance — current status and historical checkpoints
+# G3 acceptance - current verdict and historical evidence
 
-## CURRENT — 28 October 2026
+**Status pointer - 29 October 2026 IST.** Use the [single current delivery board](G3_DELIVERY_BOARD.md) for exact published SHA/CI, both consumed real G3 attempts, evidence and backend acceptance. This document does not authorize inference, credentials or deployment.
 
-**GO for the tested zero-cost engineering milestone; NO-GO for real G3/product
-acceptance.** Use the [authoritative delivery board](G3_DELIVERY_BOARD.md) for
-current delivery, severity-ranked issues and remaining gates.
+## CURRENT - 29 October 2026 IST
 
-G2 consolidation now uses one version-2 journal and preserves Muse's progress/
-result summaries. Source/test checkpoint `bc16552cf4c204bbe3f3fb8fb136353e898156fb`
-has independent G2 review and full
-[CI40701890631](https://github.com/Ankit6149/second-source/actions/runs/40701890631):
-Linux425/0/3, Windows426/0/2, bootstrap426/0/2 BOOTSTRAP_OK. All prior G3
-verifier files remain unchanged. Final documentation-head CI/review is recorded
-on the board/PR; no source acceptance is inherited without exact-head checks.
-The evidence below describes the previously accepted G3 source, not an
-automatic acceptance of later commits.
+GO for source-specific tested nonbillable CLI engineering baseline; NO-GO for full backend/product acceptance or genuine reconstruction success. The [single delivery board](G3_DELIVERY_BOARD.md) holds exact source/CI/evidence and remaining gates.
 
-Previously verified combined source: `af477b2daf0b676ad49be3959bcd28de868f76be`.
-[CI 40666652416](https://github.com/Ankit6149/second-source/actions/runs/40666652416)
-passes: Linux **352 passed / 0 failed / 3 skipped**, Windows **353 passed /
-0 failed / 2 skipped**; Windows bootstrap repeats the result with `BOOTSTRAP_OK`.
-All seven independent workflow regressions pass unchanged. Reference/model
-provenance, stable preflight pins, immutable broker/candidate archives, strict
-scoring, bounded isolation, atomic no-clobber reports, interruption accounting
-and replay protection have nonbillable regression evidence.
+PRs #5-#8 merged. Main `0aba3bf42b735ae911b8b471aad43972abfa8d9d` passed [CI 40747405916](https://github.com/Ankit6149/second-source/actions/runs/40747405916): Linux 434/0/3, Windows 435/0/2, bootstrap 435/0/2 BOOTSTRAP_OK. G3-D mock/preflight/archive/report code exists. New local backend work is not covered by this CI.
 
-G3-D is implemented in open [PR #5](https://github.com/Ankit6149/second-source/pull/5),
-on the single `integrate/g3-reconstruct` branch. PRs #3/#4 are merged into the
-foundation now in `main` at `9c8bcc4eba5e8bf4b1b3e5dfc75273c2eb0ea203`.
-The earlier parameter-precedence defect is corrected and independently tested.
+New genuine G2 has complete original hypotheses/citations/two receipts; missing 27 October history remains unrecovered. Both real G3 grants consumed: no admitted candidate/evaluation/score. Exact old field rejection causes unknown. PR #8 cannot recover them. No inference/retry/repair/credentials authorized.
 
-Trusted hand-authored positive/offline control: **25/25**; deliberate defects:
-**2/2/1** detected failures; default scripted mock: **22/25**. All are NON_AI.
-No genuine G3 candidate, real score, repair lift, polished deployed interface
-or complete product/submission acceptance is claimed. Genuine G3 calls/spend/
-uncertain spend remain **0 / $0 / $0**. Authentic G2 hypothesis text/citations
-are missing from retained historical artifacts. Real inference additionally
-requires authentic input approval and separate owner spending authorization.
+Trusted25/25, negative 2/2/1 and mock 22/25 are NON_AI. Integrated backend/API/recovery/security/export and authentic reconstruction acceptance pending. Routine merges follow updated [charter](COORDINATION_CHARTER.md): exact-head CI, independent review/protections. No frontend expansion/production-readiness claim.
 
 ## ARCHIVED SNAPSHOTS — G3-A / early G3-B
 
@@ -111,7 +85,7 @@ The follow-up branch fixes:
 6. Repair is optional and may be claimed only with a genuine unchanged-suite
    before/after result.
 
-## Verified G3-B engineering checkpoint ? 28 October 2026
+## Verified G3-B engineering checkpoint - 28 October 2026
 
 Code: `aeed582483cbf0f2d57bfb53a4fef948273d9ec6`, from frozen coordinator baseline `bfd605d...`.
 At this historical checkpoint PR #4 was draft/unmerged. It subsequently merged;

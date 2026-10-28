@@ -1,19 +1,11 @@
-# Codex independent verification brief — current pointer
+# Codex infrastructure and independent verification brief
 
-Read the [current delivery board](G3_DELIVERY_BOARD.md),
-[coordination charter](COORDINATION_CHARTER.md),
-[G3 contract](G3_IMPLEMENTATION_CONTRACT.md) and latest coordinator reviews on
-[PR #5](https://github.com/Ankit6149/second-source/pull/5).
-Use the existing shared `integrate/g3-reconstruct` branch with serialized pushes.
+**Status pointer - 29 October 2026 IST.** Use the [single current delivery board](G3_DELIVERY_BOARD.md) for exact published SHA/CI, both consumed real G3 attempts, evidence and backend acceptance. This document does not authorize inference, credentials or deployment.
 
-Codex owns independent cross-module, adversarial, provenance, accounting,
-failure-recovery and reproducibility verification. Preserve every existing
-negative assertion and NON_AI control; evaluate actual published interfaces,
-not another worker's implementation claims. Cite exact SHA/OS CI and separate
-engineering readiness from genuine-input approval and real reconstruction.
+**CURRENT - 29 October 2026 IST.** Read [delivery board](G3_DELIVERY_BOARD.md), [charter](COORDINATION_CHARTER.md), [Master PRD](MASTER_PRD.md) and [Issue #2 owner directive](https://github.com/Ankit6149/second-source/issues/2#issuecomment-6477673246).
 
-The former phase-1/phase-2 brief is an **ARCHIVED SNAPSHOT**, preserved
-[at 44f4780](https://github.com/Ankit6149/second-source/blob/44f47803efcb0046c353942e42c36be1b34ca957/docs/CODEX_G3_B_REVIEW_BRIEF.md).
-Its old `g3/verifier`/PR #4 continuation directions are superseded. The original
-[phase-1 audit](G3_B_PHASE1_AUDIT_2026-10-28.md) remains dated historical evidence.
-No new branch, merge, spending approval or paid call is authorized.
+Codex owns control plane/state/migrations, typed service/API, workers/recovery, observability/artifacts and independent verifier integration. Muse owns intelligence/gateway/generation/admission. Use file-disjoint short-lived branches, one shared-interface writer, contract tests and continuous integration. Codex branch: `feat/backend-control-plane`.
+
+Preserve every independent negative/NON_AI control. Require exact SHA, reproduced failure, OS CI and actual evidence. Main CI does not certify local backend edits. Both genuine G3 grants consumed; no candidate/score. Resolve admission nonbillably; do not invent the unretained historical field-level cause.
+
+Routine merges require exact-head green CI, independent review and protections under updated owner instruction. No paid inference/retry, credential operations or live deployment authorized. Earlier G3-B/single-branch directions are ARCHIVED; [phase-1 audit](G3_B_PHASE1_AUDIT_2026-10-28.md) remains dated evidence.

@@ -1,5 +1,7 @@
 # G3-B Phase 1 Independent Audit Record — 2026-10-28
 
+**ARCHIVED source-specific record.** Earlier CURRENT headings, holds, branch/merge directions and counts below apply only to their dated checkpoint. Use the [single current delivery board](G3_DELIVERY_BOARD.md) for exact published SHA/CI, both consumed real G3 attempts, evidence and backend acceptance. This document does not authorize inference, credentials or deployment.
+
 **Auditor:** Codex  
 **Mode:** read-only independent technical/security audit  
 **Audited G3-A SHA:** `8f881cd37c99acb5c8045bf9c3441e06920d373e`  

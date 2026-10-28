@@ -1,17 +1,19 @@
 # Second Source · evidence-backed software reconstruction
 
+**Status pointer - 29 October 2026 IST.** Use the [single current delivery board](docs/G3_DELIVERY_BOARD.md) for exact published SHA/CI, both consumed real G3 attempts, evidence and backend acceptance. This document does not authorize inference, credentials or deployment.
+
 **An AI scientist for authorized software behavior:** observe a black box, form evidence-linked hypotheses, run controlled experiments, generate a scoped independent candidate, and measure it against a withheld evaluator.
 
-## Current outcome — 28 October 2026
+## Current outcome - 29 October 2026 IST
 
-- **Engineering:** merged PR [#5](https://github.com/Ankit6149/second-source/pull/5) at `bc9f9c11`, including one durable G2 journal and a sealed, bounded G3 evaluation workflow. Merged PR [#6](https://github.com/Ankit6149/second-source/pull/6) at `ceb28b6`, preserving sanitized future broker failure diagnostics. The latest PR #6 head passed cross-platform CI; post-merge main CI is tracked separately.
-- **Genuine Meta G2:** an operator-run discovery on 28 October recorded 3 original hypotheses, 5 observations, 1 model-selected experiment and 2 real Muse Spark 1.3 responses. Independently audited local receipt estimates: USD `0.013486`, not provider-confirmed charges. Original evidence and the externally witnessed receipt remain local, not checked into this public repo.
-- **Genuine Meta G3:** one authorized real synthesis attempt consumed, estimated `$0.0103305`; failed **before candidate admission**, with no independent model-generated score. Its exact rejection category was not preserved by that old run. The PR #6 diagnostic fix cannot retroactively recover it. No second paid attempt or repair is authorized by a merge.
-- **NON_AI controls:** scripted candidate `22/25` on the sealed suite, trusted hand-authored positive `25/25`, negative sensitivity `2/2/1`. **None represents real Muse reconstruction quality.**
-- **Operator experience:** [read-only demo console](demo/) in [PR #7](https://github.com/Ankit6149/second-source/pull/7), showing real/mock status, local report import, evidence counts, score/no-score and sanitized summary download. This does not dispatch real inference, start/stop runs or export an independently signed complete evidence bundle.
-- **Submission:** Not submitted. A scored genuine G3 candidate, full product UI acceptance, judge video and final public reproducibility remain outstanding.
+- Published main `0aba3bf42b735ae911b8b471aad43972abfa8d9d`, merged PRs #5-#8. [Exact CI 40747405916](https://github.com/Ankit6149/second-source/actions/runs/40747405916): Linux 434 passed/0 failed/3 skipped, Windows 435/0/2 plus matching bootstrap BOOTSTRAP_OK.
+- Genuine new G2: 3 original hypotheses, 5 observations, one model-selected experiment, 2 real receipts; estimate USD0.013486, uncertain 0. Original evidence operator-local; older missing hypotheses not reconstructed.
+- Genuine G3: **two consumed attempts, no admitted candidate or behavioral score**; estimates USD0.0103305 and USD0.00985025, uncertain 0. Exact historical field rejection causes unknown. No further inference/repair authorized.
+- NON_AI trusted positive 25/25, negative 2/2/1, mock 22/25: never real reconstruction quality.
+- Codex backend/control-plane/API/worker/artifact development ongoing on `feat/backend-control-plane`, not merged/main-CI-certified. Muse owns intelligence/admission. Frontend expansion stopped until trustworthy backend; merged PR #7 is read-only, not full product acceptance.
+- Submission completion, final video and organizer acceptance **unverified**.
 
-The canonical product contract is [docs/MASTER_PRD.md](docs/MASTER_PRD.md). Current engineering/result evidence and remaining release gates are in [docs/G3_DELIVERY_BOARD.md](docs/G3_DELIVERY_BOARD.md). The [submission runbook](docs/HACKATHON_SUBMISSION_RUNBOOK.md) remains a checklist, not evidence of completion.
+[Master PRD](docs/MASTER_PRD.md) defines product; [single delivery board](docs/G3_DELIVERY_BOARD.md) records current evidence/gates; [owner backend directive](https://github.com/Ankit6149/second-source/issues/2#issuecomment-6477673246) sets execution priority. No production-ready infrastructure claim.
 
 ## Reproduce the verified engineering workflow
 
@@ -20,7 +22,7 @@ Use Python 3.11+ and a frozen, reviewed `main` checkpoint:
 ```sh
 git clone https://github.com/Ankit6149/second-source.git
 cd second-source
-git checkout --detach ceb28b6f2f2292f75f766fbd3fbefc0822cfef98
+git checkout --detach 0aba3bf42b735ae911b8b471aad43972abfa8d9d
 python -m venv .venv
 # Linux: . .venv/bin/activate
 # PowerShell: .\.venv\Scripts\Activate.ps1

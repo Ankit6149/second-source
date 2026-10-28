@@ -1,25 +1,16 @@
-# Independent G3 verification — current verdict and chronological evidence
+# Independent G3 verification - current verdict and historical evidence
 
-## CURRENT — 28 October 2026
+**Status pointer - 29 October 2026 IST.** Use the [single current delivery board](G3_DELIVERY_BOARD.md) for exact published SHA/CI, both consumed real G3 attempts, evidence and backend acceptance. This document does not authorize inference, credentials or deployment.
 
-**Engineering GO for the tested zero-cost CLI milestone and owner review;
-real G3/product release NO-GO.** The single current delivery/status/risk source
-is [G3_DELIVERY_BOARD.md](G3_DELIVERY_BOARD.md).
+## CURRENT - 29 October 2026 IST
 
-Combined source `af477b2daf0b676ad49be3959bcd28de868f76be` passes
-[exact-source CI 40666652416](https://github.com/Ankit6149/second-source/actions/runs/40666652416):
-Linux/Python 3.11 **352 passed / 0 failed / 3 skipped**;
-Windows/Python 3.12 **353 passed / 0 failed / 2 skipped**, repeated by
-bootstrap with `BOOTSTRAP_OK`. All seven original regressions pass unchanged.
-No speculative new gate, xfail, lowered threshold or extra skip was introduced.
+GO for source-specific tested nonbillable CLI engineering baseline; NO-GO for full backend/product acceptance or genuine reconstruction success. The [single delivery board](G3_DELIVERY_BOARD.md) holds exact source/CI/evidence and remaining gates.
 
-PRs #3/#4 are merged; PR #5 is the current open integration review on
-`integrate/g3-reconstruct`. G3-D mock/preflight/gated-real/archive/report code
-exists and is tested. Positive/offline **25/25**, negative **2/2/1** sensitivity
-and default mock **22/25** are NON_AI controls, not genuine model accuracy.
-The original G2 hypothesis batch remains missing; authentic input approval,
-explicit owner spend and an actual independently scored Meta candidate remain
-unfulfilled. No merge, inference or spending approval is granted by this log.
+PRs #5-#8 merged. Main `0aba3bf42b735ae911b8b471aad43972abfa8d9d` passed [CI 40747405916](https://github.com/Ankit6149/second-source/actions/runs/40747405916): Linux 434/0/3, Windows 435/0/2, bootstrap 435/0/2 BOOTSTRAP_OK. G3-D mock/preflight/archive/report code exists. New local backend work is not covered by this CI.
+
+New genuine G2 has complete original hypotheses/citations/two receipts; missing 27 October history remains unrecovered. Both real G3 grants consumed: no admitted candidate/evaluation/score. Exact old field rejection causes unknown. PR #8 cannot recover them. No inference/retry/repair/credentials authorized.
+
+Trusted25/25, negative 2/2/1 and mock 22/25 are NON_AI. Integrated backend/API/recovery/security/export and authentic reconstruction acceptance pending. Routine merges follow updated [charter](COORDINATION_CHARTER.md): exact-head CI, independent review/protections. No frontend expansion/production-readiness claim.
 
 ## ARCHIVED CHRONOLOGICAL CHECKPOINTS
 
@@ -208,7 +199,7 @@ Resource reference documentation: [Windows Job limits](https://learn.microsoft.c
 [Job memory limits](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-jobobject_extended_limit_information),
 and [Python audit-hook limitations](https://docs.python.org/3/library/sys.html#sys.addaudithook).
 
-## Session-boundary update ? 28 October 2026
+## Session-boundary update - 28 October 2026
 
 Verified code SHA: `aeed582483cbf0f2d57bfb53a4fef948273d9ec6`.
 [CI 40581058875](https://github.com/Ankit6149/second-source/actions/runs/40581058875) completed successfully: Linux/Python 3.11 **250 passed/3 skipped**; Windows/Python 3.12 **251 passed/2 skipped**, including bootstrap replay and `BOOTSTRAP_OK`. Local Windows remains **250 passed/3 skipped**. The difference is unprivileged symlink availability.

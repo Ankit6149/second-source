@@ -1,7 +1,10 @@
 # G3 Implementation Contract — Second Source
-**State:** BUILD SPEC / NOT YET VERIFIED OR DEPLOYED
+
+**Status pointer - 29 October 2026 IST.** Use the [single current delivery board](G3_DELIVERY_BOARD.md) for exact published SHA/CI, both consumed real G3 attempts, evidence and backend acceptance. This document does not authorize inference, credentials or deployment.
+
+**State:** NORMATIVE CONTRACT; CLI engineering implemented; genuine reconstruction acceptance outstanding ? see delivery board
 **Parent:** [MASTER_PRD.md](MASTER_PRD.md) · [EXECUTION_PLAYBOOK.md](EXECUTION_PLAYBOOK.md)
-**Prerequisite:** G2 observed real Muse experiment; merge only after operator's detailed local receipt review.
+**Prerequisite:** authentic complete G2 experiment/evidence and independent receipt review before genuine G3 input approval. Engineering integration follows current coordination charter.
 **Target:** one reproducible end-to-end independently generated, behaviorally tested, scope-restricted owned CLI replacement before the Meta hackathon submission.
 
 ## Single demonstration promise
@@ -61,7 +64,7 @@ The command below is a planned contract example; the current operator uses
 **Prioritize G3-A+B first.** G3-C repair is valuable but secondary to one honest end-to-end evaluation. If time runs short, drop repair, second target, cloud workers, login automation and polished dashboard—not evaluator isolation or origin attribution.
 
 ## Handoff for Muse Code and reviewer
-- Build in the existing `second-source` repository. After the separately reviewed G2 merge, use **one** short-lived branch/PR for all G3 work; no duplicate G0/G2 architecture, no stale local `main`, no force push.
+- Use the existing repository, file-disjoint short-lived branches/PRs and serialized integration under updated owner directive. No duplicate engine/scoring, stale main or force push. Routine merges require exact-head green CI, independent review and protections; never infer spending approval.
 - Start with a failing G3 test + exact interface; land candidate DSL schema/validator + constrained interpreter + positive/negative controls; then implement Meta candidate spec generation; then connect verifier and report; finally optionally repair.
 - Keep commits reviewable; run full tests before pushes; require Linux/Windows CI; record actual outcomes, never just intentions.
 - End each report with exact commit SHA, mock/real run counts, verifier pass/total, budget consumed/uncertain and acceptance blockers.
