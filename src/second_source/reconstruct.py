@@ -601,12 +601,29 @@ def _check_g2_manifest(
 
 
 def _load_operator_evidence(args: argparse.Namespace) -> tuple[EvidenceLedger, HypothesisStore, tuple[str, ...]]:
-    try:
-        digests = tuple(d.strip() for d in args.observation_digests.split(",") if d.strip())
-        if not digests:
-            raise ValueError("no observation digests")
-    except (AttributeError, ValueError):
-        raise RuntimeError("--observation-digests must list approved ledger digests")
+    if args.observation_digests == "@g2":
+        # Eliminate manual digest reordering/subsetting: the witnessed journal,
+        # not hypothesis citations, owns the COMPLETE observation sequence.
+        if not args.g2_manifest or not args.g2_receipt_sha256:
+            raise RuntimeError("@g2 requires a complete external G2 receipt witness")
+        source = Path(args.g2_manifest)
+        if source.name != "G2_receipt.json" or source.is_symlink():
+            raise RuntimeError("@g2 requires the immutable G2 receipt file")
+        from .g2_persistence import inspect_run
+        try:
+            archive = inspect_run(source.parent, args.g2_receipt_sha256)
+            if not archive["complete"]:
+                raise ValueError("G2 journal incomplete")
+            digests = tuple(archive["observation_digests"])
+        except (OSError, ValueError) as exc:
+            raise RuntimeError("@g2 original evidence not authenticated") from exc
+    else:
+        try:
+            digests = tuple(d.strip() for d in args.observation_digests.split(",") if d.strip())
+        except (AttributeError, ValueError):
+            raise RuntimeError("--observation-digests must list approved ledger digests")
+    if not digests or len(digests) != len(set(digests)):
+        raise RuntimeError("--observation-digests require nonempty, unique evidence")
     ledger = EvidenceLedger(args.ledger_dir)
     try:
         batch_doc = json.loads(Path(args.hypotheses_file).read_text(encoding="utf-8"))

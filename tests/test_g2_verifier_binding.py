@@ -204,3 +204,36 @@ def test_bound_mock_discovery_to_candidate_verification_reuses_exact_g2_context(
     assert provenance["g2"] == report["g2_input_provenance"]
     assert (target / report["candidate_artifact"]).is_file()
     assert (target / report["broker_artifact"]).is_file()
+
+
+def test_g3_loads_complete_evidence_from_authenticated_g2_receipt(bound_control, tmp_path):
+    """NON_AI: auto-binding includes uncited observations in original G2 order."""
+    from argparse import Namespace
+    from second_source.g2_persistence import export_batch
+
+    run, archive, _, _ = bound_control
+    exported = export_batch(run, tmp_path / "original.json",
+                            expected_receipt_sha256=archive["receipt_sha256"])
+    args = Namespace(
+        observation_digests="@g2", g2_manifest=str(run / "G2_receipt.json"),
+        g2_receipt_sha256=archive["receipt_sha256"],
+        ledger_dir=str(run / "evidence"), hypotheses_file=str(exported),
+    )
+    _, _, digests = operator._load_operator_evidence(args)
+    assert digests == tuple(archive["observation_digests"])
+    assert len(digests) > 1
+
+
+def test_g3_autobinding_requires_real_external_receipt_witness(bound_control, tmp_path):
+    from argparse import Namespace
+    run, archive, _, _ = bound_control
+    args = Namespace(
+        observation_digests="@g2", g2_manifest=str(run / "G2_receipt.json"),
+        g2_receipt_sha256=None, ledger_dir=str(run / "evidence"),
+        hypotheses_file=str(tmp_path / "none.json"),
+    )
+    with pytest.raises(RuntimeError, match="external G2 receipt witness"):
+        operator._load_operator_evidence(args)
+    args.g2_receipt_sha256 = "0" * 64
+    with pytest.raises(RuntimeError, match="not authenticated"):
+        operator._load_operator_evidence(args)
