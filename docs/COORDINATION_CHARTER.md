@@ -46,3 +46,11 @@ The Master PRD states WHAT; G3 Implementation Contract states G3 minimum; Execut
 
 ## Order of coordination
 **Now:** Muse begins G3-A and publishes interface; Codex performs read-only G3-B audit, no overlapping writes; ChatGPT checks PR/CI and prepares acceptance artifacts. **Then:** Codex implements G3-B against committed interface, Muse connects model generation and mock path. **Then:** joint integration review, one owner-authorized real G3 run, independent report, optional 0–2 repairs, demo/submission.
+
+## Current coordination receipt ? 2026-10-28 session boundary
+
+The historical kickoff above is superseded by current delivery state: G2 merged; G3-B engineering code `aeed582483cbf0f2d57bfb53a4fef948273d9ec6` on existing `g3/verifier` has conditional coordinator source/CI review. PR #4 targets `g3/candidate-synthesis`; PR #3 targets `main`. Both remain draft and unmerged. Exact-code CI `40581058875` is green on Linux/Windows, including Windows bootstrap. G3 is NOT ACCEPTED.
+
+Latest direction: https://github.com/Ankit6149/second-source/pull/4#issuecomment-6461226733. Codex continues real-run evaluator provenance/security in existing owned files; Muse owns its precedence correction; Codex independently verifies that correction. No additional branches. A caller-provided reference/mapping/marker scan is not proof of real-run provenance. Integrate moving upstream cleanly and require combined CI before claims. No new merge or paid-call authorization is created here.
+
+The user authorized a documentation/handoff refresh and requested implementation continuation in the next session. Consult `HANDOFF_2026-10-28.md` and `NEW_CHAT_STARTER_2026-10-28.md`; do not restart completed G3-B work or ask the user to repeat history.
