@@ -221,6 +221,36 @@ def _blocked(message: str) -> int:
     return 2
 
 
+def _progress(stage: str, run_id: str, detail: str = "") -> None:
+    """One durable workflow event per completed stage; stderr, JSON, no secrets."""
+    print(
+        json.dumps({"progress": stage, "run_id": run_id, "detail": detail}),
+        file=sys.stderr,
+    )
+
+
+def _readable_summary(evaluation: dict[str, Any], mode: str) -> list[str]:
+    """Plain-language evaluation lines; mock scores are never success claims."""
+    lines = [
+        f"{evaluation['passed']}/{evaluation['total']} sealed cases passed "
+        f"({mode} transport; "
+        + ("plumbing evidence only, not AI reconstruction"
+           if mode == "mock" else "independent Meta-generated score")
+        + ")",
+    ]
+    for category in sorted(evaluation.get("failure_categories", {})):
+        lines.append(
+            f"{evaluation['failure_categories'][category]} case(s) mismatch "
+            f"in category {category}"
+        )
+    if evaluation.get("indeterminate"):
+        lines.append(
+            f"{evaluation['indeterminate']} case(s) indeterminate: reference "
+            "harness fault, not candidate verdict"
+        )
+    return lines
+
+
 def _write_once(path: Path, raw: bytes) -> Path:
     """Atomic create-once publish: staging write, then no-clobber link.
 
@@ -375,6 +405,7 @@ def _write_failure_report(
         ),
     }
     _write_report(run_dir, report)
+    _progress("stopped", run_dir.name, report["stop_reason"])
     return report
 
 
@@ -425,6 +456,7 @@ def run_mock(args: argparse.Namespace) -> int:
     run_dir = _run_directory(args.run_dir)
     ledger = EvidenceLedger(run_dir / "evidence")
     digests = _observe_mock_evidence(ledger)
+    _progress("evidence_ready", run_dir.name, f"{len(digests)} observations recorded")
     store = mock_hypotheses(digests)
 
     seal_dir = args.seal_dir or tempfile.mkdtemp(prefix="second-source-sealed-")
@@ -437,6 +469,7 @@ def run_mock(args: argparse.Namespace) -> int:
         observation_digests=tuple(digests), hypotheses=store,
     )
     ticket = run.prepare()
+    _progress("inspected", run_dir.name, "broker request inspected, zero calls")
     proposal = naive_mock_spec()
 
     def _responder(request: Any) -> dict[str, Any]:
@@ -469,6 +502,8 @@ def run_mock(args: argparse.Namespace) -> int:
     admitted = _persist_admission(
         run_dir, artifact, admitted_value["receipt"]["candidate_digest"]
     )
+    _progress("admitted", run_dir.name,
+              f"candidate {admitted_value['receipt']['candidate_digest']}")
     try:
         result = run.evaluate(artifact, claim="TRUSTED_CONTROL")
     except KeyboardInterrupt:
@@ -517,6 +552,7 @@ def run_mock(args: argparse.Namespace) -> int:
         },
         "stop_reason": "completed_mock_run",
         "evidence_artifact_count": len(digests),
+        "evaluation_summary": _readable_summary(result["evaluation"], "mock"),
         "manifest_digest": pin_public_manifest(public),
         "report_path": str(run_dir / "G3_report.json"),
         "report_labels": "MOCK_TRANSPORT_NAIVE_SPEC_TRUSTED_CONTROL_EVALUATION",
@@ -528,6 +564,9 @@ def run_mock(args: argparse.Namespace) -> int:
         ),
     }
     _write_report(run_dir, report)
+    _progress("evaluated", run_dir.name,
+              f"{result['evaluation']['passed']}/{result['evaluation']['total']} sealed cases")
+    _progress("reported", run_dir.name, "G3_report.json")
     print(json.dumps(_summarize(report), indent=2))
     print(json.dumps({
         "approved_context_digest": result["approved_context_digest"],
@@ -618,6 +657,8 @@ def run_real(args: argparse.Namespace) -> int:
         print(f"BLOCKED_EVALUATOR: {type(exc).__name__}", file=sys.stderr)
         return 2
     run_dir = _run_directory(args.run_dir)
+    _progress("evidence_ready", run_dir.name, f"{len(digests)} approved observations")
+    _progress("inspected", run_dir.name, "broker request inspected, spend reserved")
     try:
         ticket = run.prepare()
         artifact = run.generate(
@@ -641,6 +682,8 @@ def run_real(args: argparse.Namespace) -> int:
     admitted = _persist_admission(
         run_dir, artifact, admitted_value["receipt"]["candidate_digest"]
     )
+    _progress("admitted", run_dir.name,
+              f"candidate {admitted_value['receipt']['candidate_digest']}")
     try:
         result = run.evaluate(artifact, claim="REAL_MODEL")
     except KeyboardInterrupt:
@@ -689,12 +732,16 @@ def run_real(args: argparse.Namespace) -> int:
         },
         "stop_reason": "completed_real_run",
         "evidence_artifact_count": len(digests),
+        "evaluation_summary": _readable_summary(result["evaluation"], "real"),
         "operator_input_pin_present": True,
         "max_authorized_usd": args.max_usd,
         "report_path": str(run_dir / "G3_report.json"),
         "note": "Genuine Muse generation scored on the frozen sealed suite.",
     }
     _write_report(run_dir, report)
+    _progress("evaluated", run_dir.name,
+              f"{report['evaluation']['passed']}/{report['evaluation']['total']} sealed cases")
+    _progress("reported", run_dir.name, "G3_report.json")
     print(json.dumps(_summarize(report), indent=2))
     return 0
 
@@ -793,6 +840,8 @@ def run_preflight(args: argparse.Namespace) -> int:
     }
     _write_once(run_dir / "G3_preflight.json",
                 json.dumps(receipt, indent=2, sort_keys=True).encode("utf-8"))
+    _progress("inspected", run_dir.name, "genuine inputs inspected, zero calls")
+    _progress("reported", run_dir.name, "G3_preflight.json")
     print(json.dumps({
         "result": "preflight_ready",
         "run_id": run_dir.name,

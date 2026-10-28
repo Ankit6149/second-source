@@ -21,7 +21,7 @@ proposal).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any, Callable, Sequence
 
 from .budgets import RunBudget
 from .contracts import ProposedAction, ScopeContract
@@ -99,6 +99,7 @@ class DiscoveryLoop:
         planner: ExperimentPlanner,
         budget: RunBudget,
         max_rounds: int = 6,
+        recorder: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         self._run_id = run_id
         self._requirement_id = requirement_id
@@ -109,7 +110,9 @@ class DiscoveryLoop:
         self._planner = planner
         self._budget = budget
         self._max_rounds = max_rounds
+        self._recorder = recorder
         self._digests: list[str] = []
+        self._recorded = 0
 
     def _views(self) -> list[dict[str, Any]]:
         # Digest-keyed redacted views: the mock/real model cites digests, and
@@ -121,6 +124,32 @@ class DiscoveryLoop:
 
     def _known_ids(self) -> frozenset[str]:
         return frozenset(self._digests)
+
+    def _record(self, event: dict[str, Any]) -> None:
+        if self._recorder is not None:
+            self._recorder(event)
+
+    def _new_digests(self) -> tuple[str, ...]:
+        fresh = tuple(self._digests[self._recorded:])
+        self._recorded = len(self._digests)
+        return fresh
+
+    @staticmethod
+    def _proposal_record(top: Any, *, executed: bool) -> dict[str, Any]:
+        return {
+            "proposal_id": top.proposal_id,
+            "actions": [a.model_dump(mode="json") for a in top.actions],
+            "predictions": [
+                {
+                    "hypothesis_id": p.hypothesis_id,
+                    "expects_ok": p.expects_ok,
+                    "expects_contains": p.expects_contains,
+                }
+                for p in top.predictions
+            ],
+            "utility": float(top.utility),
+            "executed": executed,
+        }
 
     def _execute(
         self, actions: Sequence[ProposedAction]
@@ -164,6 +193,7 @@ class DiscoveryLoop:
         rounds: list[LoopRound] = []
         stop_reason = "stalled"
         rejection_codes: tuple[str, ...] = ()
+        current_batch: Any = None
         try:
             self._seed(seed_actions)
             for round_no in range(1, self._max_rounds + 1):
@@ -194,6 +224,7 @@ class DiscoveryLoop:
                         rejection_codes=first_denials,
                     )
                 if not plan.ranked:
+                    current_batch = batch
                     rejection_codes = tuple(sorted(set(first_denials) | set(_trusted_rejection_codes(plan.rejected))))
                     reasons = "; ".join(r for _, r in plan.rejected[:3])
                     reasons = (
@@ -214,11 +245,28 @@ class DiscoveryLoop:
                         )
                     )
                     stop_reason = "guard_blocked"
+                    self._record({
+                        "event": "round",
+                        "round_no": round_no,
+                        "hypothesis_batch": batch.model_dump(mode="json"),
+                        "proposal": None,
+                        "evidence_digests": self._new_digests(),
+                        "verdicts": {},
+                    })
                     break
+                current_batch = batch
                 top = plan.ranked[0]
                 try:
                     obs_ids, final = self._execute(top.actions)
                 except PolicyViolation as exc:
+                    self._record({
+                        "event": "round",
+                        "round_no": round_no,
+                        "hypothesis_batch": batch.model_dump(mode="json"),
+                        "proposal": self._proposal_record(top, executed=False),
+                        "evidence_digests": self._new_digests(),
+                        "verdicts": {},
+                    })
                     rounds.append(
                         LoopRound(
                             round_no,
@@ -264,7 +312,24 @@ class DiscoveryLoop:
                         f"steps={len(top.actions)} verdicts={verdicts}",
                     )
                 )
+                self._record({
+                    "event": "round",
+                    "round_no": round_no,
+                    "hypothesis_batch": batch.model_dump(mode="json"),
+                    "proposal": self._proposal_record(top, executed=True),
+                    "evidence_digests": self._new_digests(),
+                    "verdicts": dict(verdicts),
+                })
         except BudgetExhausted as exc:
+            if current_batch is not None:
+                self._record({
+                    "event": "round",
+                    "round_no": 0,
+                    "hypothesis_batch": current_batch.model_dump(mode="json"),
+                    "proposal": None,
+                    "evidence_digests": self._new_digests(),
+                    "verdicts": {},
+                })
             rounds.append(
                 LoopRound(
                     0, (), None, 0, (), "fresh_process_per_sequence",
@@ -273,6 +338,15 @@ class DiscoveryLoop:
             )
             stop_reason = "budget"
         except GatewayError as exc:
+            if current_batch is not None:
+                self._record({
+                    "event": "round",
+                    "round_no": 0,
+                    "hypothesis_batch": current_batch.model_dump(mode="json"),
+                    "proposal": None,
+                    "evidence_digests": self._new_digests(),
+                    "verdicts": {},
+                })
             rounds.append(
                 LoopRound(
                     0, (), None, 0, (), "fresh_process_per_sequence",
@@ -282,6 +356,15 @@ class DiscoveryLoop:
             stop_reason = "model_error"
 
         receipts = self._planner.receipts
+        self._record({
+            "event": "final",
+            "stop_reason": stop_reason,
+            "receipts": [r.model_dump(mode="json") for r in receipts],
+            "budget_summary": dict(self._budget.summary()),
+            "final_hypotheses": [
+                h.model_dump(mode="json") for h in self._hypotheses.all()
+            ],
+        })
         return LoopReport(
             run_id=self._run_id,
             rounds=tuple(rounds),

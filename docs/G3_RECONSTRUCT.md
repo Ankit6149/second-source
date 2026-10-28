@@ -101,6 +101,22 @@ in every process. No prompts, observations, credentials, case ids, hidden
 inputs, reference source, or HMAC keys. No REAL-RUN-READY or production
 claim is made while acceptance gates are open.
 
+## Operator visibility
+
+Every run emits ordered stderr progress events (`evidence_ready`,
+`inspected`, `admitted`, `evaluated`, `reported`, `stopped`) carrying the run
+ID -- one per durable stage, never synthetic animation. Reports include a
+plain-language `evaluation_summary` (counts plus per-category mismatch
+lines); mock scores are labeled plumbing evidence, never success.
+
+## G2 persistence (new discoveries only)
+
+`src/second_source/g2_persistence.py` records complete hypothesis batches,
+executed proposals, evidence digests, model receipts, and budget state into a
+validated create-once `g2_manifest.json` per G2 run directory, and
+reloads/resumes it for approved follow-ups. The exact approval package for a
+genuine run lives in `docs/G2_G3_APPROVAL_PACKAGE.md`.
+
 ## Status
 
 Engineering source is verified through the board's exact combined commit and

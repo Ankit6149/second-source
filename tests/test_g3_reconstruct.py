@@ -188,6 +188,24 @@ def test_preflight_rejects_nonfinite_spend(monkeypatch, tmp_path):
         assert code == 2
 
 
+def test_mock_run_emits_ordered_progress_and_readable_summary(tmp_path, capsys):
+    run_dir = tmp_path / "progress-run"
+    assert main(["--mode", "mock", "--run-dir", str(run_dir),
+                 "--seal-dir", str(tmp_path / "sealed")]) == 0
+    report = json.loads((run_dir / "G3_report.json").read_text(encoding="utf-8"))
+    summary = report["evaluation_summary"]
+    assert summary[0].startswith(
+        f"{report['evaluation']['passed']}/{report['evaluation']['total']}"
+    )
+    assert "not AI reconstruction" in summary[0]
+    stages = [
+        json.loads(line)["progress"] for line in capsys.readouterr().err.splitlines()
+        if line.strip().startswith('{"progress"')
+    ]
+    assert stages == ["evidence_ready", "inspected", "admitted",
+                      "evaluated", "reported"]
+
+
 def test_mock_failure_persists_sanitized_receipt(monkeypatch, tmp_path, capsys):
     import second_source.reconstruct as operator
 

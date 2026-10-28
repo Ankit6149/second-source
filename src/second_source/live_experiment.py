@@ -25,6 +25,7 @@ from .contracts import (
     ScopeMode, TargetKind, TargetSpec,
 )
 from .evidence import EvidenceLedger
+from .g2_persistence import G2Recorder, PersistenceError, scope_digest_of
 from .hypotheses import HypothesisStore
 from .loop import DiscoveryLoop
 from .model_gateway import MetaProvider, ModelGateway
@@ -182,6 +183,11 @@ def main(argv: list[str] | None = None) -> int:
         cwd=ROOT,
     )
     runner = SafeCLIExperimentRunner(scope, reference, ledger)
+    recorder = G2Recorder(
+        run_id=run_dir.name,
+        requirement_id="REQ-LEDGER",
+        scope_digest=scope_digest_of(scope),
+    )
     loop = DiscoveryLoop(
         run_id=run_dir.name,
         requirement_id="REQ-LEDGER",
@@ -192,6 +198,7 @@ def main(argv: list[str] | None = None) -> int:
         planner=planner,
         budget=budget,
         max_rounds=args.rounds,
+        recorder=recorder,
     )
 
     # This is a permitted baseline, not a scripted substitute for the model's
@@ -211,6 +218,12 @@ def main(argv: list[str] | None = None) -> int:
         notes = [r.note for r in report.rounds if r.note.startswith("model stop:")]
         failure_code = classify_model_failure(notes[-1]) if notes else "MODEL_GATEWAY_ERROR"
 
+    try:
+        manifest_path = recorder.write(run_dir)
+        manifest_error = None
+    except PersistenceError as exc:
+        manifest_path = None
+        manifest_error = type(exc).__name__
     output = {
         "result": status,
         "failure_code": failure_code,
@@ -218,6 +231,8 @@ def main(argv: list[str] | None = None) -> int:
         "report": asdict(report),
         "model_receipts": [r.model_dump(mode="json") for r in gateway.receipts],
         "evidence_artifact_count": len(list(ledger.root.glob("*.json"))),
+        "g2_manifest_path": str(manifest_path) if manifest_path else None,
+        "g2_manifest_error": manifest_error,
         "independent_fixture_verifier": fixture_verifier_summary(reference),
         "real_vs_mock": "real",
         "note": (
