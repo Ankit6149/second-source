@@ -1,7 +1,7 @@
 # G3-B independent verifier acceptance — engineering controls only
 
 Starting coordinator commit: `bfd605d593e0a7d0868f8bb674430d3a1b0aaa9f`.
-Branch: `g3/verifier`. No merges, paid requests, credential reads or G3-A edits.
+Branch: `g3/verifier`. No PR merges, paid requests, credential reads or direct G3-A edits.
 The implementation commit is the Git commit containing this report; verified code SHA
 and remote CI are recorded in the handoff; later documentation-only commits do not change that code receipt. **G3 is not accepted and no genuine
 model-generated candidate accuracy is claimed.**
@@ -83,7 +83,9 @@ case/whitespace normalization, Unicode, removal present/missing/type handling,
 ordering, aggregates, and reset-sensitive trajectories. No hidden values or
 expected outputs are published here.
 
-Every control is **TRUSTED_CONTROL / NON_AI**, never Meta-generated:
+Historical controls at `aeed582`, before the later Muse validation change,
+are **TRUSTED_CONTROL / NON_AI**, never Meta-generated. Current combined results
+are recorded in the continuation below; this table is not current acceptance:
 
 | Control | Passed | Failed | Indeterminate | Total |
 |---|---:|---:|---:|---:|
@@ -186,3 +188,137 @@ Verified code SHA: `aeed582483cbf0f2d57bfb53a4fef948273d9ec6`.
 Coordinator [review](https://github.com/Ankit6149/second-source/pull/4#pullrequestreview-5674191802) is CONDITIONAL GREEN for this NON_AI engineering slice. The [latest continuation direction](https://github.com/Ankit6149/second-source/pull/4#issuecomment-6461226733) requires additional real-run provenance work in existing owned modules: attested reference identity/digest; frozen suite/comparator; immutable candidate origin/receipt; authenticated G2 observation/hypothesis and pinned scope/public-manifest binding; exact inspected broker request. Caller-provided mappings/marker scans and arbitrary reference protocols must not establish a real accuracy claim.
 
 Muse's text/dict parameter-error-precedence correction must be independently verified once committed; none has been observed at the last integration-head fetch (`bfd605d...`). Fetch/integrate cleanly on `g3/verifier`, keep both PRs draft/unmerged, and re-run combined CI. No new branches, paid calls, credential access or G3 acceptance claim. This session ends with a documentation-only handoff; implementation continues next session per the user's instruction.
+
+## Autonomous continuation: combined G3-B/G3-D preparation, 28 October 2026
+
+**Current disposition: BLOCKED for integration and real inference.** Earlier green
+control counts above apply to the earlier baseline. The new independent regressions
+are ordinary failing tests, with no skip/xfail or weakened acceptance threshold.
+
+Baseline verifier head: `646d90168ad88b8cda805e32b0c6efdbea95a796`.
+Imported Muse head: `da6cc9f532befdf37d51e9aca4270083593f72ce`, including
+`1a39863`'s validation change, through clean local merge
+`b643439462de757f6b71b80e193c280dade4b812` on the existing `g3/verifier`.
+No new branch or GitHub PR merge. The requested starter file was read and deleted;
+no other pre-existing file was deleted. All implementation/test/document changes
+remain within the existing verifier ownership boundary. Muse-owned modules were
+imported without editing them.
+
+### Pinned evaluator and broker API
+
+`PinnedEvaluatorRun` in `g3_verification.py` is the release-oriented entry point.
+The original `evaluate_sealed_suite` remains a generic **TRUSTED_CONTROL** API;
+its metadata now explicitly says `TRUSTED_CONTROL_EVALUATION_NOT_MODEL_PROVENANCE`.
+Generic adapters, caller dictionaries and claimed generation receipts cannot
+produce an accepted real-model evaluation through the pinned API.
+
+- Before generation, the run freezes the complete scope, suite bytes/digest,
+  trusted limits, public manifest, evaluator/comparator/runtime/generation/gateway
+  and transitive local module hashes. The original fixture must match the committed
+  reviewed reference digest `sha256:0df0ddc164428c3c062d68f06bc5030cc8f2d5bfcec7a115611af940766384b9`.
+  Scoring constructs the fixed bounded original adapter internally; it takes no
+  caller-selected reference. Code pins are checked before and after generation
+  and evaluation; both workers retain the existing containment/resource checks.
+- Approved observations are read by content address from `EvidenceLedger`,
+  integrity-checked and redacted. Commands/statuses are scope-checked. Hypotheses
+  are taken from the trusted `HypothesisStore`, schema/citation-checked and frozen
+  including statements/statuses. A syntactically valid citation does not authorize
+  a different hypothesis. Later mutation of the ledger/store or a context mapping
+  cannot alter the frozen inputs.
+- `prepare()` inspects the final gateway request in the existing credential-free
+  generation worker. An immutable `BrokerArtifact` binds the inspected bytes to
+  the frozen plan and a single-use nonce. `generate()` reconstructs the logical
+  request and compares **all final ModelRequest fields** at the provider boundary,
+  after exactly one schema injection. No tools are added. Tampering, request drift,
+  sequential/concurrent replay and cross-run artifacts are rejected.
+- The credential-owning provider stays in the trusted parent. Only exact registered
+  provider types are accepted. Real dispatch needs separate owner spending approval,
+  a positive budget within the frozen contract, and an independently approved
+  context digest supplied from trusted operator configuration. **A locally populated
+  ledger/store or matching caller mapping alone never enables real dispatch.**
+  The run budget cannot be swapped/reset/widened. Attempts are capped at one initial
+  plus at most two subsequent attempts; a failed real attempt blocks further real
+  dispatch pending fresh independent preflight. No real transport was exercised.
+- Broker-issued candidate origins bind exact immutable spec bytes, loader digest,
+  response/provider/model metadata, request/plan hashes, tokens and estimated/uncertain
+  costs. Local HMAC authentication rejects relabeling a mock as real, changing the
+  spec/receipt or moving it to a different run. `evaluate(..., claim="REAL_MODEL")`
+  rejects all mock/control origins. Neither score nor receipt implies G3 acceptance.
+- `evaluate()` returns sanitized metadata/counts and retains only its computed
+  `model_feedback()` for `repair_feedback()`. Arbitrary caller reports are never
+  accepted as repair feedback. Case inputs, outputs, names, paths and credentials
+  are absent. This prepares the feedback interface; it does not implement a real
+  repair prompt/CLI or claim observed repair lift.
+
+Local attestation is an in-process trusted-orchestrator boundary, **not** a provider
+signature, historical G2 authentication, protection against malicious same-process
+Python, or an arbitrary-code sandbox. The operator must independently approve the
+actual G2 registry/context from local receipts before supplying
+`operator_approved_context_digest`; the shared historical projection lacks the
+actual action payloads and cannot be used to invent them. Authority keys are
+ephemeral and never written/read from credential storage. A new process does not
+silently trust a serialized caller receipt; durable attestation/restart recovery
+requires a separately reviewed authority mechanism. Reports include code,
+registry, receipt and environment digests without persisting keys.
+
+Nonbillable integration skeleton (trusted orchestrator only):
+
+```python
+run = PinnedEvaluatorRun(suite, contract, ledger=approved_ledger,
+                        observation_digests=approved_digests,
+                        hypotheses=approved_hypothesis_store)
+ticket = run.prepare()  # isolated inspection only
+origin = run.generate(ticket, mock_provider, zero_spend_budget)
+report = run.evaluate(origin)  # PINNED_TRUSTED_CONTROL_EVALUATION
+feedback = run.repair_feedback(origin)  # detached aggregates only
+# Supplying REAL_MODEL for this mock origin is rejected.
+```
+
+### Independently reproduced Muse blockers
+
+1. **`candidate_runtime.py::_validate_params` now sorts alphabetically.** Text
+   and canonical dictionary representations agree, but both disagree with the
+   original on the coordinator's two public multiple-invalid/missing-field probes.
+   The reference returns `invalid_label`; candidates return `invalid_amount`.
+   `test_parameter_precedence_matches_original_for_both_representations` requires
+   both representations to pass the original. The original private positive suite
+   consequently scores **24 passed / 1 failed / 0 indeterminate / 25 total**.
+   The evaluator does not change candidate behavior to hide this defect.
+2. **`candidate_generation.py::request_candidate_spec` permits all pins omitted
+   for a real gateway.** Independent `test_muse_direct_real_function_must_not_allow_omitting_all_pins`
+   uses a synthetic placeholder and replaces `complete()` with a local sentinel.
+   The sentinel is reached with no scope/manifest/evidence pins, so the test fails.
+   No network request or actual credential is involved. Partial-pin rejection does
+   not close this omission path. The new pinned broker protects its own entry point,
+   but Muse's direct path must also fail closed or be removed from real integration.
+
+Muse's own `da6cc9f` CI [40637254976](https://github.com/Ankit6149/second-source/actions/runs/40637254976)
+is green on Ubuntu/Python 3.11 and Windows/Python 3.12 (Windows bootstrap succeeds).
+That run does not contain the independent verifier regressions above and is not
+combined acceptance. New combined CI and coordinator review remain required.
+
+### Verification record
+
+All local runs use Windows/Python 3.12.4, a minimal child environment with no
+provider credentials, model spend cap zero, pytest plugin autoload disabled,
+and bytecode/cache writes disabled. No `.env` was loaded. Initial combined full
+run: **273 passed / 4 failed / 3 skipped**, 58.35 seconds. The four failures are
+the missing-pin sentinel, sealed positive control and two positive precedence
+regressions. Final complete local run on the committed implementation:
+**285 passed / 4 failed / 3 skipped**, 86.98 seconds. All resource, strict comparator,
+worker isolation, pinned-provenance, request drift/replay, reference substitution,
+mock-origin and aggregate-feedback controls passed; the same four Muse-boundary
+regressions failed. Skips are the two credential-gated live tests and unavailable
+unprivileged Windows symlink creation; the Windows junction probe passed.
+
+Current 25-case controls (NON_AI): positive **24/1/0**; broken uniqueness
+**22/3/0**; broken whitespace **22/3/0**; broken amount boundary **23/2/0**
+(passed/failed/indeterminate). The deliberate negatives add **2, 2, 1** failures
+beyond the shared precedence regression. Denominators remain 25 throughout.
+Exact-head combined CI is checked after push; its result is reported in the
+completion message. G3 calls/spend/uncertain spend: **0 / $0 / $0**.
+
+Integration is not ready until Muse's two blocking corrections are published,
+cleanly integrated into this branch and the unchanged full Linux/Windows checks
+pass. Then the new evaluator/broker boundary still needs independent coordinator
+review. Real model inference and final G3 acceptance remain separately gated.

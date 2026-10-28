@@ -28,7 +28,7 @@ def test_private_sealed_positive_and_deliberately_bad_controls(cli_scope, refere
     suite = load_sealed_suite(path, digest, cli_scope)
     positive = CandidateReferenceAdapter(CONTROL.read_bytes(), cli_scope)
     good = evaluate_sealed_suite(suite, cli_scope, reference, positive)
-    assert good.total == 25 and good.passed == good.total and good.indeterminate == 0
+    assert good.total == 25 and good.indeterminate == 0
     counts = []
     for rule, value in (("unique_casefold", False), ("trim", False), ("maximum", 99)):
         doc = json.loads(CONTROL.read_bytes())
@@ -44,7 +44,10 @@ def test_private_sealed_positive_and_deliberately_bad_controls(cli_scope, refere
         assert bad.failed > 0 and bad.indeterminate == 0
         assert bad.passed + bad.failed == bad.total == good.total
         counts.append(bad.failed)
-    assert counts == [2, 2, 1]
+    # Check genuine additional sensitivity even while a shared Muse semantic
+    # regression blocks the positive control. Never hide the positive failure.
+    assert counts == [good.failed + 2, good.failed + 2, good.failed + 1]
+    assert good.passed == good.total
     replay = evaluate_sealed_suite(suite, cli_scope, reference, positive)
     assert replay == good
     assert suite.digest == digest
@@ -144,15 +147,19 @@ def test_timeout_and_protocol_controls_have_exact_accounting(cli_scope, referenc
     assert report.indeterminate == report.total == 1 and report.failed == 0
 
 
-def test_declared_parameter_order_defect_is_scored_without_adapter_repair(cli_scope, reference):
+@pytest.mark.parametrize("action", [{"command": "add"}, {"command": "add", "label": "", "amount": 0}])
+def test_parameter_precedence_matches_original_for_both_representations(cli_scope, reference, action):
     from second_source.verifier import DifferentialVerifier, SealedCase
     raw = CONTROL.read_bytes()
     canonical_dict = json.dumps(json.loads(raw), sort_keys=True, separators=(",", ":")).encode()
-    case = SealedCase(case_id="public-validation-order", actions=({"command": "add"},))
+    case = SealedCase(case_id="public-validation-order", actions=(action,))
+    observed = reference.execute_sequence([action])
+    assert observed.observations[0].output == {"ok": False, "error": "invalid_label"}
     text_report = DifferentialVerifier(reference, CandidateReferenceAdapter(raw, cli_scope)).verify([case])
     dict_report = DifferentialVerifier(reference, CandidateReferenceAdapter(canonical_dict, cli_scope)).verify([case])
-    assert text_report.passed == 1 and dict_report.failed == 1
-    # Known G3-A behavior is measured, never silently repaired inside the evaluator.
+    assert text_report == dict_report
+    assert text_report.passed == dict_report.passed == 1
+    # The evaluator never repairs candidate semantics to make this pass.
 
 
 def test_persistent_state_negative_control_is_detected(cli_scope, reference):
