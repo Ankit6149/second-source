@@ -26,6 +26,8 @@ def inspect_run(run_dir: str | Path, receipt_sha256: str | None = None) -> dict:
         "rounds": len(archive["completed_rounds"]),
         "evidence_artifacts": len(archive["observation_digests"]),
         "model_receipts": len(archive["model_receipts"]), "budget": archive["budget"],
+        "pending_attempt": archive["pending_attempt"],
+        "pending_uncertain_cost_usd": archive["pending_uncertain_cost_usd"],
         "receipt_sha256": archive["receipt_sha256"], "receipt_pinned": receipt_sha256 is not None,
         "completeness_gaps": [] if complete else ["discovery_" + archive["state"]],
         "ledger_coverage_missing": [],

@@ -69,3 +69,40 @@ def test_inspect_return_matches_function_with_pinned_mock_witness(cli_scope, ref
     assert verdict["receipt_pinned"] is True and verdict["complete"] is True
     assert verdict["approvable"] is False and verdict["real_input_eligible"] is False
     assert verdict["stop_reason"] == "stalled"
+
+
+def test_pending_dispatch_exposes_reserved_uncertainty_without_claiming_completion(tmp_path, monkeypatch):
+    """NON_AI fake-provider snapshot before result/settlement, with no HTTP."""
+    from second_source.budgets import RunBudget
+    from second_source.evidence import EvidenceLedger
+    from second_source.g2_persistence import DiscoveryJournal, inspect_run as inspect_archive
+    from second_source.live_experiment import _discovery_manifest, create_scope
+    from second_source.model_gateway import ModelGateway, ModelRequest
+
+    run = tmp_path / "pending-non-ai-fixture"
+    run.mkdir()
+    EvidenceLedger(run / "evidence")
+    scope = create_scope(.25, 1)
+    journal = DiscoveryJournal(run, _discovery_manifest(scope, "real", 1))
+    budget = RunBudget(scope.budgets)
+    snapshots = []
+
+    def fake_complete(self, request):
+        snapshots.append((inspect_archive(run), inspect_run(run)))
+        raise KeyboardInterrupt("NON_AI interruption fixture; no transport")
+
+    monkeypatch.setattr(MetaProvider, "complete", fake_complete)
+    gateway = ModelGateway(MetaProvider("noncredential-fixture"), budget, audit=journal.append)
+    with pytest.raises(KeyboardInterrupt):
+        gateway.generate(ModelRequest(
+            stage="hypothesize", messages=({"role": "user", "content": "NON_AI pending snapshot"},),
+            estimated_input_tokens=100, max_output_tokens=20,
+        ))
+    archive, verdict = snapshots[0]
+    assert verdict["state"] == "interrupted" and verdict["complete"] is False
+    assert verdict["approvable"] is False and verdict["real_input_eligible"] is False
+    assert verdict["budget"]["uncertain_cost_usd"] == 0
+    assert archive["pending_attempt"]["attempt"] == 1
+    assert verdict["pending_attempt"] == archive["pending_attempt"]
+    assert verdict["pending_uncertain_cost_usd"] == pytest.approx(.00021)
+    assert verdict["pending_uncertain_cost_usd"] == archive["pending_uncertain_cost_usd"]
