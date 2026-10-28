@@ -571,9 +571,10 @@ the work along the trust boundary instead:
   mutating wiring, store/lookup/aggregate mechanics, and response shapes.
   It contains no hidden business rules and no error-code values.
 - The MODEL fill decides ONLY evidence-dependent behavior: validation
-  bounds, trimming, case handling, and the error-code strings observed in
-  evidence outputs. The fill schema is a small fraction of a full spec, so
-  output tokens, cost, and schema-violation surface all shrink.
+  bounds, trimming, uniqueness selection (which declared param is unique),
+  response key bindings, case handling, and the error-code strings observed
+  in evidence outputs. The fill schema is a small fraction of a full spec,
+  so output tokens, cost, and schema-violation surface all shrink.
 - `merge_skeleton_fill` is shape-strict (unknown keys rejected, sane caps)
   and value-permissive; the UNCHANGED strict loader performs all semantic
   validation afterwards. Admission is never weakened: a merged spec passes
@@ -601,8 +602,9 @@ FILL_JSON_SCHEMA: dict[str, Any] = {
         "add": {
             "type": "object",
             "additionalProperties": False,
-            "required": ["label", "amount", "unique_casefold",
-                         "label_error", "amount_error", "duplicate_error"],
+            "required": ["label", "amount", "unique_field", "unique_casefold",
+                         "label_error", "amount_error", "duplicate_error",
+                         "respond"],
             "properties": {
                 "label": {
                     "type": "object",
@@ -623,18 +625,57 @@ FILL_JSON_SCHEMA: dict[str, Any] = {
                         "maximum": {"type": "integer"},
                     },
                 },
+                "unique_field": {"type": "string"},
                 "unique_casefold": {"type": "boolean"},
                 "label_error": {"type": "string"},
                 "amount_error": {"type": "string"},
                 "duplicate_error": {"type": "string"},
+                "respond": {
+                    "type": "object",
+                    "minProperties": 1,
+                    "maxProperties": 4,
+                    "additionalProperties": {"type": "string"},
+                },
+            },
+        },
+        "list": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["respond"],
+            "properties": {
+                "respond": {
+                    "type": "object",
+                    "minProperties": 1,
+                    "maxProperties": 4,
+                    "additionalProperties": {"type": "string"},
+                },
+            },
+        },
+        "total": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["respond"],
+            "properties": {
+                "respond": {
+                    "type": "object",
+                    "minProperties": 1,
+                    "maxProperties": 4,
+                    "additionalProperties": {"type": "string"},
+                },
             },
         },
         "remove": {
             "type": "object",
             "additionalProperties": False,
-            "required": ["not_found_error"],
+            "required": ["not_found_error", "respond"],
             "properties": {
                 "not_found_error": {"type": "string"},
+                "respond": {
+                    "type": "object",
+                    "minProperties": 1,
+                    "maxProperties": 4,
+                    "additionalProperties": {"type": "string"},
+                },
             },
         },
     },
@@ -643,7 +684,8 @@ FILL_JSON_SCHEMA: dict[str, Any] = {
 SYNTHESIZE_SYSTEM_V2 = (
     "You are a behavioral specification author. You will receive a trusted "
     "specification skeleton plus authorized observations. Output ONE JSON "
-    "object matching the fill schema: validation bounds, trimming, "
+    "object matching the fill schema: validation bounds, trimming, which "
+    "declared parameter carries the uniqueness rule, response key bindings, "
     "case handling, and the exact error-code strings shown in the "
     "observations. Derive every value ONLY from the attached observations. "
     "Do not invent hidden internals, approvals, file paths, imports, shell, "
@@ -684,6 +726,11 @@ def build_spec_skeleton(public_commands: dict[str, Any]) -> dict[str, Any]:
             or commands["list"].get("side_effect") != "read_only"
             or commands["total"].get("side_effect") != "read_only"):
         raise GatewayError("guided: public contract signatures not approved")
+    # Fixed slots below are justified ONLY by the authorized public contract
+    # (command/param names and types, stated purposes, side-effect classes) or
+    # by the normative DSL loader rules (which the strict loader itself
+    # enforces at admission). Every None is an open model decision:
+    # uniqueness selection, response key bindings, bounds, flags, error codes.
     return {
         "spec_version": "1",
         "subsystem": "cli_ledger",
@@ -691,30 +738,36 @@ def build_spec_skeleton(public_commands: dict[str, Any]) -> dict[str, Any]:
         "unknown_command_error": None,
         "invalid_input_error": None,
         "commands": {
+            # "create a record" + owned_mutation -> store; DSL mandates SOME
+            # uniqueness rule on add, but NOT which param: open.
             "add": {
                 "params": {
                     "label": _skeleton_param("string"),
                     "amount": _skeleton_param("integer"),
                 },
-                "unique_field": "label",
+                "unique_field": None,
                 "unique_casefold": None,
                 "unique_error": None,
                 "store_record": True,
-                "respond": {"id": "id"},
+                "respond": {},
             },
-            "list": {"respond": {"items": "items"}},
+            "list": {"respond": {}},
+            # "return count and aggregate amount": the only declared integer
+            # param is amount, so the sum field follows from signatures.
             "total": {
                 "aggregate_count": True,
                 "aggregate_sum_field": "amount",
-                "respond": {"count": "count", "amount": "amount"},
+                "respond": {},
             },
+            # "remove record by identifier": id is the only declared param,
+            # so lookup wiring follows from signatures (v1 DSL: lookup_by id).
             "remove": {
                 "params": {"id": _skeleton_param("string")},
                 "lookup_by": "id",
                 "lookup_param": "id",
                 "not_found_error": None,
                 "delete_after_lookup": True,
-                "respond": {"removed": "id"},
+                "respond": {},
             },
         },
     }
@@ -724,6 +777,33 @@ def _fill_error(value: Any, *, field: str) -> str:
     if not isinstance(value, str) or not value or len(value) > _ERROR_CODE_LIMIT:
         raise GatewayError(f"guided: fill field {field!r} must be a short error code")
     return value
+
+
+_RESPOND_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,31}$")
+# Protocol-reserved response keys live in the runtime envelope ("ok" wraps
+# every success, "error" every failure); a command output key may not claim
+# either. The strict loader remains authoritative on source resolvability.
+_RESERVED_RESPOND_KEYS = frozenset({"ok", "error"})
+
+
+def _check_respond(command: str, respond: Any) -> dict[str, str]:
+    if not isinstance(respond, dict) or not respond or len(respond) > 4:
+        raise GatewayError(
+            f"guided: fill {command!r} respond needs 1-4 key bindings")
+    bindings: dict[str, str] = {}
+    for key in sorted(respond):
+        source = respond[key]
+        if not isinstance(key, str) or not _RESPOND_KEY_RE.fullmatch(key):
+            raise GatewayError(
+                f"guided: fill {command!r} has bad respond key {key!r}")
+        if key in _RESERVED_RESPOND_KEYS:
+            raise GatewayError(
+                f"guided: fill {command!r} respond key {key!r} is reserved")
+        if not isinstance(source, str) or not source or len(source) > 32:
+            raise GatewayError(
+                f"guided: fill {command!r} has bad respond source")
+        bindings[key] = source
+    return bindings
 
 
 def _fill_int(value: Any, *, field: str) -> int:
@@ -752,20 +832,25 @@ def merge_skeleton_fill(skeleton: dict[str, Any], fill: dict[str, Any]) -> dict[
         amount = add["amount"]
     except (KeyError, TypeError) as exc:
         raise GatewayError("guided: fill misses required decisions") from exc
-    allowed_top = {"error_codes", "add", "remove"}
+    allowed_top = {"error_codes", "add", "list", "total", "remove"}
     if set(fill) != allowed_top:
         raise GatewayError("guided: fill carries unknown top-level keys")
     if set(codes) != {"unknown_command", "invalid_input"}:
         raise GatewayError("guided: fill error_codes shape rejected")
-    if set(add) != {"label", "amount", "unique_casefold",
-                    "label_error", "amount_error", "duplicate_error"}:
+    if set(add) != {"label", "amount", "unique_field", "unique_casefold",
+                    "label_error", "amount_error", "duplicate_error",
+                    "respond"}:
         raise GatewayError("guided: fill add shape rejected")
     if set(label) != {"min_length", "max_length", "trim"}:
         raise GatewayError("guided: fill label shape rejected")
     if set(amount) != {"minimum", "maximum"}:
         raise GatewayError("guided: fill amount shape rejected")
-    if set(remove) != {"not_found_error"}:
+    if set(remove) != {"not_found_error", "respond"}:
         raise GatewayError("guided: fill remove shape rejected")
+    for _name in ("list", "total"):
+        _section = fill.get(_name)
+        if not isinstance(_section, dict) or set(_section) != {"respond"}:
+            raise GatewayError(f"guided: fill {_name} shape rejected")
     if not isinstance(add["unique_casefold"], bool) or not isinstance(label["trim"], bool):
         raise GatewayError("guided: fill flags must be booleans")
     spec = _copy.deepcopy(skeleton)
@@ -782,6 +867,21 @@ def merge_skeleton_fill(skeleton: dict[str, Any], fill: dict[str, Any]) -> dict[
             "minimum": _fill_int(amount["minimum"], field="minimum"),
             "maximum": _fill_int(amount["maximum"], field="maximum"),
         })
+        # Uniqueness selection is model-controlled but bounded: the field
+        # must be a param the trusted skeleton declares for that command.
+        # Presence of a rule on add is DSL-mandated, so a missing or foreign
+        # selection fails closed instead of silently defaulting to "label".
+        if add["unique_field"] not in set(add_spec["params"]):
+            raise GatewayError(
+                "guided: fill 'add' unique_field is not a declared add param")
+        add_spec["unique_field"] = add["unique_field"]
+        add_spec["respond"] = _check_respond("add", add["respond"])
+        spec["commands"]["list"]["respond"] = _check_respond(
+            "list", fill["list"]["respond"])
+        spec["commands"]["total"]["respond"] = _check_respond(
+            "total", fill["total"]["respond"])
+        spec["commands"]["remove"]["respond"] = _check_respond(
+            "remove", remove["respond"])
         add_spec["unique_casefold"] = add["unique_casefold"]
         add_spec["unique_error"] = _fill_error(add["duplicate_error"], field="duplicate_error")
         add_spec["params"]["label"]["error"] = _fill_error(add["label_error"], field="label_error")
@@ -795,8 +895,12 @@ def merge_skeleton_fill(skeleton: dict[str, Any], fill: dict[str, Any]) -> dict[
     if any(value is None for value in (
             spec["unknown_command_error"], spec["invalid_input_error"],
             add_spec["unique_casefold"], add_spec["unique_error"],
+            add_spec["unique_field"],
             spec["commands"]["remove"]["not_found_error"])):
         raise GatewayError("guided: unfilled skeleton slots remain")
+    if any(not spec["commands"][_name]["respond"]
+           for _name in ("add", "list", "total", "remove")):
+        raise GatewayError("guided: unfilled respond bindings remain")
     return spec
 
 
