@@ -27,7 +27,9 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
+import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import secrets
@@ -50,7 +52,7 @@ OWNED_REFERENCE = ROOT / "fixtures" / "owned_ledger" / "reference.py"
 PUBLIC_MANIFEST = ROOT / "fixtures" / "owned_ledger" / "public_contract.json"
 
 MAX_REAL_RUN_USD = 0.50
-REAL_MODES = ("mock", "real")
+REAL_MODES = ("mock", "preflight", "real")
 
 
 def create_scope(max_usd: float) -> ScopeContract:
@@ -194,11 +196,19 @@ def mock_hypotheses(digests: Sequence[str]) -> HypothesisStore:
 
 
 def _run_directory(explicit: str | None) -> Path:
+    """Create-once run directory: an existing non-empty directory is refused."""
     if explicit:
         target = Path(explicit)
         if not target.is_absolute():
             target = ROOT / target
-        target.mkdir(parents=True, exist_ok=True)
+        if target.exists():
+            if not target.is_dir() or any(target.iterdir()):
+                raise RuntimeError(
+                    f"run directory {target} already holds a prior run; "
+                    "refusing reuse"
+                )
+            return target
+        target.mkdir(parents=True, exist_ok=False, mode=0o700)
         return target
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     target = ROOT / ".runs" / ("g3-" + stamp + "-" + secrets.token_hex(4))
@@ -209,6 +219,54 @@ def _run_directory(explicit: str | None) -> Path:
 def _blocked(message: str) -> int:
     print("BLOCKED_REAL_MODEL: " + message, file=sys.stderr)
     return 2
+
+
+def _write_once(path: Path, raw: bytes) -> Path:
+    """Create-once durable write: never overwrites, fsyncs before return."""
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(raw)
+            stream.flush()
+            os.fsync(stream.fileno())
+    except BaseException:
+        try:
+            path.unlink()
+        except OSError:
+            pass
+        raise
+    return path
+
+
+def _plan_bytes(value: Any) -> bytes:
+    """Byte-identical encoding to the pinned evaluator plan.
+
+    Mirrors ``candidate_adapter._encode`` (insertion order, compact
+    separators, no NaN): registry digests only match the plan when both the
+    encoding and the construction order are identical.
+    """
+    return json.dumps(
+        value, ensure_ascii=False, allow_nan=False, separators=(",", ":")
+    ).encode("utf-8")
+
+
+def _registry_digests(
+    ledger: EvidenceLedger,
+    digests: Sequence[str],
+    hypotheses: Sequence[Any],
+) -> tuple[str, str]:
+    """Recompute the observation/hypothesis registry digests the pinned plan uses."""
+    from .evidence import redact
+
+    views = [
+        {"digest": digest, "observation": ledger.model_view(digest)}
+        for digest in digests
+    ]
+    redacted = redact([h.model_dump(mode="json") for h in hypotheses])
+    return (
+        "sha256:" + hashlib.sha256(_plan_bytes(views)).hexdigest(),
+        "sha256:" + hashlib.sha256(_plan_bytes(redacted)).hexdigest(),
+    )
 
 
 def _observe_mock_evidence(ledger: EvidenceLedger) -> list[str]:
@@ -232,28 +290,97 @@ def _observe_mock_evidence(ledger: EvidenceLedger) -> list[str]:
 
 
 def _write_report(run_dir: Path, report: dict[str, Any]) -> Path:
+    """Persist one immutable run report; a second write is rejected."""
     path = run_dir / "G3_report.json"
-    path.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
-    return path
+    raw = json.dumps(report, indent=2, sort_keys=True).encode("utf-8")
+    return _write_once(path, raw)
 
 
 def _summarize(report: dict[str, Any]) -> dict[str, Any]:
-    evaluation = report["evaluation"]
+    evaluation = report.get("evaluation") or {}
     return {
         "result": report["stop_reason"],
         "run_id": report["run_id"],
         "mode": report["mode"],
         "origin": report["origin"],
-        "passed": evaluation["passed"],
-        "failed": evaluation["failed"],
-        "indeterminate": evaluation["indeterminate"],
-        "total": evaluation["total"],
+        "passed": evaluation.get("passed"),
+        "failed": evaluation.get("failed"),
+        "indeterminate": evaluation.get("indeterminate"),
+        "total": evaluation.get("total"),
         "estimated_cost_usd": report["usage"]["estimated_cost_usd"],
         "uncertain_cost_usd": report["usage"]["uncertain_cost_usd"],
-        "spec_digest": report["spec_digest"],
-        "suite_digest": report["suite_digest"],
-        "report_path": report["report_path"],
+        "spec_digest": report.get("spec_digest"),
+        "suite_digest": report.get("suite_digest"),
+        "report_path": report.get("report_path", ""),
+        "next_action": _next_action(report["stop_reason"], report["mode"]),
     }
+
+
+def _next_action(stop_reason: str, mode: str) -> str:
+    """Operator guidance per durable run state; never a raw traceback."""
+    if stop_reason == "completed_mock_run":
+        return ("mock plumbing complete; review approved_context_digest, then run "
+                "--mode preflight on genuine G2 inputs before any real approval")
+    if stop_reason == "completed_real_run":
+        return "independent sealed score recorded; optional bounded repair is a separate approval"
+    if stop_reason == "preflight_ready":
+        return ("preflight inspection complete with zero calls; approve the context "
+                "digest and frozen suite out of band, then invoke --mode real")
+    if stop_reason.startswith("blocked"):
+        return "resolve the blocking approval/input and re-invoke; no attempt was dispatched"
+    return "inspect the sanitized failure report; re-invoke only after fixing the failure category"
+
+
+def _failure_category(stage: str) -> str:
+    return {
+        "inspect": "inspection_failed",
+        "broker": "broker_failed",
+        "evaluate": "evaluation_failed",
+        "admit": "evidence_admission_failed",
+    }.get(stage, "run_failed")
+
+
+def _write_failure_report(
+    *,
+    run_dir: Path,
+    mode: str,
+    real: bool,
+    stage: str,
+    attempts: int,
+    estimated_cost_usd: float,
+    uncertain_cost_usd: float,
+    suite_digest: str = "",
+    scope_digest: str = "",
+) -> dict[str, Any]:
+    """Durable sanitized failure receipt: categories and accounting, no verbatim errors."""
+    report = {
+        "kind": "G3_RECONSTRUCT_RUN_REPORT",
+        "run_id": run_dir.name,
+        "mode": mode,
+        "fixture": "owned-ledger",
+        "origin": "real" if real else "mock",
+        "real": real,
+        "stop_reason": _failure_category(stage),
+        "failure_stage": stage,
+        "suite_digest": suite_digest,
+        "scope_digest": scope_digest,
+        "evaluation": None,
+        "usage": {
+            "attempts": attempts,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": estimated_cost_usd,
+            "uncertain_cost_usd": uncertain_cost_usd,
+        },
+        "report_path": str(run_dir / "G3_report.json"),
+        "note": (
+            "Post-dispatch failure: the attempt was dispatched and is accounted "
+            "above. Pre-dispatch blocks (missing approvals) write no report and "
+            "record zero attempts."
+        ),
+    }
+    _write_report(run_dir, report)
+    return report
 
 
 def run_mock(args: argparse.Namespace) -> int:
@@ -288,13 +415,29 @@ def run_mock(args: argparse.Namespace) -> int:
     def _responder(request: Any) -> dict[str, Any]:
         return {"content": proposal}
 
+    from .g3_verification import EvaluationBlocked
+    from .model_gateway import GatewayError
+
     budget = RunBudget(scope.budgets)
-    artifact = run.generate(
-        ticket, MockProvider(responder=_responder), budget,
-        spending_approved=False,
-    )
-    result = run.evaluate(artifact, claim="TRUSTED_CONTROL")
+    try:
+        artifact = run.generate(
+            ticket, MockProvider(responder=_responder), budget,
+            spending_approved=False,
+        )
+        result = run.evaluate(artifact, claim="TRUSTED_CONTROL")
+    except (EvaluationBlocked, GatewayError, RuntimeError):
+        failed = _write_failure_report(
+            run_dir=run_dir, mode="mock", real=False, stage="broker",
+            attempts=budget.attempts,
+            estimated_cost_usd=budget.estimated_cost_usd,
+            uncertain_cost_usd=budget.uncertain_cost_usd,
+            suite_digest=suite_digest,
+        )
+        print(json.dumps(_summarize(failed), indent=2))
+        return 1
     receipt = result["origin"]
+    candidate_raw = json.loads(artifact.payload)["spec"].encode("utf-8")
+    candidate_path = _write_once(run_dir / "candidate.v1.json", candidate_raw)
     report = {
         "kind": "G3_RECONSTRUCT_RUN_REPORT",
         "run_id": run_dir.name,
@@ -306,6 +449,7 @@ def run_mock(args: argparse.Namespace) -> int:
         "model": receipt["model"],
         "response_id": receipt["response_id"],
         "spec_digest": result["candidate_digest"],
+        "candidate_artifact": candidate_path.name,
         "scope_digest": result["scope_digest"],
         "suite_digest": result["suite_digest"],
         "approved_context_digest": result["approved_context_digest"],
@@ -313,7 +457,9 @@ def run_mock(args: argparse.Namespace) -> int:
         "reference_command_id": result["reference_identity"],
         "reference_source_digest": result["reference_source_digest"],
         "evaluation": result["evaluation"],
+        "evaluation_receipt": result,
         "usage": {
+            "attempts": budget.attempts,
             "input_tokens": receipt["input_tokens"],
             "output_tokens": receipt["output_tokens"],
             "estimated_cost_usd": receipt["estimated_cost_usd"],
@@ -322,22 +468,20 @@ def run_mock(args: argparse.Namespace) -> int:
         "stop_reason": "completed_mock_run",
         "evidence_artifact_count": len(digests),
         "manifest_digest": pin_public_manifest(public),
-        "sealed_suite_path": str(Path(seal_dir) / "suite.json"),
+        "report_path": str(run_dir / "G3_report.json"),
         "report_labels": "MOCK_TRANSPORT_NAIVE_SPEC_TRUSTED_CONTROL_EVALUATION",
         "note": (
             "Mock plumbing evidence only. The naive spec is scripted, the "
-            "score measures the evaluator, and nothing here is Muse output."
+            "score measures the evaluator, and nothing here is Muse output. "
+            "A mock-context digest never authenticates historical G2 inputs; "
+            "real approval requires --mode preflight on genuine G2 material."
         ),
     }
-    report_path = _write_report(run_dir, {**report, "report_path": ""})
-    report["report_path"] = str(report_path)
-    report_path.write_text(
-        json.dumps(report, indent=2, sort_keys=True), encoding="utf-8"
-    )
+    _write_report(run_dir, report)
     print(json.dumps(_summarize(report), indent=2))
     print(json.dumps({
         "approved_context_digest": result["approved_context_digest"],
-        "note": "operator reviews this context digest before pinning a real run",
+        "note": "mock-context digest only; approve genuine G2 inputs via preflight",
     }))
     return 0
 
@@ -357,25 +501,38 @@ def _load_operator_evidence(args: argparse.Namespace) -> tuple[EvidenceLedger, H
         raise RuntimeError(f"operator hypotheses rejected: {exc}") from exc
     store = HypothesisStore()
     store.add_batch(batch)
-    for digest in digests:
-        ledger.inspect(digest)
+    try:
+        for digest in digests:
+            ledger.inspect(digest)
+    except (OSError, ValueError) as exc:
+        raise RuntimeError(f"operator evidence digest rejected: {exc}") from exc
     return ledger, store, digests
+
+
+def _spend_ceiling(value: Any) -> float | None:
+    """Finite positive spend ceiling, else None. Checked before inputs/providers."""
+    try:
+        amount = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(amount) or amount <= 0:
+        return None
+    return amount
 
 
 def run_real(args: argparse.Namespace) -> int:
     """Owner-authorized real generation; fail closed on any missing approval."""
     from .g3_verification import EvaluationBlocked, PinnedEvaluatorRun, load_sealed_suite
+    from .model_gateway import GatewayError
 
     key = os.environ.get("MODEL_API_KEY", "")
-    try:
-        env_limit = float(os.environ.get("SECOND_SOURCE_MAX_RUN_USD", "0") or "0")
-    except ValueError:
-        env_limit = 0.0
-    if not key or env_limit <= 0:
+    env_limit = _spend_ceiling(os.environ.get("SECOND_SOURCE_MAX_RUN_USD", "0"))
+    run_limit = _spend_ceiling(args.max_usd)
+    if not key or env_limit is None:
         return _blocked("configure MODEL_API_KEY and SECOND_SOURCE_MAX_RUN_USD securely.")
-    if not (0 < args.max_usd <= min(MAX_REAL_RUN_USD, env_limit)):
+    if run_limit is None or run_limit > min(MAX_REAL_RUN_USD, env_limit):
         return _blocked(
-            f"--max-usd must be positive and <= ${MAX_REAL_RUN_USD:.2f} "
+            f"--max-usd must be finite, positive, and <= ${MAX_REAL_RUN_USD:.2f} "
             "and <= SECOND_SOURCE_MAX_RUN_USD."
         )
     if not args.confirm_real_run:
@@ -400,6 +557,7 @@ def run_real(args: argparse.Namespace) -> int:
         return 2
 
     run_dir = _run_directory(args.run_dir)
+    budget = RunBudget(scope.budgets)
     try:
         run = PinnedEvaluatorRun(
             suite, scope, ledger=ledger, observation_digests=digests,
@@ -407,16 +565,24 @@ def run_real(args: argparse.Namespace) -> int:
             operator_approved_context_digest=args.operator_context_pin,
         )
         ticket = run.prepare()
-        budget = RunBudget(scope.budgets)
         artifact = run.generate(
             ticket, MetaProvider(key), budget, spending_approved=True
         )
         result = run.evaluate(artifact, claim="REAL_MODEL")
-    except EvaluationBlocked as exc:
-        print(f"BLOCKED_EVALUATOR: {exc}", file=sys.stderr)
-        return 2
+    except (EvaluationBlocked, GatewayError, RuntimeError):
+        failed = _write_failure_report(
+            run_dir=run_dir, mode="real", real=True, stage="broker",
+            attempts=budget.attempts,
+            estimated_cost_usd=budget.estimated_cost_usd,
+            uncertain_cost_usd=budget.uncertain_cost_usd,
+            suite_digest=args.suite_digest,
+        )
+        print(json.dumps(_summarize(failed), indent=2))
+        return 1
 
     receipt = result["origin"]
+    candidate_raw = json.loads(artifact.payload)["spec"].encode("utf-8")
+    candidate_path = _write_once(run_dir / "candidate.v1.json", candidate_raw)
     report = {
         "kind": "G3_RECONSTRUCT_RUN_REPORT",
         "run_id": run_dir.name,
@@ -428,6 +594,7 @@ def run_real(args: argparse.Namespace) -> int:
         "model": receipt["model"],
         "response_id": receipt["response_id"],
         "spec_digest": result["candidate_digest"],
+        "candidate_artifact": candidate_path.name,
         "scope_digest": result["scope_digest"],
         "suite_digest": result["suite_digest"],
         "approved_context_digest": result["approved_context_digest"],
@@ -435,7 +602,9 @@ def run_real(args: argparse.Namespace) -> int:
         "reference_command_id": result["reference_identity"],
         "reference_source_digest": result["reference_source_digest"],
         "evaluation": result["evaluation"],
+        "evaluation_receipt": result,
         "usage": {
+            "attempts": budget.attempts,
             "input_tokens": receipt["input_tokens"],
             "output_tokens": receipt["output_tokens"],
             "estimated_cost_usd": receipt["estimated_cost_usd"],
@@ -445,15 +614,120 @@ def run_real(args: argparse.Namespace) -> int:
         "evidence_artifact_count": len(digests),
         "operator_input_pin_present": True,
         "max_authorized_usd": args.max_usd,
+        "report_path": str(run_dir / "G3_report.json"),
         "note": "Genuine Muse generation scored on the frozen sealed suite.",
     }
-    report_path = _write_report(run_dir, {**report, "report_path": ""})
-    report["report_path"] = str(report_path)
-    report_path.write_text(
-        json.dumps(report, indent=2, sort_keys=True), encoding="utf-8"
-    )
+    _write_report(run_dir, report)
     print(json.dumps(_summarize(report), indent=2))
     return 0
+
+
+def run_preflight(args: argparse.Namespace) -> int:
+    """ZERO-CALL inspection of genuine operator G2 inputs; no provider, no inference.
+
+    Loads the actual operator-supplied ledger/hypotheses, freezes (or loads)
+    the sealed suite against the SAME scope and approved budget the real run
+    will use, inspects the exact broker request bytes, and emits a sanitized
+    digest receipt for separate owner review. The printed context digest
+    authenticates THESE inputs only; a mock-context digest never approves G2.
+    """
+    from .g3_verification import PinnedEvaluatorRun, load_sealed_suite, seal_owned_ledger_suite
+
+    run_limit = _spend_ceiling(args.max_usd)
+    if run_limit is None or run_limit > MAX_REAL_RUN_USD:
+        return _blocked(
+            f"--max-usd must be a finite positive budget <= ${MAX_REAL_RUN_USD:.2f}."
+        )
+    for missing in ("ledger_dir", "hypotheses_file", "observation_digests"):
+        if not getattr(args, missing, None):
+            return _blocked(f"preflight requires --{missing.replace('_', '-')}.")
+
+    scope = create_scope(run_limit)
+    public = _public_manifest()
+    if set(public.get("commands", {})) != set(scope.observation.allowed_commands):
+        print("BLOCKED_CONTRACT: public manifest does not match scope", file=sys.stderr)
+        return 2
+    try:
+        ledger, store, digests = _load_operator_evidence(args)
+    except (RuntimeError, OSError) as exc:
+        print(f"BLOCKED_EVIDENCE: {exc}", file=sys.stderr)
+        return 2
+    if args.suite and args.suite_digest:
+        try:
+            suite = load_sealed_suite(args.suite, args.suite_digest, scope)
+            suite_digest = args.suite_digest
+        except Exception:
+            print("BLOCKED_EVIDENCE: frozen suite rejected", file=sys.stderr)
+            return 2
+    else:
+        if not args.seal_dir:
+            return _blocked("preflight requires --suite/--suite-digest or --seal-dir.")
+        try:
+            _, suite_digest = seal_owned_ledger_suite(args.seal_dir, scope)
+            suite = load_sealed_suite(
+                Path(args.seal_dir) / "suite.json", suite_digest, scope
+            )
+        except Exception:
+            print("BLOCKED_EVIDENCE: suite seal rejected", file=sys.stderr)
+            return 2
+
+    run_dir = _run_directory(args.run_dir)
+    try:
+        run = PinnedEvaluatorRun(
+            suite, scope, ledger=ledger, observation_digests=digests,
+            hypotheses=store,
+        )
+        ticket = run.prepare()
+    except Exception:
+        print("BLOCKED_EVALUATOR: pinned inspection rejected", file=sys.stderr)
+        return 2
+    obs_registry, hyp_registry = _registry_digests(ledger, digests, store.all())
+    receipt = {
+        "kind": "G3_PREFLIGHT_INSPECTION",
+        "run_id": run_dir.name,
+        "mode": "preflight",
+        "fixture": "owned-ledger",
+        "origin": "inspection-only",
+        "real": False,
+        "provider_calls": 0,
+        "scope_digest": _scope_digest_for(scope),
+        "manifest_digest": pin_public_manifest(public),
+        "approved_context_digest": run.approved_context_digest,
+        "plan_digest": run.plan_digest,
+        "observation_registry_digest": obs_registry,
+        "hypothesis_registry_digest": hyp_registry,
+        "suite_digest": suite_digest,
+        "evidence_artifact_count": len(digests),
+        "max_approved_usd": run_limit,
+        "stop_reason": "preflight_ready",
+        "report_path": str(run_dir / "G3_preflight.json"),
+        "note": (
+            "Zero-call inspection of THESE operator inputs. Approve the context "
+            "digest and frozen suite out of band; the real invocation must bind "
+            "to exactly these digests via --operator-context-pin and "
+            "--suite/--suite-digest."
+        ),
+    }
+    _write_once(run_dir / "G3_preflight.json",
+                json.dumps(receipt, indent=2, sort_keys=True).encode("utf-8"))
+    print(json.dumps({
+        "result": "preflight_ready",
+        "run_id": run_dir.name,
+        "approved_context_digest": run.approved_context_digest,
+        "plan_digest": run.plan_digest,
+        "suite_digest": suite_digest,
+        "evidence_artifact_count": len(digests),
+        "provider_calls": 0,
+        "next_action": _next_action("preflight_ready", "preflight"),
+    }, indent=2))
+    del ticket
+    return 0
+
+
+def _scope_digest_for(scope: ScopeContract) -> str:
+    from .g3_verification import _scope_digest
+
+    return _scope_digest(scope)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -463,7 +737,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--fixture", default="owned-ledger",
                         help="registered fixture id (only owned-ledger)")
     parser.add_argument("--mode", default="mock", choices=REAL_MODES,
-                        help="mock: nonbillable plumbing run; real: gated Meta run")
+                        help=("mock: nonbillable plumbing run; preflight: zero-call "
+                              "inspection of genuine operator G2 inputs; "
+                              "real: gated Meta run"))
     parser.add_argument("--max-usd", type=float, default=0.0,
                         help="spend cap for this run (real mode only)")
     parser.add_argument("--run-dir", default=None,
@@ -498,6 +774,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                   file=sys.stderr)
             return 2
         return run_mock(args)
+    if args.mode == "preflight":
+        if args.confirm_real_run:
+            print("BLOCKED_SCOPE: preflight makes no calls and takes no confirmation",
+                  file=sys.stderr)
+            return 2
+        return run_preflight(args)
     return run_real(args)
 
 

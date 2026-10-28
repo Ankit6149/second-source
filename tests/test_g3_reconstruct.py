@@ -105,3 +105,92 @@ def test_real_blocked_above_spend_cap(monkeypatch, tmp_path):
     assert main(["--mode", "real", "--max-usd", "5", "--confirm-real-run",
                  "--operator-context-pin", "sha256:" + "0" * 64,
                  "--run-dir", str(tmp_path / "x")]) == 2
+
+
+def _operator_inputs(tmp_path):
+    from second_source.evidence import EvidenceLedger
+    from second_source.reconstruct import _observe_mock_evidence
+
+    ledger_dir = tmp_path / "ledger"
+    ledger = EvidenceLedger(ledger_dir)
+    digests = _observe_mock_evidence(ledger)
+    store = mock_hypotheses(digests)
+    hypotheses_file = tmp_path / "hypotheses.json"
+    hypotheses_file.write_text(
+        json.dumps({"hypotheses": [h.model_dump(mode="json") for h in store.all()]}),
+        encoding="utf-8",
+    )
+    return ledger_dir, hypotheses_file, digests
+
+
+def test_preflight_inspects_genuine_shaped_inputs_with_zero_calls(
+    monkeypatch, tmp_path, capsys
+):
+    _no_transport(monkeypatch)
+    monkeypatch.delenv("MODEL_API_KEY", raising=False)
+    ledger_dir, hypotheses_file, digests = _operator_inputs(tmp_path)
+    run_dir = tmp_path / "preflight-run"
+    code = main([
+        "--mode", "preflight", "--max-usd", "0.5",
+        "--ledger-dir", str(ledger_dir),
+        "--hypotheses-file", str(hypotheses_file),
+        "--observation-digests", ",".join(digests),
+        "--seal-dir", str(tmp_path / "sealed"),
+        "--run-dir", str(run_dir),
+    ])
+    assert code == 0
+    receipt_path = run_dir / "G3_preflight.json"
+    assert receipt_path.is_file()
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    assert receipt["kind"] == "G3_PREFLIGHT_INSPECTION"
+    assert receipt["stop_reason"] == "preflight_ready"
+    assert receipt["real"] is False
+    assert receipt["evidence_artifact_count"] == len(digests)
+    assert receipt["suite_digest"].startswith("sha256:")
+    from second_source.reconstruct import _registry_digests
+    from second_source.evidence import EvidenceLedger
+
+    ledger = EvidenceLedger(ledger_dir)
+    batch = json.loads(hypotheses_file.read_text(encoding="utf-8"))["hypotheses"]
+    from second_source.hypotheses import validate_batch
+
+    store = validate_batch({"hypotheses": batch}, frozenset(digests))
+    assert _registry_digests(ledger, digests, store.hypotheses) == (
+        receipt["observation_registry_digest"],
+        receipt["hypothesis_registry_digest"],
+    )
+    emitted = receipt_path.read_text(encoding="utf-8") + capsys.readouterr().out
+    assert "MODEL_API_KEY" not in emitted
+
+
+def test_preflight_rejects_nonfinite_spend(monkeypatch, tmp_path):
+    _no_transport(monkeypatch)
+    ledger_dir, hypotheses_file, digests = _operator_inputs(tmp_path)
+    for bad in ("nan", "inf", "-inf", "0", "-1"):
+        code = main([
+            "--mode", "preflight", f"--max-usd={bad}",
+            "--ledger-dir", str(ledger_dir),
+            "--hypotheses-file", str(hypotheses_file),
+            "--observation-digests", ",".join(digests),
+            "--seal-dir", str(tmp_path / f"sealed-{bad}"),
+            "--run-dir", str(tmp_path / f"run-{bad}"),
+        ])
+        assert code == 2
+
+
+def test_mock_failure_persists_sanitized_receipt(monkeypatch, tmp_path, capsys):
+    import second_source.reconstruct as operator
+
+    monkeypatch.setattr(operator, "naive_mock_spec",
+                        lambda: {"shell": "FORBIDDEN_MODEL_CODE"})
+    run_dir = tmp_path / "failed-run"
+    code = operator.main(["--mode", "mock", "--run-dir", str(run_dir),
+                          "--seal-dir", str(tmp_path / "sealed")])
+    assert type(code) is int and code != 0
+    report = json.loads((run_dir / "G3_report.json").read_text(encoding="utf-8"))
+    assert report["mode"] == "mock" and report.get("real") is not True
+    assert "fail" in report["stop_reason"]
+    assert report["usage"]["attempts"] == 1
+    emitted = (run_dir / "G3_report.json").read_text(encoding="utf-8")
+    emitted += capsys.readouterr().out + capsys.readouterr().err
+    assert "FORBIDDEN_MODEL_CODE" not in emitted
