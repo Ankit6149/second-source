@@ -32,10 +32,14 @@ $env:SECOND_SOURCE_MAX_RUN_USD = "0.50"
   --suite <preflight-frozen-suite.json> --suite-digest <digest>
 ```
 
-`--run-dir` defaults to `.runs/<id>/` (git-ignored, create-once: an existing
-non-empty directory is refused). `--fixture` accepts only `owned-ledger`.
-Reports and candidate artifacts are create-once (`O_EXCL` + fsync); a second
-write to the same run is rejected, never merged.
+`--run-dir` defaults to `.runs/<id>/` (git-ignored, create-once: every
+pre-existing directory is refused, including empty or interrupted ones).
+`--fixture` accepts only `owned-ledger`. Reports, candidate bytes, and the
+broker-artifact envelope publish atomically (staging write + fsync, then a
+no-clobber link): a partial write never appears under a final name, and a
+second publish is rejected, never merged. The HMAC authority key is never
+persisted; the archived local signature is replay evidence for the frozen
+evaluator only, not provider attestation.
 
 ## Critical provenance rule
 
@@ -67,7 +71,10 @@ limits. Proposed maximum spend for the first real run: **$0.50**.
 | `preflight_ready` | zero-call inspection recorded, no provider touched | 0 | approve digest + frozen suite out of band, then `--mode real` |
 | `completed_real_run` | genuine score on frozen suite | 0 | optional bounded repair is a separate approval |
 | `blocked_*` | missing approval/input, pre-dispatch, zero attempts, no report | 2 | resolve the named gap and re-invoke |
-| `broker_failed` / `evaluation_failed` / `inspection_failed` | post-dispatch failure with sanitized receipt + budget accounting | 1 | fix the failure category; mock origin is never relabeled real |
+| `broker_failed` | generation dispatch failed; admitted nothing; budget mirrored | 1 | fix the broker category; mock origin is never relabeled real |
+| `evaluation_failed` | candidate admitted + archived, scoring failed; budget mirrored | 1 | admitted bytes retained for offline replay; fix and re-invoke |
+| `interrupted_stopped` | stopped outcome with candidate, budget, uncertain spend preserved | 130 | receipts are complete; re-invoke only deliberately |
+| `inspection_failed` | request inspection rejected, zero attempts | 1 | fix inputs; no provider was reached |
 
 Failure receipts carry `attempts`, estimated/uncertain USD, and a category —
 never provider exceptions or secret values verbatim. Scores print as honest
@@ -78,12 +85,17 @@ score is plumbing evidence, never reconstruction success.
 
 `kind`, `mode`, `origin` (`mock`/`real`, never relabeled), `spec_digest` plus
 the persisted `candidate.v1.json` bytes (digest-verified on reload, offline
-replay supported), `scope_digest`, `suite_digest`, `approved_context_digest`,
-`plan_digest`, the full pinned `evaluation_receipt` (comparator/interpreter/
-adapter/reference/environment/origin-receipt/registry digests), reference
-command id + source digest, exact counts, token usage, estimated/uncertain
-USD, `stop_reason`. No prompts, observations, credentials, case ids, hidden
-inputs, or reference source.
+re-score supported) and the `broker-artifact.v1.json` envelope (exact broker
+payload + signature + sanitized origin receipt), `scope_digest`,
+`suite_digest`, `approved_context_digest`, `plan_digest`, the full pinned
+`evaluation_receipt` (comparator/interpreter/adapter/reference/environment/
+origin-receipt/registry digests), reference command id + source digest, exact
+counts, actual token/attempt/estimated/uncertain counters mirrored from the
+trusted budget, `stop_reason`. Preflight receipts reuse the evaluator's
+detached `inspection_manifest()` so identical genuine inputs hash identically
+in every process. No prompts, observations, credentials, case ids, hidden
+inputs, reference source, or HMAC keys. No REAL-RUN-READY or production
+claim is made while acceptance gates are open.
 
 ## Status
 

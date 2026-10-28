@@ -147,18 +147,28 @@ def test_preflight_inspects_genuine_shaped_inputs_with_zero_calls(
     assert receipt["real"] is False
     assert receipt["evidence_artifact_count"] == len(digests)
     assert receipt["suite_digest"].startswith("sha256:")
-    from second_source.reconstruct import _registry_digests
     from second_source.evidence import EvidenceLedger
+    from second_source.g3_verification import PinnedEvaluatorRun, load_sealed_suite
+    from second_source.hypotheses import HypothesisStore, validate_batch
+    from second_source.reconstruct import create_scope as _scope
 
-    ledger = EvidenceLedger(ledger_dir)
-    batch = json.loads(hypotheses_file.read_text(encoding="utf-8"))["hypotheses"]
-    from second_source.hypotheses import validate_batch
-
-    store = validate_batch({"hypotheses": batch}, frozenset(digests))
-    assert _registry_digests(ledger, digests, store.hypotheses) == (
-        receipt["observation_registry_digest"],
-        receipt["hypothesis_registry_digest"],
+    scope = _scope(0.5)
+    suite = load_sealed_suite(
+        tmp_path / "sealed" / "suite.json", receipt["suite_digest"], scope
     )
+    batch = json.loads(hypotheses_file.read_text(encoding="utf-8"))
+    store = HypothesisStore()
+    store.add_batch(validate_batch(batch, frozenset(digests)))
+    manifest = PinnedEvaluatorRun(
+        suite, scope, ledger=EvidenceLedger(ledger_dir),
+        observation_digests=tuple(digests), hypotheses=store,
+    ).inspection_manifest()
+    for key in ("approved_context_digest", "scope_digest", "suite_digest",
+                "observation_registry_digest", "hypothesis_registry_digest"):
+        assert receipt[key] == manifest[key], key
+    # Plan digests embed a fresh run id per authority; stable identities above
+    # are the cross-authority equality contract.
+    assert receipt["plan_digest"].startswith("sha256:")
     emitted = receipt_path.read_text(encoding="utf-8") + capsys.readouterr().out
     assert "MODEL_API_KEY" not in emitted
 

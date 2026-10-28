@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
-import hashlib
 import json
 import math
 import os
@@ -196,18 +195,19 @@ def mock_hypotheses(digests: Sequence[str]) -> HypothesisStore:
 
 
 def _run_directory(explicit: str | None) -> Path:
-    """Create-once run directory: an existing non-empty directory is refused."""
+    """Create-once run directory: every pre-existing directory is refused.
+
+    Empty or interrupted prior runs are never reclaimed; the operator always
+    starts a fresh directory so run IDs stay unique and immutable.
+    """
     if explicit:
         target = Path(explicit)
         if not target.is_absolute():
             target = ROOT / target
         if target.exists():
-            if not target.is_dir() or any(target.iterdir()):
-                raise RuntimeError(
-                    f"run directory {target} already holds a prior run; "
-                    "refusing reuse"
-                )
-            return target
+            raise RuntimeError(
+                f"run directory {target} already exists; refusing reuse"
+            )
         target.mkdir(parents=True, exist_ok=False, mode=0o700)
         return target
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -222,51 +222,34 @@ def _blocked(message: str) -> int:
 
 
 def _write_once(path: Path, raw: bytes) -> Path:
-    """Create-once durable write: never overwrites, fsyncs before return."""
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    """Atomic create-once publish: staging write, then no-clobber link.
+
+    Bytes travel through a uniquely named staging file in the same directory
+    (same filesystem): a partial or failed write can never appear under the
+    final name, and an existing receipt is never overwritten or replaced.
+    """
+    import tempfile as _tempfile
+
+    parent = path.parent
+    parent.mkdir(parents=True, exist_ok=True)
+    fd, staging = _tempfile.mkstemp(
+        dir=parent, prefix=path.name + ".", suffix=".staging"
+    )
     try:
         with os.fdopen(fd, "wb") as stream:
             stream.write(raw)
             stream.flush()
             os.fsync(stream.fileno())
-    except BaseException:
         try:
-            path.unlink()
+            os.link(staging, path)
+        except FileExistsError:
+            raise
+        return path
+    finally:
+        try:
+            os.unlink(staging)
         except OSError:
             pass
-        raise
-    return path
-
-
-def _plan_bytes(value: Any) -> bytes:
-    """Byte-identical encoding to the pinned evaluator plan.
-
-    Mirrors ``candidate_adapter._encode`` (insertion order, compact
-    separators, no NaN): registry digests only match the plan when both the
-    encoding and the construction order are identical.
-    """
-    return json.dumps(
-        value, ensure_ascii=False, allow_nan=False, separators=(",", ":")
-    ).encode("utf-8")
-
-
-def _registry_digests(
-    ledger: EvidenceLedger,
-    digests: Sequence[str],
-    hypotheses: Sequence[Any],
-) -> tuple[str, str]:
-    """Recompute the observation/hypothesis registry digests the pinned plan uses."""
-    from .evidence import redact
-
-    views = [
-        {"digest": digest, "observation": ledger.model_view(digest)}
-        for digest in digests
-    ]
-    redacted = redact([h.model_dump(mode="json") for h in hypotheses])
-    return (
-        "sha256:" + hashlib.sha256(_plan_bytes(views)).hexdigest(),
-        "sha256:" + hashlib.sha256(_plan_bytes(redacted)).hexdigest(),
-    )
 
 
 def _observe_mock_evidence(ledger: EvidenceLedger) -> list[str]:
@@ -336,8 +319,20 @@ def _failure_category(stage: str) -> str:
         "inspect": "inspection_failed",
         "broker": "broker_failed",
         "evaluate": "evaluation_failed",
+        "interrupted": "interrupted_stopped",
         "admit": "evidence_admission_failed",
     }.get(stage, "run_failed")
+
+
+def _budget_usage(budget: Any) -> dict[str, Any]:
+    """Mirror the trusted budget's actual counters; never reset used tokens."""
+    return {
+        "attempts": budget.attempts,
+        "input_tokens": budget.input_tokens,
+        "output_tokens": budget.output_tokens,
+        "estimated_cost_usd": budget.estimated_cost_usd,
+        "uncertain_cost_usd": budget.uncertain_cost_usd,
+    }
 
 
 def _write_failure_report(
@@ -346,13 +341,17 @@ def _write_failure_report(
     mode: str,
     real: bool,
     stage: str,
-    attempts: int,
-    estimated_cost_usd: float,
-    uncertain_cost_usd: float,
+    budget: Any,
     suite_digest: str = "",
     scope_digest: str = "",
+    interrupted: bool = False,
 ) -> dict[str, Any]:
-    """Durable sanitized failure receipt: categories and accounting, no verbatim errors."""
+    """Durable sanitized failure receipt: categories and accounting, no verbatim errors.
+
+    ``stage`` names where the run stopped (broker/evaluate/...) so
+    post-evaluate failures keep their location; ``interrupted`` marks a
+    stopped outcome instead of a clean category.
+    """
     report = {
         "kind": "G3_RECONSTRUCT_RUN_REPORT",
         "run_id": run_dir.name,
@@ -360,18 +359,14 @@ def _write_failure_report(
         "fixture": "owned-ledger",
         "origin": "real" if real else "mock",
         "real": real,
-        "stop_reason": _failure_category(stage),
+        "stop_reason": (
+            "interrupted_stopped" if interrupted else _failure_category(stage)
+        ),
         "failure_stage": stage,
         "suite_digest": suite_digest,
         "scope_digest": scope_digest,
         "evaluation": None,
-        "usage": {
-            "attempts": attempts,
-            "input_tokens": 0,
-            "output_tokens": 0,
-            "estimated_cost_usd": estimated_cost_usd,
-            "uncertain_cost_usd": uncertain_cost_usd,
-        },
+        "usage": _budget_usage(budget),
         "report_path": str(run_dir / "G3_report.json"),
         "note": (
             "Post-dispatch failure: the attempt was dispatched and is accounted "
@@ -381,6 +376,38 @@ def _write_failure_report(
     }
     _write_report(run_dir, report)
     return report
+
+
+def _persist_admission(run_dir: Path, artifact: Any, spec_digest: str) -> dict[str, str]:
+    """Archive the broker-issued admission immediately after generation.
+
+    Stores the exact artifact payload/signature envelope plus the admitted
+    candidate bytes, each create-once with a read-back integrity check. The
+    envelope carries the broker's local attestation signature, never a
+    provider attestation; the HMAC authority key is never persisted.
+    """
+    payload = artifact.payload
+    if not isinstance(payload, bytes):
+        raise RuntimeError("broker artifact payload is not bytes")
+    raw_spec = json.loads(payload.decode("utf-8"))["spec"].encode("utf-8")
+    candidate_path = _write_once(run_dir / "candidate.v1.json", raw_spec)
+    if candidate_path.read_bytes() != raw_spec:
+        raise RuntimeError("candidate archive read-back mismatch")
+    envelope = {
+        "kind": "BROKER_ARTIFACT_LOCAL_ATTESTATION_NOT_PROVIDER",
+        "payload": payload.decode("utf-8"),
+        "signature": artifact.signature,
+        "spec_digest": spec_digest,
+        "note": (
+            "Local broker attestation for offline replay within this run's "
+            "frozen evaluator only; not portable provider proof of origin."
+        ),
+    }
+    envelope_path = _write_once(
+        run_dir / "broker-artifact.v1.json",
+        json.dumps(envelope, indent=2, sort_keys=True).encode("utf-8"),
+    )
+    return {"candidate": candidate_path.name, "envelope": envelope_path.name}
 
 
 def run_mock(args: argparse.Namespace) -> int:
@@ -424,20 +451,42 @@ def run_mock(args: argparse.Namespace) -> int:
             ticket, MockProvider(responder=_responder), budget,
             spending_approved=False,
         )
-        result = run.evaluate(artifact, claim="TRUSTED_CONTROL")
+    except KeyboardInterrupt:
+        stopped = _write_failure_report(
+            run_dir=run_dir, mode="mock", real=False, stage="broker",
+            budget=budget, suite_digest=suite_digest, interrupted=True,
+        )
+        print(json.dumps(_summarize(stopped), indent=2))
+        return 130
     except (EvaluationBlocked, GatewayError, RuntimeError):
         failed = _write_failure_report(
             run_dir=run_dir, mode="mock", real=False, stage="broker",
-            attempts=budget.attempts,
-            estimated_cost_usd=budget.estimated_cost_usd,
-            uncertain_cost_usd=budget.uncertain_cost_usd,
-            suite_digest=suite_digest,
+            budget=budget, suite_digest=suite_digest,
+        )
+        print(json.dumps(_summarize(failed), indent=2))
+        return 1
+    admitted_value = json.loads(artifact.payload)
+    admitted = _persist_admission(
+        run_dir, artifact, admitted_value["receipt"]["candidate_digest"]
+    )
+    try:
+        result = run.evaluate(artifact, claim="TRUSTED_CONTROL")
+    except KeyboardInterrupt:
+        stopped = _write_failure_report(
+            run_dir=run_dir, mode="mock", real=False, stage="evaluate",
+            budget=budget, suite_digest=suite_digest, interrupted=True,
+        )
+        print(json.dumps(_summarize(stopped), indent=2))
+        return 130
+    except (EvaluationBlocked, GatewayError, RuntimeError):
+        failed = _write_failure_report(
+            run_dir=run_dir, mode="mock", real=False, stage="evaluate",
+            budget=budget, suite_digest=suite_digest,
         )
         print(json.dumps(_summarize(failed), indent=2))
         return 1
     receipt = result["origin"]
-    candidate_raw = json.loads(artifact.payload)["spec"].encode("utf-8")
-    candidate_path = _write_once(run_dir / "candidate.v1.json", candidate_raw)
+    candidate_path = admitted["candidate"]
     report = {
         "kind": "G3_RECONSTRUCT_RUN_REPORT",
         "run_id": run_dir.name,
@@ -449,7 +498,8 @@ def run_mock(args: argparse.Namespace) -> int:
         "model": receipt["model"],
         "response_id": receipt["response_id"],
         "spec_digest": result["candidate_digest"],
-        "candidate_artifact": candidate_path.name,
+        "candidate_artifact": candidate_path,
+        "broker_artifact": admitted["envelope"],
         "scope_digest": result["scope_digest"],
         "suite_digest": result["suite_digest"],
         "approved_context_digest": result["approved_context_digest"],
@@ -460,10 +510,10 @@ def run_mock(args: argparse.Namespace) -> int:
         "evaluation_receipt": result,
         "usage": {
             "attempts": budget.attempts,
-            "input_tokens": receipt["input_tokens"],
-            "output_tokens": receipt["output_tokens"],
-            "estimated_cost_usd": receipt["estimated_cost_usd"],
-            "uncertain_cost_usd": receipt["uncertain_cost_usd"],
+            "input_tokens": budget.input_tokens,
+            "output_tokens": budget.output_tokens,
+            "estimated_cost_usd": budget.estimated_cost_usd,
+            "uncertain_cost_usd": budget.uncertain_cost_usd,
         },
         "stop_reason": "completed_mock_run",
         "evidence_artifact_count": len(digests),
@@ -556,7 +606,6 @@ def run_real(args: argparse.Namespace) -> int:
               file=sys.stderr)
         return 2
 
-    run_dir = _run_directory(args.run_dir)
     budget = RunBudget(scope.budgets)
     try:
         run = PinnedEvaluatorRun(
@@ -564,25 +613,52 @@ def run_real(args: argparse.Namespace) -> int:
             hypotheses=store,
             operator_approved_context_digest=args.operator_context_pin,
         )
+        run.prepare()
+    except (EvaluationBlocked, GatewayError, RuntimeError) as exc:
+        print(f"BLOCKED_EVALUATOR: {type(exc).__name__}", file=sys.stderr)
+        return 2
+    run_dir = _run_directory(args.run_dir)
+    try:
         ticket = run.prepare()
         artifact = run.generate(
             ticket, MetaProvider(key), budget, spending_approved=True
         )
-        result = run.evaluate(artifact, claim="REAL_MODEL")
+    except KeyboardInterrupt:
+        stopped = _write_failure_report(
+            run_dir=run_dir, mode="real", real=True, stage="broker",
+            budget=budget, suite_digest=args.suite_digest, interrupted=True,
+        )
+        print(json.dumps(_summarize(stopped), indent=2))
+        return 130
     except (EvaluationBlocked, GatewayError, RuntimeError):
         failed = _write_failure_report(
             run_dir=run_dir, mode="real", real=True, stage="broker",
-            attempts=budget.attempts,
-            estimated_cost_usd=budget.estimated_cost_usd,
-            uncertain_cost_usd=budget.uncertain_cost_usd,
-            suite_digest=args.suite_digest,
+            budget=budget, suite_digest=args.suite_digest,
+        )
+        print(json.dumps(_summarize(failed), indent=2))
+        return 1
+    admitted_value = json.loads(artifact.payload)
+    admitted = _persist_admission(
+        run_dir, artifact, admitted_value["receipt"]["candidate_digest"]
+    )
+    try:
+        result = run.evaluate(artifact, claim="REAL_MODEL")
+    except KeyboardInterrupt:
+        stopped = _write_failure_report(
+            run_dir=run_dir, mode="real", real=True, stage="evaluate",
+            budget=budget, suite_digest=args.suite_digest, interrupted=True,
+        )
+        print(json.dumps(_summarize(stopped), indent=2))
+        return 130
+    except (EvaluationBlocked, GatewayError, RuntimeError):
+        failed = _write_failure_report(
+            run_dir=run_dir, mode="real", real=True, stage="evaluate",
+            budget=budget, suite_digest=args.suite_digest,
         )
         print(json.dumps(_summarize(failed), indent=2))
         return 1
 
     receipt = result["origin"]
-    candidate_raw = json.loads(artifact.payload)["spec"].encode("utf-8")
-    candidate_path = _write_once(run_dir / "candidate.v1.json", candidate_raw)
     report = {
         "kind": "G3_RECONSTRUCT_RUN_REPORT",
         "run_id": run_dir.name,
@@ -594,7 +670,8 @@ def run_real(args: argparse.Namespace) -> int:
         "model": receipt["model"],
         "response_id": receipt["response_id"],
         "spec_digest": result["candidate_digest"],
-        "candidate_artifact": candidate_path.name,
+        "candidate_artifact": admitted["candidate"],
+        "broker_artifact": admitted["envelope"],
         "scope_digest": result["scope_digest"],
         "suite_digest": result["suite_digest"],
         "approved_context_digest": result["approved_context_digest"],
@@ -605,10 +682,10 @@ def run_real(args: argparse.Namespace) -> int:
         "evaluation_receipt": result,
         "usage": {
             "attempts": budget.attempts,
-            "input_tokens": receipt["input_tokens"],
-            "output_tokens": receipt["output_tokens"],
-            "estimated_cost_usd": receipt["estimated_cost_usd"],
-            "uncertain_cost_usd": receipt["uncertain_cost_usd"],
+            "input_tokens": budget.input_tokens,
+            "output_tokens": budget.output_tokens,
+            "estimated_cost_usd": budget.estimated_cost_usd,
+            "uncertain_cost_usd": budget.uncertain_cost_usd,
         },
         "stop_reason": "completed_real_run",
         "evidence_artifact_count": len(digests),
@@ -671,17 +748,20 @@ def run_preflight(args: argparse.Namespace) -> int:
             print("BLOCKED_EVIDENCE: suite seal rejected", file=sys.stderr)
             return 2
 
-    run_dir = _run_directory(args.run_dir)
     try:
         run = PinnedEvaluatorRun(
             suite, scope, ledger=ledger, observation_digests=digests,
             hypotheses=store,
         )
-        ticket = run.prepare()
+        run.prepare()
     except Exception:
         print("BLOCKED_EVALUATOR: pinned inspection rejected", file=sys.stderr)
         return 2
-    obs_registry, hyp_registry = _registry_digests(ledger, digests, store.all())
+    # Authoritative frozen pins come from the evaluator's detached manifest,
+    # never from operator-side recomputation: identical genuine inputs yield
+    # identical approval hashes in every process regardless of hash seed.
+    manifest = run.inspection_manifest()
+    run_dir = _run_directory(args.run_dir)
     receipt = {
         "kind": "G3_PREFLIGHT_INSPECTION",
         "run_id": run_dir.name,
@@ -690,13 +770,16 @@ def run_preflight(args: argparse.Namespace) -> int:
         "origin": "inspection-only",
         "real": False,
         "provider_calls": 0,
-        "scope_digest": _scope_digest_for(scope),
+        "scope_digest": manifest["scope_digest"],
         "manifest_digest": pin_public_manifest(public),
-        "approved_context_digest": run.approved_context_digest,
-        "plan_digest": run.plan_digest,
-        "observation_registry_digest": obs_registry,
-        "hypothesis_registry_digest": hyp_registry,
-        "suite_digest": suite_digest,
+        "approved_context_digest": manifest["approved_context_digest"],
+        "plan_digest": manifest["plan_digest"],
+        "observation_registry_digest": manifest["observation_registry_digest"],
+        "hypothesis_registry_digest": manifest["hypothesis_registry_digest"],
+        "code_pins": manifest["code_pins"],
+        "reference_identity": manifest["reference_identity"],
+        "reference_source_digest": manifest["reference_source_digest"],
+        "suite_digest": manifest["suite_digest"],
         "evidence_artifact_count": len(digests),
         "max_approved_usd": run_limit,
         "stop_reason": "preflight_ready",
@@ -713,21 +796,14 @@ def run_preflight(args: argparse.Namespace) -> int:
     print(json.dumps({
         "result": "preflight_ready",
         "run_id": run_dir.name,
-        "approved_context_digest": run.approved_context_digest,
-        "plan_digest": run.plan_digest,
-        "suite_digest": suite_digest,
+        "approved_context_digest": manifest["approved_context_digest"],
+        "plan_digest": manifest["plan_digest"],
+        "suite_digest": manifest["suite_digest"],
         "evidence_artifact_count": len(digests),
         "provider_calls": 0,
         "next_action": _next_action("preflight_ready", "preflight"),
     }, indent=2))
-    del ticket
     return 0
-
-
-def _scope_digest_for(scope: ScopeContract) -> str:
-    from .g3_verification import _scope_digest
-
-    return _scope_digest(scope)
 
 
 def build_parser() -> argparse.ArgumentParser:
