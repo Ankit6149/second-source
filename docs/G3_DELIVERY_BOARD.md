@@ -42,6 +42,7 @@ A passing test suite certifies tested contracts, **not real reconstruction quali
 3. Diagnose schema/candidate-admission risks using **nonbillable** tests. Do not run the provider to discover a failure category without owner authorization.
 4. Seek a **separate owner decision** for one new G3 synthesis (proposed allowance <=$0.50, single attempt, max2000 output, no repair), then independently score and archive the true outcome. This is an application spending bound, *not guaranteed provider billing*.
 5. Finish console/claim mapping to genuine sanitized evidence; record a truthful demo and submit early.
+6. Intelligence workstream: constraint-guided synthesis skeleton plus strict fill merge (PR #9, nonbillable, pending review/CI); v2 mock wire end-to-end proven before any real attempt.
 
 **Cut rule:** Drop P2 and any unproven repair/second-surface scenes before dropping the honest Meta causal chain, independent scoring, redaction or submission.
 

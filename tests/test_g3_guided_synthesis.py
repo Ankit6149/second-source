@@ -197,6 +197,54 @@ def test_guided_mock_round_trip(cli_scope):
     assert stamped.spec_digest == loaded.digest
 
 
+def guided_probe_cases():
+    from second_source.verifier import SealedCase
+
+    return [
+        SealedCase(case_id=f"guided-{i}", actions=(dict(action),))
+        for i, action in enumerate([
+            {"command": "add", "label": "K", "amount": 5},
+            {"command": "add", "label": "", "amount": 5},
+            {"command": "add", "label": "K", "amount": 0},
+            {"command": "add", "label": "x" * 25, "amount": 5},
+            {"command": "frobnicate"},
+        ])
+    ]
+
+
+def test_guided_wire_end_to_end_mock(cli_scope, reference):
+    from second_source.candidate_adapter import CandidateReferenceAdapter
+    from second_source.candidate_generation import _validate_context_shape
+    from second_source.verifier import DifferentialVerifier
+
+    captured = {}
+
+    def responder(request):
+        captured["request"] = request.model_dump(mode="json")
+        return {"content": correct_fill()}
+
+    gateway = ModelGateway(
+        MockProvider(responder=responder), RunBudget(Budgets()))
+    skeleton = build_spec_skeleton(PUBLIC)
+    expected = build_guided_request(
+        _validate_context_shape(valid_context()), skeleton,
+    ).model_dump(mode="json")
+    merged, receipt = request_guided_spec(valid_context(), gateway)
+    wire = captured["request"]
+    assert wire["messages"][1:] == expected["messages"]
+    assert wire["json_schema"] == expected["json_schema"] == FILL_JSON_SCHEMA
+    assert wire["stage"] == expected["stage"] == "synthesize"
+    assert wire["prompt_version"] == "synthesize-v2"
+    loaded, stamped = validate_generated_spec(merged, cli_scope, receipt)
+    assert stamped.spec_digest == loaded.digest
+    cases = guided_probe_cases()
+    report = DifferentialVerifier(
+        reference,
+        CandidateReferenceAdapter(json.dumps(merged).encode(), cli_scope),
+    ).verify(cases)
+    assert report.passed == report.total == len(cases)
+
+
 def test_materially_different_fills_score_differently(cli_scope, reference):
     from second_source.candidate_adapter import CandidateReferenceAdapter
 
