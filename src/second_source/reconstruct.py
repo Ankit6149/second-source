@@ -345,6 +345,7 @@ def _write_failure_report(
     suite_digest: str = "",
     scope_digest: str = "",
     interrupted: bool = False,
+    broker_diagnostic: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Durable sanitized failure receipt: categories and accounting, no verbatim errors.
 
@@ -363,6 +364,7 @@ def _write_failure_report(
             "interrupted_stopped" if interrupted else _failure_category(stage)
         ),
         "failure_stage": stage,
+        "broker_failure": dict(broker_diagnostic) if broker_diagnostic else None,
         "suite_digest": suite_digest,
         "scope_digest": scope_digest,
         "evaluation": None,
@@ -477,10 +479,11 @@ def run_mock(args: argparse.Namespace) -> int:
         )
         print(json.dumps(_summarize(stopped), indent=2))
         return 130
-    except (EvaluationBlocked, GatewayError, RuntimeError):
+    except (EvaluationBlocked, GatewayError, RuntimeError) as exc:
         failed = _write_failure_report(
             run_dir=run_dir, mode="mock", real=False, stage="broker",
             budget=budget, suite_digest=suite_digest,
+            broker_diagnostic=getattr(exc, "broker_diagnostic", None),
         )
         print(json.dumps(_summarize(failed), indent=2))
         return 1
@@ -707,10 +710,11 @@ def run_real(args: argparse.Namespace) -> int:
         )
         print(json.dumps(_summarize(stopped), indent=2))
         return 130
-    except (EvaluationBlocked, GatewayError, RuntimeError):
+    except (EvaluationBlocked, GatewayError, RuntimeError) as exc:
         failed = _write_failure_report(
             run_dir=run_dir, mode="real", real=True, stage="broker",
             budget=budget, suite_digest=args.suite_digest,
+            broker_diagnostic=getattr(exc, "broker_diagnostic", None),
         )
         print(json.dumps(_summarize(failed), indent=2))
         return 1

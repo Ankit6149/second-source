@@ -16,6 +16,7 @@ import json
 import os
 from pathlib import Path
 import random
+import re
 import secrets
 import stat
 import sys
@@ -42,6 +43,72 @@ OWNED_REFERENCE_DIGEST = "sha256:539cf592cee4c22c9abfece562e258aecb2d887a6a48368
 
 class EvaluationBlocked(RuntimeError):
     """Invalid scope, suite, provenance or boundary; no accepted score."""
+
+
+_SAFE_CODE = re.compile(r"^[A-Z][A-Z0-9_]{1,63}$")
+
+
+def _safe_int(value: Any) -> int:
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return 0
+    return number if number >= 0 else 0
+
+
+def _broker_diagnostic(exc: BaseException, *, provider: Any, real: bool,
+                       attempt: int,
+                       gateway_receipt: Any | None = None) -> dict[str, Any]:
+    """Sanitized broker failure detail for the operator's failure receipt.
+
+    Preserves only the already-sanitized provider failure surface (enum-style
+    code, provider-issued response id, token counters, content hash) plus
+    broker identity. The gateway converts provider failures into plain
+    GatewayErrors before they reach the broker, so the failed call receipt it
+    already recorded is the authoritative source; a ProviderResponseError seen
+    directly takes precedence. Exception messages, model output, paths, and
+    credentials never enter this record: free text is untrusted by
+    construction.
+    """
+    diagnostic: dict[str, Any] = {
+        "failure_stage": "broker",
+        "failure_code": "BROKER_INTERNAL_ERROR",
+        "response_id": "",
+        "finish_reason": "",
+        "provider": provider.provider_name,
+        "model": provider.model,
+        "real": real,
+        "attempt": attempt,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "reasoning_tokens": 0,
+        "content_chars": 0,
+        "content_sha256": "",
+    }
+    from .model_gateway import GatewayError, ProviderResponseError
+    source: Any | None = None
+    if isinstance(exc, ProviderResponseError):
+        source = exc
+    elif gateway_receipt is not None and hasattr(gateway_receipt, "failure_code"):
+        source = gateway_receipt
+    if source is not None:
+        code = getattr(source, "failure_code", "") or ""
+        response_id = getattr(source, "response_id", "") or ""
+        content_hash = getattr(source, "content_sha256", "") or ""
+        diagnostic.update(
+            failure_code=code if _SAFE_CODE.match(code) else "MODEL_GATEWAY_ERROR",
+            response_id=response_id if len(response_id) <= 128 else "",
+            finish_reason=getattr(source, "finish_reason", "") or "",
+            input_tokens=_safe_int(getattr(source, "input_tokens", 0)),
+            output_tokens=_safe_int(getattr(source, "output_tokens", 0)),
+            reasoning_tokens=_safe_int(getattr(source, "reasoning_tokens", 0)),
+            content_chars=_safe_int(getattr(source, "content_chars", 0)),
+            content_sha256=(content_hash
+                            if re.fullmatch(r"[0-9a-f]{64}", content_hash) else ""),
+        )
+    elif isinstance(exc, GatewayError):
+        diagnostic["failure_code"] = "MODEL_GATEWAY_ERROR"
+    return diagnostic
 
 
 def _digest(raw: bytes) -> str:
@@ -490,7 +557,10 @@ class PinnedEvaluatorRun:
         No credentials are read here; the owner supplies a configured provider.
         """
         from .candidate_generation import build_synthesize_request
-        from .model_gateway import MetaProvider, MockProvider, ModelGateway, GatewayError
+        from .model_gateway import (
+            MetaProvider, MockProvider, ModelGateway, GatewayError,
+            ProviderResponseError,
+        )
         from .budgets import RunBudget
         contract = self._check_frozen()
         request = self._verify(ticket, "INSPECTED_REQUEST")
@@ -577,11 +647,22 @@ class PinnedEvaluatorRun:
             if pending:
                 budget.fail(Reservation(0, 0, pending))
             raise
-        except Exception:
+        except Exception as exc:
             # Details may contain model output, private paths or evidence. Budget
             # retains failed/uncertain accounting even when no artifact is issued.
+            # The already-sanitized provider failure (code/ids/counters only,
+            # never messages) is attached for the operator's failure receipt so
+            # the actual rejection reason stays recoverable without weakening
+            # admission or accounting.
             self._real_attempt_failed = self._real_attempt_failed or real
-            raise EvaluationBlocked("Broker attempt failed; inspect trusted budget accounting") from None
+            blocked = EvaluationBlocked(
+                "Broker attempt failed; inspect trusted budget accounting")
+            failed_receipts = getattr(gateway, "receipts", ())
+            blocked.broker_diagnostic = _broker_diagnostic(
+                exc, provider=provider, real=real,
+                attempt=self._generation_attempts,
+                gateway_receipt=failed_receipts[-1] if failed_receipts else None)
+            raise blocked from None
 
     def evaluate(self, artifact: BrokerArtifact, *, claim: str = "TRUSTED_CONTROL") -> dict:
         """No reference injection. Real accuracy needs a real broker-issued origin."""

@@ -1,6 +1,7 @@
 """Reconstruct operator workflow: mock end-to-end plus real-mode fail-closed gates."""
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -275,6 +276,119 @@ def test_mock_run_emits_ordered_progress_and_readable_summary(tmp_path, capsys):
     ]
     assert stages == ["evidence_ready", "inspected", "admitted",
                       "evaluated", "reported"]
+
+
+def _pinned_broker_run(tmp_path, cli_scope):
+    import sys as _sys
+
+    from second_source.budgets import RunBudget
+    from second_source.evidence import EvidenceLedger
+    from second_source.g3_verification import (
+        PinnedEvaluatorRun, load_sealed_suite, seal_owned_ledger_suite,
+    )
+    from second_source.hypotheses import HypothesisStore, validate_batch
+    from second_source.reference import CLIReferenceAdapter
+
+    root = Path(__file__).resolve().parents[1]
+    ledger = EvidenceLedger(tmp_path / "ev")
+    reference = CLIReferenceAdapter(
+        [_sys.executable, str(root / "fixtures/owned_ledger/reference.py")],
+        cwd=root,
+    )
+    result = reference.execute_sequence([{"command": "list"}], sequence_id="d")
+    digests = tuple(ledger.store(o)["sha256"] for o in result.observations)
+    store = HypothesisStore()
+    store.add_batch(validate_batch(
+        {"hypotheses": [{
+            "id": "h1",
+            "statement": "list reflects stored entries",
+            "evidence_ids": list(digests),
+        }]},
+        frozenset(digests),
+    ))
+    seal_dir = tmp_path / "sealed"
+    _, suite_digest = seal_owned_ledger_suite(seal_dir, cli_scope)
+    suite = load_sealed_suite(seal_dir / "suite.json", suite_digest, cli_scope)
+    run = PinnedEvaluatorRun(
+        suite, cli_scope, ledger=ledger,
+        observation_digests=digests, hypotheses=store,
+    )
+    return run, run.prepare(), RunBudget(cli_scope.budgets)
+
+
+def test_broker_failure_preserves_provider_receipt_detail(tmp_path, cli_scope):
+    from second_source.g3_verification import EvaluationBlocked
+    from second_source.model_gateway import MockProvider, ProviderResponseError
+
+    run, ticket, budget = _pinned_broker_run(tmp_path, cli_scope)
+    provider = MockProvider()
+
+    def _boom(request):
+        raise ProviderResponseError(
+            "MODEL_SCHEMA_INVALID", "SYNTHETIC DETAIL MUST NOT LEAK",
+            response_id="resp-abc-123", finish_reason="stop",
+            input_tokens=3314, output_tokens=1456, reasoning_tokens=0,
+            content_chars=900, content_sha256="a" * 64,
+        )
+
+    provider.complete = _boom
+    with pytest.raises(EvaluationBlocked) as excinfo:
+        run.generate(ticket, provider, budget, spending_approved=False)
+    diagnostic = excinfo.value.broker_diagnostic
+    assert diagnostic["failure_stage"] == "broker"
+    assert diagnostic["failure_code"] == "MODEL_SCHEMA_INVALID"
+    assert diagnostic["response_id"] == "resp-abc-123"
+    assert (diagnostic["input_tokens"], diagnostic["output_tokens"]) == (3314, 1456)
+    assert diagnostic["content_sha256"] == "a" * 64
+    assert "SYNTHETIC DETAIL MUST NOT LEAK" not in json.dumps(diagnostic)
+    assert budget.attempts == 1
+
+
+def test_broker_failure_without_provider_receipt_stays_generic(tmp_path, cli_scope):
+    from second_source.g3_verification import EvaluationBlocked
+    from second_source.model_gateway import GatewayError, MockProvider
+
+    run, ticket, budget = _pinned_broker_run(tmp_path, cli_scope)
+    provider = MockProvider()
+    provider.complete = lambda request: (_ for _ in ()).throw(
+        GatewayError("SYNTHETIC TRANSPORT BOOM"))
+    with pytest.raises(EvaluationBlocked) as excinfo:
+        run.generate(ticket, provider, budget, spending_approved=False)
+    diagnostic = excinfo.value.broker_diagnostic
+    assert diagnostic["failure_code"] == "MODEL_GATEWAY_ERROR"
+    assert diagnostic["response_id"] == ""
+    assert "SYNTHETIC TRANSPORT BOOM" not in json.dumps(diagnostic)
+
+
+def test_operator_failure_report_carries_broker_diagnostic(
+    monkeypatch, tmp_path, capsys
+):
+    import second_source.reconstruct as operator
+    from second_source.g3_verification import EvaluationBlocked, PinnedEvaluatorRun
+
+    diagnostic = {
+        "failure_stage": "broker", "failure_code": "MODEL_SCHEMA_INVALID",
+        "response_id": "resp-abc-123", "finish_reason": "stop",
+        "provider": "meta-direct", "model": "muse-spark-1.3", "real": True,
+        "attempt": 1, "input_tokens": 3314, "output_tokens": 1456,
+        "reasoning_tokens": 0, "content_chars": 900,
+        "content_sha256": "a" * 64,
+    }
+    blocked = EvaluationBlocked(
+        "Broker attempt failed; inspect trusted budget accounting")
+    blocked.broker_diagnostic = diagnostic
+
+    def _fail_generate(run, ticket, provider, budget, **kwargs):
+        raise blocked
+
+    monkeypatch.setattr(PinnedEvaluatorRun, "generate", _fail_generate)
+    code = operator.main(["--mode", "mock", "--run-dir", str(tmp_path / "r"),
+                          "--seal-dir", str(tmp_path / "s")])
+    assert code == 1
+    report = json.loads((tmp_path / "r" / "G3_report.json").read_text(
+        encoding="utf-8"))
+    assert report["stop_reason"] == "broker_failed"
+    assert report["broker_failure"] == diagnostic
 
 
 def test_mock_failure_persists_sanitized_receipt(monkeypatch, tmp_path, capsys):
