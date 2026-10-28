@@ -7,6 +7,7 @@ behavioral fidelity against the owned reference is measured by an independent
 differential verifier, never inferred from these unit tests alone.
 """
 
+import copy
 import json
 from pathlib import Path
 
@@ -267,3 +268,28 @@ def test_invalid_runtime_limits_rejected(cli_scope):
             pass
         else:
             raise AssertionError(f"expected ValueError for {kwargs}")
+
+
+def test_param_error_precedence_representation_independent(cli_scope):
+    """Identical spec content as JSON bytes vs reordered mapping: same first error."""
+    doc = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    rev = copy.deepcopy(doc)
+    add_params = rev["commands"]["add"]["params"]
+    rev["commands"]["add"]["params"] = dict(reversed(list(add_params.items())))
+    assert list(rev["commands"]["add"]["params"]) != list(doc["commands"]["add"]["params"])
+    from second_source.candidate_spec import load_candidate as _load
+    first = _load(json.dumps(doc).encode("utf-8"), cli_scope)
+    second = _load(rev, cli_scope)
+    probes = [
+        {"command": "add"},
+        {"command": "add", "label": "", "amount": 0},
+    ]
+    for probe in probes:
+        outs = []
+        for loaded in (first, second):
+            interp = CandidateInterpreter(loaded.spec)
+            res = interp.execute_sequence([dict(probe)], sequence_id="prec")
+            assert res.status == "ok"
+            outs.append(res.observations[0].output)
+        assert outs[0] == outs[1]
+    assert outs[0] == {"ok": False, "error": "invalid_amount"}
