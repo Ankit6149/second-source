@@ -278,6 +278,12 @@ def test_guided_request_uses_fill_schema_and_small_cap():
     assert request.json_schema == FILL_JSON_SCHEMA
     assert request.max_output_tokens == 800
     assert request.prompt_version == "synthesize-v2"
+    # A schema-valid provider response must include every section required
+    # by the strict fill merger; otherwise a paid model call can succeed
+    # schema validation and fail immediately at broker admission.
+    assert set(request.json_schema["required"]) == {
+        "error_codes", "add", "list", "total", "remove"
+    }
 
 
 def test_guided_mock_round_trip(cli_scope):

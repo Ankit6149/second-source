@@ -588,7 +588,7 @@ SYNTHESIZE_PROMPT_VERSION_V2 = "synthesize-v2"
 FILL_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["error_codes", "add", "remove"],
+    "required": ["error_codes", "add", "list", "total", "remove"],
     "properties": {
         "error_codes": {
             "type": "object",
