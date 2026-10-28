@@ -407,3 +407,24 @@ def test_mock_failure_persists_sanitized_receipt(monkeypatch, tmp_path, capsys):
     emitted = (run_dir / "G3_report.json").read_text(encoding="utf-8")
     emitted += capsys.readouterr().out + capsys.readouterr().err
     assert "FORBIDDEN_MODEL_CODE" not in emitted
+
+
+def test_post_model_candidate_admission_receipt_distinguished_from_gateway(tmp_path, cli_scope):
+    """NON_AI: schema-valid model response can fail the stronger DSL semantics."""
+    from second_source.g3_verification import EvaluationBlocked
+    from second_source.model_gateway import MockProvider
+
+    run, ticket, budget = _pinned_broker_run(tmp_path, cli_scope)
+    generated = naive_mock_spec()
+    generated["commands"]["add"]["store_record"] = False
+    provider = MockProvider(responder=lambda req: {"content": generated})
+
+    with pytest.raises(EvaluationBlocked) as captured:
+        run.generate(ticket, provider, budget, spending_approved=False)
+    diagnostic = captured.value.broker_diagnostic
+    assert diagnostic["failure_stage"] == "candidate_admission"
+    assert diagnostic["failure_code"] == "CANDIDATE_SPEC_INVALID"
+    assert diagnostic["response_id"]
+    assert budget.attempts == 1
+    assert budget.uncertain_cost_usd == 0
+    assert "add" not in json.dumps(diagnostic)

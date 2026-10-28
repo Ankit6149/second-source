@@ -57,7 +57,7 @@ def _safe_int(value: Any) -> int:
 
 
 def _broker_diagnostic(exc: BaseException, *, provider: Any, real: bool,
-                       attempt: int,
+                       attempt: int, phase: str = "gateway",
                        gateway_receipt: Any | None = None) -> dict[str, Any]:
     """Sanitized broker failure detail for the operator's failure receipt.
 
@@ -86,6 +86,16 @@ def _broker_diagnostic(exc: BaseException, *, provider: Any, real: bool,
         "content_sha256": "",
     }
     from .model_gateway import GatewayError, ProviderResponseError
+    from .candidate_spec import CandidateError
+    # Gateway receipts may describe a SUCCESSFUL model transport while the
+    # separately trusted candidate loader rejects its semantics afterward.
+    # Never report a post-model validation failure as a gateway failure.
+    if phase == "candidate_admission":
+        diagnostic["failure_stage"] = "candidate_admission"
+        diagnostic["failure_code"] = (
+            "CANDIDATE_SPEC_INVALID" if isinstance(exc, CandidateError)
+            else "POST_MODEL_ADMISSION_REJECTED"
+        )
     source: Any | None = None
     if isinstance(exc, ProviderResponseError):
         source = exc
@@ -95,8 +105,12 @@ def _broker_diagnostic(exc: BaseException, *, provider: Any, real: bool,
         code = getattr(source, "failure_code", "") or ""
         response_id = getattr(source, "response_id", "") or ""
         content_hash = getattr(source, "content_sha256", "") or ""
+        source_ok = getattr(source, "outcome", "") == "ok"
         diagnostic.update(
-            failure_code=code if _SAFE_CODE.match(code) else "MODEL_GATEWAY_ERROR",
+            failure_code=(
+                diagnostic["failure_code"] if source_ok
+                else code if _SAFE_CODE.match(code) else "MODEL_GATEWAY_ERROR"
+            ),
             response_id=response_id if len(response_id) <= 128 else "",
             finish_reason=getattr(source, "finish_reason", "") or "",
             input_tokens=_safe_int(getattr(source, "input_tokens", 0)),
@@ -620,8 +634,10 @@ class PinnedEvaluatorRun:
         # Consume BEFORE attempting transport, including schema/transport failures.
         self._used_requests.add(nonce)
         self._generation_attempts += 1
+        phase = "gateway"
         try:
             response = gateway.generate(build_synthesize_request(json.loads(self._context_raw)))
+            phase = "candidate_admission"
             self._check_frozen()
             if (len(calls) != 1 or response.real is not real or response.outcome != "ok"
                     or response.provider != provider.provider_name or response.model != provider.model
@@ -660,7 +676,7 @@ class PinnedEvaluatorRun:
             failed_receipts = getattr(gateway, "receipts", ())
             blocked.broker_diagnostic = _broker_diagnostic(
                 exc, provider=provider, real=real,
-                attempt=self._generation_attempts,
+                attempt=self._generation_attempts, phase=phase,
                 gateway_receipt=failed_receipts[-1] if failed_receipts else None)
             raise blocked from None
 
