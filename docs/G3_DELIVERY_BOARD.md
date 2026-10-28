@@ -6,8 +6,8 @@
 
 | Checkpoint | Verified state |
 |---|---|
-| [PR #5](https://github.com/Ankit6149/second-source/pull/5) | Merged at \`bc9f9c11bb029a99ee3aa022749f266355aaa7e1\`, one G2 discovery journal, zero-cost G2 → G3 workflow. Main CI [40722455069](https://github.com/Ankit6149/second-source/actions/runs/40722455069) succeeded Linux425/0/3, Windows426/0/2 plus bootstrap |
-| [PR #6](https://github.com/Ankit6149/second-source/pull/6) | Merged at \`ceb28b6f2f2292f75f766fbd3fbefc0822cfef98\`, additive broker diagnostic preservation. [Exact PR-head CI](https://github.com/Ankit6149/second-source/actions/runs/40736323555) succeeded Linux428/0/3, Windows429/0/2 + bootstrap. Review/negative probes passed. |
+| [PR #5](https://github.com/Ankit6149/second-source/pull/5) | Merged at `bc9f9c11bb029a99ee3aa022749f266355aaa7e1`, one G2 discovery journal, zero-cost G2 → G3 workflow. Main CI [40722455069](https://github.com/Ankit6149/second-source/actions/runs/40722455069) succeeded Linux425/0/3, Windows426/0/2 plus bootstrap |
+| [PR #6](https://github.com/Ankit6149/second-source/pull/6) | Merged at `ceb28b6f2f2292f75f766fbd3fbefc0822cfef98`, additive broker diagnostic preservation. [Exact PR-head CI](https://github.com/Ankit6149/second-source/actions/runs/40736323555) succeeded Linux428/0/3, Windows429/0/2 + bootstrap. Review/negative probes passed. |
 | [PR #7](https://github.com/Ankit6149/second-source/pull/7) | New read-only operator/evidence console and smoke tests. Separate review/CI required before claiming UI acceptance or merging |
 | Cost/auth boundary | No merge or demo action grants further real model attempts, repair or paid retries |
 
@@ -15,9 +15,9 @@ A passing test suite certifies tested contracts, **not real reconstruction quali
 
 ## Actual model work — do not confuse with scripted controls
 
-**Genuine G2:** Fresh 28 October operator discovery \`real-g2-20261028T163538Z-fd60310f\` recorded 3 original hypotheses, 5 hash-valid observations, a 3-action model-selected experiment, and 2 genuine \`meta-direct / muse-spark-1.3\` receipts. Usage 2809 input / 2347 output, receipt-derived estimated \`$0.013486\`, uncertain \`$0\`. The independent local review reports validated original-batch/citation and external receipt association. This evidence is local and not a provider-signed billing attestation; the prior 27 October incomplete run remains historical, not recovered.
+**Genuine G2:** Fresh 28 October operator discovery `real-g2-20261028T163538Z-fd60310f` recorded 3 original hypotheses, 5 hash-valid observations, a 3-action model-selected experiment, and 2 genuine `meta-direct / muse-spark-1.3` receipts. Usage 2809 input / 2347 output, receipt-derived estimated `$0.013486`, uncertain `$0`. The independent local review reports validated original-batch/citation and external receipt association. This evidence is local and not a provider-signed billing attestation; the prior 27 October incomplete run remains historical, not recovered.
 
-**Genuine G3:** One separately authorized attempt on the above inputs \`real-g3-from-g2-20261028T164126Z-8ee4d156\`: 3314 input / 1456 output tokens, estimated \`$0.0103305\`, uncertain \`$0\`, outcome \`broker_failed\` **before candidate admission**. No candidate was scored and no repair lift exists. The precise provider/model failure reason was lost by the earlier reporting path. PR #6 saves future sanitized codes and response IDs but does not explain/recover that consumed attempt. No automatic retry, second paid call or repair authorized.
+**Genuine G3:** One separately authorized attempt on the above inputs `real-g3-from-g2-20261028T164126Z-8ee4d156`: 3314 input / 1456 output tokens, estimated `$0.0103305`, uncertain `$0`, outcome `broker_failed` **before candidate admission**. No candidate was scored and no repair lift exists. The precise provider/model failure reason was lost by the earlier reporting path. PR #6 saves future sanitized codes and response IDs but does not explain/recover that consumed attempt. No automatic retry, second paid call or repair authorized.
 
 **NON_AI engineering controls:** scripted negative/naive candidate 22 passed / 3 failed / 0 indeterminate out of 25; hand-authored trusted positive 25/25; deliberate negative sensitivity 2/2/1. These are deliberately not framed as Meta model quality.
 
@@ -49,6 +49,6 @@ A passing test suite certifies tested contracts, **not real reconstruction quali
 
 ## Accounting/limitations
 
-Existing new runs' receipt-based combined estimated G2+G3 model charges: **USD0.0238165** for successful G2 and failed G3 alone; including the separate earlier incomplete G2 attempt of \`$0.00455525\`, the reported new-series total is \`$0.02837175\` (not provider-confirmed billing). The old 27 October run is separate.
+Existing new runs' receipt-based combined estimated G2+G3 model charges: **USD0.0238165** for successful G2 and failed G3 alone; including the separate earlier incomplete G2 attempt of `$0.00455525`, the reported new-series total is `$0.02837175` (not provider-confirmed billing). The old 27 October run is separate.
 
 No client-side HTML viewer proves input attestation; signed provider truth, unredacted archive access, auto resume, cloud background operation, arbitrary-code sandbox and universal clone equivalence are not claimed. Live status events and one-click portable authenticated evidence archive remain unimplemented beyond CLI/read-only projections.

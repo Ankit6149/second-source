@@ -23,8 +23,8 @@
 
 ## Evidence index (sanitized)
 
-- G2 real 2026-10-28: \`real-g2-20261028T163538Z-fd60310f\`; receipt witness SHA-256 \`947910b0f645b78b9234859a899db3412171cbbbb3c400e072c9f661840e31f8\` (operator-local; independent verifier reported checking it).
-- G3 first consumed attempt: \`real-g3-from-g2-20261028T164126Z-8ee4d156\`; report SHA-256 \`bb1d8cf74c76f1ee3bc8029e0f83a9083369f6b5c4d8c1117ac59adeec2d9bbb\`, no admitted candidate and no score.
+- G2 real 2026-10-28: `real-g2-20261028T163538Z-fd60310f`; receipt witness SHA-256 `947910b0f645b78b9234859a899db3412171cbbbb3c400e072c9f661840e31f8` (operator-local; independent verifier reported checking it).
+- G3 first consumed attempt: `real-g3-from-g2-20261028T164126Z-8ee4d156`; report SHA-256 `bb1d8cf74c76f1ee3bc8029e0f83a9083369f6b5c4d8c1117ac59adeec2d9bbb`, no admitted candidate and no score.
 - NON_AI scripted evaluator: 22/25; separate trusted positive 25/25 and negative 2/2/1.
 
 Do not present this transcript or example records as new real output. If the audience cannot verify local receipts, describe them as operator-recorded evidence rather than portable provider attestation.
