@@ -364,6 +364,10 @@ def _inspect_run(run_dir: Path, expected_receipt_sha256: str | None = None) -> d
     if state == "completed" and not complete:
         raise PersistenceError("Completed discovery lacks required evidence")
     return {"run_id": run_dir.name, "state": state, "complete": complete,
+            "scope": manifest["scope"], "scope_digest": manifest["scope_digest"],
+            "reference_source_digest": manifest["code_pins"]["reference_fixture"],
+            "public_manifest_digest": manifest["code_pins"]["public_manifest"],
+            "stop_reason": terminal["report"].get("stop_reason", state) if terminal else state,
             "origin": origin, "provider": manifest["provider"], "model": manifest["model"],
             "events": len(events), "head_sha256": head, "receipt_sha256": receipt_hash,
             "observation_digests": sorted(known), "hypothesis_batches": batches,

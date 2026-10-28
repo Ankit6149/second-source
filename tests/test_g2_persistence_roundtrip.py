@@ -112,3 +112,19 @@ def test_ledger_tamper_detected(cli_scope, reference, tmp_path):
     next((run / "evidence").glob("*.json")).unlink()
     with pytest.raises((OSError, ValueError)):
         inspect_run(run)
+
+
+def test_proposal_failure_before_dispatch_preserves_batch_and_receipts(tmp_path, monkeypatch):
+    """Muse's pre-gateway failure retains usage without inventing an attempt."""
+    from second_source import live_experiment as live
+    from second_source.model_gateway import GatewayError
+    def refused(*args, **kwargs):
+        raise GatewayError("NON_AI pre-dispatch proposal failure")
+    monkeypatch.setattr(ExperimentPlanner, "propose", refused)
+    run = tmp_path / "proposal-blocked"
+    assert live.main(["--mode", "mock", "--run-dir", str(run)]) == 3
+    result = inspect_run(run)
+    assert not result["complete"] and result["state"] == "stopped"
+    assert len(result["hypothesis_batches"]) == len(result["model_receipts"]) == 1
+    assert result["budget"]["attempts"] == result["budget"]["model_calls"] == 1
+    assert result["model_receipts"][0]["stage"] == "hypothesize"

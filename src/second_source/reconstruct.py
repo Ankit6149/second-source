@@ -1,4 +1,4 @@
-"""Reproducible end-to-end G3 operator workflow (REAL-RUN-READY, no paid calls yet).
+"""Reproducible end-to-end G3 operator workflow (zero-cost engineering; real approval pending).
 
 Single command connecting approved scope, G2 evidence/hypotheses, the pinned
 generation broker, the CandidateSpec loader, the trusted interpreter (via the
@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
+import hashlib
 import json
 import math
 import os
@@ -422,11 +423,22 @@ def run_mock(args: argparse.Namespace) -> int:
     if set(public.get("commands", {})) != set(scope.observation.allowed_commands):
         print("BLOCKED_CONTRACT: public manifest does not match scope", file=sys.stderr)
         return 2
-    run_dir = _run_directory(args.run_dir)
-    ledger = EvidenceLedger(run_dir / "evidence")
-    digests = _observe_mock_evidence(ledger)
+    g2_provenance = None
+    if args.g2_manifest:
+        try:
+            ledger, store, digests = _load_operator_evidence(args)
+            g2_provenance = _check_g2_manifest(args.g2_manifest, digests, store,
+                receipt_sha256=args.g2_receipt_sha256, scope=scope)
+        except (RuntimeError, OSError, ValueError):
+            print("BLOCKED_EVIDENCE: complete G2 receipt/input binding rejected", file=sys.stderr)
+            return 2
+        run_dir = _run_directory(args.run_dir)
+    else:
+        run_dir = _run_directory(args.run_dir)
+        ledger = EvidenceLedger(run_dir / "evidence")
+        digests = _observe_mock_evidence(ledger)
+        store = mock_hypotheses(digests)
     _progress("evidence_ready", run_dir.name, f"{len(digests)} observations recorded")
-    store = mock_hypotheses(digests)
 
     seal_dir = args.seal_dir or tempfile.mkdtemp(prefix="second-source-sealed-")
     _, suite_digest = seal_owned_ledger_suite(seal_dir, scope)
@@ -438,6 +450,11 @@ def run_mock(args: argparse.Namespace) -> int:
         observation_digests=tuple(digests), hypotheses=store,
     )
     ticket = run.prepare()
+    if g2_provenance is not None:
+        _write_once(run_dir / "G3_input_provenance.json", json.dumps({
+            "run_id": run_dir.name, "approved_context_digest": run.inspection_manifest()["approved_context_digest"],
+            "g2": g2_provenance,
+        }, sort_keys=True).encode("utf-8"))
     _progress("inspected", run_dir.name, "broker request inspected, zero calls")
     proposal = naive_mock_spec()
 
@@ -495,6 +512,7 @@ def run_mock(args: argparse.Namespace) -> int:
         "kind": "G3_RECONSTRUCT_RUN_REPORT",
         "run_id": run_dir.name,
         "mode": "mock",
+        "g2_input_provenance": g2_provenance,
         "fixture": "owned-ledger",
         "origin": receipt["origin"],
         "real": receipt["real"],
@@ -544,6 +562,41 @@ def run_mock(args: argparse.Namespace) -> int:
     return 0
 
 
+def _check_g2_manifest(
+    manifest_path: str, digests: tuple[str, ...], store: HypothesisStore,
+    *, receipt_sha256: str | None, scope: ScopeContract, require_real: bool = False,
+) -> dict[str, Any]:
+    """Bind the already-loaded G3 context to the sole immutable G2 journal."""
+    from .g2_persistence import inspect_run
+
+    if not receipt_sha256:
+        raise RuntimeError("G2 binding requires an externally retained --g2-receipt-sha256")
+    path = Path(manifest_path)
+    if path.name != "G2_receipt.json" or path.is_symlink():
+        raise RuntimeError("G2 binding requires the version2 G2_receipt.json")
+    archive = inspect_run(path.parent, receipt_sha256)
+    if not archive["complete"]:
+        raise RuntimeError("incomplete G2 discovery cannot back reconstruction")
+    if require_real and (archive["origin"] != "real" or not all(r["real"] for r in archive["model_receipts"])):
+        raise RuntimeError("NON_AI G2 discovery cannot approve genuine reconstruction")
+    g2_scope = ScopeContract.model_validate(archive["scope"])
+    if (g2_scope.target != scope.target
+            or archive["reference_source_digest"] != hashlib.sha256(OWNED_REFERENCE.read_bytes()).hexdigest()
+            or archive["public_manifest_digest"] != hashlib.sha256(PUBLIC_MANIFEST.read_bytes()).hexdigest()):
+        raise RuntimeError("G2 target/reference/public identity differs from G3")
+    if set(digests) != set(archive["observation_digests"]):
+        raise RuntimeError("operator digests differ from complete G2 evidence")
+    original = validate_batch(archive["hypothesis_batches"][-1], frozenset(digests))
+    loaded = validate_batch({"hypotheses": [h.model_dump(mode="json") for h in store.all()]}, frozenset(digests))
+    if loaded != original:
+        raise RuntimeError("operator hypotheses differ from original G2 response batch")
+    return {"receipt_sha256": archive["receipt_sha256"], "run_id": archive["run_id"],
+            "origin": archive["origin"], "provider": archive["provider"], "model": archive["model"],
+            "scope_digest": archive["scope_digest"],
+            "reference_source_digest": archive["reference_source_digest"],
+            "public_manifest_digest": archive["public_manifest_digest"], "complete": True}
+
+
 def _load_operator_evidence(args: argparse.Namespace) -> tuple[EvidenceLedger, HypothesisStore, tuple[str, ...]]:
     try:
         digests = tuple(d.strip() for d in args.observation_digests.split(",") if d.strip())
@@ -583,10 +636,9 @@ def run_real(args: argparse.Namespace) -> int:
     from .g3_verification import EvaluationBlocked, PinnedEvaluatorRun, load_sealed_suite
     from .model_gateway import GatewayError
 
-    key = os.environ.get("MODEL_API_KEY", "")
     env_limit = _spend_ceiling(os.environ.get("SECOND_SOURCE_MAX_RUN_USD", "0"))
     run_limit = _spend_ceiling(args.max_usd)
-    if not key or env_limit is None:
+    if env_limit is None:
         return _blocked("configure MODEL_API_KEY and SECOND_SOURCE_MAX_RUN_USD securely.")
     if run_limit is None or run_limit > min(MAX_REAL_RUN_USD, env_limit):
         return _blocked(
@@ -606,8 +658,8 @@ def run_real(args: argparse.Namespace) -> int:
     try:
         ledger, store, digests = _load_operator_evidence(args)
         suite = load_sealed_suite(args.suite, args.suite_digest, scope)
-    except (RuntimeError, OSError) as exc:
-        print(f"BLOCKED_EVIDENCE: {exc}", file=sys.stderr)
+    except (RuntimeError, OSError, ValueError):
+        print("BLOCKED_EVIDENCE: operator inputs or G2 receipt rejected", file=sys.stderr)
         return 2
     except Exception:
         print("BLOCKED_EVIDENCE: operator evidence or frozen suite rejected",
@@ -625,7 +677,22 @@ def run_real(args: argparse.Namespace) -> int:
     except (EvaluationBlocked, GatewayError, RuntimeError) as exc:
         print(f"BLOCKED_EVALUATOR: {type(exc).__name__}", file=sys.stderr)
         return 2
+    if not args.g2_manifest:
+        return _blocked("real runs require --g2-receipt and --g2-receipt-sha256.")
+    try:
+        g2_provenance = _check_g2_manifest(args.g2_manifest, digests, store,
+            receipt_sha256=args.g2_receipt_sha256, scope=scope, require_real=True)
+    except (RuntimeError, OSError, ValueError):
+        print("BLOCKED_EVIDENCE: complete genuine G2 receipt/input binding rejected", file=sys.stderr)
+        return 2
+    key = os.environ.get("MODEL_API_KEY", "")
+    if not key:
+        return _blocked("configure MODEL_API_KEY securely after exact input approval.")
     run_dir = _run_directory(args.run_dir)
+    _write_once(run_dir / "G3_input_provenance.json", json.dumps({
+        "run_id": run_dir.name, "approved_context_digest": args.operator_context_pin,
+        "g2": g2_provenance,
+    }, sort_keys=True).encode("utf-8"))
     _progress("evidence_ready", run_dir.name, f"{len(digests)} approved observations")
     try:
         ticket = run.prepare()
@@ -703,6 +770,7 @@ def run_real(args: argparse.Namespace) -> int:
         "evidence_artifact_count": len(digests),
         "evaluation_summary": _readable_summary(result["evaluation"], "real"),
         "operator_input_pin_present": True,
+        "g2_input_provenance": g2_provenance,
         "max_authorized_usd": args.max_usd,
         "report_path": str(run_dir / "G3_report.json"),
         "note": "Genuine Muse generation scored on the frozen sealed suite.",
@@ -742,8 +810,14 @@ def run_preflight(args: argparse.Namespace) -> int:
         return 2
     try:
         ledger, store, digests = _load_operator_evidence(args)
-    except (RuntimeError, OSError) as exc:
-        print(f"BLOCKED_EVIDENCE: {exc}", file=sys.stderr)
+        g2_provenance = None
+        manifest_digest = ""
+        if args.g2_manifest:
+            g2_provenance = _check_g2_manifest(args.g2_manifest, digests, store,
+                receipt_sha256=args.g2_receipt_sha256, scope=scope)
+            manifest_digest = "sha256:" + g2_provenance["receipt_sha256"]
+    except (RuntimeError, OSError, ValueError):
+        print("BLOCKED_EVIDENCE: operator inputs or G2 receipt rejected", file=sys.stderr)
         return 2
     if args.suite and args.suite_digest:
         try:
@@ -796,6 +870,9 @@ def run_preflight(args: argparse.Namespace) -> int:
         "reference_identity": manifest["reference_identity"],
         "reference_source_digest": manifest["reference_source_digest"],
         "suite_digest": manifest["suite_digest"],
+        "g2_manifest_digest": manifest_digest,
+        "g2_input_provenance": g2_provenance,
+        "real_input_eligible": bool(g2_provenance and g2_provenance["origin"] == "real"),
         "evidence_artifact_count": len(digests),
         "max_approved_usd": run_limit,
         "stop_reason": "preflight_ready",
@@ -854,11 +931,18 @@ def build_parser() -> argparse.ArgumentParser:
                         help="frozen sealed suite path (real only)")
     parser.add_argument("--suite-digest", default=None,
                         help="frozen sealed suite digest (real only)")
+    parser.add_argument("--g2-receipt", "--g2-manifest", dest="g2_manifest", default=None,
+                        help="G2_receipt.json from the single version2 journal (required for real)")
+    parser.add_argument("--g2-receipt-sha256", default=None,
+                        help="externally retained exact G2 receipt SHA-256; required with --g2-receipt")
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if bool(args.g2_manifest) != bool(args.g2_receipt_sha256):
+        print("BLOCKED_SCOPE: --g2-receipt requires --g2-receipt-sha256 and conversely", file=sys.stderr)
+        return 2
     if args.fixture != "owned-ledger":
         print(f"BLOCKED_SCOPE: unknown fixture {args.fixture!r}", file=sys.stderr)
         return 2
@@ -866,6 +950,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.max_usd != 0.0 or args.confirm_real_run:
             print("BLOCKED_SCOPE: mock runs take no spend or confirmation flags",
                   file=sys.stderr)
+            return 2
+        inputs = (args.ledger_dir, args.hypotheses_file, args.observation_digests)
+        if (any(inputs) or args.g2_manifest) and not (all(inputs) and args.g2_manifest):
+            print("BLOCKED_SCOPE: bound mock requires complete G2 ledger/batch/digests/receipt", file=sys.stderr)
             return 2
         return run_mock(args)
     if args.mode == "preflight":

@@ -4,8 +4,8 @@ This command is deliberately NOT a code-generation demo. It only proves the G2
 causal path: real Muse -> hypotheses -> proposed in-scope actions -> guarded
 reference execution -> evidence hashes -> prediction reconciliation.
 
-No credentials are written into the run directory or printed. This is an
-explicitly approved real mode is billable; inspection and mock modes are not.
+No credentials are written into the run directory or printed. Explicitly
+approved real mode is billable; inspection and mock modes are not.
 """
 from __future__ import annotations
 

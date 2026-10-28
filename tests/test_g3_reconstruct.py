@@ -67,6 +67,77 @@ def test_unknown_fixture_rejected(tmp_path):
                  str(tmp_path / "x")]) == 2
 
 
+def _manifest_inputs(tmp_path, cli_scope, reference):
+    from test_g2_persistence_roundtrip import run_recorded
+    from second_source.g2_persistence import inspect_run, export_batch
+
+    _, run, ledger, _, _ = run_recorded(cli_scope, reference, tmp_path)
+    archive = inspect_run(run)
+    hypotheses_file = export_batch(run, tmp_path / "hypotheses.json",
+                                   expected_receipt_sha256=archive["receipt_sha256"])
+    return run / "G2_receipt.json", ledger.root, hypotheses_file, archive["observation_digests"], archive["receipt_sha256"]
+
+
+def test_preflight_with_manifest_passes(tmp_path, cli_scope, reference):
+    manifest_path, ledger_dir, hypotheses_file, digests, witness = _manifest_inputs(tmp_path, cli_scope, reference)
+    code = main([
+        "--mode", "preflight", "--max-usd", "0.5",
+        "--ledger-dir", str(ledger_dir), "--hypotheses-file", str(hypotheses_file),
+        "--observation-digests", ",".join(digests), "--seal-dir", str(tmp_path / "sealed"),
+        "--g2-manifest", str(manifest_path), "--g2-receipt-sha256", witness,
+        "--run-dir", str(tmp_path / "preflight-run"),
+    ])
+    assert code == 0
+    receipt = json.loads((tmp_path / "preflight-run/G3_preflight.json").read_text(encoding="utf-8"))
+    import hashlib
+    assert receipt["g2_manifest_digest"] == "sha256:" + hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+    assert receipt["g2_input_provenance"]["receipt_sha256"] == witness
+    assert receipt["g2_input_provenance"]["origin"] == "mock"
+    assert receipt["real_input_eligible"] is False
+    assert receipt["provider_calls"] == 0
+
+
+def test_preflight_with_stripped_manifest_blocked(tmp_path, cli_scope, reference):
+    manifest_path, ledger_dir, hypotheses_file, digests, witness = _manifest_inputs(tmp_path, cli_scope, reference)
+    terminal_path = sorted((manifest_path.parent / "discovery").glob("*.json"))[-1]
+    doc = json.loads(terminal_path.read_bytes())
+    assert doc["kind"] == "terminal"
+    doc["payload"]["model_receipts"] = []
+    terminal_path.write_text(json.dumps(doc), encoding="utf-8")
+    code = main([
+        "--mode", "preflight", "--max-usd", "0.5", "--ledger-dir", str(ledger_dir),
+        "--hypotheses-file", str(hypotheses_file), "--observation-digests", ",".join(digests),
+        "--seal-dir", str(tmp_path / "sealed"), "--g2-receipt", str(manifest_path),
+        "--g2-receipt-sha256", witness, "--run-dir", str(tmp_path / "preflight-run"),
+    ])
+    assert code == 2
+    assert not (tmp_path / "preflight-run/G3_preflight.json").exists()
+
+
+def test_real_requires_manifest(monkeypatch, tmp_path, cli_scope, reference, capsys):
+    _no_transport(monkeypatch)
+    manifest_path, ledger_dir, hypotheses_file, digests, witness = _manifest_inputs(tmp_path, cli_scope, reference)
+    inputs = ["--max-usd", "0.5", "--ledger-dir", str(ledger_dir),
+              "--hypotheses-file", str(hypotheses_file), "--observation-digests", ",".join(digests)]
+    assert main(["--mode", "preflight", *inputs, "--seal-dir", str(tmp_path / "sealed"),
+                 "--run-dir", str(tmp_path / "preflight")]) == 0
+    receipt = json.loads((tmp_path / "preflight/G3_preflight.json").read_bytes())
+    monkeypatch.setenv("SECOND_SOURCE_MAX_RUN_USD", "0.5")
+    import os
+    original_get = os.environ.get
+    def guarded(name, *args):
+        assert name != "MODEL_API_KEY", "Missing G2 binding must block before credential access"
+        return original_get(name, *args)
+    monkeypatch.setattr(os.environ, "get", guarded)
+    code = main(["--mode", "real", *inputs, "--confirm-real-run",
+        "--operator-context-pin", receipt["approved_context_digest"],
+        "--suite", str(tmp_path / "sealed/suite.json"), "--suite-digest", receipt["suite_digest"],
+        "--run-dir", str(tmp_path / "x")])
+    assert code == 2
+    assert "--g2-receipt" in capsys.readouterr().err
+    assert not (tmp_path / "x").exists()
+
+
 def _no_transport(monkeypatch):
     def _boom(*args, **kwargs):
         raise AssertionError("provider transport must not be reached")

@@ -298,7 +298,8 @@ def _code_pins() -> dict[str, str]:
     names = ("verifier", "g3_verification", "candidate_adapter", "candidate_runtime",
              "candidate_spec", "candidate_generation", "model_gateway", "contracts",
              "scope_guard", "schema_validate", "evidence", "hypotheses", "budgets",
-             "__init__", "runner", "reference")
+             "__init__", "runner", "reference", "g2_persistence", "planner",
+             "loop", "live_experiment", "g2_inspect", "reconstruct")
     result = {}
     for name in names:
         path = package / (name + ".py")
