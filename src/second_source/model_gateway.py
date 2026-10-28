@@ -25,6 +25,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Any, Callable, Literal, Sequence
+from dataclasses import asdict
 
 from pydantic import Field
 
@@ -399,11 +400,22 @@ class ModelGateway:
         budget: RunBudget,
         *,
         forbidden_markers: Sequence[str] = DEFAULT_FORBIDDEN_MARKERS,
+        audit: Callable[[str, dict[str, Any]], None] | None = None,
     ) -> None:
         self._provider = provider
         self._budget = budget
         self._forbidden = tuple(forbidden_markers)
         self._receipts: list[CallReceipt] = []
+        self._audit = audit
+
+    def _record(self, receipt: CallReceipt, response: ModelResponse | None = None) -> None:
+        self._receipts.append(receipt)
+        if self._audit is not None:
+            self._audit("model_result", {
+                "receipt": receipt.model_dump(mode="json"),
+                "response": response.model_dump(mode="json") if response else None,
+                "budget": self._budget.summary(),
+            })
 
     @property
     def provider_name(self) -> str:
@@ -458,6 +470,22 @@ class ModelGateway:
         else:
             est_in, est_out = 0, 0
         reservation = self._budget.reserve(est_in, est_out, self._rates())
+        if self._audit is not None:
+            try:
+                self._audit("model_dispatch", {
+                    "attempt": self._budget.attempts, "stage": request.stage,
+                    "provider": self.provider_name, "real": self.is_real,
+                    "model": self._provider.model, "prompt_version": request.prompt_version,
+                    "request_sha256": hashlib.sha256(
+                        request.model_dump_json().encode("utf-8")
+                    ).hexdigest(),
+                    "reservation": asdict(reservation), "budget": self._budget.summary(),
+                })
+            except BaseException:
+                # No transport occurred. Preserve the attempted reservation count,
+                # release its dollars, and fail closed on persistence failure.
+                self._budget.fail(reservation, uncertain_cost=0.0)
+                raise
         try:
             response = self._provider.complete(request)
         except ProviderResponseError as exc:
@@ -472,7 +500,7 @@ class ModelGateway:
                 self._budget.commit(reservation, exc.input_tokens, exc.output_tokens, usage_estimate)
             else:
                 self._budget.fail(reservation)
-            self._receipts.append(
+            self._record(
                 CallReceipt(
                     seq=len(self._receipts) + 1,
                     stage=request.stage,
@@ -500,7 +528,7 @@ class ModelGateway:
             ) from exc
         except GatewayError as exc:
             self._budget.fail(reservation)
-            self._receipts.append(
+            self._record(
                 CallReceipt(
                     seq=len(self._receipts) + 1,
                     stage=request.stage,
@@ -513,6 +541,18 @@ class ModelGateway:
                 )
             )
             raise GatewayError(f"provider attempt failed and booked as uncertain: {exc}") from exc
+        except BaseException as exc:
+            # Interruptions/unexpected provider failures may already be billed.
+            # Settle once here so G2 and G3 never lose a pending reservation.
+            self._budget.fail(reservation)
+            self._record(CallReceipt(
+                seq=len(self._receipts) + 1, stage=request.stage,
+                provider=self.provider_name, real=self.is_real,
+                model=self._provider.model, prompt_version=request.prompt_version,
+                uncertain_cost_usd=reservation.est_cost_usd, outcome="failed",
+                failure_code="INTERRUPTED" if isinstance(exc, KeyboardInterrupt) else "PROVIDER_FAILURE",
+            ))
+            raise
         rates = self._rates()
         actual_cost = (
             estimate_cost_usd(response.input_tokens, response.output_tokens, rates)
@@ -522,7 +562,10 @@ class ModelGateway:
         self._budget.commit(
             reservation, response.input_tokens, response.output_tokens, actual_cost
         )
-        self._receipts.append(
+        settled = response.model_copy(
+            update={"estimated_cost_usd": actual_cost, "uncertain_cost_usd": 0.0, "outcome": "ok"}
+        )
+        self._record(
             CallReceipt(
                 seq=len(self._receipts) + 1,
                 stage=request.stage,
@@ -535,12 +578,12 @@ class ModelGateway:
                 output_tokens=response.output_tokens,
                 estimated_cost_usd=actual_cost,
                 response_id=response.response_id,
+                content_chars=len(response.content_text),
+                content_sha256=hashlib.sha256(response.content_text.encode("utf-8")).hexdigest(),
                 outcome="ok",
-            )
+            ), settled,
         )
-        return response.model_copy(
-            update={"estimated_cost_usd": actual_cost, "uncertain_cost_usd": 0.0, "outcome": "ok"}
-        )
+        return settled
 
     def ping(self) -> ModelResponse:
         """Low-cost connectivity check with mocked evidence only."""

@@ -6,9 +6,34 @@ import json
 import os
 from pathlib import Path
 import re
+import tempfile
 
 from .contracts import Observation
 
+
+def publish_once(path: Path, raw: bytes) -> Path:
+    """Publish complete, fsynced bytes without replacing an existing artifact.
+
+    Shared by G2 journals and G3 reports. Same-filesystem hard-link publication
+    prevents partial final files and makes concurrent publication exclusive.
+    Directory metadata power-loss durability remains filesystem-dependent.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, staging = tempfile.mkstemp(
+        dir=path.parent, prefix=path.name + ".", suffix=".staging"
+    )
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(raw)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.link(staging, path)
+        return path
+    finally:
+        try:
+            os.unlink(staging)
+        except OSError:
+            pass
 
 _SECRET_FIELD = re.compile(r"(?:authorization|cookie|api[_-]?key|password|secret|access[_-]?token|refresh[_-]?token|otp|session)", re.I)
 _SECRET_VALUE = re.compile(r"(?i)(bearer\s+)[A-Za-z0-9._~+/-]+")

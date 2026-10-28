@@ -26,7 +26,7 @@ from typing import Any, Sequence
 from .budgets import RunBudget
 from .contracts import ProposedAction, ScopeContract
 from .evidence import EvidenceLedger
-from .hypotheses import HypothesisStore
+from .hypotheses import HypothesisError, HypothesisStore
 from .model_gateway import GatewayError
 from .planner import ExperimentPlanner, reconcile_predictions
 from .runner import BudgetExhausted, PolicyViolation, SafeCLIExperimentRunner
@@ -99,6 +99,7 @@ class DiscoveryLoop:
         planner: ExperimentPlanner,
         budget: RunBudget,
         max_rounds: int = 6,
+        journal=None,
     ) -> None:
         self._run_id = run_id
         self._requirement_id = requirement_id
@@ -110,6 +111,7 @@ class DiscoveryLoop:
         self._budget = budget
         self._max_rounds = max_rounds
         self._digests: list[str] = []
+        self._journal = journal
 
     def _views(self) -> list[dict[str, Any]]:
         # Digest-keyed redacted views: the mock/real model cites digests, and
@@ -135,6 +137,8 @@ class DiscoveryLoop:
         obs_ids: list[str] = []
         for observation in result.observations:
             receipt = self._ledger.store(observation)
+            if self._journal is not None:
+                self._journal.observation(receipt)
             self._digests.append(receipt["sha256"])
             obs_ids.append(observation.observation_id)
         final = result.observations[-1] if result.observations else None
@@ -162,12 +166,18 @@ class DiscoveryLoop:
 
     def run(self, seed_actions: Sequence[dict[str, Any]]) -> LoopReport:
         rounds: list[LoopRound] = []
+        def record_round(record: LoopRound) -> None:
+            rounds.append(record)
+            if self._journal is not None:
+                self._journal.round(record)
         stop_reason = "stalled"
         rejection_codes: tuple[str, ...] = ()
         try:
             self._seed(seed_actions)
             for round_no in range(1, self._max_rounds + 1):
                 batch = self._planner.hypothesize(self._views(), self._known_ids())
+                if self._journal is not None:
+                    self._journal.hypothesis_batch(batch, self._known_ids(), len(self._planner.receipts))
                 for hyp in batch.hypotheses:
                     if hyp.id not in self._hypotheses.ids():
                         self._hypotheses.add_batch(
@@ -201,7 +211,7 @@ class DiscoveryLoop:
                         f"correction_denials={','.join(_trusted_rejection_codes(plan.rejected))}; "
                         + (reasons or 'empty proposal list')
                     )
-                    rounds.append(
+                    record_round(
                         LoopRound(
                             round_no,
                             tuple(h.id for h in batch.hypotheses),
@@ -219,7 +229,7 @@ class DiscoveryLoop:
                 try:
                     obs_ids, final = self._execute(top.actions)
                 except PolicyViolation as exc:
-                    rounds.append(
+                    record_round(
                         LoopRound(
                             round_no,
                             tuple(h.id for h in batch.hypotheses),
@@ -251,7 +261,7 @@ class DiscoveryLoop:
                             self._hypotheses.update_status(hyp_id, verdict)
                         except KeyError:
                             pass
-                rounds.append(
+                record_round(
                     LoopRound(
                         round_no,
                         tuple(h.id for h in batch.hypotheses),
@@ -265,15 +275,15 @@ class DiscoveryLoop:
                     )
                 )
         except BudgetExhausted as exc:
-            rounds.append(
+            record_round(
                 LoopRound(
                     0, (), None, 0, (), "fresh_process_per_sequence",
                     self._hypotheses.resolution_counts(), f"budget stop: {exc}",
                 )
             )
             stop_reason = "budget"
-        except GatewayError as exc:
-            rounds.append(
+        except (GatewayError, HypothesisError) as exc:
+            record_round(
                 LoopRound(
                     0, (), None, 0, (), "fresh_process_per_sequence",
                     self._hypotheses.resolution_counts(), f"model stop: {exc}",

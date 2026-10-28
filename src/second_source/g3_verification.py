@@ -298,7 +298,8 @@ def _code_pins() -> dict[str, str]:
     names = ("verifier", "g3_verification", "candidate_adapter", "candidate_runtime",
              "candidate_spec", "candidate_generation", "model_gateway", "contracts",
              "scope_guard", "schema_validate", "evidence", "hypotheses", "budgets",
-             "__init__", "runner", "reference")
+             "__init__", "runner", "reference", "g2_persistence", "planner",
+             "loop", "live_experiment", "g2_inspect", "reconstruct")
     result = {}
     for name in names:
         path = package / (name + ".py")
@@ -372,7 +373,12 @@ class PinnedEvaluatorRun:
             context = build_generation_context(scope_goal=projection["goal"],
                 requirement_ids=projection["requirement_ids"], allowed_commands=projection["allowed_commands"],
                 excluded_subsystems=projection["excluded_subsystems"], public_command_manifest=public,
-                redacted_views=views, hypotheses=redact([h.model_dump(mode="json") for h in batch.hypotheses]))
+                redacted_views=views, hypotheses=redact([
+                    {**h.model_dump(mode="json"), "evidence_ids": sorted(h.evidence_ids)}
+                    for h in batch.hypotheses]))
+            # Citations are a set in the validated domain model. Freeze their
+            # deterministic public representation before hashing or inspecting
+            # the request; Python's process hash seed is not an input approval.
         except Exception:
             raise EvaluationBlocked("Approved generation registry admission failed") from None
         self._context_raw = _encode(context)
@@ -407,6 +413,27 @@ class PinnedEvaluatorRun:
     def approved_context_digest(self) -> str:
         """For trusted operator review/pinning; not automatic G2 authentication."""
         return self._approved_context_digest
+
+    def inspection_manifest(self) -> dict:
+        """Detached frozen input/code pins for zero-call operator inspection.
+
+        Reuse the admitted plan rather than reconstructing registry hashes in
+        an operator wrapper. This is local integrity metadata, not historical
+        provider authentication, spend approval, a score or a reusable ticket.
+        """
+        self._check_frozen()
+        plan = json.loads(self._plan_raw)
+        return {
+            "plan_digest": self.plan_digest,
+            "scope_digest": plan["scope_digest"], "suite_digest": plan["suite_digest"],
+            "code_pins": dict(self._pins), "reference_identity": plan["reference_id"],
+            "reference_source_digest": self._pins["reference_identity"],
+            "approved_context_digest": self._approved_context_digest,
+            "observation_registry_digest": plan["observation_registry_digest"],
+            "hypothesis_registry_digest": plan["hypothesis_registry_digest"],
+            "operator_input_pin": self._operator_input_pin,
+            "registry_authority": "LOCAL_LEDGER_AND_HYPOTHESIS_SNAPSHOT_REQUIRING_OPERATOR_G2_APPROVAL",
+        }
 
     def _check_frozen(self):
         if _code_pins() != self._pins:
@@ -539,6 +566,17 @@ class PinnedEvaluatorRun:
                 "output_tokens": response.output_tokens, "estimated_cost_usd": response.estimated_cost_usd,
                 "uncertain_cost_usd": response.uncertain_cost_usd, "attempt": self._generation_attempts}
             return self._sign({"kind": "CANDIDATE_ORIGIN", "spec": spec_raw.decode("utf-8"), "receipt": receipt})
+        except KeyboardInterrupt:
+            # A transport can be interrupted after reserving possible charges
+            # but before the gateway can settle them. Preserve that uncertainty
+            # in the existing ledger before the operator writes its stopped
+            # receipt. Already committed/failed reservations have zero balance.
+            from .budgets import Reservation
+            self._real_attempt_failed = self._real_attempt_failed or real
+            pending = budget._outstanding
+            if pending:
+                budget.fail(Reservation(0, 0, pending))
+            raise
         except Exception:
             # Details may contain model output, private paths or evidence. Budget
             # retains failed/uncertain accounting even when no artifact is issued.
@@ -563,17 +601,11 @@ class PinnedEvaluatorRun:
         report = evaluate_sealed_suite(self._suite, contract, reference, candidate)
         self._check_frozen()
         result = evidence_manifest(self._suite, candidate, report, reference=reference)
-        plan = json.loads(self._plan_raw)
-        result.update(kind="PINNED_" + claim + "_EVALUATION", plan_digest=self.plan_digest,
-                      origin=receipt, artifact_digest=_digest(artifact.payload), code_pins=dict(self._pins),
-                      reference_identity=contract.target.reference_command_id,
-                      reference_source_digest=self._pins["reference_identity"],
+        result.update(self.inspection_manifest())
+        result.update(kind="PINNED_" + claim + "_EVALUATION",
+                      origin=receipt, artifact_digest=_digest(artifact.payload),
                       origin_receipt_digest=_digest(_encode(receipt)),
-                      approved_context_digest=self._approved_context_digest,
-                      observation_registry_digest=plan["observation_registry_digest"],
-                      hypothesis_registry_digest=plan["hypothesis_registry_digest"],
-                      g3_accepted=False, operator_input_pin=self._operator_input_pin,
-                      registry_authority="LOCAL_LEDGER_AND_HYPOTHESIS_SNAPSHOT_REQUIRING_OPERATOR_G2_APPROVAL")
+                      g3_accepted=False)
         self._evaluations[_digest(artifact.payload)] = _encode(report.model_feedback())
         return result
 

@@ -1,5 +1,22 @@
 # G2 Acceptance Log — Real Meta-powered behavioral discovery
 
+## CURRENT provenance and consolidation notice - 28 October 2026
+
+Use the [single delivery board](G3_DELIVERY_BOARD.md) and
+[approval package](G2_G3_APPROVAL_PACKAGE.md) for current engineering state.
+The version-2 journal consolidates the two persistence drafts; full exact-head
+cross-platform acceptance is tracked there. The historical operational report
+below does not establish complete authentic G3 input: original hypothesis
+statements/citations/response bodies were not retained. A new authentic
+export or separately approved NEW discovery is required; never recreate old
+statements from identifiers. No model spending or PR merge is authorized.
+
+## ARCHIVED historical operational checkpoint
+
+The remainder records its dated source/limitations and is not current input
+approval or a claim that the original complete hypothesis package exists.
+
+
 **Gate under test:** PRD FR-020..028 — a real Muse model selects a valid
 experiment and its result is observed and recorded.
 

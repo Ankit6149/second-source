@@ -1,4 +1,32 @@
-# G3-B independent verifier acceptance — engineering controls only
+# Independent G3 verification — current verdict and chronological evidence
+
+## CURRENT — 28 October 2026
+
+**Engineering GO for the tested zero-cost CLI milestone and owner review;
+real G3/product release NO-GO.** The single current delivery/status/risk source
+is [G3_DELIVERY_BOARD.md](G3_DELIVERY_BOARD.md).
+
+Combined source `af477b2daf0b676ad49be3959bcd28de868f76be` passes
+[exact-source CI 40666652416](https://github.com/Ankit6149/second-source/actions/runs/40666652416):
+Linux/Python 3.11 **352 passed / 0 failed / 3 skipped**;
+Windows/Python 3.12 **353 passed / 0 failed / 2 skipped**, repeated by
+bootstrap with `BOOTSTRAP_OK`. All seven original regressions pass unchanged.
+No speculative new gate, xfail, lowered threshold or extra skip was introduced.
+
+PRs #3/#4 are merged; PR #5 is the current open integration review on
+`integrate/g3-reconstruct`. G3-D mock/preflight/gated-real/archive/report code
+exists and is tested. Positive/offline **25/25**, negative **2/2/1** sensitivity
+and default mock **22/25** are NON_AI controls, not genuine model accuracy.
+The original G2 hypothesis batch remains missing; authentic input approval,
+explicit owner spend and an actual independently scored Meta candidate remain
+unfulfilled. No merge, inference or spending approval is granted by this log.
+
+## ARCHIVED CHRONOLOGICAL CHECKPOINTS
+
+The remaining sections retain the original source-specific observations,
+including failures later fixed. Their earlier branch/PR/status/continuation
+statements apply only to their named checkpoint and are superseded by the
+current board and latest PR #5 review.
 
 Starting coordinator commit: `bfd605d593e0a7d0868f8bb674430d3a1b0aaa9f`.
 Branch: `g3/verifier`. No PR merges, paid requests, credential reads or direct G3-A edits.
@@ -418,3 +446,427 @@ Remaining real-run work includes independently approved actual G2 input context,
 fresh preflight and explicit owner spend authorization, operator CLI/report wiring,
 and separately reviewed durable attestation if restart/replay across processes is
 required. Real model calls / spend / uncertain spend remain **0 / $0 / $0**.
+
+## Independent real-run readiness audit of the operator workflow
+
+**Verdict: NO-GO for real inference.** Engineering foundation `main` is now merged
+at `9c8bcc4eba5e8bf4b1b3e5dfc75273c2eb0ea203`; its
+[post-merge CI 40652322539](https://github.com/Ankit6149/second-source/actions/runs/40652322539)
+is successful on Linux/Python 3.11 and Windows/Python 3.12, including Windows
+bootstrap. This does not certify the newly proposed operator workflow.
+
+Muse published that workflow as `bf3f0a1a43cd75b0d8b2f1f175f20c70757500ae`,
+[PR #5](https://github.com/Ankit6149/second-source/pull/5), on the single shared
+`integrate/g3-reconstruct` branch. Codex audits that exact published implementation
+and adds only independent verifier tests plus this owned acceptance record.
+No Muse-owned runtime/generation/operator code is edited. No additional feature
+branch, force push, PR merge, genuine real-model execution or paid call is made.
+Pushes follow the published Muse checkpoint and are ordinary fast-forwards to
+the same shared branch after verifying the remote head and file ownership.
+
+### Existing G2 artifact identities and approval limits
+
+Read-only local audit found the actual successful run at
+`.runs/real-g2-20261027T192406Z-5482abee/` in the operator's existing checkout.
+The saved `run_report.json` has SHA-256
+`05aa16f05ff2a0a4d707369fcb06a210726e43449c50409b92dbd50ebf9c2c0e`.
+It agrees with the previously reported result, run ID, two real `meta-direct`
+`muse-spark-1.3` receipts, token/cost estimates, three experiment observations
+and one supported hypothesis ID. The historical response identities are:
+
+- Hypothesize: `chatcmpl-01a17ed1-f2e4-74d6-b083-b02322104905`.
+- Propose: `chatcmpl-01a17ed2-138c-764c-a60b-a4253349c220`.
+
+All five files under that run's `evidence/` validate as `Observation`, and each
+filename equals the SHA-256 of its actual stored bytes. Every action is allowed
+by the current reconstruction ScopeGuard; all statuses are `ok` with exit zero,
+and the existing redactor leaves their content unchanged. No credential fields,
+original source or evaluator cases are present in these observation envelopes.
+The following are **candidates for explicit operator approval**, not a permission
+to send them to a model or a cryptographic provider attestation:
+
+| SHA-256 artifact filename (append `.json`) | Observation identity | Recorded origin |
+|---|---|---|
+| `d595e04012fa6601d53607c9673583118821c6a72915d3ebfc668965767023c9` | `e01842cce6654892b49cb2b0af82a0e9:0` | Operator seed observation |
+| `9252f018c2b2829bc93daf9a9a752b5cc9c8fd5019043fc998653caacd65a68d` | `e01842cce6654892b49cb2b0af82a0e9:1` | Operator seed observation |
+| `22c8ea2c18d56e8abcd7936bb738c23367cc4996868077e3590fcdb4952b4fc4` | `658b367c4d744f3da685cf0e09099790:0` | Model-selected experiment observation |
+| `07b6d01d357dc9f0eebc955e705d1e590369161502fd845bb4d3ddf9b2b631bc` | `658b367c4d744f3da685cf0e09099790:1` | Model-selected experiment observation |
+| `1be90f95e06f8483aa9b5d5f749d4d9949b556f56fda7215efa4cc3683ccc341` | `658b367c4d744f3da685cf0e09099790:2` | Model-selected experiment observation |
+
+**Blocking missing artifact:** the successful run records hypothesis ID
+`H1-add-creates-record` and its supported status, but neither its original
+statement, alternatives nor evidence citations. The run directory contains only
+the five observation files and `run_report.json`. The G2 implementation keeps
+the `HypothesisStore` in memory and serializes IDs/counts, not the original batch.
+An ID, proposal name or status count is insufficient to recreate a Muse hypothesis.
+No replacement text or citations have been fabricated, and no such file is approved.
+The operator has been asked whether an authentic original response export exists
+elsewhere. Without it, the full required G2 input context cannot be authenticated.
+
+Never use `run_report.json` wholesale as generation input: its
+`independent_fixture_verifier` is a synthetic evaluator-only negative control,
+not observational evidence or a real candidate score. Likewise, the new mock
+workflow's freshly observed data and deterministic hypotheses must not be relabeled
+as this historical real G2 run. Local content hashes establish byte integrity;
+the report's real/provider flags remain local operator receipts, not signed Meta
+responses or independently verified provider billing.
+
+### Published workflow findings and independent acceptance tests
+
+`tests/test_g3_verifier_workflow.py` executes the actual mock broker, trusted
+candidate worker and sealed evaluator. A hand-authored positive fixture is injected
+only as an explicitly labeled mock response; no scoring or isolation gate is
+bypassed. The workflow's actual score and its trusted evaluator return are compared.
+The tests also exercise the CLI in a fresh credential-free subprocess, create-once
+suite/digest checks, input approval mutation, origin tampering, request replay,
+provider/schema failure and nonfinite budget preflight. Existing strict-comparator,
+negative-control and resource/isolation suites are preserved unchanged.
+
+Targeted independent run: **9 passed / 8 failed / 0 skipped**, 75.36 seconds,
+Windows/Python 3.12.4. These eight are ordinary blocking failures with no xfail or
+skip. They demonstrate these findings at `bf3f0a1`:
+
+1. **P0 — candidate persistence.** The wrapper saves a candidate hash but discards
+   the exact admitted candidate bytes and local broker artifact when the process
+   ends. A digest alone cannot reproduce or independently re-score the real baseline
+   or preserve immutable candidate versions for later repairs.
+2. **P0 — failed-run accounting.** Provider failure or invalid generated spec exits
+   without `G3_report.json`. The real-mode failure handler similarly returns before
+   writing a report. The trusted budget may hold spent/uncertain charges in memory,
+   but the operator loses the durable failure, attempts and budget receipt. Tests
+   reproduce this with local mocks only; no real failure or charge is claimed.
+3. **P1 — report provenance loss.** The wrapper drops comparator/interpreter/adapter,
+   raw reference, environment, origin-receipt and observation/hypothesis registry
+   digests already supplied by the pinned evaluator. Retain that sanitized receipt
+   rather than reducing the completed artifact to an unattested score summary.
+4. **P1 — overwrite/replay.** Existing explicit run directories are accepted, and
+   `_write_report` silently replaces an existing receipt. Distinct attempts must
+   not overwrite an already recorded run/report/candidate version.
+5. **P1 — invalid spend authorization.** Environment ceilings `nan` and positive
+   `inf` reach input loading instead of being rejected as invalid approval values.
+   This does not bypass the separate $0.50 hard cap; it violates finite positive
+   preflight. Tests stop at an input-loader sentinel before provider construction.
+
+The runbook also proposes taking `approved_context_digest` from a mock run and
+using it for a real G2 run. That pin identifies the mock observations/hypotheses,
+whose IDs/timings and origin differ from the actual G2 artifacts. It is not approval
+of the real G2 context, nor does the CLI currently provide a nonbillable prepare/
+inspect step for the actual operator-supplied G2 context. The frozen suite must
+also match the real scope, including its approved budget; a mock-scope suite is
+not automatically a real-run suite. Correct these instructions before any spending
+approval, without substituting synthetic inputs or disabling pin equality.
+
+### Observed mock execution and residual gates
+
+The published standalone command was independently executed with a minimal
+credential-free environment, zero spend, an external disposable sealed directory
+and an external run directory. Result: **MOCK 22 passed / 3 failed / 0 indeterminate
+/ 25 total**, exit zero as a plumbing run, origin `mock`, `real=false`, estimated
+and uncertain spend both zero. No candidate file was saved. This is an honest
+scripted naive control, not model-generated reconstruction accuracy.
+
+The independent workflow fixture separately reproduces the **25/25** hand-authored
+positive through the real mock broker/pinned evaluator. Existing model/source/gold
+isolation, reference identity, receipt authentication, input mutation and request
+replay checks pass; report persistence/provenance failures above prevent real-run
+readiness. Exact complete-suite and shared-branch Linux/Windows CI results are
+reported with the pushed audit SHA after verification. The foundation's earlier
+green CI and Muse's standalone workflow CI do not include these new assertions.
+The complete local suite with the new independent gates reports **310 passed /
+8 failed / 3 skipped**, 272.55 seconds. All eight failures are the workflow checks
+listed above; every pre-existing verifier assertion and negative-control regression
+passes. Existing 25-case control sensitivity remains positive **25/0/0**, broken
+uniqueness **23/2/0**, broken whitespace **23/2/0**, broken amount boundary
+**24/1/0** (passed/failed/indeterminate; total 25 each).
+
+**GO:** continue nonbillable engineering corrections and independent review.
+**NO-GO:** genuine G3 inference, real baseline/repair claims, merge or spending.
+Before an owner-authorized run: recover/authenticate the actual G2 hypothesis
+batch (or separately approve a new correctly recorded discovery operation), fix
+the workflow failures, inspect and approve the exact actual G2 context out of band,
+freeze the correct scope/suite/comparator/reference, rerun clean Windows/Linux
+verification, and obtain a finite per-run dollar approval plus credential handling
+in the trusted broker. No key has been read or requested in this audit.
+
+G3-C remains **NOT STARTED**: no genuine generated baseline exists. Once that
+baseline is independently verified and separately authorized, at most two repair
+attempts may use the identical sealed bytes, approved aggregate feedback, fresh
+immutable candidate versions and honest before/after/regression accounting. Existing
+bounded-attempt/aggregate/replay controls remain in force; no real repair is run now.
+Audit phase real model calls / spend / uncertain spend: **0 / $0 / $0**.
+
+## Product-integration follow-up — coordinator review of PR #5
+
+Review: [coordinator instructions](https://github.com/Ankit6149/second-source/pull/5#issuecomment-6464647743).
+Published Muse correction audited independently:
+`626fcac87d94164d9c6e7c77a17a517e3d6e9dde`, on the same
+`integrate/g3-reconstruct` branch. Codex changes only owned independent tests
+and this record. The eight original failures remain unchanged ordinary tests.
+All eight now pass: exact candidate bytes, complete evaluator metadata,
+provider/schema failure reports, prior nonempty run/report protection and
+finite environment ceilings. This closes those reproduced regressions; it
+does not establish the entire durable-workflow requirement.
+
+Independent extended targeted run at this published source: **37 passed /
+4 failed / 0 skipped**, 83.85 seconds, Windows/Python 3.12.4. It includes
+all original workflow tests, new preflight tests and initial receipt faults.
+Two additional receipt scenarios were then added; that final receipt module
+alone reports **2 passed / 5 failed / 0 skipped**, 3.33 seconds. Counts from
+these overlapping runs must not be added together.
+
+Verified without provider construction or transport:
+
+- Preflight's context, observation/hypothesis registries and scope match a
+  separately constructed existing `PinnedEvaluatorRun` on the exact supplied
+  fixture inputs. The suite binds the actual proposed $0.35 budget and rejects
+  a $0.50 scope. Plan IDs are intentionally fresh; their hashes must not be
+  compared as stable cross-run approval identities.
+- Changed hypotheses, corrupted observation bytes, changed budget/suite and
+  an incorrect approved context pin all block before provider construction.
+- NaN, infinity, negative infinity, zero and negative CLI caps block before
+  input loading in both preflight and real-mode approval checks.
+- A missing original hypothesis file fails closed, with no fallback to
+  `mock_hypotheses` and no ready receipt. All successful preflight fixtures
+  are explicitly synthetic NON_AI tests of input binding, **not historical
+  G2 authentication or actual-input approval**.
+- The hand-authored candidate's persisted bytes independently re-score
+  **25 passed / 0 failed / 0 indeterminate / 25 total** through the existing
+  sealed evaluator. This remains trusted NON_AI replay.
+- Concurrent report collision permits one complete winner, and fsync failure
+  leaves no completed report. Existing provenance, isolation, sealed-suite,
+  origin-tampering and single-use request checks remain intact.
+
+Remaining failures at `626fcac`, sent to Muse through PR #5:
+
+1. Exact broker payload/signature is not archived. The admitted candidate
+   and evaluator origin hash are insufficient to restore that local receipt.
+   Preserve the artifact immediately after generation; do not export the
+   private HMAC authority or mistake it for a portable Meta signature.
+2. A fault after a partial write exposes truncated JSON at the final report
+   filename before cleanup. Exclusive creation plus fsync prevents overwrite
+   but does not make publication atomic to readers.
+3. Empty prior run directories remain reusable, including an interrupted
+   run whose ID was already allocated.
+4. An evaluator fault is mislabeled `broker_failed`, resets reported tokens
+   to zero and discards the already admitted candidate. It must preserve
+   the artifact and actual budget, with a distinct evaluation failure.
+5. Keyboard interruption at that same boundary escapes without a durable
+   stopped receipt, despite an admitted candidate and accounted attempt.
+6. A schema-valid but semantically invalid candidate records token usage
+   in the existing gateway budget, then the failure wrapper writes zero
+   tokens. The test compares the report directly with the actual budget.
+
+The runbook correctly separates mock and actual-input context pins now,
+but its `REAL-RUN-READY` heading still overstates readiness. There is no
+genuine G3 baseline and no authenticated historical hypothesis batch.
+
+### G2 recovery and product acceptance limits
+
+Read-only searches of tracked/untracked project files and all four local
+historical `.runs` directories found no original structured hypothesis
+export/response body. The successful run still contains only the five
+hash-valid observations and its report, identified above. The original
+hypothesis text/citations are **unrecoverable from these retained artifacts**;
+this does not assert that an owner-held export elsewhere cannot exist.
+No text or citations were inferred from the hypothesis ID or its status.
+
+A future separately owner-authorized G2 discovery must retain the complete
+original validated hypothesis batch (statements, citations, alternatives,
+statuses), its observation content addresses, sanitized provider/model/
+response identity and token/cost/failure receipts. Preserve immutable bytes
+before later hypothesis reconciliation, and link that batch and its updates
+to the same durable run. The existing discovery/gateway modules should be
+extended by their owner; Codex does not create another discovery workflow.
+That operation is not authorized or executed by this verification.
+
+PRD v2.0 sections 6–7, 9–10 and 17 require more than a final CLI score:
+durable meaningful stage/status events, recoverable interruption, an
+inspectable approval/evidence chain, candidate replay and trustworthy export.
+Current CLI progress is a final summary; no premium investigation UI,
+keyboard/responsive audit, restart recovery or complete export workflow is
+demonstrated here. These remain product acceptance gates. Do not expand
+cosmetics before the shared mock gate is green.
+
+**NO-GO for merge or real inference** until remaining durability failures
+are fixed, exact shared-head Linux/Windows CI is green and engineering review
+is obtained. Actual inference additionally needs authentic approved G2
+inputs, reviewed preflight/scope/suite/reference pins and explicit finite
+spend authorization. G3-C remains unstarted. This audit's real model calls /
+estimated spend / uncertain spend: **0 / $0 / $0**.
+
+### Exact CI and cross-process approval correction
+
+The independent audit commit `4448fc6a4cbcb9ea11db3128c079bbce86a169b3`
+preserves all eight original tests and adds the durable-boundary/preflight
+checks described above. [CI 40661184379](https://github.com/Ankit6149/second-source/actions/runs/40661184379)
+completed **FAILURE**, with independently inspected job logs:
+
+| Environment | Passed | Failed | Skipped | Setup errors |
+|---|---:|---:|---:|---:|
+| Ubuntu / Python 3.11, job `122724317966` | 341 | 6 | 3 | 0 |
+| Windows / Python 3.12, job `122724317621` | 342 | 6 | 2 | 0 |
+
+The six failures are exactly the six remaining cases enumerated above. All
+original workflow regressions pass. Fresh checkout/install succeeds; demo
+and Windows bootstrap skip after the failed test gate. Local Windows/Python
+3.12.4 independently reports **341 passed / 6 failed / 3 skipped**, 274.02
+seconds. Neither OS is claimed green.
+
+Muse flagged possible process-local frozenset serialization. A zero-call
+independent reproduction using the exact same synthetic observations and
+one three-citation hypothesis under `PYTHONHASHSEED=1,2,3,41,99` produced
+**four distinct approved-context hashes and four hypothesis-registry hashes**.
+This affects real approval equality across separate preflight/real CLI
+processes, beyond a cosmetic report discrepancy.
+
+The Codex-owned verifier correction sorts only the set-valued citation
+identities before freezing the context. It retains citation membership,
+hypothesis/observation sequence order, statement text, scope checks and exact
+request equality. It does not reorder arbitrary model output or repair a
+candidate. Old inspected contexts must be inspected and approved afresh;
+no old digest is translated into an approval.
+
+`PinnedEvaluatorRun.inspection_manifest()` now returns detached authoritative
+plan/scope/suite/code/reference/context/registry pins, with no signing key,
+ticket, score, provider authentication or spending approval. `evaluate()`
+uses the same accessor; callers can stop duplicating registry serialization.
+Existing candidate generation/runtime and Muse-owned operator files remain
+unchanged by Codex.
+
+Targeted verifier/preflight/isolation verification after this correction:
+**59 passed**, 30.81 seconds. Subsequent fresh-process tests separately check
+the actual operator preflight receipt: **2 passed / 1 failed**, 17 deselected,
+5.68 seconds. The verifier's cross-seed equality and detached manifest pass;
+the operator still reports its independently recomputed unsorted hypothesis
+hash. This is an additional hard integration gate for Muse: consume
+`run.inspection_manifest()` instead of recomputing the admitted registries.
+The strengthened test checks five fresh processes and never constructs a
+provider. No global fixed hash seed is used to hide the defect.
+
+## Release-quality verification resumed — 28 October 2026
+
+Scope: [latest coordinator disposition](https://github.com/Ankit6149/second-source/pull/5#issuecomment-6465261695).
+The seven independent failures at `44f47803efcb0046c353942e42c36be1b34ca957`
+remain unchanged hard regressions. Muse's unpublished operator edits are not
+verification evidence. Complete-suite reruns and documentation reconciliation
+will follow the published correction, with exact source/CI identities.
+
+### Rechecked authentic G2 retention
+
+Read-only re-audit of all four historical local G2 run directories finds no
+original hypothesis/response/trace export. The successful run retains exactly
+the five evidence JSON files and `run_report.json`; its SHA-256 remains
+`05aa16f05ff2a0a4d707369fcb06a210726e43449c50409b92dbd50ebf9c2c0e`.
+All five observations still pass content-address/schema checks, have `ok`
+status/zero exit and are unchanged by redaction. Their identities above are
+unchanged. These are local integrity checks, not independent provider
+signatures or billing verification.
+
+The original hypothesis statement/citations cannot be recovered from the
+retained identifiers/statuses. Recover an authentic original owner-held
+response export if it exists; otherwise request a separately approved new
+G2 discovery that durably records the original complete validated batch,
+observation citations, provider/model/response identity and all actual/uncertain
+usage before subsequent reconciliation. No discovery call or fabricated
+replacement batch is authorized by this audit.
+
+### Reproduced transport-interruption accounting risk
+
+At `44f4780`, a local `MetaProvider(test_mode=True)` with a synthetic key and
+`urllib.request.urlopen` replaced by a function raising `KeyboardInterrupt`
+leaves `RunBudget.attempts=1`, unresolved reservation `$0.00028325`, public
+`uncertain_cost_usd=0` and no gateway receipt. The reservation is only in
+private in-memory state. This probe makes **zero network/genuine model calls**;
+the amount is a synthetic reservation, not observed spending or provider billing.
+
+Severity: **P0 for real-run release** under the existing interruption/accounting
+requirement. Copying only public counters into an interrupted report could
+lose a possible charge. Acceptance: inject interruption after reservation
+without network access; persist a sanitized stopped outcome with attempt one
+and the unresolved reservation conservatively accounted as uncertain (or
+explicitly durably exposed for reconciliation). Preserve already reported
+usage, avoid double counting settled reservations and prevent silent retry.
+The source owner must implement or coordinate a narrow accounting correction;
+Codex does not edit Muse-owned gateway/operator code. This is a reproduced
+error path with a defined acceptance condition, not an added speculative gate.
+
+### Published Muse corrections and owned accounting closure
+
+Muse published `0021906248855f20754ac24e1ebfc6437ac65937`; independent
+diff inspection confirms changes only to operator implementation/tests/runbook.
+All seven previous independent regressions remain unchanged. Targeted
+workflow/preflight/receipt verification: **46 passed / 0 failed**, 147.24
+seconds. Authoritative cross-process input pins, exact broker archival,
+partial-write/fsync/concurrent no-clobber checks, empty interrupted run IDs,
+evaluator failures, interruption and token accounting now pass those gates.
+
+The additional focused interruption probe reproduces an unresolved synthetic
+broker reservation of `$0.0104525`; a second scenario reproduces a retry after
+interruption following already committed provider usage. Neither issues a
+candidate origin artifact or makes a network/genuine model call. Synthetic
+response identity is explicitly `NON_AI_SIMULATION_NOT_PROVIDER_EVIDENCE`;
+no simulated result is historical G2/G3 evidence or a model-quality score.
+
+The narrow Codex-owned `PinnedEvaluatorRun` correction handles interruption
+before returning control to the operator: it books only the existing ledger's
+pending reservation through `RunBudget.fail(Reservation(...))`, marks the
+real attempt failed and propagates interruption for the stopped report.
+Already committed/failed reservations have zero pending balance, so their
+actual tokens/costs are preserved without adding uncertain spend twice.
+The existing budget model/API, gateway and Muse-owned operator source are
+unchanged. It deliberately reads the current RunBudget's private pending
+balance; a future public accessor would reduce coupling, but is not a new
+release gate or a second accounting model.
+
+Focused tests verify conservative uncertainty, settled usage, exact durable
+stopped counters, consumed request replay rejection and fresh-preflight
+requirement before another transport. Combined targeted verifier isolation,
+receipt and preflight run: **69 passed / 0 failed**, 56.52 seconds. Complete
+exact-head CI and repository reconciliation follow this source checkpoint;
+no green CI or engineering certification is inferred from a targeted run.
+
+### Independent engineering milestone — exact combined source verified
+
+Code: `af477b2daf0b676ad49be3959bcd28de868f76be`.
+[CI 40666652416](https://github.com/Ankit6149/second-source/actions/runs/40666652416)
+completed **SUCCESS**, with independently inspected logs:
+
+| Environment | Passed | Failed | Skipped | Evidence |
+|---|---:|---:|---:|---|
+| Ubuntu / Python 3.11 | 352 | 0 | 3 | Job `122742739320`; install/demo pass |
+| Windows / Python 3.12 | 353 | 0 | 2 | Job `122742738987`; bootstrap repeats 353/0/2, `BOOTSTRAP_OK` |
+| Local Windows / Python 3.12.4, credential-free | 352 | 0 | 3 | 368.56 seconds |
+
+All seven previous regressions and existing strict scoring, reference/source/
+gold isolation, receipt authentication, sealed-suite immutability, invalid
+approval and replay gates pass. Hand-authored positive and offline trusted
+re-score remain **25/25**; deliberate uniqueness/whitespace/amount defects
+remain **23/25, 23/25, 24/25**, sensitivity **2/2/1**. These are NON_AI.
+
+Fresh standalone credential-free workflow, external private seal and a new
+run directory: `codex-release-quality-20261028-ad289585`, exit zero,
+**22 passed / 3 failed / 0 indeterminate / 25**, origin `mock`, `real=false`.
+Exact archive payload/spec bytes, artifact digest and evaluated origin agree
+on readback. Candidate SHA-256:
+`a36d5922f8fd2d17e926ebd0710a1a08ad8c6ee5466734d06e806bc55ebe0ae8`.
+Broker payload SHA-256:
+`0546f148a199846adbea091364bb72a519fdc90e1c0a4bcacab9154dd8754520`.
+Report SHA-256:
+`08e73b2000175862c27f48d9ef71b2c27f5c8139f467f960cb4b6ed9214b7468`.
+One mock attempt, 2739 input/236 output tokens, estimated/uncertain cost
+**$0/$0**. Nothing in this run is real model reconstruction quality.
+
+**GO:** the tested zero-cost engineering milestone for owner review.
+**NO-GO:** real inference, full product/release acceptance, spending or merge
+without required review. Complete historical G2 input approval, genuine Meta
+candidate quality and submission remain unverified. The authoritative board
+records P0 release prerequisites, material P1 failure-taxonomy/status/export
+UX limits and deferred P2 breadth. Generic `broker_failed` does not distinguish
+provider/schema/DSL causes; this remaining limitation is disclosed rather
+than claimed as a completed fine-grained failure taxonomy. Arbitrary code,
+power-loss recovery and portable signing authority are not certified.
+
+Post-green documentation reconciliation updates current summaries/pointers
+without changing the verified source/test tree. Final exact documentation-head
+CI and independent review are recorded on the same PR #5. No additional
+branch/PR, force push, merge, owner spending approval or genuine inference.

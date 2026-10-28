@@ -1,8 +1,35 @@
 # Second Source — Hackathon Submission & Demo Runbook
 
-**Status:** Preparing, not submitted. **Track:** Indie developer (project planning choice).  
+**CURRENT — 28 October 2026:** Preparing, not submitted. Zero-cost G3
+engineering milestone verified; genuine G3 reconstruction/product release
+remains NO-GO. **Track:** Indie developer (project planning choice).
 **Deadline from SS-EXEC-001:** 2026-11-05 02:00 UTC / 2026-11-05 07:30 IST. Complete and confirm submission on November 4 IST, not at the cutoff.  
-**Canonical sources:** [Master PRD](MASTER_PRD.md), [Execution Playbook](EXECUTION_PLAYBOOK.md), [G2 Acceptance](G2_ACCEPTANCE.md), GitHub CI and run receipts.
+**Canonical sources:** [current delivery board](G3_DELIVERY_BOARD.md), [Master PRD](MASTER_PRD.md), [Execution Playbook](EXECUTION_PLAYBOOK.md), acceptance records, GitHub CI and run receipts.
+
+## Current evidence and submission stop
+
+Current consolidated source, exact CI and independent review are on the
+[single delivery board](G3_DELIVERY_BOARD.md). The
+[approval package](G2_G3_APPROVAL_PACKAGE.md) records the continuous NON_AI
+G2 -> original-batch export -> zero-call preflights -> bound G3 demo and exact
+receipt/candidate/report identities. The previous `936492d` checkpoint is
+historical G3 acceptance, not certification of later source.
+G3-D exists in open PR #5; PRs #3/#4 are merged. It is a local engineering
+milestone, not a verified real Meta reconstruction or completed submission.
+
+The historical G2 report and five hash-valid observations were locally audited;
+recorded response IDs are not independent provider/billing attestations. The
+original hypothesis statement/citations are missing. Recover an authentic
+export or separately approve a new fully recorded G2 discovery, then inspect
+and approve the exact real-input context/scope/budget/suite before considering
+owner-authorized G3 inference. No real call or spending is authorized here.
+
+NON_AI controls: hand-authored positive 25/25, deliberate defect sensitivity
+2/2/1, default scripted mock 22/25. Never place those scores under a real
+Meta reconstruction heading or imply a genuine repair lift. Full failure
+taxonomy, progress/report/export UX, real-result quality, video/public links
+and submission confirmation have remaining gates on the board. Keep all final
+submission checklist boxes unverified until actual evidence exists.
 
 ## One-sentence pitch (working)
 
@@ -66,7 +93,10 @@ The product **does not** recover source code, bypass access controls, clone unsp
 | "Works with websites" | Live owned HTTP/browser adapter tested; otherwise label planned |
 | "Zero-cost" | Not valid for real model calls. Separate internal estimates and actual provider billing |
 
-## Development priorities by deadline (IST)
+## ARCHIVED planning schedule (27 October 2026, IST)
+
+These were initial targets, not completion claims. Use the current delivery
+board for the active critical path and dated P0/P1/P2 decisions.
 
 - **Oct 28**: close G2 model-selection gate; record sanitized genuine Meta result; merge reviewed G2.
 - **Oct 29–30**: build EXEC-010 candidate manifest + limited generation; use a safe constrained candidate representation, not arbitrary model code executed on host.
@@ -86,7 +116,11 @@ The product **does not** recover source code, bypass access controls, clone unsp
 4. **Why explicit cost/security controls?** Real requests are opt-in, estimated spend and uncertain outcomes recorded, credentials kept local, external effects need trusted approval.
 5. **Where can it fail?** Partial observability, unstable reference behavior, model formatting errors, budget exhaustion, no verified sandbox, or uncovered edge cases. Show the failure categories and honest stop reasons.
 
-## Immediate status as of first three owner attempts (27 Oct 2026)
+## ARCHIVED SNAPSHOT — first three owner attempts (27 Oct 2026)
+
+The following snapshot is superseded. A later local G2 run recorded an accepted
+experiment; G2 and G3 foundation PRs subsequently merged and G3-D is now coded.
+See the board for exact current status and the missing original hypothesis stop.
 
 - G0/G1: guarded owned fixture and independent verifier implemented.
 - G2: authenticated real Muse calls observed; first response malformed, third attempt completed 2 model calls but **no accepted action**. Live experiment not yet accepted.

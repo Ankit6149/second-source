@@ -37,6 +37,11 @@ No model-written Python/JS is executed on the user's Windows host. Use a small, 
 - Repair must not widen ObservationScope, ImplementationScope, ExclusionScope, action permissions, or allowed DSL capabilities.
 
 ### G3-D — local CLI + reproducible evidence package
+Current implementation status and executable flags are in the
+[delivery board](G3_DELIVERY_BOARD.md) and [operator runbook](G3_RECONSTRUCT.md).
+The command below is a planned contract example; the current operator uses
+`--mode mock|preflight|real` and does not implement `--repairs` yet.
+
 - A single explicit operator command, e.g. `python -m second_source.reconstruct --fixture owned-ledger --max-usd 0.50 --repairs 2`, gated by a local real API key and run budget. Initial spend must remain low and explicitly authorized; there is no background billing.
 - A nonbillable `--mock` path is permitted for engineering tests **only** and clearly labeled MOCK. The real demo must use actual Meta response IDs.
 - Write `.runs/<id>/G3_report.json` (Git-ignored) including scope digest; G2 evidence digest; spec hashes; model receipts; experiment/reference counts; before/after evaluation; counts by failure category; estimated usage; failed/uncertain charges; stop reason; excluded features; and environment hashes. Do not persist keys.
