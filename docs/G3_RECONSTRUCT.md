@@ -1,5 +1,7 @@
 # G3 Reconstruct — verified zero-cost engineering / real inference NO-GO
 
+**Status pointer - 29 October 2026 IST.** Use the [single current delivery board](G3_DELIVERY_BOARD.md) for exact published SHA/CI, both consumed real G3 attempts, evidence and backend acceptance. This document does not authorize inference, credentials or deployment.
+
 **Current delivery and exact CI:** [authoritative board](G3_DELIVERY_BOARD.md).
 This runbook documents supported commands; it does not grant input, spending
 or merge approval. Preflight inspects a proposed budget, not owner consent.
@@ -142,11 +144,6 @@ published before the sole mock dispatch. This does not grant real approval.
 
 ## Status
 
-Engineering source is verified through the board's exact combined commit and
-Linux/Windows CI. Mock mode is NON_AI; preflight inspects supplied inputs with
-zero calls. Genuine real inference remains unexecuted and NO-GO: authentic
-complete G2 inputs, independent context/suite approval and explicit owner
-spending authorization are outstanding. Historical G2 hypothesis statements/
-citations were not retained. Recover an authentic original export or separately
-approve a new G2 discovery that preserves the complete batch and receipts;
-never fabricate them. Repair is deferred for this milestone: single pass only.
+Published main/CI and local backend work are recorded on [delivery board](G3_DELIVERY_BOARD.md). G2/G3 CLI engineering implemented; new genuine G2 complete. Two genuine G3 attempts failed before admission; no candidate/score. Both grants consumed; no retry/repair/credential access/new inference authorized.
+
+PR #8 adds complete authenticated observation auto-binding using literal `--observation-digests '@g2'` with genuine `--g2-receipt` and external `--g2-receipt-sha256`. Future admission codes improve diagnostics, not retrospective failure diagnosis or model quality. Resolve reproducible generation/admission issues nonbillably, then fresh exact-source preflight and separate spending decision. Controls remain NON_AI.

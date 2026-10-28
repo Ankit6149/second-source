@@ -1,53 +1,21 @@
-# Second Source — current coordination charter
+# Second Source - current coordination charter
 
-**CURRENT — 28 October 2026.** Read the [authoritative delivery board](G3_DELIVERY_BOARD.md),
-[Master PRD](MASTER_PRD.md), [G3 contract](G3_IMPLEMENTATION_CONTRACT.md) and
-latest coordinator reviews on [PR #5](https://github.com/Ankit6149/second-source/pull/5).
-The board holds current SHA, CI, risks and readiness; this charter delegates work.
+**Status pointer - 29 October 2026 IST.** Use the [single current delivery board](G3_DELIVERY_BOARD.md) for exact published SHA/CI, both consumed real G3 attempts, evidence and backend acceptance. This document does not authorize inference, credentials or deployment.
 
-## Ownership
+**CURRENT - 29 October 2026 IST.** [Delivery board](G3_DELIVERY_BOARD.md) owns status. [Owner backend directive](https://github.com/Ankit6149/second-source/issues/2#issuecomment-6477673246) and subsequent parallel instruction supersede single shared-branch restriction. [Master PRD](MASTER_PRD.md) remains product contract.
 
-The [latest coordinator allocation](https://github.com/Ankit6149/second-source/pull/5#issuecomment-6465834617)
-and next-phase owner instructions supersede the rigid file boundaries below.
-Muse or Codex may implement a bounded task after announcing its files and
-interfaces. High-risk provenance, billing, evaluator, isolation, credential or
-release changes require independent cross-agent review. Keep one shared
-implementation, disjoint worktrees and serialized pushes; hold overlap until
-reconciled. No role change grants model spending or merge authorization.
-The table records the prior default allocation, not an absolute restriction.
-
-| Owner | Responsibility / files | Boundary |
+| Owner | Files/modules | Boundary |
 |---|---|---|
-| Muse | Candidate DSL/runtime/generation; operator `reconstruct.py`, operator tests, report/export/product experience and operator runbook | Preserve independent evaluator/negative tests; no reference/gold changes or misleading real claims |
-| Codex | Independent verifier, `candidate_adapter.py`, `g3_verification.py`, narrow API-preserving verifier fixes, `tests/test_g3_verifier_*.py`, acceptance/security/reproducibility review | No Muse-owned generation/operator/gateway source changes; documentation status reconciliation is explicitly authorized |
-| Coordinator / owner | Review, genuine input approval, scope/cost decisions, merge/deployment/submission authorization | Engineering green is not inference or spending approval |
+| Muse - intelligence | Existing candidate generation/model gateway/synthesis/admission/hypothesis/experiment reasoning and tests | Strict provenance-bearing requests/results; preserve independent evaluator/negative gates |
+| Codex - infrastructure | New `src/second_source/backend/`, backend tests/API docs, control plane/DB/migrations/service/API/workers/artifacts/observability, independent verifier integration and status docs | Reuse existing G2/G3 engine/receipts; no duplicate generation/runtime/scoring |
+| Shared contracts | Versioned IDs/lifecycle/evidence refs, generation requests/results, approvals/budgets/evaluations/errors | One announced writer per shared file; smallest committed compatible interface; independent security review |
 
-## Shared branch and serialized writes
+Codex branch `feat/backend-control-plane` in verifier. Preserve Muse operator drafts. Separate short-lived branches/PRs permitted for independent modules. No force pushes, abandoned branches or concurrent shared-file writes. Serialize integration; synchronize main before subsequent merge.
 
-- Use the one existing `integrate/g3-reconstruct` branch and PR #5. PRs #3/#4
-  are merged; do not resume their old branch/merge sequence.
-- Fetch, confirm current head and worktree changes, inspect committed interfaces,
-  announce the disjoint write window and retain file ownership. Do not overwrite
-  another worker's draft edits. Commit/push serially with ordinary fast-forwards.
-- No new branches/PRs, force pushes, PR merges without owner authorization,
-  paid calls or inferred spend approval. Local integration may preserve both
-  committed histories on the existing branch; it is not a PR merge.
-- Preserve all seven independent regressions, NON_AI 25/25 positive control and
-  2/2/1 sensitivity. Report exact-head Linux/Windows CI, not an earlier green.
-- New blockers need reproduced failures, severity and explicit acceptance.
-  Keep material P1 limitations visible; avoid expanding scope through speculation.
-- Reuse existing contracts, budgets, receipts, broker and evaluator. The private
-  signing key stays private. Historical G2 hypothesis text/citations must never
-  be reconstructed from identifiers or replaced with mock data.
+Routine engineering merges have standing owner authorization only after exact-head Linux/Windows CI, independent review and protections. Paid inference/retries, credentials, live deployment and material scope changes need separate authorization. Both existing G3 grants consumed.
 
-**Authority:** PRD defines product; implementation contract defines G3; board
-records current delivery; latest owner/coordinator instructions govern review.
-Resolve genuine conflicts explicitly rather than rewriting history as success.
+Use mocks/contract tests so unrelated work proceeds concurrently. Preserve independent regressions and NON_AI 25/25 positive/2/2/1 negative controls. New blockers need reproduced failure, severity and acceptance condition. Full CI at meaningful milestones; one implementation and one board.
 
-## Archived kickoff
+## Historical coordination
 
-The earlier charter and `g3/verifier`/draft-PR instructions are an
-**ARCHIVED SNAPSHOT**, retained in
-[Git history at 44f4780](https://github.com/Ankit6149/second-source/blob/44f47803efcb0046c353942e42c36be1b34ca957/docs/COORDINATION_CHARTER.md).
-They are not current continuation instructions. The deleted starter file must
-not be recreated as another status source.
+Former `integrate/g3-reconstruct`/PR #5 single-branch and `g3/verifier` draft-PR instructions are ARCHIVED. PRs #5-#8 merged; board records exact evidence. Earlier [charter 44f4780](https://github.com/Ankit6149/second-source/blob/44f47803efcb0046c353942e42c36be1b34ca957/docs/COORDINATION_CHARTER.md). Do not recreate starter/duplicate board.

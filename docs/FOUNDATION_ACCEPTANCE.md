@@ -1,5 +1,7 @@
 # G0/G1 foundation acceptance report
 
+**ARCHIVED source-specific record.** Earlier CURRENT headings, holds, branch/merge directions and counts below apply only to their dated checkpoint. Use the [single current delivery board](G3_DELIVERY_BOARD.md) for exact published SHA/CI, both consumed real G3 attempts, evidence and backend acceptance. This document does not authorize inference, credentials or deployment.
+
 **Date:** 2026-10-27 (implementation environment UTC may differ)  
 **Scope:** deterministic local foundation, no real model calls, no product cloud worker.
 

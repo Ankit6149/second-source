@@ -1,35 +1,16 @@
 # Second Source — Hackathon Submission & Demo Runbook
 
-**CURRENT — 28 October 2026:** Preparing, not submitted. Zero-cost G3
-engineering milestone verified; genuine G3 reconstruction/product release
-remains NO-GO. **Track:** Indie developer (project planning choice).
-**Deadline from SS-EXEC-001:** 2026-11-05 02:00 UTC / 2026-11-05 07:30 IST. Complete and confirm submission on November 4 IST, not at the cutoff.  
-**Canonical sources:** [current delivery board](G3_DELIVERY_BOARD.md), [Master PRD](MASTER_PRD.md), [Execution Playbook](EXECUTION_PLAYBOOK.md), acceptance records, GitHub CI and run receipts.
+**Status pointer - 29 October 2026 IST.** Use the [single current delivery board](G3_DELIVERY_BOARD.md) for exact published SHA/CI, both consumed real G3 attempts, evidence and backend acceptance. This document does not authorize inference, credentials or deployment.
+
+**CURRENT - 29 October 2026 IST:** Submission completion, final video and organizer acceptance UNVERIFIED. Genuine reconstruction/product acceptance remains NO-GO. Track Indie is a planning choice. Deadline from PRD: 2026-11-05 02:00 UTC / 07:30 IST; no new organizer verification. Target November 4 IST submission.
 
 ## Current evidence and submission stop
 
-Current consolidated source, exact CI and independent review are on the
-[single delivery board](G3_DELIVERY_BOARD.md). The
-[approval package](G2_G3_APPROVAL_PACKAGE.md) records the continuous NON_AI
-G2 -> original-batch export -> zero-call preflights -> bound G3 demo and exact
-receipt/candidate/report identities. The previous `936492d` checkpoint is
-historical G3 acceptance, not certification of later source.
-G3-D exists in open PR #5; PRs #3/#4 are merged. It is a local engineering
-milestone, not a verified real Meta reconstruction or completed submission.
+Use [single delivery board](G3_DELIVERY_BOARD.md) for exact source/CI and [approval package](G2_G3_APPROVAL_PACKAGE.md) for spent grants/evidence identities. PRs #5-#8 merged. G3-D exists and is engineering-tested. New genuine G2 has complete original hypotheses/receipts; older missing historical statements remain missing.
 
-The historical G2 report and five hash-valid observations were locally audited;
-recorded response IDs are not independent provider/billing attestations. The
-original hypothesis statement/citations are missing. Recover an authentic
-export or separately approve a new fully recorded G2 discovery, then inspect
-and approve the exact real-input context/scope/budget/suite before considering
-owner-authorized G3 inference. No real call or spending is authorized here.
+Both real G3 attempts consumed: no admitted candidate or real score. No inference/retry/repair authorized. NON_AI trusted 25/25, deliberate negatives 2/2/1 and scripted 22/25 never measure Meta quality. Frontend expansion stopped while backend/intelligence reliability is built. Read-only console is not complete backend/product acceptance or authenticated portable evidence bundle.
 
-NON_AI controls: hand-authored positive 25/25, deliberate defect sensitivity
-2/2/1, default scripted mock 22/25. Never place those scores under a real
-Meta reconstruction heading or imply a genuine repair lift. Full failure
-taxonomy, progress/report/export UX, real-result quality, video/public links
-and submission confirmation have remaining gates on the board. Keep all final
-submission checklist boxes unverified until actual evidence exists.
+Keep submission checklist boxes unverified until direct evidence exists. Plans/example records/commits do not establish a submitted portal entry. Routine merges follow [charter](COORDINATION_CHARTER.md); paid/credential/deployment operations remain separately gated.
 
 ## One-sentence pitch (working)
 
@@ -120,7 +101,7 @@ board for the active critical path and dated P0/P1/P2 decisions.
 
 The following snapshot is superseded. A later local G2 run recorded an accepted
 experiment; G2 and G3 foundation PRs subsequently merged and G3-D is now coded.
-See the board for exact current status and the missing original hypothesis stop.
+See the board for current new G2 evidence, consumed G3 failures and backend gates.
 
 - G0/G1: guarded owned fixture and independent verifier implemented.
 - G2: authenticated real Muse calls observed; first response malformed, third attempt completed 2 model calls but **no accepted action**. Live experiment not yet accepted.
