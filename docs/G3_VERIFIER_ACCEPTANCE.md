@@ -665,3 +665,52 @@ is obtained. Actual inference additionally needs authentic approved G2
 inputs, reviewed preflight/scope/suite/reference pins and explicit finite
 spend authorization. G3-C remains unstarted. This audit's real model calls /
 estimated spend / uncertain spend: **0 / $0 / $0**.
+
+### Exact CI and cross-process approval correction
+
+The independent audit commit `4448fc6a4cbcb9ea11db3128c079bbce86a169b3`
+preserves all eight original tests and adds the durable-boundary/preflight
+checks described above. [CI 40661184379](https://github.com/Ankit6149/second-source/actions/runs/40661184379)
+completed **FAILURE**, with independently inspected job logs:
+
+| Environment | Passed | Failed | Skipped | Setup errors |
+|---|---:|---:|---:|---:|
+| Ubuntu / Python 3.11, job `122724317966` | 341 | 6 | 3 | 0 |
+| Windows / Python 3.12, job `122724317621` | 342 | 6 | 2 | 0 |
+
+The six failures are exactly the six remaining cases enumerated above. All
+original workflow regressions pass. Fresh checkout/install succeeds; demo
+and Windows bootstrap skip after the failed test gate. Local Windows/Python
+3.12.4 independently reports **341 passed / 6 failed / 3 skipped**, 274.02
+seconds. Neither OS is claimed green.
+
+Muse flagged possible process-local frozenset serialization. A zero-call
+independent reproduction using the exact same synthetic observations and
+one three-citation hypothesis under `PYTHONHASHSEED=1,2,3,41,99` produced
+**four distinct approved-context hashes and four hypothesis-registry hashes**.
+This affects real approval equality across separate preflight/real CLI
+processes, beyond a cosmetic report discrepancy.
+
+The Codex-owned verifier correction sorts only the set-valued citation
+identities before freezing the context. It retains citation membership,
+hypothesis/observation sequence order, statement text, scope checks and exact
+request equality. It does not reorder arbitrary model output or repair a
+candidate. Old inspected contexts must be inspected and approved afresh;
+no old digest is translated into an approval.
+
+`PinnedEvaluatorRun.inspection_manifest()` now returns detached authoritative
+plan/scope/suite/code/reference/context/registry pins, with no signing key,
+ticket, score, provider authentication or spending approval. `evaluate()`
+uses the same accessor; callers can stop duplicating registry serialization.
+Existing candidate generation/runtime and Muse-owned operator files remain
+unchanged by Codex.
+
+Targeted verifier/preflight/isolation verification after this correction:
+**59 passed**, 30.81 seconds. Subsequent fresh-process tests separately check
+the actual operator preflight receipt: **2 passed / 1 failed**, 17 deselected,
+5.68 seconds. The verifier's cross-seed equality and detached manifest pass;
+the operator still reports its independently recomputed unsorted hypothesis
+hash. This is an additional hard integration gate for Muse: consume
+`run.inspection_manifest()` instead of recomputing the admitted registries.
+The strengthened test checks five fresh processes and never constructs a
+provider. No global fixed hash seed is used to hide the defect.

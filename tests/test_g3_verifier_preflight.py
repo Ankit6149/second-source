@@ -1,5 +1,9 @@
 """Zero-call input binding; synthetic acceptance data is never historical G2."""
 import json
+import os
+from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -123,3 +127,90 @@ def test_missing_original_hypothesis_is_blocked_without_fabrication(tmp_path, mo
         "--observation-digests", "0" * 64, "--run-dir", str(tmp_path / "blocked"),
         "--seal-dir", str(tmp_path / "sealed")]) != 0
     assert not (tmp_path / "blocked/G3_preflight.json").exists()
+
+
+@pytest.mark.parametrize("path", ["verifier", "operator"])
+def test_multi_citation_approval_is_identical_across_fresh_process_hash_seeds(inspected_inputs, path):
+    data = inspected_inputs
+    digests = [data["digest"]]
+    for index in (1, 2):
+        observation = Observation(
+            observation_id=f"NON_AI_ACCEPTANCE:{index}", sequence_id="NON_AI_ACCEPTANCE",
+            action_index=index, input_action={"command": "list"}, output={"ok": True, "items": []},
+            exit_code=0, duration_ms=0, status="ok",
+        )
+        digests.append(data["ledger"].store(observation)["sha256"])
+    batch = data["batch"]
+    batch["hypotheses"][0]["evidence_ids"] = digests
+    inputs = data["root"] / "multi-citation-NON_AI.json"
+    inputs.write_text(json.dumps({"digests": digests, "batch": batch}), encoding="utf-8")
+    code = """
+import contextlib, io, json, os, sys
+from pathlib import Path
+from second_source.reconstruct import create_scope
+from second_source.evidence import EvidenceLedger
+from second_source.hypotheses import HypothesisStore, validate_batch
+from second_source.g3_verification import PinnedEvaluatorRun, load_sealed_suite
+root = Path(sys.argv[1])
+doc = json.loads((root / 'multi-citation-NON_AI.json').read_bytes())
+digests = tuple(doc['digests'])
+store = HypothesisStore()
+store.add_batch(validate_batch(doc['batch'], frozenset(digests)))
+scope = create_scope(0.35)
+suite = load_sealed_suite(root / 'sealed/suite.json', sys.argv[2], scope)
+run = PinnedEvaluatorRun(suite, scope, ledger=EvidenceLedger(root / 'synthetic-ledger'),
+    observation_digests=digests, hypotheses=store)
+plan = json.loads(run._plan_raw)
+if sys.argv[3] == 'operator':
+    from second_source import reconstruct as operator
+    from second_source.model_gateway import MetaProvider, MockProvider
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Zero-call inspection reached provider')
+    operator.MetaProvider = forbidden
+    MetaProvider.complete = MockProvider.complete = forbidden
+    hypotheses = root / 'multi-citation-batch.json'
+    hypotheses.write_text(json.dumps(doc['batch']), encoding='utf-8')
+    directory = root / ('seed-inspection-' + os.environ['PYTHONHASHSEED'])
+    with contextlib.redirect_stdout(io.StringIO()):
+        assert operator.main(['--mode', 'preflight', '--max-usd', '0.35',
+            '--ledger-dir', str(root / 'synthetic-ledger'), '--hypotheses-file', str(hypotheses),
+            '--observation-digests', ','.join(digests), '--suite', str(root / 'sealed/suite.json'),
+            '--suite-digest', sys.argv[2], '--run-dir', str(directory)]) == 0
+    receipt = json.loads((directory / 'G3_preflight.json').read_bytes())
+    for key in ('approved_context_digest', 'hypothesis_registry_digest',
+                'observation_registry_digest', 'scope_digest', 'suite_digest'):
+        assert receipt[key] == plan[key], 'Preflight disagrees with frozen evaluator: ' + key
+print(json.dumps({key: plan[key] for key in ('approved_context_digest',
+    'hypothesis_registry_digest', 'observation_registry_digest', 'scope_digest', 'suite_digest')}))
+"""
+    results = []
+    for seed in (1, 2, 3, 41, 99):
+        env = {key: value for key, value in os.environ.items()
+               if key.upper() in {"SYSTEMROOT", "WINDIR", "PATH", "TEMP", "TMP"}}
+        env.update(PYTHONPATH=str(Path(__file__).resolve().parents[1] / "src"),
+                   SECOND_SOURCE_MAX_RUN_USD="0", PYTHONDONTWRITEBYTECODE="1", PYTHONHASHSEED=str(seed))
+        result = subprocess.run([sys.executable, "-B", "-c", code, str(data["root"]),
+                                 data["receipt"]["suite_digest"], path],
+                                env=env, capture_output=True, text=True, timeout=30)
+        assert result.returncode == 0, result.stderr
+        results.append(json.loads(result.stdout))
+    assert all(value == results[0] for value in results), "Unchanged approved inputs depend on process hash seed"
+
+
+def test_authoritative_inspection_manifest_is_detached_and_matches_frozen_registry(inspected_inputs):
+    data = inspected_inputs
+    scope = operator.create_scope(0.35)
+    suite = load_sealed_suite(data["root"] / "sealed/suite.json", data["receipt"]["suite_digest"], scope)
+    run = PinnedEvaluatorRun(suite, scope, ledger=data["ledger"],
+                            observation_digests=(data["digest"],), hypotheses=data["store"])
+    manifest = run.inspection_manifest()
+    plan = json.loads(run._plan_raw)
+    for key in ("scope_digest", "suite_digest", "approved_context_digest",
+                "observation_registry_digest", "hypothesis_registry_digest"):
+        assert manifest[key] == plan[key]
+    assert manifest["code_pins"] == plan["code"]
+    assert manifest["plan_digest"] == run.plan_digest
+    manifest["code_pins"].clear()
+    manifest["hypothesis_registry_digest"] = "SYNTHETIC_MUTATION"
+    assert run.inspection_manifest()["code_pins"] == plan["code"]
+    assert run.inspection_manifest()["hypothesis_registry_digest"] == plan["hypothesis_registry_digest"]
