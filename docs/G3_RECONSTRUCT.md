@@ -1,4 +1,8 @@
-# G3 Reconstruct — operator workflow (REAL-RUN-READY, no paid calls made)
+# G3 Reconstruct — verified zero-cost engineering / real inference NO-GO
+
+**Current delivery and exact CI:** [authoritative board](G3_DELIVERY_BOARD.md).
+This runbook documents supported commands; it does not grant input, spending
+or merge approval. Preflight inspects a proposed budget, not owner consent.
 
 Single reproducible command owning the full G3 path: approved scope, G2
 evidence/hypotheses, pinned generation broker, CandidateSpec loader, trusted
@@ -99,10 +103,11 @@ claim is made while acceptance gates are open.
 
 ## Status
 
-REAL-RUN-READY checkpoint: mock path proven end to end; preflight inspects
-genuine-shaped inputs with zero calls; real path implemented but never
-executed — missing owner approvals: spend authorization, API key, approved G2
-evidence pin, frozen suite selection. Historical G2 hypotheses were not
-preserved (see coordinator review); a separately approved new G2 discovery is
-required before any real run — nothing here fabricates them. Repair is cut
-for this milestone: single pass only.
+Engineering source is verified through the board's exact combined commit and
+Linux/Windows CI. Mock mode is NON_AI; preflight inspects supplied inputs with
+zero calls. Genuine real inference remains unexecuted and NO-GO: authentic
+complete G2 inputs, independent context/suite approval and explicit owner
+spending authorization are outstanding. Historical G2 hypothesis statements/
+citations were not retained. Recover an authentic original export or separately
+approve a new G2 discovery that preserves the complete batch and receipts;
+never fabricate them. Repair is deferred for this milestone: single pass only.

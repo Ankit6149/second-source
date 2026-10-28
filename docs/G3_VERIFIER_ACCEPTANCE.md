@@ -1,4 +1,32 @@
-# G3-B independent verifier acceptance — engineering controls only
+# Independent G3 verification — current verdict and chronological evidence
+
+## CURRENT — 28 October 2026
+
+**Engineering GO for the tested zero-cost CLI milestone and owner review;
+real G3/product release NO-GO.** The single current delivery/status/risk source
+is [G3_DELIVERY_BOARD.md](G3_DELIVERY_BOARD.md).
+
+Combined source `af477b2daf0b676ad49be3959bcd28de868f76be` passes
+[exact-source CI 40666652416](https://github.com/Ankit6149/second-source/actions/runs/40666652416):
+Linux/Python 3.11 **352 passed / 0 failed / 3 skipped**;
+Windows/Python 3.12 **353 passed / 0 failed / 2 skipped**, repeated by
+bootstrap with `BOOTSTRAP_OK`. All seven original regressions pass unchanged.
+No speculative new gate, xfail, lowered threshold or extra skip was introduced.
+
+PRs #3/#4 are merged; PR #5 is the current open integration review on
+`integrate/g3-reconstruct`. G3-D mock/preflight/gated-real/archive/report code
+exists and is tested. Positive/offline **25/25**, negative **2/2/1** sensitivity
+and default mock **22/25** are NON_AI controls, not genuine model accuracy.
+The original G2 hypothesis batch remains missing; authentic input approval,
+explicit owner spend and an actual independently scored Meta candidate remain
+unfulfilled. No merge, inference or spending approval is granted by this log.
+
+## ARCHIVED CHRONOLOGICAL CHECKPOINTS
+
+The remaining sections retain the original source-specific observations,
+including failures later fixed. Their earlier branch/PR/status/continuation
+statements apply only to their named checkpoint and are superseded by the
+current board and latest PR #5 review.
 
 Starting coordinator commit: `bfd605d593e0a7d0868f8bb674430d3a1b0aaa9f`.
 Branch: `g3/verifier`. No PR merges, paid requests, credential reads or direct G3-A edits.
@@ -796,3 +824,49 @@ requirement before another transport. Combined targeted verifier isolation,
 receipt and preflight run: **69 passed / 0 failed**, 56.52 seconds. Complete
 exact-head CI and repository reconciliation follow this source checkpoint;
 no green CI or engineering certification is inferred from a targeted run.
+
+### Independent engineering milestone — exact combined source verified
+
+Code: `af477b2daf0b676ad49be3959bcd28de868f76be`.
+[CI 40666652416](https://github.com/Ankit6149/second-source/actions/runs/40666652416)
+completed **SUCCESS**, with independently inspected logs:
+
+| Environment | Passed | Failed | Skipped | Evidence |
+|---|---:|---:|---:|---|
+| Ubuntu / Python 3.11 | 352 | 0 | 3 | Job `122742739320`; install/demo pass |
+| Windows / Python 3.12 | 353 | 0 | 2 | Job `122742738987`; bootstrap repeats 353/0/2, `BOOTSTRAP_OK` |
+| Local Windows / Python 3.12.4, credential-free | 352 | 0 | 3 | 368.56 seconds |
+
+All seven previous regressions and existing strict scoring, reference/source/
+gold isolation, receipt authentication, sealed-suite immutability, invalid
+approval and replay gates pass. Hand-authored positive and offline trusted
+re-score remain **25/25**; deliberate uniqueness/whitespace/amount defects
+remain **23/25, 23/25, 24/25**, sensitivity **2/2/1**. These are NON_AI.
+
+Fresh standalone credential-free workflow, external private seal and a new
+run directory: `codex-release-quality-20261028-ad289585`, exit zero,
+**22 passed / 3 failed / 0 indeterminate / 25**, origin `mock`, `real=false`.
+Exact archive payload/spec bytes, artifact digest and evaluated origin agree
+on readback. Candidate SHA-256:
+`a36d5922f8fd2d17e926ebd0710a1a08ad8c6ee5466734d06e806bc55ebe0ae8`.
+Broker payload SHA-256:
+`0546f148a199846adbea091364bb72a519fdc90e1c0a4bcacab9154dd8754520`.
+Report SHA-256:
+`08e73b2000175862c27f48d9ef71b2c27f5c8139f467f960cb4b6ed9214b7468`.
+One mock attempt, 2739 input/236 output tokens, estimated/uncertain cost
+**$0/$0**. Nothing in this run is real model reconstruction quality.
+
+**GO:** the tested zero-cost engineering milestone for owner review.
+**NO-GO:** real inference, full product/release acceptance, spending or merge
+without required review. Complete historical G2 input approval, genuine Meta
+candidate quality and submission remain unverified. The authoritative board
+records P0 release prerequisites, material P1 failure-taxonomy/status/export
+UX limits and deferred P2 breadth. Generic `broker_failed` does not distinguish
+provider/schema/DSL causes; this remaining limitation is disclosed rather
+than claimed as a completed fine-grained failure taxonomy. Arbitrary code,
+power-loss recovery and portable signing authority are not certified.
+
+Post-green documentation reconciliation updates current summaries/pointers
+without changing the verified source/test tree. Final exact documentation-head
+CI and independent review are recorded on the same PR #5. No additional
+branch/PR, force push, merge, owner spending approval or genuine inference.

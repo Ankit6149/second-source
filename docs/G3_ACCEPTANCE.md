@@ -1,4 +1,38 @@
-# G3 Acceptance Log — candidate synthesis mechanism (MOCK/TRUSTED CONTROL ONLY)
+# G3 acceptance — current status and historical checkpoints
+
+## CURRENT — 28 October 2026
+
+**GO for the tested zero-cost engineering milestone; NO-GO for real G3/product
+acceptance.** Use the [authoritative delivery board](G3_DELIVERY_BOARD.md) for
+current delivery, severity-ranked issues and remaining gates.
+
+Verified combined source: `af477b2daf0b676ad49be3959bcd28de868f76be`.
+[CI 40666652416](https://github.com/Ankit6149/second-source/actions/runs/40666652416)
+passes: Linux **352 passed / 0 failed / 3 skipped**, Windows **353 passed /
+0 failed / 2 skipped**; Windows bootstrap repeats the result with `BOOTSTRAP_OK`.
+All seven independent workflow regressions pass unchanged. Reference/model
+provenance, stable preflight pins, immutable broker/candidate archives, strict
+scoring, bounded isolation, atomic no-clobber reports, interruption accounting
+and replay protection have nonbillable regression evidence.
+
+G3-D is implemented in open [PR #5](https://github.com/Ankit6149/second-source/pull/5),
+on the single `integrate/g3-reconstruct` branch. PRs #3/#4 are merged into the
+foundation now in `main` at `9c8bcc4eba5e8bf4b1b3e5dfc75273c2eb0ea203`.
+The earlier parameter-precedence defect is corrected and independently tested.
+
+Trusted hand-authored positive/offline control: **25/25**; deliberate defects:
+**2/2/1** detected failures; default scripted mock: **22/25**. All are NON_AI.
+No genuine G3 candidate, real score, repair lift, polished deployed interface
+or complete product/submission acceptance is claimed. Genuine G3 calls/spend/
+uncertain spend remain **0 / $0 / $0**. Authentic G2 hypothesis text/citations
+are missing from retained historical artifacts. Real inference additionally
+requires authentic input approval and separate owner spending authorization.
+
+## ARCHIVED SNAPSHOTS — G3-A / early G3-B
+
+Everything below records the dated checkpoint named in that section. Earlier
+open defects, branch names, PR states and next steps are superseded by the
+current board; they are retained as audit history, not active instructions.
 
 **Gate under test:** G3 contract — a real Muse model generates a runnable
 candidate spec from authorized black-box observations; a trusted runtime
@@ -70,7 +104,8 @@ The follow-up branch fixes:
 ## Verified G3-B engineering checkpoint ? 28 October 2026
 
 Code: `aeed582483cbf0f2d57bfb53a4fef948273d9ec6`, from frozen coordinator baseline `bfd605d...`.
-Draft PR #4: https://github.com/Ankit6149/second-source/pull/4 (unmerged).
+At this historical checkpoint PR #4 was draft/unmerged. It subsequently merged;
+see the current board for exact merge/source/CI identities.
 Exact-code CI: https://github.com/Ankit6149/second-source/actions/runs/40581058875 ? success on Linux/Python 3.11 (250 passed/3 skipped) and Windows/Python 3.12 (251 passed/2 skipped, bootstrap reproduced the result and returned BOOTSTRAP_OK). Local Windows: 250 passed/3 skipped.
 
 Strict verifier probes: 26/26; baseline failed 24/26. External suite: 25 cases, NON_AI positive control 25/25; three deliberate DSL defects fail 2, 2 and 1 cases. Bounded reference/candidate workers, isolation/resource tests and aggregate-only feedback are implemented. Full evidence: `G3_VERIFIER_ACCEPTANCE.md`.

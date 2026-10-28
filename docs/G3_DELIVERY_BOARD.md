@@ -1,63 +1,109 @@
-# Second Source — G3 Delivery Board / Acceptance Gates
+# Second Source — authoritative delivery board
 
-**Snapshot:** 2026-10-28 10:46 IST. G3-B code head `aeed582483cbf0f2d57bfb53a4fef948273d9ec6`; fetch before acting. No invented progress.
-**Owner deadline:** 2026-11-05 07:30 IST, target November 4 IST submission.
-**Source contract:** [G3_IMPLEMENTATION_CONTRACT.md](G3_IMPLEMENTATION_CONTRACT.md). Read before coding.
+**CURRENT — 28 October 2026.** This is the single current delivery-status
+source. Historical acceptance logs describe their dated checkpoints, not
+instructions to resume merged branches. Fetch GitHub before acting.
 
-| ID | Owner | Task | Current observed state | Gate to DONE |
-|---|---|---|---|---|
-| G2-REVIEW | ChatGPT + owner | Evaluate PR #1, G2 operator evidence, CI, merge decision | **DONE / VERIFIED MERGE:** PR #1 merged to `main` at `9ed81cce406e0adf91ecc36e94d2263265366c30`; push CI run `40572246014` succeeded on Linux/Windows. Real G2 run remains `real-g2-20261027T192406Z-5482abee`; operator-reported estimated usage `$0.012715`, zero uncertain usage. | DONE |
-| G3-A1 | Muse | Versioned typed CandidateSpec + ProposedFile manifest + schema validator | **YELLOW / CODE GREEN:** original Muse checkpoint `8f881cd...` was independently rejected; hardened interface was synchronized with `main` by `208aeb4e...`; final post-freeze wire-semantics review is accepted at `a1a137649a51178e30f438e1069788a0e8b2de81`. Strict params/effects/digests are present. **OPEN:** action-parameter error precedence differs for text vs dictionary loading; Muse correction not yet observed at `origin/g3/candidate-synthesis` `bfd605d...`. | Independent G3-B evaluator must accept the frozen interface; no real candidate claim yet |
-| G3-A2 | Muse | Trusted bounded JSONL DSL runtime with fresh state per sequence | **YELLOW / CODE GREEN:** exact flat G0 action wire fixed; trusted control now fails closed on mismatch; interpreter detaches mutable spec aliases. GitHub run `40576855908`: **179 passed, 2 skipped, 0 failed** on Ubuntu/Py3.11 and Windows/Py3.12; Windows bootstrap `BOOTSTRAP_OK`. Non-object actions are explicitly outside dict-only `ReferenceProtocol` and fail the sequence closed; missing/non-string command within a dict maps to `unknown_command`. | G3-B resource/data-only engineering controls verified; retain no-arbitrary-code-sandbox limitation and resolve precedence/provenance blockers |
-| G3-A3 | Muse | Real-provider candidate generation integration + MOCK mode | **YELLOW:** model adapter path exists; generation context now validates nested public-manifest/evidence/hypothesis provenance and re-redacts at final boundary. Mock/trusted controls only. **No paid G3 call; G3 spend `$0.00`.** | Real Muse CandidateSpec requires explicit owner spend authorization *after* G3-B sealed evaluator is green |
-| G3-B0 | Codex | **Read-only** contract/security audit and sealed-test plan while Muse works | **DONE:** Codex audited `8f881cd37...`, ran 164 non-billable Windows tests, reproduced public mock **0/3**, and filed severity-ranked wire/verifier/isolation/resource findings. Record: `docs/G3_B_PHASE1_AUDIT_2026-10-28.md`. | DONE |
-| G3-B1 | Codex | DifferentialVerifier adapter + strict comparator hardening | **DELIVERED / CONDITIONAL GREEN:** `aeed582...`, draft PR #4. Strict probes 26/26; exact-head CI `40581058875` green on Linux/Windows, Windows bootstrap green. Independent coordinator review complete for engineering slice only. | Final provenance/security requirements below; no real candidate accuracy claim |
-| G3-B2 | Codex | Protected suite, controls, isolation and real-run provenance | **ENGINEERING CONTROLS VERIFIED:** external pinned suite 25 cases, positive 25/25, three bad DSL controls fail 2/2/1 cases; bounded workers and leakage/resource tests pass. **REAL-RUN PROVENANCE OPEN:** require attested reference, pinned scope/signatures/G2 provenance and immutable candidate receipt. | Reject substituted reference/forged origin; bind exact inspected generation request; independently verify Muse correction; combined CI green |
-| G3-C | Muse + Codex reviewed by ChatGPT | Up to 2 bounded repair cycles, same sealed suite | NOT STARTED | Real observed before/after lift; no scope expansion; may be CUT if deadline |
-| G3-D | ChatGPT + assigned implementer | Reproducible single operator command + redacted G3 report, acceptance document | NOT STARTED | Real model receipts, spec hashes, scored independent run, documented false claims prevented |
-| DEMO | Owner with ChatGPT | <=180s recording, correct provenance, submission fields | Planning doc exists; recording/URLs NOT VERIFIED | Public working repo/video, exact metrics/limitations, logged submission confirmation |
+**Engineering verdict: GO for the tested zero-cost G3 CLI milestone and owner
+review. Product/real-inference verdict: NO-GO.** No merge or spend approval
+is granted. The full PRD product is not claimed complete.
 
-## Critical-path acceptance definition
-1. **A valid real Muse-generated CandidateSpec** created solely from approved public/redacted context. Response ID/receipt; no hardcoded benchmark-perfect candidate.
-2. CandidateSpec verified by `ScopeGuard.validate_candidate_files` and DSL schema; no executable text from model.
-3. Trust-owned interpreter runs candidate with fresh state and bounded CPU/wall/memory semantics appropriate to verified local runner; do not claim OS-level isolation if not installed.
-4. Independent `DifferentialVerifier` computes real nonempty gold `passed/failed/indeterminate/total`; model sees ONLY `model_feedback()`.
-5. Adversarial validation: path traversal, forbidden command, external side effect, credential leakage, evaluator read attempt, candidate DSL escape, output budget and reset mismatch.
-6. Reproducible Linux/Windows CI, explicit real-vs-mock labels, run reports with correct cost uncertainty.
-7. All material claims reflect actual evidence. Never assert full equivalence from a finite suite.
+## Exact source and verification
 
-## Before opening a new coding task
-- Fetch current GitHub SHA; identify exact file owner and last published interface.
-- Read dependency contract and nearest tests. Name ALL assumptions.
-- No overlapping module rewrite; stage one change; run tests.
-- Report completion only with exact SHA and CI; screenshots or narrative alone are not acceptance.
+- Shared branch: `integrate/g3-reconstruct`, open/unmerged
+  [PR #5](https://github.com/Ankit6149/second-source/pull/5). Serialize pushes;
+  no additional feature branch, force push or automatic merge.
+- Verified combined source: `af477b2daf0b676ad49be3959bcd28de868f76be`.
+  Muse operator correction: `0021906248855f20754ac24e1ebfc6437ac65937`.
+  Codex accounting closure: the verified combined source above.
+- [Exact-source CI 40666652416](https://github.com/Ankit6149/second-source/actions/runs/40666652416):
+  Ubuntu/Python 3.11 **352 passed / 0 failed / 3 skipped**;
+  Windows/Python 3.12 **353 passed / 0 failed / 2 skipped**.
+  Windows bootstrap repeats **353/0/2**, `BOOTSTRAP_OK`; setup/demo pass.
+- Every original seven independent regression remains unchanged and passes.
+  Two focused NON_AI fault scenarios additionally verify interrupted reserved
+  charges and already settled usage, including retry prevention. Full evidence:
+  [verifier acceptance record](G3_VERIFIER_ACCEPTANCE.md).
+- Positive/offline trusted control **25/25**; negative sensitivity **2/2/1**;
+  default scripted mock **22/25**, no indeterminate cases. None is AI quality.
+- Merged foundation `main`: `9c8bcc4eba5e8bf4b1b3e5dfc75273c2eb0ea203`
+  ([PR #3](https://github.com/Ankit6149/second-source/pull/3)).
+  [PR #4](https://github.com/Ankit6149/second-source/pull/4) merged earlier at
+  `bfc8661412bef442691d315a6c6f0c0acd7bb8aa`. Neither remains draft/unmerged.
 
-## Daily stop/go sequence (IST)
-- **Oct 28:** verify G2 receipt/CI and merge authorization; G3-A interface + safe runtime slice; Codex read-only G3-B audit.
-- **Oct 29:** working candidate adapter + independent sealed suite under mock; add real generation path gated by credentials/budget.
-- **Oct 30:** owner-authorized first real G3 candidate generation and scored candidate run; fix only observed flaws.
-- **Oct 31:** optional bounded repair and comparable baseline run; build one verifiable demo story.
-- **Nov 1–2:** hardened fresh clone, documentation, redacted samples and video rehearsals. Additional target only if critical path passes.
-- **Nov 3:** feature freeze, license/README/threat model, video capture.
-- **Nov 4:** public links/permission checks, submission, save receipt early.
+Documentation-only descendants must preserve the verified source/test tree.
+The final exact PR-head CI/review is published on PR #5; the source receipt
+above does not assert CI for an unknown later commit.
 
-## Decision ledger (no silent assumptions)
-- `D-001` G2 merge: **DONE.** Owner authorized; PR #1 merged at `9ed81cce...` after green integration review.
-- `D-002` G3 execution style: **APPROVED ENGINEERING DIRECTION** (existing G3 spec): restricted declarative DSL, no model-generated code execution on Windows.
-- `D-003` G3 model spend: **NOT YET AUTHORIZED.** G3 spend remains `$0.00`; do not make a real synthesis/repair call until owner explicitly authorizes it after G3-B evaluator acceptance.
-- `D-004` Optional second target/browser/UI/cloud: **DEFER**, cut if G3 not independently evaluated by Oct 31.
-- `D-005` Actual selected G2 action payloads/outputs: **NOT PROVIDED HERE**. Do not infer from proposal name.
+## Current delivery matrix
 
-## Short reports
-- **Green:** tested + independently verified. **Yellow:** code present but acceptance evidence missing. **Red:** blocked/fails. Never label a gate green merely because code compiled.
+| Item / owner | Code delivered | Engineering gate | Real inference / evidence | Demo / UI | Submission |
+|---|---|---|---|---|---|
+| G2 discovery / Muse | Merged observation/hypothesis/planning path | Existing tests pass | Historical local report + five hash-valid observations; original hypothesis batch missing | Historical receipts only | Insufficient authentic input package |
+| G3-A candidate / Muse | Typed DSL, runtime, gated generation | PASS in combined source | No genuine generated candidate | Trusted/mock controls only | No reconstruction-success claim |
+| G3-B verification / Codex | Pinned strict sealed evaluator, provenance, bounded isolation | PASS; 25/25 and 2/2/1 controls | Genuine candidate score absent | NON_AI behavior comparison | Engineering evidence available |
+| G3-D workflow / Muse + Codex verification | Mock, zero-call preflight, gated real path, immutable archives/reports | PASS at source above; seven defects closed | Authentic complete G2 approval and owner spend still missing | Working local mock CLI/report; full product UX incomplete | Engineering milestone ready for review |
+| G3-C repair / Muse + independent review | Broker bounds/aggregate feedback exist; operator repair loop deferred | Bounds tested; no real repair acceptance | NOT STARTED; needs genuine baseline first | No before/after claim | Optional cut |
+| Product/demo/release / owner + Muse | Partial CLI experience | Fresh setup verified; release checklist incomplete | No real G3 baseline | No deployed polished UI/video verified | NOT SUBMITTED |
 
-## Next-session continuation ? coordinator direction verified
+## Real-run prerequisites — distinct from engineering green
 
-Source: https://github.com/Ankit6149/second-source/pull/4#issuecomment-6461226733
+1. Recover an authentic original G2 hypothesis export, including statement,
+   citations and original response identity, or separately authorize a new
+   G2 discovery that persists the full original batch and usage/failure receipts.
+   Never infer text from `H1-add-creates-record` or substitute mock data.
+2. Independently inspect the actual ledger/hypotheses/public manifest using
+   `--mode preflight`; approve exact context, scope/budget, suite and code/
+   reference pins out of band. A mock context/suite is not real approval.
+3. Obtain explicit owner inference authorization, safely configured credentials
+   and a finite run/environment budget within the current **$0.50 application
+   cap**. Preflight makes zero calls; it is not spending approval. Estimates
+   and uncertain charges are separate from provider-confirmed billing.
+4. Observe a genuine Meta-generated candidate, preserve its immutable receipt
+   and bytes, independently score the unchanged sealed suite, report failures
+   and actual denominator. A trusted 25/25 control cannot satisfy this gate.
+5. Only then consider separately authorized G3-C: at most two attempts,
+   unchanged sealed bytes, aggregate-only feedback, immutable versions and
+   accurate before/after/regression/cost reporting.
 
-- Continue autonomously on existing `g3/verifier`; no additional branches or Muse-owned edits.
-- Complete real-run attested reference/suite/comparator/candidate-receipt provenance; generic adapters remain explicitly TRUSTED_CONTROL only for claims.
-- Bind approved G2 observations/hypotheses and pinned public scope/signatures to the exact inspected request; caller mappings/marker scans alone do not authenticate provenance.
-- Independently verify Muse's committed precedence correction; fetch/integrate the updated integration branch before claiming combined verification.
-- Keep PR #4 and PR #3 draft/unmerged until blockers are dispositioned and required approvals are obtained. No paid call authorization.
-- Local Windows: 250 passed/3 skipped. Code-head CI: Linux 250/3, Windows 251/2 plus passing bootstrap. Controls are NON_AI; G3 is NOT ACCEPTED. See `G3_VERIFIER_ACCEPTANCE.md` and current handoff.
+Historical successful G2 run: `real-g2-20261027T192406Z-5482abee`.
+Report SHA-256: `05aa16f05ff2a0a4d707369fcb06a210726e43449c50409b92dbd50ebf9c2c0e`.
+The five exact observation identities and retention audit are in the verifier
+record. Local hashes/recorded response IDs are not signed provider attestations.
+
+## Product quality and deadline risk
+
+| Priority | Observed issue / risk | Clear acceptance condition |
+|---|---|---|
+| P0 release blocker | Authentic complete G2 hypothesis input is absent | Recover authentic original export or separately approve a correctly persisted new discovery; approve actual-input pins |
+| P0 release blocker | Genuine G3 reconstruction and independent model-quality result do not exist | Owner-authorized real candidate, immutable receipts and honest sealed score; no control/mock substitution |
+| P0 release blocker | Submission/video/public final evidence package unverified | Complete the submission runbook with actual accessible artifacts and confirmation |
+| P1 material quality | Provider/schema/DSL errors share sanitized `broker_failed`; operator cannot distinguish these causes from the final category alone | Add bounded structured reason codes through the existing broker/report contracts; preserve sanitization and accounting |
+| P1 material quality | CLI emits final summaries; durable live stage history, restart recovery and one-command evidence export are not demonstrated | Deliver/test the minimal coherent status/report/export slice before demo freeze; report unsupported recovery honestly |
+| P1 material quality | Premium interface, responsive/keyboard/accessibility review and real-result comparison remain unverified | Audit the actual delivered interface; do not claim planned screens or conformance |
+| P2 deferred | Optional repair, second/web adapter, cloud coordinator and broader UI | Start only after authentic real baseline and explicit scope/cost decisions; retain one shared core |
+| P2 coupling | Broker interruption settlement reads the existing budget's private pending balance | A future narrow public accessor can reduce coupling; current behavior has exact accounting/retry regression coverage |
+
+The P1 taxonomy/UX limits are disclosed scope limitations, not newly invented
+passing assertions or a claim of complete product certification. Storage/power
+loss beyond handled faults and portable cross-process signing authority are
+not certified. Only trusted data-only execution is supported.
+
+Project target is **November 4 IST submission**, ahead of the deadline recorded
+in the PRD/playbook (**November 5, 07:30 IST**); reconfirm event requirements
+before submission. Current planning, not promises of completed work:
+
+- Oct 28–29: reviewed engineering milestone + reconciled repository docs.
+- Oct 29–30: authentic G2 recovery/new-run decision and exact zero-call preflight.
+- Oct 30–31: first separately authorized genuine G3 score, if prerequisites close.
+- Nov 1–2: minimal readable status/report/evidence experience and honest demo.
+- Nov 3: release freeze and fresh reproduction/video checks; Nov 4: submit early.
+
+**Risk:** provenance recovery is on the critical path; engineering green cannot
+substitute for a genuine baseline. If dates slip, cut P2 breadth/repair, never
+input provenance, independent scoring or honest failure reporting. PRD §0's
+two-surface ambition remains unfulfilled; this single-CLI milestone does not
+silently redefine the full MVP as done. Material scope cuts need a dated owner
+decision consistent with PRD §4.
+
+G3 genuine model calls / estimated spend / uncertain spend: **0 / $0 / $0**.
