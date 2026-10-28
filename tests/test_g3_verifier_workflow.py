@@ -247,3 +247,55 @@ def test_clean_subprocess_mock_is_nonbillable_and_reports_actual_naive_score(tmp
     assert evaluation["passed"] + evaluation["failed"] == 25
     assert report["usage"]["estimated_cost_usd"] == report["usage"]["uncertain_cost_usd"] == 0
     assert math.isfinite(report["usage"]["estimated_cost_usd"])
+
+
+def test_archived_broker_artifact_keeps_exact_receipt_and_private_authority(workflow_control):
+    from second_source.g3_verification import BrokerArtifact
+    seen = workflow_control
+    artifact = seen["artifact"]
+
+    def find_archive(value):
+        if isinstance(value, dict):
+            if value.get("payload") == artifact.payload.decode() and value.get("signature") == artifact.signature:
+                return BrokerArtifact(value["payload"].encode(), value["signature"])
+            for child in value.values():
+                found = find_archive(child)
+                if found is not None:
+                    return found
+        return None
+
+    restored = None
+    for path in seen["run_dir"].rglob("*"):
+        if not path.is_file():
+            continue
+        raw = path.read_bytes()
+        assert seen["run"]._key not in raw
+        assert seen["run"]._key.hex().encode() not in raw
+        try:
+            found = find_archive(json.loads(raw))
+        except (ValueError, UnicodeError):
+            continue
+        if found is not None:
+            restored = found
+    assert restored == artifact, "Immutable broker payload/signature was not archived exactly"
+    admitted = seen["run"]._verify(restored, "CANDIDATE_ORIGIN")
+    assert admitted["receipt"] == seen["report"]["evaluation_receipt"]["origin"]
+    assert _digest(restored.payload) == seen["report"]["evaluation_receipt"]["artifact_digest"]
+    with pytest.raises(EvaluationBlocked, match="Unattested"):
+        seen["run"]._verify(replace(restored, payload=restored.payload + b" "), "CANDIDATE_ORIGIN")
+
+
+def test_persisted_candidate_offline_rescore_retains_non_ai_claim(workflow_control):
+    from second_source.g3_verification import OwnedLedgerReferenceAdapter, evaluate_sealed_suite
+    seen = workflow_control
+    raw = json.loads(seen["artifact"].payload)["spec"].encode()
+    candidates = [path for path in seen["run_dir"].rglob("*") if path.is_file() and path.read_bytes() == raw]
+    assert candidates, "Offline re-score requires the admitted candidate bytes"
+    scope = operator.create_scope(0)
+    suite = load_sealed_suite(seen["seal_dir"] / "suite.json", seen["report"]["suite_digest"], scope)
+    report = evaluate_sealed_suite(suite, scope, OwnedLedgerReferenceAdapter(scope),
+                                   CandidateReferenceAdapter(candidates[0].read_bytes(), scope))
+    assert report.model_feedback() == seen["report"]["evaluation"]
+    # An archived local signature is not a portable provider attestation.
+    # Re-score confirms behavior; it does not grant a new REAL_MODEL origin.
+    assert seen["report"]["origin"] == "mock" and seen["report"]["real"] is False

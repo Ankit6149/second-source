@@ -566,3 +566,102 @@ attempts may use the identical sealed bytes, approved aggregate feedback, fresh
 immutable candidate versions and honest before/after/regression accounting. Existing
 bounded-attempt/aggregate/replay controls remain in force; no real repair is run now.
 Audit phase real model calls / spend / uncertain spend: **0 / $0 / $0**.
+
+## Product-integration follow-up — coordinator review of PR #5
+
+Review: [coordinator instructions](https://github.com/Ankit6149/second-source/pull/5#issuecomment-6464647743).
+Published Muse correction audited independently:
+`626fcac87d94164d9c6e7c77a17a517e3d6e9dde`, on the same
+`integrate/g3-reconstruct` branch. Codex changes only owned independent tests
+and this record. The eight original failures remain unchanged ordinary tests.
+All eight now pass: exact candidate bytes, complete evaluator metadata,
+provider/schema failure reports, prior nonempty run/report protection and
+finite environment ceilings. This closes those reproduced regressions; it
+does not establish the entire durable-workflow requirement.
+
+Independent extended targeted run at this published source: **37 passed /
+4 failed / 0 skipped**, 83.85 seconds, Windows/Python 3.12.4. It includes
+all original workflow tests, new preflight tests and initial receipt faults.
+Two additional receipt scenarios were then added; that final receipt module
+alone reports **2 passed / 5 failed / 0 skipped**, 3.33 seconds. Counts from
+these overlapping runs must not be added together.
+
+Verified without provider construction or transport:
+
+- Preflight's context, observation/hypothesis registries and scope match a
+  separately constructed existing `PinnedEvaluatorRun` on the exact supplied
+  fixture inputs. The suite binds the actual proposed $0.35 budget and rejects
+  a $0.50 scope. Plan IDs are intentionally fresh; their hashes must not be
+  compared as stable cross-run approval identities.
+- Changed hypotheses, corrupted observation bytes, changed budget/suite and
+  an incorrect approved context pin all block before provider construction.
+- NaN, infinity, negative infinity, zero and negative CLI caps block before
+  input loading in both preflight and real-mode approval checks.
+- A missing original hypothesis file fails closed, with no fallback to
+  `mock_hypotheses` and no ready receipt. All successful preflight fixtures
+  are explicitly synthetic NON_AI tests of input binding, **not historical
+  G2 authentication or actual-input approval**.
+- The hand-authored candidate's persisted bytes independently re-score
+  **25 passed / 0 failed / 0 indeterminate / 25 total** through the existing
+  sealed evaluator. This remains trusted NON_AI replay.
+- Concurrent report collision permits one complete winner, and fsync failure
+  leaves no completed report. Existing provenance, isolation, sealed-suite,
+  origin-tampering and single-use request checks remain intact.
+
+Remaining failures at `626fcac`, sent to Muse through PR #5:
+
+1. Exact broker payload/signature is not archived. The admitted candidate
+   and evaluator origin hash are insufficient to restore that local receipt.
+   Preserve the artifact immediately after generation; do not export the
+   private HMAC authority or mistake it for a portable Meta signature.
+2. A fault after a partial write exposes truncated JSON at the final report
+   filename before cleanup. Exclusive creation plus fsync prevents overwrite
+   but does not make publication atomic to readers.
+3. Empty prior run directories remain reusable, including an interrupted
+   run whose ID was already allocated.
+4. An evaluator fault is mislabeled `broker_failed`, resets reported tokens
+   to zero and discards the already admitted candidate. It must preserve
+   the artifact and actual budget, with a distinct evaluation failure.
+5. Keyboard interruption at that same boundary escapes without a durable
+   stopped receipt, despite an admitted candidate and accounted attempt.
+6. A schema-valid but semantically invalid candidate records token usage
+   in the existing gateway budget, then the failure wrapper writes zero
+   tokens. The test compares the report directly with the actual budget.
+
+The runbook correctly separates mock and actual-input context pins now,
+but its `REAL-RUN-READY` heading still overstates readiness. There is no
+genuine G3 baseline and no authenticated historical hypothesis batch.
+
+### G2 recovery and product acceptance limits
+
+Read-only searches of tracked/untracked project files and all four local
+historical `.runs` directories found no original structured hypothesis
+export/response body. The successful run still contains only the five
+hash-valid observations and its report, identified above. The original
+hypothesis text/citations are **unrecoverable from these retained artifacts**;
+this does not assert that an owner-held export elsewhere cannot exist.
+No text or citations were inferred from the hypothesis ID or its status.
+
+A future separately owner-authorized G2 discovery must retain the complete
+original validated hypothesis batch (statements, citations, alternatives,
+statuses), its observation content addresses, sanitized provider/model/
+response identity and token/cost/failure receipts. Preserve immutable bytes
+before later hypothesis reconciliation, and link that batch and its updates
+to the same durable run. The existing discovery/gateway modules should be
+extended by their owner; Codex does not create another discovery workflow.
+That operation is not authorized or executed by this verification.
+
+PRD v2.0 sections 6–7, 9–10 and 17 require more than a final CLI score:
+durable meaningful stage/status events, recoverable interruption, an
+inspectable approval/evidence chain, candidate replay and trustworthy export.
+Current CLI progress is a final summary; no premium investigation UI,
+keyboard/responsive audit, restart recovery or complete export workflow is
+demonstrated here. These remain product acceptance gates. Do not expand
+cosmetics before the shared mock gate is green.
+
+**NO-GO for merge or real inference** until remaining durability failures
+are fixed, exact shared-head Linux/Windows CI is green and engineering review
+is obtained. Actual inference additionally needs authentic approved G2
+inputs, reviewed preflight/scope/suite/reference pins and explicit finite
+spend authorization. G3-C remains unstarted. This audit's real model calls /
+estimated spend / uncertain spend: **0 / $0 / $0**.
