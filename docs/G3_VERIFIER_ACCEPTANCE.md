@@ -714,3 +714,85 @@ hash. This is an additional hard integration gate for Muse: consume
 `run.inspection_manifest()` instead of recomputing the admitted registries.
 The strengthened test checks five fresh processes and never constructs a
 provider. No global fixed hash seed is used to hide the defect.
+
+## Release-quality verification resumed — 28 October 2026
+
+Scope: [latest coordinator disposition](https://github.com/Ankit6149/second-source/pull/5#issuecomment-6465261695).
+The seven independent failures at `44f47803efcb0046c353942e42c36be1b34ca957`
+remain unchanged hard regressions. Muse's unpublished operator edits are not
+verification evidence. Complete-suite reruns and documentation reconciliation
+will follow the published correction, with exact source/CI identities.
+
+### Rechecked authentic G2 retention
+
+Read-only re-audit of all four historical local G2 run directories finds no
+original hypothesis/response/trace export. The successful run retains exactly
+the five evidence JSON files and `run_report.json`; its SHA-256 remains
+`05aa16f05ff2a0a4d707369fcb06a210726e43449c50409b92dbd50ebf9c2c0e`.
+All five observations still pass content-address/schema checks, have `ok`
+status/zero exit and are unchanged by redaction. Their identities above are
+unchanged. These are local integrity checks, not independent provider
+signatures or billing verification.
+
+The original hypothesis statement/citations cannot be recovered from the
+retained identifiers/statuses. Recover an authentic original owner-held
+response export if it exists; otherwise request a separately approved new
+G2 discovery that durably records the original complete validated batch,
+observation citations, provider/model/response identity and all actual/uncertain
+usage before subsequent reconciliation. No discovery call or fabricated
+replacement batch is authorized by this audit.
+
+### Reproduced transport-interruption accounting risk
+
+At `44f4780`, a local `MetaProvider(test_mode=True)` with a synthetic key and
+`urllib.request.urlopen` replaced by a function raising `KeyboardInterrupt`
+leaves `RunBudget.attempts=1`, unresolved reservation `$0.00028325`, public
+`uncertain_cost_usd=0` and no gateway receipt. The reservation is only in
+private in-memory state. This probe makes **zero network/genuine model calls**;
+the amount is a synthetic reservation, not observed spending or provider billing.
+
+Severity: **P0 for real-run release** under the existing interruption/accounting
+requirement. Copying only public counters into an interrupted report could
+lose a possible charge. Acceptance: inject interruption after reservation
+without network access; persist a sanitized stopped outcome with attempt one
+and the unresolved reservation conservatively accounted as uncertain (or
+explicitly durably exposed for reconciliation). Preserve already reported
+usage, avoid double counting settled reservations and prevent silent retry.
+The source owner must implement or coordinate a narrow accounting correction;
+Codex does not edit Muse-owned gateway/operator code. This is a reproduced
+error path with a defined acceptance condition, not an added speculative gate.
+
+### Published Muse corrections and owned accounting closure
+
+Muse published `0021906248855f20754ac24e1ebfc6437ac65937`; independent
+diff inspection confirms changes only to operator implementation/tests/runbook.
+All seven previous independent regressions remain unchanged. Targeted
+workflow/preflight/receipt verification: **46 passed / 0 failed**, 147.24
+seconds. Authoritative cross-process input pins, exact broker archival,
+partial-write/fsync/concurrent no-clobber checks, empty interrupted run IDs,
+evaluator failures, interruption and token accounting now pass those gates.
+
+The additional focused interruption probe reproduces an unresolved synthetic
+broker reservation of `$0.0104525`; a second scenario reproduces a retry after
+interruption following already committed provider usage. Neither issues a
+candidate origin artifact or makes a network/genuine model call. Synthetic
+response identity is explicitly `NON_AI_SIMULATION_NOT_PROVIDER_EVIDENCE`;
+no simulated result is historical G2/G3 evidence or a model-quality score.
+
+The narrow Codex-owned `PinnedEvaluatorRun` correction handles interruption
+before returning control to the operator: it books only the existing ledger's
+pending reservation through `RunBudget.fail(Reservation(...))`, marks the
+real attempt failed and propagates interruption for the stopped report.
+Already committed/failed reservations have zero pending balance, so their
+actual tokens/costs are preserved without adding uncertain spend twice.
+The existing budget model/API, gateway and Muse-owned operator source are
+unchanged. It deliberately reads the current RunBudget's private pending
+balance; a future public accessor would reduce coupling, but is not a new
+release gate or a second accounting model.
+
+Focused tests verify conservative uncertainty, settled usage, exact durable
+stopped counters, consumed request replay rejection and fresh-preflight
+requirement before another transport. Combined targeted verifier isolation,
+receipt and preflight run: **69 passed / 0 failed**, 56.52 seconds. Complete
+exact-head CI and repository reconciliation follow this source checkpoint;
+no green CI or engineering certification is inferred from a targeted run.

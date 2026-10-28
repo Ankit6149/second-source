@@ -321,6 +321,71 @@ def test_failed_attempt_consumes_ticket_and_does_not_issue_origin(approved_run):
         run.repair_feedback(ticket)
 
 
+@pytest.mark.parametrize("phase", ["transport", "after_reported_usage"])
+def test_interrupted_broker_preserves_uncertain_or_reported_usage_and_blocks_retry(
+    approved_run, cli_scope, tmp_path, monkeypatch, phase
+):
+    """Synthetic transport only: no network, genuine provider output or spend."""
+    from second_source import g3_verification as verification, reconstruct as operator
+    from second_source.budgets import estimate_cost_usd
+    from second_source.model_gateway import ModelResponse
+
+    initial, ledger, store, suite, digest = approved_run
+    run = PinnedEvaluatorRun(suite, cli_scope, ledger=ledger,
+        observation_digests=(digest,), hypotheses=store,
+        operator_approved_context_digest=initial.approved_context_digest)
+    budget = RunBudget(cli_scope.budgets)
+    provider = MetaProvider("SYNTHETIC_NON_CREDENTIAL")
+    seen = []
+
+    def forbidden_network(*args, **kwargs):
+        pytest.fail("Synthetic interruption probe attempted network access")
+
+    def simulated_transport(request):
+        seen.append(budget._outstanding)
+        if phase == "transport":
+            raise KeyboardInterrupt
+        return ModelResponse(provider=provider.provider_name, model=provider.model,
+            real=True, response_id="NON_AI_SIMULATION_NOT_PROVIDER_EVIDENCE",
+            content_text="", parsed=json.loads(CONTROL.read_bytes()), latency_ms=0,
+            input_tokens=101, output_tokens=42, prompt_version=request.prompt_version)
+
+    def interrupt_after_usage(*args, **kwargs):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr("urllib.request.urlopen", forbidden_network)
+    monkeypatch.setattr(provider, "complete", simulated_transport)
+    if phase == "after_reported_usage":
+        monkeypatch.setattr(verification, "CandidateReferenceAdapter", interrupt_after_usage)
+    ticket = run.prepare()
+    with pytest.raises(KeyboardInterrupt):
+        run.generate(ticket, provider, budget, spending_approved=True)
+    assert len(seen) == 1 and seen[0] > 0
+    assert budget.attempts == 1 and budget._outstanding == 0
+    if phase == "transport":
+        assert budget.uncertain_cost_usd == seen[0]
+        assert budget.estimated_cost_usd == budget.input_tokens == budget.output_tokens == budget.model_calls == 0
+    else:
+        assert (budget.input_tokens, budget.output_tokens, budget.model_calls) == (101, 42, 1)
+        assert budget.estimated_cost_usd == estimate_cost_usd(101, 42, provider.rates)
+        assert budget.uncertain_cost_usd == 0
+    before = budget.summary()
+    with pytest.raises((EvaluationBlocked, KeyboardInterrupt)) as stopped:
+        run.generate(run.prepare(), provider, budget, spending_approved=True)
+    assert isinstance(stopped.value, EvaluationBlocked) and "fresh independent preflight" in str(stopped.value)
+    assert budget.summary() == before and len(seen) == 1
+    with pytest.raises(EvaluationBlocked, match="replay"):
+        run.generate(ticket, provider, budget, spending_approved=True)
+    directory = tmp_path / "NON_AI_SIMULATED_STOPPED_RECEIPT"
+    directory.mkdir()
+    report = operator._write_failure_report(run_dir=directory, mode="real", real=True,
+        stage="broker", budget=budget, interrupted=True)
+    saved = json.loads((directory / "G3_report.json").read_bytes())
+    assert saved == report and saved["stop_reason"] == "interrupted_stopped"
+    for key in ("attempts", "input_tokens", "output_tokens", "estimated_cost_usd", "uncertain_cost_usd"):
+        assert saved["usage"][key] == getattr(budget, key)
+
+
 def test_real_broker_is_blocked_before_transport_without_owner_approval(approved_run, monkeypatch):
     run, *_ = approved_run
     provider = MetaProvider("SYNTHETIC_NON_CREDENTIAL")

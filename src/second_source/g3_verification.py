@@ -565,6 +565,17 @@ class PinnedEvaluatorRun:
                 "output_tokens": response.output_tokens, "estimated_cost_usd": response.estimated_cost_usd,
                 "uncertain_cost_usd": response.uncertain_cost_usd, "attempt": self._generation_attempts}
             return self._sign({"kind": "CANDIDATE_ORIGIN", "spec": spec_raw.decode("utf-8"), "receipt": receipt})
+        except KeyboardInterrupt:
+            # A transport can be interrupted after reserving possible charges
+            # but before the gateway can settle them. Preserve that uncertainty
+            # in the existing ledger before the operator writes its stopped
+            # receipt. Already committed/failed reservations have zero balance.
+            from .budgets import Reservation
+            self._real_attempt_failed = self._real_attempt_failed or real
+            pending = budget._outstanding
+            if pending:
+                budget.fail(Reservation(0, 0, pending))
+            raise
         except Exception:
             # Details may contain model output, private paths or evidence. Budget
             # retains failed/uncertain accounting even when no artifact is issued.
