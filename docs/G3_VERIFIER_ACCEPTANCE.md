@@ -418,3 +418,151 @@ Remaining real-run work includes independently approved actual G2 input context,
 fresh preflight and explicit owner spend authorization, operator CLI/report wiring,
 and separately reviewed durable attestation if restart/replay across processes is
 required. Real model calls / spend / uncertain spend remain **0 / $0 / $0**.
+
+## Independent real-run readiness audit of the operator workflow
+
+**Verdict: NO-GO for real inference.** Engineering foundation `main` is now merged
+at `9c8bcc4eba5e8bf4b1b3e5dfc75273c2eb0ea203`; its
+[post-merge CI 40652322539](https://github.com/Ankit6149/second-source/actions/runs/40652322539)
+is successful on Linux/Python 3.11 and Windows/Python 3.12, including Windows
+bootstrap. This does not certify the newly proposed operator workflow.
+
+Muse published that workflow as `bf3f0a1a43cd75b0d8b2f1f175f20c70757500ae`,
+[PR #5](https://github.com/Ankit6149/second-source/pull/5), on the single shared
+`integrate/g3-reconstruct` branch. Codex audits that exact published implementation
+and adds only independent verifier tests plus this owned acceptance record.
+No Muse-owned runtime/generation/operator code is edited. No additional feature
+branch, force push, PR merge, genuine real-model execution or paid call is made.
+Pushes follow the published Muse checkpoint and are ordinary fast-forwards to
+the same shared branch after verifying the remote head and file ownership.
+
+### Existing G2 artifact identities and approval limits
+
+Read-only local audit found the actual successful run at
+`.runs/real-g2-20261027T192406Z-5482abee/` in the operator's existing checkout.
+The saved `run_report.json` has SHA-256
+`05aa16f05ff2a0a4d707369fcb06a210726e43449c50409b92dbd50ebf9c2c0e`.
+It agrees with the previously reported result, run ID, two real `meta-direct`
+`muse-spark-1.3` receipts, token/cost estimates, three experiment observations
+and one supported hypothesis ID. The historical response identities are:
+
+- Hypothesize: `chatcmpl-01a17ed1-f2e4-74d6-b083-b02322104905`.
+- Propose: `chatcmpl-01a17ed2-138c-764c-a60b-a4253349c220`.
+
+All five files under that run's `evidence/` validate as `Observation`, and each
+filename equals the SHA-256 of its actual stored bytes. Every action is allowed
+by the current reconstruction ScopeGuard; all statuses are `ok` with exit zero,
+and the existing redactor leaves their content unchanged. No credential fields,
+original source or evaluator cases are present in these observation envelopes.
+The following are **candidates for explicit operator approval**, not a permission
+to send them to a model or a cryptographic provider attestation:
+
+| SHA-256 artifact filename (append `.json`) | Observation identity | Recorded origin |
+|---|---|---|
+| `d595e04012fa6601d53607c9673583118821c6a72915d3ebfc668965767023c9` | `e01842cce6654892b49cb2b0af82a0e9:0` | Operator seed observation |
+| `9252f018c2b2829bc93daf9a9a752b5cc9c8fd5019043fc998653caacd65a68d` | `e01842cce6654892b49cb2b0af82a0e9:1` | Operator seed observation |
+| `22c8ea2c18d56e8abcd7936bb738c23367cc4996868077e3590fcdb4952b4fc4` | `658b367c4d744f3da685cf0e09099790:0` | Model-selected experiment observation |
+| `07b6d01d357dc9f0eebc955e705d1e590369161502fd845bb4d3ddf9b2b631bc` | `658b367c4d744f3da685cf0e09099790:1` | Model-selected experiment observation |
+| `1be90f95e06f8483aa9b5d5f749d4d9949b556f56fda7215efa4cc3683ccc341` | `658b367c4d744f3da685cf0e09099790:2` | Model-selected experiment observation |
+
+**Blocking missing artifact:** the successful run records hypothesis ID
+`H1-add-creates-record` and its supported status, but neither its original
+statement, alternatives nor evidence citations. The run directory contains only
+the five observation files and `run_report.json`. The G2 implementation keeps
+the `HypothesisStore` in memory and serializes IDs/counts, not the original batch.
+An ID, proposal name or status count is insufficient to recreate a Muse hypothesis.
+No replacement text or citations have been fabricated, and no such file is approved.
+The operator has been asked whether an authentic original response export exists
+elsewhere. Without it, the full required G2 input context cannot be authenticated.
+
+Never use `run_report.json` wholesale as generation input: its
+`independent_fixture_verifier` is a synthetic evaluator-only negative control,
+not observational evidence or a real candidate score. Likewise, the new mock
+workflow's freshly observed data and deterministic hypotheses must not be relabeled
+as this historical real G2 run. Local content hashes establish byte integrity;
+the report's real/provider flags remain local operator receipts, not signed Meta
+responses or independently verified provider billing.
+
+### Published workflow findings and independent acceptance tests
+
+`tests/test_g3_verifier_workflow.py` executes the actual mock broker, trusted
+candidate worker and sealed evaluator. A hand-authored positive fixture is injected
+only as an explicitly labeled mock response; no scoring or isolation gate is
+bypassed. The workflow's actual score and its trusted evaluator return are compared.
+The tests also exercise the CLI in a fresh credential-free subprocess, create-once
+suite/digest checks, input approval mutation, origin tampering, request replay,
+provider/schema failure and nonfinite budget preflight. Existing strict-comparator,
+negative-control and resource/isolation suites are preserved unchanged.
+
+Targeted independent run: **9 passed / 8 failed / 0 skipped**, 75.36 seconds,
+Windows/Python 3.12.4. These eight are ordinary blocking failures with no xfail or
+skip. They demonstrate these findings at `bf3f0a1`:
+
+1. **P0 — candidate persistence.** The wrapper saves a candidate hash but discards
+   the exact admitted candidate bytes and local broker artifact when the process
+   ends. A digest alone cannot reproduce or independently re-score the real baseline
+   or preserve immutable candidate versions for later repairs.
+2. **P0 — failed-run accounting.** Provider failure or invalid generated spec exits
+   without `G3_report.json`. The real-mode failure handler similarly returns before
+   writing a report. The trusted budget may hold spent/uncertain charges in memory,
+   but the operator loses the durable failure, attempts and budget receipt. Tests
+   reproduce this with local mocks only; no real failure or charge is claimed.
+3. **P1 — report provenance loss.** The wrapper drops comparator/interpreter/adapter,
+   raw reference, environment, origin-receipt and observation/hypothesis registry
+   digests already supplied by the pinned evaluator. Retain that sanitized receipt
+   rather than reducing the completed artifact to an unattested score summary.
+4. **P1 — overwrite/replay.** Existing explicit run directories are accepted, and
+   `_write_report` silently replaces an existing receipt. Distinct attempts must
+   not overwrite an already recorded run/report/candidate version.
+5. **P1 — invalid spend authorization.** Environment ceilings `nan` and positive
+   `inf` reach input loading instead of being rejected as invalid approval values.
+   This does not bypass the separate $0.50 hard cap; it violates finite positive
+   preflight. Tests stop at an input-loader sentinel before provider construction.
+
+The runbook also proposes taking `approved_context_digest` from a mock run and
+using it for a real G2 run. That pin identifies the mock observations/hypotheses,
+whose IDs/timings and origin differ from the actual G2 artifacts. It is not approval
+of the real G2 context, nor does the CLI currently provide a nonbillable prepare/
+inspect step for the actual operator-supplied G2 context. The frozen suite must
+also match the real scope, including its approved budget; a mock-scope suite is
+not automatically a real-run suite. Correct these instructions before any spending
+approval, without substituting synthetic inputs or disabling pin equality.
+
+### Observed mock execution and residual gates
+
+The published standalone command was independently executed with a minimal
+credential-free environment, zero spend, an external disposable sealed directory
+and an external run directory. Result: **MOCK 22 passed / 3 failed / 0 indeterminate
+/ 25 total**, exit zero as a plumbing run, origin `mock`, `real=false`, estimated
+and uncertain spend both zero. No candidate file was saved. This is an honest
+scripted naive control, not model-generated reconstruction accuracy.
+
+The independent workflow fixture separately reproduces the **25/25** hand-authored
+positive through the real mock broker/pinned evaluator. Existing model/source/gold
+isolation, reference identity, receipt authentication, input mutation and request
+replay checks pass; report persistence/provenance failures above prevent real-run
+readiness. Exact complete-suite and shared-branch Linux/Windows CI results are
+reported with the pushed audit SHA after verification. The foundation's earlier
+green CI and Muse's standalone workflow CI do not include these new assertions.
+The complete local suite with the new independent gates reports **310 passed /
+8 failed / 3 skipped**, 272.55 seconds. All eight failures are the workflow checks
+listed above; every pre-existing verifier assertion and negative-control regression
+passes. Existing 25-case control sensitivity remains positive **25/0/0**, broken
+uniqueness **23/2/0**, broken whitespace **23/2/0**, broken amount boundary
+**24/1/0** (passed/failed/indeterminate; total 25 each).
+
+**GO:** continue nonbillable engineering corrections and independent review.
+**NO-GO:** genuine G3 inference, real baseline/repair claims, merge or spending.
+Before an owner-authorized run: recover/authenticate the actual G2 hypothesis
+batch (or separately approve a new correctly recorded discovery operation), fix
+the workflow failures, inspect and approve the exact actual G2 context out of band,
+freeze the correct scope/suite/comparator/reference, rerun clean Windows/Linux
+verification, and obtain a finite per-run dollar approval plus credential handling
+in the trusted broker. No key has been read or requested in this audit.
+
+G3-C remains **NOT STARTED**: no genuine generated baseline exists. Once that
+baseline is independently verified and separately authorized, at most two repair
+attempts may use the identical sealed bytes, approved aggregate feedback, fresh
+immutable candidate versions and honest before/after/regression accounting. Existing
+bounded-attempt/aggregate/replay controls remain in force; no real repair is run now.
+Audit phase real model calls / spend / uncertain spend: **0 / $0 / $0**.
