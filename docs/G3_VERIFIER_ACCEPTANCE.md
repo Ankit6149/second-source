@@ -191,7 +191,7 @@ Muse's text/dict parameter-error-precedence correction must be independently ver
 
 ## Autonomous continuation: combined G3-B/G3-D preparation, 28 October 2026
 
-**Current disposition: BLOCKED for integration and real inference.** Earlier green
+**Disposition at `05b0f4a`: BLOCKED for integration and real inference.** Earlier green
 control counts above apply to the earlier baseline. The new independent regressions
 are ordinary failing tests, with no skip/xfail or weakened acceptance threshold.
 
@@ -314,7 +314,7 @@ mock-origin and aggregate-feedback controls passed; the same four Muse-boundary
 regressions failed. Skips are the two credential-gated live tests and unavailable
 unprivileged Windows symlink creation; the Windows junction probe passed.
 
-Current 25-case controls (NON_AI): positive **24/1/0**; broken uniqueness
+25-case controls at `05b0f4a` (NON_AI): positive **24/1/0**; broken uniqueness
 **22/3/0**; broken whitespace **22/3/0**; broken amount boundary **23/2/0**
 (passed/failed/indeterminate). The deliberate negatives add **2, 2, 1** failures
 beyond the shared precedence regression. Denominators remain 25 throughout.
@@ -343,3 +343,78 @@ Follow-up complete local run: **286 passed / 4 failed / 3 skipped**, 92.00 secon
 The newline/raw-pin regression and all new provenance controls pass. The four
 failures remain exactly the Muse omission/precedence blockers listed above.
 Exact follow-up Linux/Windows CI is checked after push and reported with its SHA.
+
+## Verified Muse corrections and combined integration
+
+Continuation follows the coordinator's
+[independent verification and integration direction](https://github.com/Ankit6149/second-source/pull/4#issuecomment-6461975311).
+Starting verifier head: `05b0f4accf1e3d080b90c6622daad82bae1ea988`.
+Muse correction: `b27fa690bf226732a924f003d77d7fe13e6cb780`.
+Clean local integration commit: `cee89525bcb0a4913a8d9b8cd3cc5b45e231f9c7`.
+The final pushed head also includes this acceptance-record update. No new branch,
+force push, paid call, credential read or PR merge was performed.
+
+Independent diff review confirms the focused Muse change touches only its runtime,
+generation adapter, associated tests and interface document. Runtime validation
+now uses explicit `add` order `label, amount` and `remove` order `id`, preserving
+candidate-declared error codes and representation independence. The direct real
+generation path checks every required provenance pin before request construction
+or gateway dispatch; unpinned mock generation remains available. The low-level
+pin check does not replace the release evaluator's trusted ledger/hypothesis and
+operator-approved-context boundary.
+
+**All existing independent verifier assertions and security implementations are
+unchanged from `05b0f4a`.** Verified with `git diff --exit-code 05b0f4a HEAD --`
+over the four verifier test modules, `verifier.py`, `candidate_adapter.py` and
+`g3_verification.py`. No xfail/skip, expected error, positive threshold or negative
+control was changed to obtain passing results. No owned source fix was needed.
+
+Complete combined local suite under the same minimal credential-free environment:
+**292 passed / 0 failed / 3 skipped**, 103.19 seconds, Windows/Python 3.12.4.
+The two live credential-gated tests and unavailable unprivileged symlink capability
+remain the only skips; the Windows junction probe passes. The formerly failing
+two reference-precedence probes, private 25-case positive control and real
+missing-pin transport sentinel now all pass. Full coverage also retains:
+
+- Strict typed JSON and result-envelope comparisons, reset/snapshot independence,
+  invalid-reference indeterminacy and failed-candidate accounting.
+- Original normalized reference identity and exact worker-byte pins; frozen suite,
+  comparator/code/manifest/scope/observation/hypothesis digests.
+- Sealed material excluded from generation; source/gold reads, egress, subprocesses,
+  inherited descriptors and environment leakage denied at the worker boundary.
+- Mandatory CPU/memory/wall/input/output bounds with no uncontained fallback.
+- Immutable broker candidate/spec/receipt binding; mock-as-real and substituted
+  reference rejection; final request drift and sequential/concurrent replay denial.
+- Operator input/spend approval requirements, non-resettable bounded run budget,
+  and detached aggregate-only repair feedback.
+
+Exact combined Linux/Windows CI, final pushed SHA and control run hashes are
+reported on PR #4 and in the completion report after remote verification.
+An additional nonbillable control run exercised the **pinned** evaluator against
+the bounded original reference over a freshly sealed external 25-case suite:
+
+| NON_AI control | Passed | Failed | Indeterminate | Total |
+|---|---:|---:|---:|---:|
+| Hand-authored positive through the inspected mock broker and pinned evaluator | 25 | 0 | 0 | 25 |
+| Deliberately broken case-insensitive uniqueness | 23 | 2 | 0 | 25 |
+| Deliberately broken whitespace handling | 23 | 2 | 0 | 25 |
+| Deliberately broken amount boundary | 24 | 1 | 0 | 25 |
+
+All four controls used identical sealed bytes; candidate state reset per sequence.
+The pinned positive's detached `repair_feedback()` exactly matched its aggregate
+evaluation. Its broker origin remained `mock`, `real=false`; no paid inference,
+credentials, hidden case details or actual G2 payloads were involved. Disposable
+test material was removed and is not the future real-run holdout. Observed hashes:
+
+- Suite: `sha256:ec355b50a4e3c1eab136d409c7e3a6b472e40de065cc2a057453a0d9136b861d`.
+- Positive candidate: `sha256:225627a06c3d18fcac9fa30ddb40165bfdf8fc46ceede1e788af2887923c88e3`.
+- Comparator: `sha256:54073f6727406a44a5850a40b15b1a3cd737d2ec5f92d5cb32afea7796132449`.
+- Frozen pinned-run plan: `sha256:93bab081555451f39d2cee05c2fb03ceb9082d3bb094897f32c78eb2adf57b88`.
+
+Engineering integration still requires coordinator review. This is **NON_AI
+engineering evidence**, not a real Muse candidate, historical G2 authentication,
+observed repair lift, G3 acceptance or arbitrary-code sandbox certification.
+Remaining real-run work includes independently approved actual G2 input context,
+fresh preflight and explicit owner spend authorization, operator CLI/report wiring,
+and separately reviewed durable attestation if restart/replay across processes is
+required. Real model calls / spend / uncertain spend remain **0 / $0 / $0**.
