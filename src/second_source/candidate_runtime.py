@@ -184,8 +184,12 @@ class CandidateInterpreter:
     def _validate_params(
         self, cmd: CommandSpec, params: dict[str, Any]
     ) -> tuple[dict[str, Any], str | None]:
+        # Deterministic precedence: identical spec content yields the same
+        # first param error regardless of JSON/dict key order. Spec mapping
+        # order is a transport representation detail, never semantics.
         values: dict[str, Any] = {}
-        for name, decl in cmd.params.items():
+        for name in sorted(cmd.params):
+            decl = cmd.params[name]
             if name not in params:
                 if decl.required:
                     return {}, decl.error

@@ -131,7 +131,10 @@ def _check_command(name: str, cmd: CommandSpec) -> None:
             f"command {name!r} is not in the authorized set {ALLOWED_COMMANDS}"
         )
 
-    for param_name, param in cmd.params.items():
+    # Sorted so identical content validates identically regardless of
+    # JSON/dict key order.
+    for param_name in sorted(cmd.params):
+        param = cmd.params[param_name]
         if not PARAM_NAME_RE.fullmatch(param_name):
             raise CandidateError(f"command {name!r}: bad param name {param_name!r}")
         _check_error_code(param.error, f"command {name!r} param {param_name!r}")
@@ -203,7 +206,8 @@ def _check_command(name: str, cmd: CommandSpec) -> None:
         "total": {"count", "amount"},
         "remove": {"id"},
     }[name]
-    for key, source in cmd.respond.items():
+    for key in sorted(cmd.respond):
+        source = cmd.respond[key]
         if not PARAM_NAME_RE.fullmatch(key):
             raise CandidateError(f"command {name!r}: bad respond key {key!r}")
         if key in {"ok", "error"}:
@@ -274,8 +278,8 @@ def _check_spec_semantics(spec: CandidateSpec) -> None:
         raise CandidateError(
             f"spec omits authorized commands {missing}: declare all four"
         )
-    for name, cmd in spec.commands.items():
-        _check_command(name, cmd)
+    for name in sorted(spec.commands):
+        _check_command(name, spec.commands[name])
 
     add_params = spec.commands["add"].params
     sum_field = spec.commands["total"].aggregate_sum_field
