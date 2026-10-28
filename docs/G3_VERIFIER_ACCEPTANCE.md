@@ -215,7 +215,10 @@ produce an accepted real-model evaluation through the pinned API.
 - Before generation, the run freezes the complete scope, suite bytes/digest,
   trusted limits, public manifest, evaluator/comparator/runtime/generation/gateway
   and transitive local module hashes. The original fixture must match the committed
-  reviewed reference digest `sha256:0df0ddc164428c3c062d68f06bc5030cc8f2d5bfcec7a115611af940766384b9`.
+  reviewed LF-normalized Git source digest
+  `sha256:539cf592cee4c22c9abfece562e258aecb2d887a6a48368fce3ebc081bdde832`.
+  Raw checkout/worker bytes are independently pinned for the run, so LF and CRLF
+  checkouts share the source identity while any within-run byte change is rejected.
   Scoring constructs the fixed bounded original adapter internally; it takes no
   caller-selected reference. Code pins are checked before and after generation
   and evaluation; both workers retain the existing containment/resource checks.
@@ -322,3 +325,21 @@ Integration is not ready until Muse's two blocking corrections are published,
 cleanly integrated into this branch and the unchanged full Linux/Windows checks
 pass. Then the new evaluator/broker boundary still needs independent coordinator
 review. Real model inference and final G3 acceptance remain separately gated.
+
+### Cross-platform reference identity correction
+
+Initial published implementation: `f65d1726a803abf3d1b89e7218163619cd2e0d1d`.
+[CI 40639620878](https://github.com/Ankit6149/second-source/actions/runs/40639620878)
+confirmed the four expected Muse-boundary failures on Windows and exposed an
+additional Codex defect on Linux: the first fixed reference hash represented the
+Windows CRLF checkout, rather than the Git LF blob. This failed closed but prevented
+Linux provenance controls from running. The follow-up separates the normalized
+reviewed source identity from the exact raw bytes staged into the worker. The
+committed Git blob and LF-normalized Windows file both hash to `539cf592...`;
+the raw Windows worker bytes retain `0df0ddc...`. A public regression proves both
+checkout newline forms are admitted, raw byte pins remain distinct, source changes
+are rejected, and the generic reference-adapter module has its own separate pin.
+Follow-up complete local run: **286 passed / 4 failed / 3 skipped**, 92.00 seconds.
+The newline/raw-pin regression and all new provenance controls pass. The four
+failures remain exactly the Muse omission/precedence blockers listed above.
+Exact follow-up Linux/Windows CI is checked after push and reported with its SHA.

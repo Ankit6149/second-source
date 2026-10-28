@@ -35,8 +35,9 @@ MAX_SUITE_BYTES = 1_000_000
 SUITE_VERSION = "1"
 _EFFECTS = {"add": SideEffect.LOCAL_MUTATION, "remove": SideEffect.LOCAL_MUTATION,
             "list": SideEffect.READ_ONLY, "total": SideEffect.READ_ONLY}
-# Reviewed original fixture, not an identity supplied by a candidate or caller.
-OWNED_REFERENCE_DIGEST = "sha256:0df0ddc164428c3c062d68f06bc5030cc8f2d5bfcec7a115611af940766384b9"
+# Reviewed Git source with LF line endings, independent of checkout conversion.
+# The raw worker bytes are separately pinned for the lifetime of each run.
+OWNED_REFERENCE_DIGEST = "sha256:539cf592cee4c22c9abfece562e258aecb2d887a6a48368fce3ebc081bdde832"
 
 
 class EvaluationBlocked(RuntimeError):
@@ -45,6 +46,10 @@ class EvaluationBlocked(RuntimeError):
 
 def _digest(raw: bytes) -> str:
     return "sha256:" + hashlib.sha256(raw).hexdigest()
+
+
+def _reference_identity(raw: bytes) -> str:
+    return _digest(raw.replace(b"\r\n", b"\n"))
 
 
 def _scope_digest(contract: ScopeContract) -> str:
@@ -305,8 +310,11 @@ def _code_pins() -> dict[str, str]:
     for name, path in (("reference", reference), ("public_manifest", public)):
         if path.is_symlink() or path.resolve() != path:
             raise EvaluationBlocked("Unsafe registered fixture path")
-        result[name] = _digest(path.read_bytes())
-    if result["reference"] != OWNED_REFERENCE_DIGEST:
+        raw = path.read_bytes()
+        result[name] = _digest(raw)
+        if name == "reference":
+            result["reference_identity"] = _reference_identity(raw)
+    if result["reference_identity"] != OWNED_REFERENCE_DIGEST:
         raise EvaluationBlocked("Original reference is not the reviewed pinned fixture")
     return result
 
@@ -550,7 +558,7 @@ class PinnedEvaluatorRun:
         if candidate.spec_digest != receipt["candidate_digest"]:
             raise EvaluationBlocked("Candidate origin digest mismatch")
         reference = OwnedLedgerReferenceAdapter(contract, limits=self._limits)
-        if reference.reference_digest != OWNED_REFERENCE_DIGEST:
+        if reference.reference_digest != self._pins["reference"]:
             raise EvaluationBlocked("Original reference pin mismatch")
         report = evaluate_sealed_suite(self._suite, contract, reference, candidate)
         self._check_frozen()
@@ -559,6 +567,7 @@ class PinnedEvaluatorRun:
         result.update(kind="PINNED_" + claim + "_EVALUATION", plan_digest=self.plan_digest,
                       origin=receipt, artifact_digest=_digest(artifact.payload), code_pins=dict(self._pins),
                       reference_identity=contract.target.reference_command_id,
+                      reference_source_digest=self._pins["reference_identity"],
                       origin_receipt_digest=_digest(_encode(receipt)),
                       approved_context_digest=self._approved_context_digest,
                       observation_registry_digest=plan["observation_registry_digest"],

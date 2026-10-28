@@ -19,7 +19,7 @@ from second_source.hypotheses import HypothesisStore, validate_batch
 from second_source.model_gateway import MetaProvider, MockProvider, ModelGateway, ModelRequest
 from second_source.g3_verification import (
     BrokerArtifact, EvaluationBlocked, PinnedEvaluatorRun, OWNED_REFERENCE_DIGEST,
-    _digest, _encode, _scope_digest, _admit_suite,
+    _digest, _encode, _scope_digest, _admit_suite, _reference_identity, _code_pins,
     load_sealed_suite, prepare_generation_request, seal_owned_ledger_suite,
 )
 
@@ -153,7 +153,8 @@ def test_pinned_control_receipt_exact_request_score_and_replay(approved_run):
     assert result["kind"] == "PINNED_TRUSTED_CONTROL_EVALUATION"
     assert result["evaluation"] == {"passed": 1, "failed": 0, "indeterminate": 0, "total": 1, "failure_categories": {}}
     assert result["origin"]["origin"] == "mock" and result["origin"]["real"] is False
-    assert result["reference_digest"] == result["code_pins"]["reference"] == OWNED_REFERENCE_DIGEST
+    assert result["reference_digest"] == result["code_pins"]["reference"]
+    assert result["reference_source_digest"] == result["code_pins"]["reference_identity"] == OWNED_REFERENCE_DIGEST
     assert result["suite_digest"] == suite.digest and result["plan_digest"] == run.plan_digest
     assert result["origin"]["request_digest"] == _digest(_encode(seen[0]))
     assert run.evaluate(origin) == result
@@ -292,6 +293,19 @@ def test_modified_original_is_rejected_at_freeze(approved_run, monkeypatch, cli_
     monkeypatch.setattr(g3_verification, "OWNED_REFERENCE_DIGEST", "sha256:" + "0" * 64)
     with pytest.raises(EvaluationBlocked, match="reviewed pinned fixture"):
         PinnedEvaluatorRun(suite, cli_scope, ledger=ledger, observation_digests=(digest,), hypotheses=store)
+
+
+def test_reference_source_identity_accepts_checkout_newlines_and_pins_exact_worker_bytes():
+    raw = (ROOT / "fixtures/owned_ledger/reference.py").read_bytes()
+    lf = raw.replace(b"\r\n", b"\n")
+    crlf = lf.replace(b"\n", b"\r\n")
+    assert _reference_identity(lf) == _reference_identity(crlf) == OWNED_REFERENCE_DIGEST
+    assert _digest(lf) != _digest(crlf)
+    pins = _code_pins()
+    assert pins["reference"] == _digest(raw)
+    assert pins["reference_identity"] == OWNED_REFERENCE_DIGEST
+    assert pins["reference_adapter"] == _digest((ROOT / "src/second_source/reference.py").read_bytes())
+    assert _reference_identity(lf + b"# changed source\n") != OWNED_REFERENCE_DIGEST
 
 
 def test_failed_attempt_consumes_ticket_and_does_not_issue_origin(approved_run):
