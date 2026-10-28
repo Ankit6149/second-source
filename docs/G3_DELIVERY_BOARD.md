@@ -1,128 +1,54 @@
-# Second Source - authoritative delivery board
+# Second Source — current delivery board
 
-**CURRENT - 28 October 2026.** This is the single current delivery board.
-Historical records are dated evidence, not continuation instructions. No
-engineering result grants input approval, model spending or a PR merge.
+**Current as of 28 October 2026.** Evidence first. This is the current status; older dated acceptance reports remain historical snapshots. The [Master PRD](MASTER_PRD.md) defines the full product, and the [submission runbook](HACKATHON_SUBMISSION_RUNBOOK.md) defines the external deliverables.
 
-## Consolidated engineering milestone
+## Source and engineering acceptance
 
-One G2 persistence implementation now uses the existing discovery loop,
-planner, gateway, evidence ledger and RunBudget, with a version-2 immutable
-journal. Muse's original-response/proposal visibility requirements, readable
-G3 progress/evaluation summaries, and Codex durability/preflight controls are
-combined. The legacy in-memory G2Recorder/one-final-manifest path is retired;
-there is no parallel persistence system or new orchestrator.
-
-Source/test checkpoint: `bc16552cf4c204bbe3f3fb8fb136353e898156fb`,
-combining Muse `c0e82b5`/`0849b48` and reviewed Codex `49fa288`/`3d1334e`
-through integration `d20765d`, with the final pending-accounting view fix. Existing branch
-`integrate/g3-reconstruct`, [PR #5](https://github.com/Ankit6149/second-source/pull/5),
-remains unmerged. Owner explicitly authorized consolidation; no new branch,
-force push, history rewrite, credential access or inference is authorized.
-
-**GO for zero-cost consolidated engineering; NO-GO for genuine reconstruction
-or product release.** Independent persistence18, input binding17 and inspector5
-hard cases pass. Exact source/test
-[CI 40701890631](https://github.com/Ankit6149/second-source/actions/runs/40701890631):
-
-| Platform | Full suite passed / failed / skipped | Other checks |
-|---|---|---|
-| [Linux / Python3.11](https://github.com/Ankit6149/second-source/actions/runs/40701890631/job/122863594820) | 425 / 0 / 3 | Fresh install and deterministic demo pass |
-| [Windows / Python3.12](https://github.com/Ankit6149/second-source/actions/runs/40701890631/job/122863595220) | 426 / 0 / 2 | Demo pass; fresh bootstrap repeats426/0/2, BOOTSTRAP_OK |
-
-Counts were independently read from both job logs, not implementation claims.
-Two real-smoke tests are intentionally unexecuted on both OS; Linux additionally
-skips the Windows-junction probe. No paid calls are needed for engineering GO.
-Documentation-only descendants require their own full exact-head CI; the
-final combined SHA/check links are recorded in the [PR #5 review](https://github.com/Ankit6149/second-source/pull/5#pullrequestreview).
-Prior zero-cost G3 acceptance at `936492dfa7c3eae4eb875e85f3619c30be11a22c`
-remains valid for that checkpoint only:
-[CI 40668775436](https://github.com/Ankit6149/second-source/actions/runs/40668775436),
-Linux352/0/3, Windows353/0/2 and bootstrap353/0/2 BOOTSTRAP_OK.
-
-## G2 acceptance conditions
-
-| Requirement | Consolidated behavior / evidence |
+| Checkpoint | Verified state |
 |---|---|
-| Missing receipts invalidate completeness | Original response, ordered dispatch/result receipts, terminal counters and external receipt witness are cross-checked; removed receipts block inspection/export |
-| Final status cannot substitute model input | First registered original statement/citations/alternatives are immutable; statuses are independently replayed from archived predictions and actual observations |
-| Later failure preserves earlier discovery | Each original response/batch is durable before proposal dispatch; failure/interruption retains prior hypotheses and exact known/uncertain accounting, remains incomplete, cannot export |
-| Stable scope/approval pins | One canonical serializer sorts unordered contract collections; three-process hash-seed and credential/provider/reference sentinels pass |
-| Actual experiment provenance | Completed rounds bind unique proposal IDs, full action sequence, observation IDs/order/bytes and post-proposal timing; unknown/replayed evidence is rejected |
-| Durable publication | Shared fsynced staging + exclusive no-clobber publication; exact response text/hash, create-once events/receipt and externally retained witness |
-| Offline recovery | Read-only inspection/status restoration; no automatic execution resume or unapproved retry; incomplete archives never supply G3 input |
-| Pending exposure | Thin inspection shows pending attempt/reserved uncertainty separately from settled accounting; hard interrupted-dispatch regression |
-| G2 -> G3 | External G2 witness, exact complete original batch/ledger/digests and target/reference pins feed the existing G3 preflight and bound mock; real mode rejects mock before key access |
+| [PR #5](https://github.com/Ankit6149/second-source/pull/5) | Merged at \`bc9f9c11bb029a99ee3aa022749f266355aaa7e1\`, one G2 discovery journal, zero-cost G2 → G3 workflow. Main CI [40722455069](https://github.com/Ankit6149/second-source/actions/runs/40722455069) succeeded Linux425/0/3, Windows426/0/2 plus bootstrap |
+| [PR #6](https://github.com/Ankit6149/second-source/pull/6) | Merged at \`ceb28b6f2f2292f75f766fbd3fbefc0822cfef98\`, additive broker diagnostic preservation. [Exact PR-head CI](https://github.com/Ankit6149/second-source/actions/runs/40736323555) succeeded Linux428/0/3, Windows429/0/2 + bootstrap. Review/negative probes passed. |
+| [PR #7](https://github.com/Ankit6149/second-source/pull/7) | New read-only operator/evidence console and smoke tests. Separate review/CI required before claiming UI acceptance or merging |
+| Cost/auth boundary | No merge or demo action grants further real model attempts, repair or paid retries |
 
-All seven original G3 verifier regressions and positive/offline25/25 and
-negative sensitivity2/2/1 remain unchanged gates. The naive standalone mock
-scores22/25; none of these is an AI reconstruction result. See the
-[consolidation review](G2_PERSISTENCE_REVIEW.md) and
-[execution approval package](G2_G3_APPROVAL_PACKAGE.md) for provenance and
-reproducible commands. The Master PRD and G3 contract remain authoritative.
+A passing test suite certifies tested contracts, **not real reconstruction quality**. The complete project is not released.
 
-Fresh CLI demonstration at this source: `codex-g2-final-20261028T140316Z-fe8cbe99`
-completed G2 discovery (3 observations, 2 mock receipts), offline witness-bound
-reload/export, both zero-call preflights, and G3 bound mock using those exact
-inputs. Result22 passed/3 failed/0 indeterminate/25; one mock generation
-attempt,1774 input/236 output synthetic tokens, estimated/uncertain USD0.
-Full hashes are in the approval package. Complete mock remains
-`approvable=false`, `real_input_eligible=false`, real provider calls0.
+## Actual model work — do not confuse with scripted controls
 
-## Current delivery matrix
+**Genuine G2:** Fresh 28 October operator discovery \`real-g2-20261028T163538Z-fd60310f\` recorded 3 original hypotheses, 5 hash-valid observations, a 3-action model-selected experiment, and 2 genuine \`meta-direct / muse-spark-1.3\` receipts. Usage 2809 input / 2347 output, receipt-derived estimated \`$0.013486\`, uncertain \`$0\`. The independent local review reports validated original-batch/citation and external receipt association. This evidence is local and not a provider-signed billing attestation; the prior 27 October incomplete run remains historical, not recovered.
 
-| Item | Current status | Remaining gate |
-|---|---|---|
-| G2 persistence/preflight | One journal, independently reviewed, full cross-platform CI green | Owner engineering review; separate real G2 authorization |
-| Historical genuine G2 | Four retained reports/11 observations audited; successful run has five hash-valid observations and recorded model receipts | Original statements/citations/response bodies were not retained; recover authentic contemporaneous export or separately approve a NEW discovery |
-| G3-A/B/D | Candidate DSL, strict sealed evaluator and CLI workflow delivered; accepted zero-cost checkpoint preserved | Actual authentic-input approval and genuine Meta-generated candidate/independent score |
-| G3-C | Optional bounded repair support only; operator repair deferred | Genuine baseline first, separate authorization, at most2 attempts/unchanged suite/aggregate feedback |
-| Product/demo/submission | Local CLI/report workflow; readable progress/results retained | Genuine result, complete sanitized evidence/demo/video and submission; premium UI not certified |
+**Genuine G3:** One separately authorized attempt on the above inputs \`real-g3-from-g2-20261028T164126Z-8ee4d156\`: 3314 input / 1456 output tokens, estimated \`$0.0103305\`, uncertain \`$0\`, outcome \`broker_failed\` **before candidate admission**. No candidate was scored and no repair lift exists. The precise provider/model failure reason was lost by the earlier reporting path. PR #6 saves future sanitized codes and response IDs but does not explain/recover that consumed attempt. No automatic retry, second paid call or repair authorized.
 
-PRs #3/#4 are already merged; main is the earlier foundation at
-`9c8bcc4eba5e8bf4b1b3e5dfc75273c2eb0ea203`. PR #5 must not be merged without
-separate owner authorization. Earlier c0e82b5 CI358/0/3 Linux359/0/2 Windows
-was green but did not cover four reproduced G2 defects; it is historical, not
-consolidation acceptance. Local49fa288/3d1334e were inputs to consolidation,
-not a competing supported release.
+**NON_AI engineering controls:** scripted negative/naive candidate 22 passed / 3 failed / 0 indeterminate out of 25; hand-authored trusted positive 25/25; deliberate negative sensitivity 2/2/1. These are deliberately not framed as Meta model quality.
 
-## Real-run and product verdict: NO-GO
+## Hackathon acceptance by outcome
 
-1. Complete owner engineering review of the exact-head evidence; PR merge
-   remains separately authorized.
-2. Recover an authentic historical original export if one exists outside the
-   bounded audit; never reconstruct it from IDs. Otherwise seek separate
-   approval for one NEW G2 discovery against the reviewed G2 preflight pin.
-3. Proposed new G2: one round, at most3 Meta attempts (hypothesize/propose plus
-   at most1 guarded correction), application allowance<=USD0.25. Preserve all
-   original batches/response IDs/bytes/citations, usage and failures. No ping,
-   automatic provider-failure retry or repair is included.
-4. Independently authenticate the new complete input package, run G3 zero-call
-   preflight against its actual ledger/batch, and approve exact context/scope/
-   budget/suite/reference/code pins. A mock digest never approves real input.
-5. Separately approve one genuine G3 generation, allowance<=USD0.50, no repair.
-   Archive exact candidate/broker bytes, score the unchanged sealed suite and
-   report passed/failed/indeterminate/total honestly. Estimates and uncertain
-   amounts are not provider-confirmed billing or a guaranteed invoice cap.
+| Priority | Demo/PRD deliverable | State | Exact next condition |
+|---|---|---|---|
+| P0 | Authorized black-box reference and guard | Implemented, tested | Show real action/policy denial with recorded event IDs |
+| P0 | Model-driven active discovery and evidence | **One genuine G2 success observed** | Create sanitized, independently inspectable judge-facing trace without raw private response disclosure |
+| P0 | Genuine candidate synthesis | **FAILED before admission** | A *new separately authorized* real candidate must be admitted, executed and archived. No mock relabeling |
+| P0 | Independent model-generated behavior score | **NOT MEASURED** | Exact frozen suite score with numerator, denominator, failures, indeterminate and origin receipt |
+| P0 | Product investigation/results experience | Read-only responsive UI in PR #7, not yet certified | Review responsive/keyboard/import/export and integrate with genuine sanitized report |
+| P0 | Public reproducibility / originality / video / submission | In progress, not submitted | Validated judge package, <=180-second video and submission confirmation |
+| P1 | Model-led bounded repair and improvement delta | Not demonstrated | Only after real baseline, same unchanged evaluator, separate authorization |
+| P1 | API/web second target, hosted orchestration | Not demonstrated | Only after first real score and demo, or explicitly mark deferred |
+| P2 | Generalized cloud/multi-target feature breadth | Deferred | Outside current critical path |
 
-## Quality and deadline risk
+## Immediate execution order
 
-- P0 release: authentic complete G2 input, genuine G3 measured baseline and
-  final submission/video do not exist. Engineering green cannot replace them.
-- P1 product: CLI-only experience, no certified polished responsive UI, no
-  automatic interrupted execution resume and no single command for the whole
-  approved genuine workflow. Raw private response archives are not automatic
-  sanitized public exports. G3 fine-grained broker-failure taxonomy is limited.
-- P2 deferred: optional repair, web/second adapter, cloud breadth and cosmetics.
-  Keep focus on the authentic single-CLI result and demonstration.
+1. Finish exact post-merge main CI and review demo-console PR #7; keep any public sample labels honest and private sealed inputs off the web.
+2. Revalidate zero-call G3 preflight on **actual merged main execution bytes** with genuine G2 witness, exact original batch, external sealed suite and all corresponding pins. Previously supplied local preflight from PR #6 source is not a substitute for the new checkout.
+3. Diagnose schema/candidate-admission risks using **nonbillable** tests. Do not run the provider to discover a failure category without owner authorization.
+4. Seek a **separate owner decision** for one new G3 synthesis (proposed allowance <=$0.50, single attempt, max2000 output, no repair), then independently score and archive the true outcome. This is an application spending bound, *not guaranteed provider billing*.
+5. Finish console/claim mapping to genuine sanitized evidence; record a truthful demo and submit early.
 
-Local hashes are integrity evidence, not provider attestations; keep receipt
-witnesses outside mutable archives. Filesystem power-loss guarantees and
-arbitrary generated-code OS sandboxing are not certified. Legacy final G2
-manifests and version-1 local mock journals cannot be silently promoted to
-version-2 authentic evidence. Source/OS/manifest changes need fresh preflight.
+**Cut rule:** Drop P2 and any unproven repair/second-surface scenes before dropping the honest Meta causal chain, independent scoring, redaction or submission.
 
-Target submission early Nov4 IST; the recorded PRD cutoff is Nov5,07:30 IST.
-Reconfirm organizer requirements before submission. Provenance remains on the critical path;
-reduce optional breadth if needed, never evidence integrity or honest scores.
-This phase: genuine calls0, estimated spendUSD0, uncertain spendUSD0.
+**Deadline from PRD:** 2026-11-05 02:00 UTC / 07:30 IST. Target submission on Nov 4 IST.
+
+## Accounting/limitations
+
+Existing new runs' receipt-based combined estimated G2+G3 model charges: **USD0.0238165** for successful G2 and failed G3 alone; including the separate earlier incomplete G2 attempt of \`$0.00455525\`, the reported new-series total is \`$0.02837175\` (not provider-confirmed billing). The old 27 October run is separate.
+
+No client-side HTML viewer proves input attestation; signed provider truth, unredacted archive access, auto resume, cloud background operation, arbitrary-code sandbox and universal clone equivalence are not claimed. Live status events and one-click portable authenticated evidence archive remain unimplemented beyond CLI/read-only projections.

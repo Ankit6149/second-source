@@ -1,47 +1,26 @@
-# Second Source · scope-aware behavioral reconstruction
+# Second Source · evidence-backed software reconstruction
 
-Second Source studies an explicitly authorized black-box program, forms
-evidence-linked hypotheses, generates a scoped independent candidate and
-compares its behavior with a separate withheld evaluator.
+**An AI scientist for authorized software behavior:** observe a black box, form evidence-linked hypotheses, run controlled experiments, generate a scoped independent candidate, and measure it against a withheld evaluator.
 
-**Current status — 28 October 2026:** the consolidated zero-cost G2/G3 workflow
-is independently verified at `bc16552cf4c204bbe3f3fb8fb136353e898156fb`:
-[Linux/Windows CI](https://github.com/Ankit6149/second-source/actions/runs/40701890631)
-passes (425/0/3 Linux,426/0/2 Windows), including fresh Windows bootstrap.
-Earlier `936492d` is the accepted historical G3 checkpoint. The workflow is in open, unmerged
-[PR #5](https://github.com/Ankit6149/second-source/pull/5) on the existing
-`integrate/g3-reconstruct` branch. PRs #3/#4 are merged; `main` contains
-the earlier foundation at `9c8bcc4eba5e8bf4b1b3e5dfc75273c2eb0ea203`.
+## Current outcome — 28 October 2026
 
-G2 persistence is now consolidated on that existing branch: one immutable
-journal, pinned offline reload/export and credential-free G2 preflight. Muse's
-readable progress and evaluation summaries are retained. Source/test checkpoint
-`bc16552cf4c204bbe3f3fb8fb136353e898156fb` has independent G2 review and
-full exact-source CI. See the [review](docs/G2_PERSISTENCE_REVIEW.md)
-and [approval package](docs/G2_G3_APPROVAL_PACKAGE.md). The earlier overlapping
-implementations are historical, not separate supported paths.
+- **Engineering:** merged PR [#5](https://github.com/Ankit6149/second-source/pull/5) at \`bc9f9c11\`, including one durable G2 journal and a sealed, bounded G3 evaluation workflow. Merged PR [#6](https://github.com/Ankit6149/second-source/pull/6) at \`ceb28b6\`, preserving sanitized future broker failure diagnostics. The latest PR #6 head passed cross-platform CI; post-merge main CI is tracked separately.
+- **Genuine Meta G2:** an operator-run discovery on 28 October recorded 3 original hypotheses, 5 observations, 1 model-selected experiment and 2 real Muse Spark 1.3 responses. Independently audited local receipt estimates: USD \`0.013486\`, not provider-confirmed charges. Original evidence and the externally witnessed receipt remain local, not checked into this public repo.
+- **Genuine Meta G3:** one authorized real synthesis attempt consumed, estimated \`$0.0103305\`; failed **before candidate admission**, with no independent model-generated score. Its exact rejection category was not preserved by that old run. The PR #6 diagnostic fix cannot retroactively recover it. No second paid attempt or repair is authorized by a merge.
+- **NON_AI controls:** scripted candidate \`22/25\` on the sealed suite, trusted hand-authored positive \`25/25\`, negative sensitivity \`2/2/1\`. **None represents real Muse reconstruction quality.**
+- **Operator experience:** [read-only demo console](demo/) in [PR #7](https://github.com/Ankit6149/second-source/pull/7), showing real/mock status, local report import, evidence counts, score/no-score and sanitized summary download. This does not dispatch real inference, start/stop runs or export an independently signed complete evidence bundle.
+- **Submission:** Not submitted. A scored genuine G3 candidate, full product UI acceptance, judge video and final public reproducibility remain outstanding.
 
-**Real G3 reconstruction remains NO-GO.** A historical G2 run has locally
-audited observations and recorded real Meta response IDs, but its original
-hypothesis statements/citations were not retained. No genuine G3 candidate,
-real score or repair lift exists. Recover authentic inputs or separately
-authorize a correctly recorded G2 discovery before seeking G3 approval.
-
-The [delivery board](docs/G3_DELIVERY_BOARD.md) is the single current status
-source, with exact evidence, remaining gates and severity-ranked risks.
-The [Master PRD](docs/MASTER_PRD.md) and
-[implementation contract](docs/G3_IMPLEMENTATION_CONTRACT.md) define the
-product; a passing mock suite does not mean the full product is complete.
+The canonical product contract is [docs/MASTER_PRD.md](docs/MASTER_PRD.md). Current engineering/result evidence and remaining release gates are in [docs/G3_DELIVERY_BOARD.md](docs/G3_DELIVERY_BOARD.md). The [submission runbook](docs/HACKATHON_SUBMISSION_RUNBOOK.md) remains a checklist, not evidence of completion.
 
 ## Reproduce the verified engineering workflow
 
-Use Python 3.11+ and the reviewed source checkpoint, rather than assuming
-the open PR is already in `main`:
+Use Python 3.11+ and a frozen, reviewed `main` checkpoint:
 
 ```sh
 git clone https://github.com/Ankit6149/second-source.git
 cd second-source
-git checkout --detach bc16552cf4c204bbe3f3fb8fb136353e898156fb
+git checkout --detach ceb28b6f2f2292f75f766fbd3fbefc0822cfef98
 python -m venv .venv
 # Linux: . .venv/bin/activate
 # PowerShell: .\.venv\Scripts\Activate.ps1
