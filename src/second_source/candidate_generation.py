@@ -18,9 +18,10 @@ remain physically outside the generation path.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
-from typing import Any, Literal, Sequence
+from typing import Any, Literal, Mapping, Sequence
 
 from .candidate_spec import LoadedCandidate, load_candidate
 from .contracts import Observation, ScopeContract, StrictModel
@@ -342,6 +343,9 @@ def request_candidate_spec(
     gateway: ModelGateway,
     *,
     max_output_tokens: int = 2000,
+    contract: ScopeContract | None = None,
+    public_manifest_digest: str | None = None,
+    approved_evidence: Mapping[str, dict[str, Any]] | None = None,
 ) -> tuple[dict[str, Any], GenerationReceipt]:
     """Ask the model for ONE CandidateSpec.
 
@@ -349,24 +353,25 @@ def request_candidate_spec(
     parsed spec dict (STILL UNVALIDATED — caller must run load_candidate)
     plus a receipt whose origin derives from the response's real flag.
     """
-    safe_context = _validate_context_shape(context)
-    response = gateway.generate(
-        ModelRequest(
-            stage=SYNTHESIZE_STAGE,
-            messages=(
-                {"role": "system", "content": SYNTHESIZE_SYSTEM},
-                {
-                    "role": "user",
-                    "content": json.dumps(
-                        safe_context, sort_keys=True, default=str
-                    ),
-                },
-            ),
-            json_schema=CANDIDATE_JSON_SCHEMA,
-            max_output_tokens=max_output_tokens,
-            prompt_version=SYNTHESIZE_PROMPT_VERSION,
+    pinned = (contract is not None, public_manifest_digest is not None,
+              approved_evidence is not None)
+    if any(pinned) and not all(pinned):
+        raise GatewayError(
+            "synthesize: provenance pins must be supplied together"
         )
+    if contract is not None:
+        safe_context = validate_context_against_pins(
+            context,
+            contract=contract,
+            public_manifest_digest=public_manifest_digest,
+            approved_evidence=approved_evidence,
+        )
+    else:
+        safe_context = _validate_context_shape(context)
+    request = build_synthesize_request(
+        safe_context, max_output_tokens=max_output_tokens
     )
+    response = gateway.generate(request)
     if response.parsed is None:
         raise GatewayError("synthesize: model returned no parsed object")
     if not isinstance(response.parsed, dict):
@@ -390,3 +395,156 @@ def validate_generated_spec(
     """Load a generated spec and stamp the receipt digest. Origin untouched."""
     loaded = load_candidate(spec_dict, contract)
     return loaded, receipt.model_copy(update={"spec_digest": loaded.digest})
+
+
+"""G3-D provenance binding (Muse-owned generation side).
+
+The model-bound context is only as trustworthy as its provenance. A
+caller-supplied mapping is NOT authentic provenance by itself: the
+trusted orchestrator must build the approved evidence registry from
+`EvidenceLedger` redacted views (`model_view`), pin the exact authorized
+public command manifest via `pin_public_manifest`, and pass the run's
+`ScopeContract`. These helpers verify the presented context against those
+pins and build the EXACT `ModelRequest` the credential-owning broker
+(the `ModelGateway`) sends, so an inspector can capture and compare the
+wire request before any billable call. This module still performs no file
+or credential access of its own.
+"""
+
+
+def _canonical_bytes(value: Any) -> bytes:
+    return json.dumps(
+        value, sort_keys=True, separators=(",", ":"),
+        ensure_ascii=False, allow_nan=False,
+    ).encode("utf-8")
+
+
+def pin_public_manifest(manifest: dict[str, Any]) -> str:
+    """Digest the exact authorized public command manifest (context form)."""
+    if not isinstance(manifest, dict):
+        raise GatewayError("synthesize: public manifest must be an object")
+    return hashlib.sha256(_canonical_bytes(manifest)).hexdigest()
+
+
+def expected_scope_projection(contract: ScopeContract) -> dict[str, Any]:
+    """The one scope projection a context bound to this contract may carry."""
+    return {
+        "goal": contract.goal,
+        "requirement_ids": sorted(contract.implementation.requirements),
+        "allowed_commands": sorted(contract.observation.allowed_commands),
+        "excluded_subsystems": sorted(contract.exclusions.subsystems),
+    }
+
+
+def build_synthesize_request(
+    safe_context: dict[str, Any], *, max_output_tokens: int = 2000
+) -> ModelRequest:
+    """Build the exact provider-bound synthesize request for an admitted context.
+
+    The returned object is the inspected message/schema payload handed to
+    the credential-owning broker (`ModelGateway`), which delivers it with
+    only its documented deterministic schema-preamble prepended. Inspectors
+    (including the evaluator-owned generation gate) capture the wire value
+    and prove the admitted messages/schema travel through unmodified.
+    """
+    return ModelRequest(
+        stage=SYNTHESIZE_STAGE,
+        messages=(
+            {"role": "system", "content": SYNTHESIZE_SYSTEM},
+            {
+                "role": "user",
+                "content": json.dumps(
+                    safe_context, sort_keys=True, default=str
+                ),
+            },
+        ),
+        json_schema=CANDIDATE_JSON_SCHEMA,
+        max_output_tokens=max_output_tokens,
+        prompt_version=SYNTHESIZE_PROMPT_VERSION,
+    )
+
+
+def validate_context_against_pins(
+    context: dict[str, Any],
+    *,
+    contract: ScopeContract,
+    public_manifest_digest: str,
+    approved_evidence: Mapping[str, dict[str, Any]],
+) -> dict[str, Any]:
+    """Admit a context only if it matches the pinned contract/manifest/registry.
+
+    Returns the redacted model-safe context. Raises `GatewayError` when the
+    scope projection differs from the contract, the public manifest digest
+    mismatches, or any evidence view is absent from (or differs from) the
+    ledger-backed approved registry. Digest syntax alone never passes: every
+    view's observation bytes must equal the registry entry byte for byte.
+    """
+    safe = _validate_context_shape(context)
+    if safe["scope"] != expected_scope_projection(contract):
+        raise GatewayError(
+            "synthesize: generation scope is not the pinned contract projection"
+        )
+    if (
+        not isinstance(public_manifest_digest, str)
+        or re.fullmatch(r"[0-9a-f]{64}", public_manifest_digest) is None
+    ):
+        raise GatewayError("synthesize: malformed pinned manifest digest")
+    if pin_public_manifest(safe["public_commands"]) != public_manifest_digest:
+        raise GatewayError(
+            "synthesize: public manifest does not match the pinned manifest"
+        )
+    if not isinstance(approved_evidence, Mapping):
+        raise GatewayError("synthesize: approved evidence must be a mapping")
+    for view in safe["evidence"]:
+        approved = approved_evidence.get(view["digest"])
+        if not isinstance(approved, dict):
+            raise GatewayError(
+                "synthesize: generation evidence is not approved registry evidence"
+            )
+        if _canonical_bytes(view["observation"]) != _canonical_bytes(approved):
+            raise GatewayError(
+                "synthesize: generation evidence differs from the approved registry"
+            )
+    return safe
+
+
+def build_generation_report(
+    *,
+    receipt: GenerationReceipt,
+    scope_digest: str,
+    public_manifest_digest: str,
+    evidence_digests: Sequence[str],
+    spec_digest: str = "",
+) -> dict[str, Any]:
+    """Sanitized generation report: digests and receipt metadata only.
+
+    Carries no prompts, observations, credentials, hidden cases, or reference
+    material. `kind` marks it as generation provenance, never an evaluation
+    score. Raises `GatewayError` on malformed digests (fail closed).
+    """
+    if not isinstance(scope_digest, str) or not scope_digest:
+        raise GatewayError("synthesize: malformed scope digest")
+    if re.fullmatch(r"[0-9a-f]{64}", public_manifest_digest or "") is None:
+        raise GatewayError("synthesize: malformed manifest digest")
+    digests = list(evidence_digests or [])
+    if not digests or any(
+        not isinstance(d, str) or re.fullmatch(r"[0-9a-f]{64}", d) is None
+        for d in digests
+    ):
+        raise GatewayError("synthesize: malformed evidence digests")
+    stamped = spec_digest or receipt.spec_digest
+    if stamped and not stamped.startswith("sha256:"):
+        raise GatewayError("synthesize: malformed spec digest")
+    return {
+        "kind": "GENERATION_REPORT_NOT_EVALUATION",
+        "origin": receipt.origin,
+        "real": receipt.real,
+        "provider": receipt.provider,
+        "model": receipt.model,
+        "response_id": receipt.response_id,
+        "prompt_version": receipt.prompt_version or SYNTHESIZE_PROMPT_VERSION,
+        "spec_digest": stamped,
+        "scope_digest": scope_digest,
+        "public_manifest_digest": public_manifest_digest,
+        "evidence_digests": sorted(digests),
+    }
