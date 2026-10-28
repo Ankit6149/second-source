@@ -1,4 +1,7 @@
 # SECOND SOURCE
+
+**Status pointer - 29 October 2026 IST.** Use the [single current delivery board](G3_DELIVERY_BOARD.md) for exact published SHA/CI, both consumed real G3 attempts, evidence and backend acceptance. This document does not authorize inference, credentials or deployment. Product requirements remain normative; ADR-009 records updated owner-authorized engineering merge policy.
+
 ## Master Product Requirements, Research, Architecture & Execution Bible
 
 **Document ID:** SS-PRD-001  
@@ -219,7 +222,7 @@ Comparison criteria to verify in future research: black-box-only mode; support f
 
 ## 4.4 Deliberate exclusions through Nov 4
 
-Native desktop observation on Windows/macOS/Linux; arbitrary commercial site cloning; mobile app binary decompilation; authenticated third-party target crawling; payment-system interaction; multi-tenant SaaS; training or fine-tuning foundation models; Kubernetes; self-hosted GPUs; long-term autonomous product-market operations; browser exploit tooling; distributed multi-agent swarms; automatic merges, deployments or credit card use without approval.
+Native desktop observation on Windows/macOS/Linux; arbitrary commercial site cloning; mobile app binary decompilation; authenticated third-party target crawling; payment-system interaction; multi-tenant SaaS; training or fine-tuning foundation models; Kubernetes; self-hosted GPUs; long-term autonomous product-market operations; browser exploit tooling; distributed multi-agent swarms; unreviewed merges, deployments or credit card use without approval (ADR-009 defines bounded standing engineering authorization).
 
 **Scope rule:** P1 and P2 may start only after P0's real inference loop and withheld evaluator pass. Defer web UI polish if engine validity is still blocked on Oct 30.
 
@@ -623,7 +626,7 @@ flowchart TD
 
 **ADR-008 — No Playwright:** direct CDP for browser capture; record CDP version compatibility and use an integration contract so alternatives remain possible later.
 
-**ADR-009 — No automatic merges:** AI development workers may push task branches/PRs but cannot modify protected main or publish real deployment without owner approval.
+**ADR-009 - Reviewed engineering integration (updated 29 October 2026 IST):** The [owner backend directive](https://github.com/Ankit6149/second-source/issues/2#issuecomment-6477673246) and subsequent parallel-engineering instruction grant standing authorization for routine engineering PR merges only after green exact-head Linux/Windows CI, independent review and repository protections. Use file-disjoint short-lived branches and serialize integration. This supersedes the earlier blanket agent-merge prohibition. No protection bypass, self-review of security-critical changes, paid inference/retries, credential operations, live deployment or material scope expansion is authorized. Those operations need separate explicit owner approval. A merge never grants spending.
 
 **ADR-010 — Explicit experiment limits:** treat the $150 promotional Meta grant as *pending* until billing confirms, and enforce app-level kill limits even after it arrives.
 
@@ -691,7 +694,7 @@ GitHub is the system of record for code, issues, milestones, releases and signed
 
 **Never confuse these jobs:** a coding agent continuing in the cloud is not the same as Second Source's internal reconstruction worker. The former produces repo changes; the latter runs investigations for end users. Maintain separate credentials, budgets and audit trails.
 
-**GitHub permissions:** minimal repo token; branch protections on `main`, owner review required, forbid force pushes to `main`, least-permission Actions tokens; only workflow changes after review. Avoid proliferating abandoned branches: one issue/one branch/one PR, delete after merge; agent may not auto-merge or rewrite history.
+**GitHub permissions:** minimal repo token; branch protections on `main`, required independent review, forbid force pushes to `main`, least-permission Actions tokens; workflow changes only after review. Avoid abandoned branches: one bounded task/one branch/one PR, delete after merge. Routine merges follow ADR-009; no history rewriting or protection bypass.
 
 **CI constraint:** GitHub-hosted Actions jobs have a six-hour execution limit; do not host an always-on agent there. This project should not depend on a costly matrix CI to prove a first demo. Local deterministic commands plus selected CI smoke checks are acceptable, and every skipped CI check must be disclosed. [S23]
 
@@ -1580,8 +1583,7 @@ Potential buyers are modernization and QA teams rather than casual website cloni
 | OQ-13 | **OPEN** | License for generated candidate outputs and app repo | Choose permissive license only after asset review | Rights confusion |
 | OQ-14 | **OPEN** | Whether agent coordinator is worth shipping within event | Defer if P0 late; local run can prove core | Schedule overrun |
 
-**Decisions already made [DEC]:** the product is general behavioral reconstruction (not website clone); Meta models must be central; controlled test targets only; reference source/gold test isolation; P0 CLI/API with web P1; Python core, Next.js UI, CDP bridge, optional cloud worker; no Playwright; always-on availability requires cloud worker + durable state; no unapproved spend or merge; all numerical scores must come from real runs.
-
+**Decisions already made [DEC]:** the product is general behavioral reconstruction (not website clone); Meta models must be central; controlled test targets only; reference source/gold test isolation; P0 CLI/API with web P1; Python core, Next.js UI, CDP bridge, optional cloud worker; no Playwright; always-on availability requires cloud worker + durable state; no unapproved spend or unreviewed merge (ADR-009 defines standing engineering authorization); all numerical scores must come from real runs.
 
 # 25. Bibliography, authoritative references and evidence labeling
 
@@ -2547,7 +2549,7 @@ A `doctor` command reports Python/Node versions, Docker or Modal availability, m
 
 ## 42.4 Git branching and unattended agent rules
 
-For every task use branch `feat/SS-###-slug` or `fix/SS-###-slug`, attach issue and acceptance gates, add tests, commit coherent changes and open PR. Do not spawn new branches automatically without an issued task. No speculative cross-cutting refactor or sweeping dependency upgrades. Cloud coding agents may implement and self-test on isolated branch; PR merge and deployment require an explicit owner action. When two agents touch a shared contract, appoint one contract owner and block concurrent schema changes until review.
+For every task use branch `feat/SS-###-slug` or `fix/SS-###-slug`, attach issue and acceptance gates, add tests, commit coherent changes and open PR. Do not spawn new branches automatically without an issued task. No speculative cross-cutting refactor or sweeping dependency upgrades. Cloud coding agents may implement and self-test on isolated branch; routine PR merge follows ADR-009 standing authorization; deployment still needs separate owner approval. When two agents touch a shared contract, appoint one contract owner and block concurrent schema changes until review.
 
 ## 42.5 Definition of Done by work item
 
@@ -2812,7 +2814,7 @@ The above is a schema **example**, not a run result. In code, validation rejects
 
 The user is the **product owner and security/spend approver**. A cloud coding agent is an **implementer**, allowed to prepare limited diffs and run tests in isolated workspaces. A separate review task is the **verifier**, allowed to inspect diffs and reproduce tests without modifying the candidate branch during review. CI/local scripts are **mechanical gates**, not independent signers of behavioral correctness. This separation applies even when a single human uses multiple coding providers: roles are defined by **permissions and workspaces**, not by different character names in a prompt.
 
-**Default discipline:** no merge by agent; no new API subscription by agent; no deployment or privilege escalation without owner approval; no exposing API keys in issue text, commits, traces or chat; no direct writes to production reference state. If cloud agents cannot execute autonomously under these controls, pause safely instead of enlarging privileges.
+**Default discipline:** routine engineering merges only under ADR-009 exact-head CI/independent-review/protection gates; no new API subscription by agent; no deployment or privilege escalation without owner approval; no exposing API keys in issue text, commits, traces or chat; no direct writes to production reference state. If cloud agents cannot execute autonomously under these controls, pause safely instead of enlarging privileges.
 
 ## 47.2 Task specification and Definition of Ready
 

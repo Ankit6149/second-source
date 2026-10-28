@@ -1,15 +1,10 @@
 # G2 Acceptance Log — Real Meta-powered behavioral discovery
 
-## CURRENT provenance and consolidation notice - 28 October 2026
+**Status pointer - 29 October 2026 IST.** Use the [single current delivery board](G3_DELIVERY_BOARD.md) for exact published SHA/CI, both consumed real G3 attempts, evidence and backend acceptance. This document does not authorize inference, credentials or deployment.
 
-Use the [single delivery board](G3_DELIVERY_BOARD.md) and
-[approval package](G2_G3_APPROVAL_PACKAGE.md) for current engineering state.
-The version-2 journal consolidates the two persistence drafts; full exact-head
-cross-platform acceptance is tracked there. The historical operational report
-below does not establish complete authentic G3 input: original hypothesis
-statements/citations/response bodies were not retained. A new authentic
-export or separately approved NEW discovery is required; never recreate old
-statements from identifiers. No model spending or PR merge is authorized.
+## CURRENT provenance notice - 29 October 2026 IST
+
+Use [delivery board](G3_DELIVERY_BOARD.md) and [approval package](G2_G3_APPROVAL_PACKAGE.md). A new complete genuine G2 `real-g2-20261028T163538Z-fd60310f` retained 3 original hypotheses, 5 observations, one 3-action experiment and 2 real receipts; original witness/batch/observations independently rechecked. This does not recover missing 27 October statements. Version-2 journal is the single persistence path. Both subsequent G3 grants consumed, no candidate/score; no further paid action authorized.
 
 ## ARCHIVED historical operational checkpoint
 

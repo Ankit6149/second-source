@@ -1,10 +1,12 @@
 # G2 persistence follow-up: independent evidence
 
+**ARCHIVED source-specific record.** Earlier CURRENT headings, holds, branch/merge directions and counts below apply only to their dated checkpoint. Use the [single current delivery board](G3_DELIVERY_BOARD.md) for exact published SHA/CI, both consumed real G3 attempts, evidence and backend acceptance. This document does not authorize inference, credentials or deployment.
+
 28 October 2026. This records a bounded follow-up, not another delivery board.
 The [authoritative board](G3_DELIVERY_BOARD.md) owns project readiness.
 No merge, input approval or model spending is authorized here.
 
-## CURRENT consolidation
+## ARCHIVED consolidation checkpoint
 
 Owner authorized consolidation on the existing shared branch. Source/test
 checkpoint `bc16552cf4c204bbe3f3fb8fb136353e898156fb` contains one version-2
@@ -28,7 +30,7 @@ eligibility. Independent final inspector+persistence23 passed with no skips.
 Exact-source [CI40701890631](https://github.com/Ankit6149/second-source/actions/runs/40701890631)
 is green: Linux425 passed/0 failed/3 skipped; Windows426/0/2 with bootstrap
 426/0/2 and BOOTSTRAP_OK. Both demos pass. All seven original G3 verifier
-files are byte-unchanged from936492d; NON_AI25/25 and2/2/1 remain hard.
+files are byte-unchanged from936492d; NON_AI 25/25 and 2/2/1 remain hard.
 Documentation-only descendants receive their own exact-head CI and final
 review; use the board/PR for that final combined head.
 
@@ -54,7 +56,7 @@ calls, credentials, PR merge or spending approval were used. Converged source
 was published by ordinary fast-forward pushes with serialized ownership;
 no branch or history rewrite was used. Full CLI mock demonstration completed
 at the source above: G2 reload/export -> zero-call preflights -> bound G3
-mock22/25, no substituted observations/hypotheses. All output remains NON_AI.
+mock 22/25, no substituted observations/hypotheses. All output remains NON_AI.
 
 ## ARCHIVED pre-consolidation comparison
 
