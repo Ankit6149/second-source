@@ -8,9 +8,12 @@ remains NO-GO. **Track:** Indie developer (project planning choice).
 
 ## Current evidence and submission stop
 
-Verified source `af477b2daf0b676ad49be3959bcd28de868f76be`,
-[CI 40666652416](https://github.com/Ankit6149/second-source/actions/runs/40666652416):
-Linux 352/0/3, Windows 353/0/2 (passed/failed/skipped), Windows bootstrap green.
+Current consolidated source, exact CI and independent review are on the
+[single delivery board](G3_DELIVERY_BOARD.md). The
+[approval package](G2_G3_APPROVAL_PACKAGE.md) records the continuous NON_AI
+G2 -> original-batch export -> zero-call preflights -> bound G3 demo and exact
+receipt/candidate/report identities. The previous `936492d` checkpoint is
+historical G3 acceptance, not certification of later source.
 G3-D exists in open PR #5; PRs #3/#4 are merged. It is a local engineering
 milestone, not a verified real Meta reconstruction or completed submission.
 

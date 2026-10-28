@@ -22,17 +22,21 @@ run report.
 .venv/Scripts/python.exe -m second_source.reconstruct --mode preflight `
   --max-usd 0.50 --ledger-dir <approved-ledger> `
   --hypotheses-file <batch.json> --observation-digests <d1,d2,...> `
+  --g2-receipt <G2-run/G2_receipt.json> `
+  --g2-receipt-sha256 <externally-retained-receipt-hash> `
   --seal-dir <external-dir>
 
 # Real run. EVERY input below is required; any gap fails closed with
 # BLOCKED_* and no provider transport.
-$env:MODEL_API_KEY = "<owner key>"
+# BILLABLE TEMPLATE ONLY; separate owner approval required. Configure key securely.
 $env:SECOND_SOURCE_MAX_RUN_USD = "0.50"
 .venv/Scripts/python.exe -m second_source.reconstruct --mode real `
   --max-usd 0.50 --confirm-real-run `
   --operator-context-pin <preflight-approved-digest> `
   --ledger-dir <approved-ledger> --hypotheses-file <batch.json> `
   --observation-digests <d1,d2,...> `
+  --g2-receipt <same-G2-run/G2_receipt.json> `
+  --g2-receipt-sha256 <same-externally-retained-receipt-hash> `
   --suite <preflight-frozen-suite.json> --suite-digest <digest>
 ```
 
@@ -66,6 +70,11 @@ rejected before evidence loading or provider construction),
 ledger/hypotheses/digests, and a frozen `--suite`/`--suite-digest`. The broker
 additionally enforces single-use tickets, frozen code pins, and attempt
 limits. Proposed maximum spend for the first real run: **$0.50**.
+
+A complete version-2 G2 receipt with its external SHA-256 witness is also
+required. The original exported batch, exact observation set, target and
+reference/public bytes must match. All receipts must have genuine origin;
+complete mock archives remain NON_AI and are refused before key access.
 
 ## Durable run states (CLI + report `stop_reason`)
 
@@ -105,17 +114,31 @@ claim is made while acceptance gates are open.
 
 Every run emits ordered stderr progress events (`evidence_ready`,
 `inspected`, `admitted`, `evaluated`, `reported`, `stopped`) carrying the run
-ID -- one per durable stage, never synthetic animation. Reports include a
+ID after the associated operation succeeds. These stderr notifications are
+not themselves a durable stage journal. Reports include a
 plain-language `evaluation_summary` (counts plus per-category mismatch
 lines); mock scores are labeled plumbing evidence, never success.
 
 ## G2 persistence (new discoveries only)
 
-`src/second_source/g2_persistence.py` records complete hypothesis batches,
-executed proposals, evidence digests, model receipts, and budget state into a
-validated create-once `g2_manifest.json` per G2 run directory, and
-reloads/resumes it for approved follow-ups. The exact approval package for a
-genuine run lives in `docs/G2_G3_APPROVAL_PACKAGE.md`.
+`src/second_source/g2_persistence.py` is the single version-2 discovery
+journal: complete original responses/batches, evidence references, model
+attempts/receipts, actual experiment linkage and terminal accounting are
+create-once stage records under `discovery/`, sealed by `G2_receipt.json`.
+Offline inspect/restore does not resume execution. Only a complete archive
+with its externally retained receipt hash can export an original batch for
+this existing G3 preflight. Old `g2_manifest.json` files cannot be promoted
+without their missing provenance. The [approval package](G2_G3_APPROVAL_PACKAGE.md)
+documents zero-call G2 preflight, mock demonstration and gated real operation.
+
+To exercise G2 -> G3 without replacing its observations or hypotheses, first
+run G2 mock discovery, retain the receipt hash and export its complete original
+batch using that witness. Then invoke this same `--mode mock` command with
+`--ledger-dir`, `--hypotheses-file`, `--observation-digests`, `--g2-receipt` and
+`--g2-receipt-sha256`, as shown in the approval package. Supply all five input
+arguments together. The authenticated mock archive feeds the same evaluator;
+the default scripted candidate scores22/25 NON_AI. Bound input provenance is
+published before the sole mock dispatch. This does not grant real approval.
 
 ## Status
 

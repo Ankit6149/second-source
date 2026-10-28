@@ -7,6 +7,15 @@ The board holds current SHA, CI, risks and readiness; this charter delegates wor
 
 ## Ownership
 
+The [latest coordinator allocation](https://github.com/Ankit6149/second-source/pull/5#issuecomment-6465834617)
+and next-phase owner instructions supersede the rigid file boundaries below.
+Muse or Codex may implement a bounded task after announcing its files and
+interfaces. High-risk provenance, billing, evaluator, isolation, credential or
+release changes require independent cross-agent review. Keep one shared
+implementation, disjoint worktrees and serialized pushes; hold overlap until
+reconciled. No role change grants model spending or merge authorization.
+The table records the prior default allocation, not an absolute restriction.
+
 | Owner | Responsibility / files | Boundary |
 |---|---|---|
 | Muse | Candidate DSL/runtime/generation; operator `reconstruct.py`, operator tests, report/export/product experience and operator runbook | Preserve independent evaluator/negative tests; no reference/gold changes or misleading real claims |
@@ -20,7 +29,9 @@ The board holds current SHA, CI, risks and readiness; this charter delegates wor
 - Fetch, confirm current head and worktree changes, inspect committed interfaces,
   announce the disjoint write window and retain file ownership. Do not overwrite
   another worker's draft edits. Commit/push serially with ordinary fast-forwards.
-- No new branches/PRs, force pushes, merges, paid calls or inferred spend approval.
+- No new branches/PRs, force pushes, PR merges without owner authorization,
+  paid calls or inferred spend approval. Local integration may preserve both
+  committed histories on the existing branch; it is not a PR merge.
 - Preserve all seven independent regressions, NON_AI 25/25 positive control and
   2/2/1 sensitivity. Report exact-head Linux/Windows CI, not an earlier green.
 - New blockers need reproduced failures, severity and explicit acceptance.

@@ -6,7 +6,17 @@
 acceptance.** Use the [authoritative delivery board](G3_DELIVERY_BOARD.md) for
 current delivery, severity-ranked issues and remaining gates.
 
-Verified combined source: `af477b2daf0b676ad49be3959bcd28de868f76be`.
+G2 consolidation now uses one version-2 journal and preserves Muse's progress/
+result summaries. Source/test checkpoint `bc16552cf4c204bbe3f3fb8fb136353e898156fb`
+has independent G2 review and full
+[CI40701890631](https://github.com/Ankit6149/second-source/actions/runs/40701890631):
+Linux425/0/3, Windows426/0/2, bootstrap426/0/2 BOOTSTRAP_OK. All prior G3
+verifier files remain unchanged. Final documentation-head CI/review is recorded
+on the board/PR; no source acceptance is inherited without exact-head checks.
+The evidence below describes the previously accepted G3 source, not an
+automatic acceptance of later commits.
+
+Previously verified combined source: `af477b2daf0b676ad49be3959bcd28de868f76be`.
 [CI 40666652416](https://github.com/Ankit6149/second-source/actions/runs/40666652416)
 passes: Linux **352 passed / 0 failed / 3 skipped**, Windows **353 passed /
 0 failed / 2 skipped**; Windows bootstrap repeats the result with `BOOTSTRAP_OK`.

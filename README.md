@@ -4,13 +4,22 @@ Second Source studies an explicitly authorized black-box program, forms
 evidence-linked hypotheses, generates a scoped independent candidate and
 compares its behavior with a separate withheld evaluator.
 
-**Current status — 28 October 2026:** the zero-cost G3 engineering workflow
-is verified at `af477b2daf0b676ad49be3959bcd28de868f76be`:
-[Linux/Windows CI](https://github.com/Ankit6149/second-source/actions/runs/40666652416)
-passes, including Windows bootstrap. The workflow is in open, unmerged
+**Current status — 28 October 2026:** the consolidated zero-cost G2/G3 workflow
+is independently verified at `bc16552cf4c204bbe3f3fb8fb136353e898156fb`:
+[Linux/Windows CI](https://github.com/Ankit6149/second-source/actions/runs/40701890631)
+passes (425/0/3 Linux,426/0/2 Windows), including fresh Windows bootstrap.
+Earlier `936492d` is the accepted historical G3 checkpoint. The workflow is in open, unmerged
 [PR #5](https://github.com/Ankit6149/second-source/pull/5) on the existing
 `integrate/g3-reconstruct` branch. PRs #3/#4 are merged; `main` contains
 the earlier foundation at `9c8bcc4eba5e8bf4b1b3e5dfc75273c2eb0ea203`.
+
+G2 persistence is now consolidated on that existing branch: one immutable
+journal, pinned offline reload/export and credential-free G2 preflight. Muse's
+readable progress and evaluation summaries are retained. Source/test checkpoint
+`bc16552cf4c204bbe3f3fb8fb136353e898156fb` has independent G2 review and
+full exact-source CI. See the [review](docs/G2_PERSISTENCE_REVIEW.md)
+and [approval package](docs/G2_G3_APPROVAL_PACKAGE.md). The earlier overlapping
+implementations are historical, not separate supported paths.
 
 **Real G3 reconstruction remains NO-GO.** A historical G2 run has locally
 audited observations and recorded real Meta response IDs, but its original
@@ -32,7 +41,7 @@ the open PR is already in `main`:
 ```sh
 git clone https://github.com/Ankit6149/second-source.git
 cd second-source
-git checkout --detach af477b2daf0b676ad49be3959bcd28de868f76be
+git checkout --detach bc16552cf4c204bbe3f3fb8fb136353e898156fb
 python -m venv .venv
 # Linux: . .venv/bin/activate
 # PowerShell: .\.venv\Scripts\Activate.ps1
@@ -55,6 +64,15 @@ For explicit run/seal locations and zero-call actual-input inspection, see
 the [operator runbook](docs/G3_RECONSTRUCT.md). A mock digest never approves
 historical G2 inputs. Preflight proposes pins for separate review; it does
 not grant spending permission.
+
+For the continuous G2 -> G3 mock demonstration, run
+`python -m second_source.live_experiment --mode mock`, inspect/export its
+complete journal using the externally retained receipt hash, then pass that
+same ledger/batch/digest set and receipt witness to G3 mock. The
+[approval package](docs/G2_G3_APPROVAL_PACKAGE.md) has the exact argument
+recipe and recorded evidence identities. Both zero-call preflights and
+offline inspection require no model key; mock evidence cannot approve real
+dispatch. Earlier final-manifest persistence is retired.
 
 ## Windows setup
 
