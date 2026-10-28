@@ -2,8 +2,8 @@
 
 Starting coordinator commit: `bfd605d593e0a7d0868f8bb674430d3a1b0aaa9f`.
 Branch: `g3/verifier`. No merges, paid requests, credential reads or G3-A edits.
-The implementation commit is the Git commit containing this report; final SHA
-and remote CI are recorded in the handoff. **G3 is not accepted and no genuine
+The implementation commit is the Git commit containing this report; verified code SHA
+and remote CI are recorded in the handoff; later documentation-only commits do not change that code receipt. **G3 is not accepted and no genuine
 model-generated candidate accuracy is claimed.**
 
 ## Implemented boundary
@@ -29,8 +29,7 @@ model-generated candidate accuracy is claimed.**
   `GetProcessTimes` CPU watchdog. The native Job CPU-time flag alone did not
   terminate the busy-loop probe on this host despite a successful configuration
   query; the external watchdog is therefore required. Linux uses address-space,
-  CPU, core/file limits and an independent `/proc` CPU watchdog. Linux execution
-  still requires exact-commit CI confirmation.
+  CPU, core/file limits and an independent `/proc` CPU watchdog. Linux execution was also verified by exact-code CI.
 - `OwnedLedgerReferenceAdapter` runs the unchanged original owned fixture in a
   separate bounded worker. Only that privileged worker receives reference source.
   Its digest is pinned; changes during evaluation block execution. The existing
@@ -173,10 +172,17 @@ a candidate or makes a model call. Scope files and sealed material are owner-loc
 2. Real generation, the credential-owning provider broker, bounded repair and
    final release acceptance remain outside this implementation window. The new
    generation gate must be integrated before a paid run is authorized.
-3. Exact-commit Linux/Windows CI and independent coordinator review remain release
-   gates. This local result is not G3 acceptance, real candidate accuracy or a
-   universal equivalence claim. Model calls/spend/uncertain spend: **0 / $0 / $0**.
+3. Real-run evaluation still needs attested reference identity/digest and immutable candidate origin/receipt; generic caller-provided adapters are control interfaces, not a real accuracy guarantee. Exact-code Linux/Windows CI is green and coordinator review is conditional; future combined changes require new CI/review. No G3 acceptance, real candidate accuracy or universal equivalence claim. Model calls/spend/uncertain spend: **0 / $0 / $0**.
 
 Resource reference documentation: [Windows Job limits](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-jobobject_basic_limit_information),
 [Job memory limits](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-jobobject_extended_limit_information),
 and [Python audit-hook limitations](https://docs.python.org/3/library/sys.html#sys.addaudithook).
+
+## Session-boundary update ? 28 October 2026
+
+Verified code SHA: `aeed582483cbf0f2d57bfb53a4fef948273d9ec6`.
+[CI 40581058875](https://github.com/Ankit6149/second-source/actions/runs/40581058875) completed successfully: Linux/Python 3.11 **250 passed/3 skipped**; Windows/Python 3.12 **251 passed/2 skipped**, including bootstrap replay and `BOOTSTRAP_OK`. Local Windows remains **250 passed/3 skipped**. The difference is unprivileged symlink availability.
+
+Coordinator [review](https://github.com/Ankit6149/second-source/pull/4#pullrequestreview-5674191802) is CONDITIONAL GREEN for this NON_AI engineering slice. The [latest continuation direction](https://github.com/Ankit6149/second-source/pull/4#issuecomment-6461226733) requires additional real-run provenance work in existing owned modules: attested reference identity/digest; frozen suite/comparator; immutable candidate origin/receipt; authenticated G2 observation/hypothesis and pinned scope/public-manifest binding; exact inspected broker request. Caller-provided mappings/marker scans and arbitrary reference protocols must not establish a real accuracy claim.
+
+Muse's text/dict parameter-error-precedence correction must be independently verified once committed; none has been observed at the last integration-head fetch (`bfd605d...`). Fetch/integrate cleanly on `g3/verifier`, keep both PRs draft/unmerged, and re-run combined CI. No new branches, paid calls, credential access or G3 acceptance claim. This session ends with a documentation-only handoff; implementation continues next session per the user's instruction.

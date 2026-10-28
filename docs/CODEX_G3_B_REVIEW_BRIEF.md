@@ -1,6 +1,6 @@
 # Codex G3-B Independent Audit Brief — Second Source (2026-10-28)
 
-**Phase 1 status: COMPLETE. Phase 2 write window: RELEASED by coordinator after G3-A hardening. Do not edit shared G3-A files, read credentials, make paid calls, or merge.**
+**Phase 1 COMPLETE. Phase 2 engineering slice DELIVERED at `aeed582...`, conditionally reviewed with green Linux/Windows CI. Autonomous provenance/security continuation is authorized on existing `g3/verifier`; resume next session. No new branches, G3-A edits, credential reads, paid calls or unapproved merges.**
 **Repository:** https://github.com/Ankit6149/second-source
 **Sources:** `docs/MASTER_PRD.md`, `docs/G3_IMPLEMENTATION_CONTRACT.md`, `docs/COORDINATION_CHARTER.md` and `docs/HANDOFF_2026-10-28.md`.
 
@@ -47,3 +47,9 @@ Test via the hardened existing `DifferentialVerifier` on the *same* ordered sequ
 - Re-run the phase-1 false-pass probes against current code; convert every reproduced defect into a regression test before or with the fix.
 - Build positive and deliberately buggy `TRUSTED_CONTROL` paths before any real Meta candidate exists.
 - Return exact commit SHA, test counts, OS/Python, isolation evidence, remaining blockers and zero/nonzero cost. Do not claim G3 acceptance.
+
+## Current next-session assignment
+
+Read `HANDOFF_2026-10-28.md`, `G3_VERIFIER_ACCEPTANCE.md`, current PRD/implementation contract and the newest PR #4 comment before writing. Last verified coordinator direction: https://github.com/Ankit6149/second-source/pull/4#issuecomment-6461226733.
+
+Complete attested/pinned real-run reference identity, frozen evaluator/suite and immutable candidate receipt/origin; keep generic adapters as labeled controls. Authenticate G2 observations AND hypotheses plus pinned scope/public signatures, and bind the exact inspected request to the broker. Add owned nonbillable provenance/replay/adversarial tests. Independently reproduce Muse's committed precedence fix without editing Muse-owned modules. Fetch/integrate the moving integration branch cleanly, with no new branch, then verify full Linux/Windows CI and report integration readiness. Real calls, deployment and merges still need the required approvals. The user explicitly asks to do this continuation in the next session.
