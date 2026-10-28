@@ -1,0 +1,38 @@
+{
+  "spec_version": "1",
+  "subsystem": "cli_ledger",
+  "requirement_ids": ["REQ-LEDGER"],
+  "unknown_command_error": "unknown_command",
+  "invalid_input_error": "invalid_input",
+  "commands": {
+    "add": {
+      "params": {
+        "label": {"type": "string", "required": true, "trim": true, "min_length": 1, "max_length": 24, "error": "invalid_label"},
+        "amount": {"type": "integer", "required": true, "minimum": 1, "maximum": 100, "error": "invalid_amount"}
+      },
+      "unique_field": "label",
+      "unique_casefold": true,
+      "unique_error": "duplicate_label",
+      "store_record": true,
+      "respond": {"id": "id"}
+    },
+    "list": {
+      "respond": {"items": "items"}
+    },
+    "total": {
+      "aggregate_count": true,
+      "aggregate_sum_field": "amount",
+      "respond": {"count": "count", "amount": "amount"}
+    },
+    "remove": {
+      "params": {
+        "id": {"type": "string", "required": true, "error": "not_found"}
+      },
+      "lookup_by": "id",
+      "lookup_param": "id",
+      "not_found_error": "not_found",
+      "delete_after_lookup": true,
+      "respond": {"removed": "id"}
+    }
+  }
+}
