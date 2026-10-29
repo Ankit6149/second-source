@@ -6,12 +6,12 @@
 
 ## Current outcome - 29 October 2026 IST
 
-- Published main `2dd919bf54cbc77318be20ba1468698d7a49fbfb`, merged PRs #5-#10. [Post-merge CI 40845419026](https://github.com/Ankit6149/second-source/actions/runs/40845419026): Linux **504 passed / 0 failed / 3 skipped**, Windows **505 / 0 / 2**, bootstrap **505 / 0 / 2 BOOTSTRAP_OK**.
+- Verified main `1ba89054b7335aa7c26a0fa9e347d7d766eeeafe`, including merged PR #11. [Post-merge CI 40849690763](https://github.com/Ankit6149/second-source/actions/runs/40849690763): Linux **521 passed / 0 failed / 3 skipped**, Windows **522 / 0 / 2**, bootstrap **522 / 0 / 2 BOOTSTRAP_OK**.
 - Genuine new G2: 3 original hypotheses, 5 observations, one model-selected experiment, 2 real receipts; estimate USD0.013486, uncertain 0. Original evidence operator-local; older missing hypotheses not reconstructed.
 - Genuine G3: **two consumed attempts, no admitted candidate or behavioral score**; estimates USD0.0103305 and USD0.00985025, uncertain 0. Exact historical field rejection causes unknown. No further inference/repair authorized.
 - NON_AI trusted positive 25/25, negative 2/2/1, mock 22/25: never real reconstruction quality.
 - Backend control plane/API/worker/artifact packaging merged in PR #10: local SQLite/single-host mock-only profile reuses the CLI engine, reproducing **22/25 NON_AI** through durable state and verified sanitized export. See [backend operations](docs/BACKEND_OPERATIONS.md) and [API contracts](docs/BACKEND_API.md). Cloud database/authentication and genuine paid-engine integration are not enabled.
-- [Guided verifier binding PR #11](https://github.com/Ankit6149/second-source/pull/11) implements explicit `--synthesis guided` with its own protocol-bound zero-call preflight; full synthesis remains default. Local independent checks: 17 new cases passed, including NON_AI controls; exact-head CI and independent review are recorded on that PR. Muse owns intelligence/admission. Frontend expansion remains stopped; merged PR #7 is read-only, not full product acceptance.
+- [Guided verifier binding PR #11](https://github.com/Ankit6149/second-source/pull/11) is merged with independent review and cross-platform CI. Explicit `--synthesis guided` has a protocol-bound zero-call preflight; full synthesis remains default. The actual operator packet remains frozen and **unauthorized**; see the delivery board. Muse owns intelligence/admission. Frontend expansion remains stopped; merged PR #7 is read-only, not full product acceptance.
 - Submission completion, final video and organizer acceptance **unverified**.
 
 [Master PRD](docs/MASTER_PRD.md) defines product; [single delivery board](docs/G3_DELIVERY_BOARD.md) records current evidence/gates; [owner backend directive](https://github.com/Ankit6149/second-source/issues/2#issuecomment-6477673246) sets execution priority. No production-ready infrastructure claim.
@@ -23,7 +23,7 @@ Use Python 3.11+ and a frozen, reviewed `main` checkpoint:
 ```sh
 git clone https://github.com/Ankit6149/second-source.git
 cd second-source
-git checkout --detach 2dd919bf54cbc77318be20ba1468698d7a49fbfb
+git checkout --detach 1ba89054b7335aa7c26a0fa9e347d7d766eeeafe
 python -m venv .venv
 # Linux: . .venv/bin/activate
 # PowerShell: .\.venv\Scripts\Activate.ps1

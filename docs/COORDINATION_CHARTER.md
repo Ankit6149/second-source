@@ -10,7 +10,7 @@
 | Codex - infrastructure | New `src/second_source/backend/`, backend tests/API docs, control plane/DB/migrations/service/API/workers/artifacts/observability, independent verifier integration and status docs | Reuse existing G2/G3 engine/receipts; no duplicate generation/runtime/scoring |
 | Shared contracts | Versioned IDs/lifecycle/evidence refs, generation requests/results, approvals/budgets/evaluations/errors | One announced writer per shared file; smallest committed compatible interface; independent security review |
 
-Codex branch `feat/backend-control-plane` in verifier. Preserve Muse operator drafts. Separate short-lived branches/PRs permitted for independent modules. No force pushes, abandoned branches or concurrent shared-file writes. Serialize integration; synchronize main before subsequent merge.
+Codex backend baseline continuation uses `feat/postgres-baseline` in the separate verifier checkout, based on verified main `1ba8905`. Preserve the operator checkout, frozen guided packet and raw-byte code pins pending exact owner authorization. PRs #9–#11 are merged; do not revive their old branches. Separate short-lived branches/PRs permitted for independent modules. No force pushes, abandoned branches or concurrent shared-file writes. Serialize integration; synchronize main before subsequent merge.
 
 Routine engineering merges have standing owner authorization only after exact-head Linux/Windows CI, independent review and protections. Paid inference/retries, credentials, live deployment and material scope changes need separate authorization. Both existing G3 grants consumed.
 
