@@ -47,7 +47,8 @@ def test_disposable_native_postgres_baseline_constraints_and_permissions():
     tools = _server_tools()
     # Drop PGHOST, PGSERVICE, PGPASSWORD, provider keys and all other inherited
     # configuration. The only connection is a newly created private Unix socket.
-    env = {"PATH": os.defpath, "LC_ALL": "C", "PGCONNECT_TIMEOUT": "5"}
+    env = {"PATH": os.defpath, "LC_ALL": "C", "PGCONNECT_TIMEOUT": "5",
+           "PGPASSFILE": os.devnull}
     with tempfile.TemporaryDirectory(prefix="ss-pg-") as temporary:
         root = Path(temporary)
         cluster = root / "data"
