@@ -13,7 +13,7 @@ import re
 import secrets
 import threading
 import time
-from typing import Annotated, Any, Literal, Mapping, TYPE_CHECKING
+from typing import Annotated, Any, Callable, Literal, Mapping, TYPE_CHECKING
 import uuid
 
 from fastapi import Depends, FastAPI, Header, Path, Query, Request
@@ -83,10 +83,12 @@ class _Boundary:
     """Bounded ASGI ingress; limits also apply to chunked bodies before parsing."""
 
     def __init__(self, app: ASGIApp, *, token_hashes: Mapping[str, Principal],
+                 identity_resolver: Callable[[str], Principal | None] | None = None,
                  max_body_bytes: int, max_concurrent_requests: int,
                  requests_per_minute: int, body_timeout_seconds: float):
         self.app = app
         self.tokens = tuple(token_hashes.items())
+        self.identity_resolver = identity_resolver
         self.max_body = max_body_bytes
         self.slots = threading.BoundedSemaphore(max_concurrent_requests)
         self.rate = requests_per_minute
@@ -102,9 +104,20 @@ class _Boundary:
             value = values[0].decode("ascii")
         except UnicodeError:
             return None
-        if not value.startswith("Bearer ") or not _TOKEN.fullmatch(value[7:]):
+        if not value.startswith("Bearer "):
             return None
-        supplied = hashlib.sha256(value[7:].encode("ascii")).hexdigest()
+        token = value[7:]
+        if self.identity_resolver is not None:
+            if len(token) > 8192 or not re.fullmatch(r"[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+){2}", token):
+                return None
+            try:
+                return self.identity_resolver(token)
+            except Exception:
+                # Never log bearer tokens or external provider response bodies.
+                return None
+        if not _TOKEN.fullmatch(token):
+            return None
+        supplied = hashlib.sha256(token.encode("ascii")).hexdigest()
         matched = None
         # Compare every configured digest; never use a plaintext token as a key.
         for digest, principal in self.tokens:
@@ -136,7 +149,7 @@ class _Boundary:
 
         protected = scope["path"].startswith("/v1")
         if protected:
-            principal = self._principal(headers)
+            principal = await asyncio.to_thread(self._principal, headers)
             if principal is None:
                 await reject("UNAUTHENTICATED", "A valid bearer token is required.", 401)
                 return
@@ -214,19 +227,24 @@ class _Boundary:
             self.slots.release()
 
 
-def create_app(service: BackendService, token_hashes: Mapping[str, str],
+def create_app(service: BackendService, token_hashes: Mapping[str, str] | None = None,
                artifact_store: Any | None = None, *, max_body_bytes: int = 65_536,
                max_concurrent_requests: int = 16, requests_per_minute: int = 120,
-               body_timeout_seconds: float = 30) -> FastAPI:
+               body_timeout_seconds: float = 30,
+               identity_resolver: Callable[[str], Principal | None] | None = None) -> FastAPI:
     """Construct a local HTTP adapter using injected service and hashed tokens.
 
     An optional shared artifact store enables verified report and bundle reads.
     No arbitrary filesystem paths or private evaluator files are exposed.
     """
-    if not isinstance(token_hashes, Mapping) or not 1 <= len(token_hashes) <= 256:
-        raise ValueError("Configure between one and 256 token hashes.")
+    if identity_resolver is None:
+        if not isinstance(token_hashes, Mapping) or not 1 <= len(token_hashes) <= 256:
+            raise ValueError("Configure between one and 256 token hashes.")
+    else:
+        if token_hashes is not None or not callable(identity_resolver):
+            raise ValueError("Configure exactly one authentication authority.")
     principals = {}
-    for digest, owner in token_hashes.items():
+    for digest, owner in (token_hashes or {}).items():
         if not isinstance(digest, str) or not _DIGEST.fullmatch(digest):
             raise ValueError("Token configuration requires lowercase SHA-256 digests.")
         principals[digest] = Principal(owner_id=owner)
@@ -236,7 +254,8 @@ def create_app(service: BackendService, token_hashes: Mapping[str, str],
     errors = {status: {"model": ErrorBody} for status in (400, 401, 404, 405, 408, 409, 413, 415, 422, 429, 500, 503)}
     app = FastAPI(title="Second Source backend", version="1.0.0", docs_url=None,
                   redoc_url=None, responses=errors)
-    app.add_middleware(_Boundary, token_hashes=principals, max_body_bytes=max_body_bytes,
+    app.add_middleware(_Boundary, token_hashes=principals, identity_resolver=identity_resolver,
+                       max_body_bytes=max_body_bytes,
                        max_concurrent_requests=max_concurrent_requests,
                        requests_per_minute=requests_per_minute,
                        body_timeout_seconds=body_timeout_seconds)
