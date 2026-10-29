@@ -1,6 +1,6 @@
 # Baseten Muse Spark Open — opt-in infrastructure adapter
 
-**Status (30 October 2026):** Proposed code adapter only; **no key, live call, credit-balance check, real candidate, or runtime deployment is asserted.** Do not interpret the availability of Baseten hackathon credits as permission to spend them.
+**Status (30 October 2026):** Proposed code adapter only. **The owner has NOT received Baseten credits yet.** No key, live call, credit-balance check, real candidate, or runtime deployment is asserted. Credits must remain treated as unavailable until the owner confirms a grant and balance; a possible future credit grant does not authorize usage.
 
 ## Verified service contract
 
@@ -48,10 +48,11 @@ python -m pytest tests/test_baseten_provider.py tests/test_g2_gateway.py -q
 ```
 
 Before calling the hosted model in a genuine G3 experiment:
-1. Review and approve an **exact** provider-specific model/endpoint/request digest, operator checkout, sealed suite identity, one-attempt count and maximum **application** spend, distinct from the consumed Meta direct allowances. No automatic fallback or interchangeable approvals.
-2. Confirm credit availability, billing fallback/overage behavior, actual account rates and limits using Baseten's authenticated dashboard **without exposing keys**.
-3. Independently review provider accounting and admissible schema on a hermetic suite; verify transport/response compatibility in a **separately approved minimal real probe**, if justified.
-4. Wire provider selection through the existing `g3_verification` / guided-synthesis broker and preserve `provider` in the existing approvals, receipts, result and immutable witnesses. **Not implemented by this adapter.**
-5. Preserve the original Meta direct G2/G3 archives and the sealed 25-case suite. Do not transfer a Meta approval to Baseten or report mock scores as real reconstruction.
+1. Confirm actual credits have been granted; currently they have **not**. Until then, this adapter remains strictly no-call.
+2. Review and approve an **exact** provider-specific model/endpoint/request digest, operator checkout, sealed suite identity, one-attempt count and maximum **application** spend, distinct from the consumed Meta direct allowances. No automatic fallback or interchangeable approvals.
+3. Confirm credit availability, billing fallback/overage behavior, actual account rates and limits using Baseten's authenticated dashboard **without exposing keys**.
+4. Independently review provider accounting and admissible schema on a hermetic suite; verify transport/response compatibility in a **separately approved minimal real probe**, if justified.
+5. Wire provider selection through the existing `g3_verification` / guided-synthesis broker and preserve `provider` in the existing approvals, receipts, result and immutable witnesses. **Not implemented by this adapter.**
+6. Preserve the original Meta direct G2/G3 archives and the sealed 25-case suite. Do not transfer a Meta approval to Baseten or report mock scores as real reconstruction.
 
 No database migration, cloud deployment, credentials or paid inference was performed as part of this change.
