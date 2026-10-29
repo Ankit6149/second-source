@@ -155,6 +155,15 @@ def test_operator_mock_guided_repair_records_honest_retry(monkeypatch, tmp_path)
     assert report["report_labels"].startswith("MOCK_")
 
 
+def test_operator_real_mode_rejects_repair_without_authorization(monkeypatch, tmp_path, capsys):
+    from second_source import reconstruct as operator
+    monkeypatch.delenv("MODEL_API_KEY", raising=False)
+    code = operator.main(["--mode", "real", "--repair-rounds", "1",
+                          "--run-dir", str(tmp_path / "run")])
+    assert code != 0
+    assert "real-mode repair needs a separate owner authorization" in capsys.readouterr().err
+
+
 def test_operator_mock_rejects_out_of_range_repair_rounds(monkeypatch, tmp_path):
     from second_source import reconstruct as operator
     monkeypatch.delenv("MODEL_API_KEY", raising=False)
