@@ -561,6 +561,38 @@ def run_mock(args: argparse.Namespace) -> int:
         return 1
     receipt = result["origin"]
     candidate_path = admitted["candidate"]
+    repair_history = None
+    if getattr(args, "repair_rounds", 0):
+        if not isinstance(args.repair_rounds, int) or not 1 <= args.repair_rounds <= 3:
+            print("BLOCKED_CONTRACT: --repair-rounds must be 1, 2 or 3", file=sys.stderr)
+            return 2
+        if result["evaluation"]["failed"] > 0:
+            from .repair_loop import run_bounded_repair
+            _progress("repair", run_dir.name,
+                      f"bounded retry of up to {args.repair_rounds} round(s) after "
+                      f"{result['evaluation']['failed']} mismatch(es)")
+            repair = run_bounded_repair(
+                run, provider=MockProvider(responder=_responder), budget=budget,
+                max_rounds=args.repair_rounds)
+            repair_history = {
+                "verdict": repair.verdict,
+                "stop_reason": repair.stop_reason,
+                "rounds_used": repair.rounds_used,
+                "versions": [
+                    {"round": attempt.round,
+                     "candidate_digest": attempt.candidate_digest,
+                     "response_id": attempt.response_id,
+                     "origin": attempt.origin,
+                     "evaluation": attempt.evaluation,
+                     "feedback": attempt.feedback}
+                    for attempt in repair.versions
+                ],
+                "broker_diagnostic": repair.broker_diagnostic,
+            }
+            _write_once(run_dir / "G3_repair_history.json",
+                        json.dumps(repair_history, sort_keys=True).encode("utf-8"))
+            _progress("repaired" if repair.verdict == "improved" else "repair_done",
+                      run_dir.name, f"verdict {repair.verdict}")
     report = {
         "kind": "G3_RECONSTRUCT_RUN_REPORT",
         "run_id": run_dir.name,
@@ -592,6 +624,7 @@ def run_mock(args: argparse.Namespace) -> int:
             "uncertain_cost_usd": budget.uncertain_cost_usd,
         },
         "stop_reason": "completed_mock_run",
+        "repair_history": repair_history,
         "evidence_artifact_count": len(digests),
         "evaluation_summary": _readable_summary(result["evaluation"], "mock"),
         "manifest_digest": pin_public_manifest(public),
@@ -704,6 +737,9 @@ def _spend_ceiling(value: Any) -> float | None:
 
 def run_real(args: argparse.Namespace) -> int:
     """Owner-authorized real generation; fail closed on any missing approval."""
+    if getattr(args, "repair_rounds", 0):
+        return _blocked("real-mode repair needs a separate owner authorization; "
+                        "re-run with --repair-rounds 0.")
     from .g3_verification import EvaluationBlocked, PinnedEvaluatorRun, load_sealed_suite
     from .model_gateway import GatewayError
 
@@ -1016,6 +1052,9 @@ def build_parser() -> argparse.ArgumentParser:
                         help="G2_receipt.json from the single version2 journal (required for real)")
     parser.add_argument("--g2-receipt-sha256", default=None,
                         help="externally retained exact G2 receipt SHA-256; required with --g2-receipt")
+    parser.add_argument("--repair-rounds", type=int, default=0,
+                        help="bounded repair retries after a non-perfect mock evaluation "
+                             "(mock only; real repair needs separate authorization)")
     return parser
 
 
