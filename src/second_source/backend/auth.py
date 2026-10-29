@@ -73,7 +73,7 @@ class SupabaseIdentity:
             }, self.timeout)
             if not isinstance(value, dict):
                 return None
-            if value.get("role") != "authenticated" or value.get("is_anonymous") is True:
+            if value.get("role") != "authenticated" or value.get("is_anonymous") is not False:
                 return None
             owner = value.get("id")
             if not isinstance(owner, str):
