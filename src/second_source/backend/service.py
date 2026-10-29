@@ -36,10 +36,18 @@ def _error(code: str, message: str, status: int = 409):
 
 
 class BackendService:
-    def __init__(self, database_path: str | Path, *, max_queued_runs: int = 32):
+    def __init__(self, database_path: str | Path | None = None, *,
+                 store=None, max_queued_runs: int = 32):
         if type(max_queued_runs) is not int or not 1 <= max_queued_runs <= 10000:
             raise ValueError('Invalid queue limit')
-        self.store = SQLiteStore(database_path)
+        if store is None:
+            if database_path is None:
+                raise ValueError('A durable database path is required')
+            self.store = SQLiteStore(database_path)
+        else:
+            if database_path is not None or not callable(getattr(store, 'transaction', None)) or not callable(getattr(store, 'readiness', None)):
+                raise ValueError('An exclusive durable store is required')
+            self.store = store
         self.max_queued_runs = max_queued_runs
 
     def readiness(self) -> bool:
