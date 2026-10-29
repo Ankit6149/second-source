@@ -31,6 +31,16 @@ class LandingSmoke(unittest.TestCase):
         self.assertIn("Skip to content", self.html)
         self.assertIn('role="img"', self.html)
 
+    def test_keyboard_baseline(self):
+        # No positive tabindex (native tab order); no div/span click
+        # handlers; disclosure uses native details/summary; the diagram
+        # exposes a text alternative.
+        self.assertNotRegex(self.html, r'tabindex="[1-9]')
+        self.assertNotIn("onclick=", self.html)
+        self.assertIn("<details", self.html)
+        self.assertIn("<summary>", self.html)
+        self.assertIn('aria-describedby="trace-desc"', self.html)
+
     def test_markup_balances(self):
         for tag in ("div", "section", "table", "details", "svg", "figure"):
             opens = len(re.findall(r"<%s[\s>]" % tag, self.html))
