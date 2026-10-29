@@ -558,3 +558,430 @@ def build_generation_report(
         "public_manifest_digest": public_manifest_digest,
         "evidence_digests": sorted(digests),
     }
+
+"""Constraint-guided synthesis (v2, Muse-owned intelligence side).
+
+The v1 path asks the model for an entire CandidateSpec: every structural
+field plus every behavior choice. That maximizes the model's freedom to emit
+schema-invalid or DSL-invalid output on a paid call. The guided path splits
+the work along the trust boundary instead:
+
+- The TRUSTED skeleton is built deterministically from the authorized public
+  command contract alone: command/param names and types, read-only versus
+  mutating wiring, store/lookup/aggregate mechanics, and response shapes.
+  It contains no hidden business rules and no error-code values.
+- The MODEL fill decides ONLY evidence-dependent behavior: validation
+  bounds, trimming, uniqueness selection (which declared param is unique),
+  response key bindings, case handling, and the error-code strings observed
+  in evidence outputs. The fill schema is a small fraction of a full spec,
+  so output tokens, cost, and schema-violation surface all shrink.
+- `merge_skeleton_fill` is shape-strict (unknown keys rejected, sane caps)
+  and value-permissive; the UNCHANGED strict loader performs all semantic
+  validation afterwards. Admission is never weakened: a merged spec passes
+  through `load_candidate` exactly like a v1 spec.
+"""
+
+
+SYNTHESIZE_PROMPT_VERSION_V2 = "synthesize-v2"
+
+#: Model decisions per command. Everything else is trusted structure.
+FILL_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["error_codes", "add", "list", "total", "remove"],
+    "properties": {
+        "error_codes": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["unknown_command", "invalid_input"],
+            "properties": {
+                "unknown_command": {"type": "string"},
+                "invalid_input": {"type": "string"},
+            },
+        },
+        "add": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["label", "amount", "unique_field", "unique_casefold",
+                         "label_error", "amount_error", "duplicate_error",
+                         "respond"],
+            "properties": {
+                "label": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["min_length", "max_length", "trim"],
+                    "properties": {
+                        "min_length": {"type": "integer"},
+                        "max_length": {"type": "integer"},
+                        "trim": {"type": "boolean"},
+                    },
+                },
+                "amount": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["minimum", "maximum"],
+                    "properties": {
+                        "minimum": {"type": "integer"},
+                        "maximum": {"type": "integer"},
+                    },
+                },
+                "unique_field": {"type": "string"},
+                "unique_casefold": {"type": "boolean"},
+                "label_error": {"type": "string"},
+                "amount_error": {"type": "string"},
+                "duplicate_error": {"type": "string"},
+                "respond": {
+                    "type": "object",
+                    "minProperties": 1,
+                    "maxProperties": 4,
+                    "additionalProperties": {"type": "string"},
+                },
+            },
+        },
+        "list": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["respond"],
+            "properties": {
+                "respond": {
+                    "type": "object",
+                    "minProperties": 1,
+                    "maxProperties": 4,
+                    "additionalProperties": {"type": "string"},
+                },
+            },
+        },
+        "total": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["respond"],
+            "properties": {
+                "respond": {
+                    "type": "object",
+                    "minProperties": 1,
+                    "maxProperties": 4,
+                    "additionalProperties": {"type": "string"},
+                },
+            },
+        },
+        "remove": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["not_found_error", "respond"],
+            "properties": {
+                "not_found_error": {"type": "string"},
+                "respond": {
+                    "type": "object",
+                    "minProperties": 1,
+                    "maxProperties": 4,
+                    "additionalProperties": {"type": "string"},
+                },
+            },
+        },
+    },
+}
+
+SYNTHESIZE_SYSTEM_V2 = (
+    "You are a behavioral specification author. You will receive a trusted "
+    "specification skeleton plus authorized observations. Output ONE JSON "
+    "object matching the fill schema: validation bounds, trimming, which "
+    "declared parameter carries the uniqueness rule, response key bindings, "
+    "case handling, and the exact error-code strings shown in the "
+    "observations. Derive every value ONLY from the attached observations. "
+    "Do not invent hidden internals, approvals, file paths, imports, shell, "
+    "network, or code of any kind. Output JSON only."
+)
+
+_ERROR_CODE_LIMIT = 64
+_FILL_INT_LIMIT = 10 ** 9
+
+
+def _skeleton_param(typ: str) -> dict[str, Any]:
+    return {"type": typ, "required": True}
+
+
+def build_spec_skeleton(public_commands: dict[str, Any]) -> dict[str, Any]:
+    """Deterministic trusted skeleton from the authorized public contract.
+
+    Fixes names, types, side-effect wiring, and response shapes. Carries no
+    bounds, flags, or error-code values: those are model decisions from
+    evidence. Raises `GatewayError` when the public contract lacks the four
+    approved commands or the expected signatures.
+    """
+    if not isinstance(public_commands, dict):
+        raise GatewayError("guided: public commands must be an object")
+    try:
+        commands = public_commands["commands"]
+        add_params = commands["add"]["params"]
+        remove_params = commands["remove"]["params"]
+    except (KeyError, TypeError) as exc:
+        raise GatewayError("guided: public contract misses approved commands") from exc
+    if (set(commands) != {"add", "list", "total", "remove"}
+            or add_params != {"label": "string", "amount": "integer"}
+            or commands["list"]["params"] != {}
+            or commands["total"]["params"] != {}
+            or remove_params != {"id": "string"}
+            or commands["add"].get("side_effect") != "owned_mutation"
+            or commands["remove"].get("side_effect") != "owned_mutation"
+            or commands["list"].get("side_effect") != "read_only"
+            or commands["total"].get("side_effect") != "read_only"):
+        raise GatewayError("guided: public contract signatures not approved")
+    # Fixed slots below are justified ONLY by the authorized public contract
+    # (command/param names and types, stated purposes, side-effect classes) or
+    # by the normative DSL loader rules (which the strict loader itself
+    # enforces at admission). Every None is an open model decision:
+    # uniqueness selection, response key bindings, bounds, flags, error codes.
+    return {
+        "spec_version": "1",
+        "subsystem": "cli_ledger",
+        "requirement_ids": ["REQ-LEDGER"],
+        "unknown_command_error": None,
+        "invalid_input_error": None,
+        "commands": {
+            # "create a record" + owned_mutation -> store; DSL mandates SOME
+            # uniqueness rule on add, but NOT which param: open.
+            "add": {
+                "params": {
+                    "label": _skeleton_param("string"),
+                    "amount": _skeleton_param("integer"),
+                },
+                "unique_field": None,
+                "unique_casefold": None,
+                "unique_error": None,
+                "store_record": True,
+                "respond": {},
+            },
+            "list": {"respond": {}},
+            # "return count and aggregate amount": the only declared integer
+            # param is amount, so the sum field follows from signatures.
+            "total": {
+                "aggregate_count": True,
+                "aggregate_sum_field": "amount",
+                "respond": {},
+            },
+            # "remove record by identifier": id is the only declared param,
+            # so lookup wiring follows from signatures (v1 DSL: lookup_by id).
+            "remove": {
+                "params": {"id": _skeleton_param("string")},
+                "lookup_by": "id",
+                "lookup_param": "id",
+                "not_found_error": None,
+                "delete_after_lookup": True,
+                "respond": {},
+            },
+        },
+    }
+
+
+def _fill_error(value: Any, *, field: str) -> str:
+    if not isinstance(value, str) or not value or len(value) > _ERROR_CODE_LIMIT:
+        raise GatewayError(f"guided: fill field {field!r} must be a short error code")
+    return value
+
+
+_RESPOND_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,31}$")
+# Protocol-reserved response keys live in the runtime envelope ("ok" wraps
+# every success, "error" every failure); a command output key may not claim
+# either. The strict loader remains authoritative on source resolvability.
+_RESERVED_RESPOND_KEYS = frozenset({"ok", "error"})
+
+
+def _check_respond(command: str, respond: Any) -> dict[str, str]:
+    if not isinstance(respond, dict) or not respond or len(respond) > 4:
+        raise GatewayError(
+            f"guided: fill {command!r} respond needs 1-4 key bindings")
+    bindings: dict[str, str] = {}
+    for key in sorted(respond):
+        source = respond[key]
+        if not isinstance(key, str) or not _RESPOND_KEY_RE.fullmatch(key):
+            raise GatewayError(
+                f"guided: fill {command!r} has bad respond key {key!r}")
+        if key in _RESERVED_RESPOND_KEYS:
+            raise GatewayError(
+                f"guided: fill {command!r} respond key {key!r} is reserved")
+        if not isinstance(source, str) or not source or len(source) > 32:
+            raise GatewayError(
+                f"guided: fill {command!r} has bad respond source")
+        bindings[key] = source
+    return bindings
+
+
+def _fill_int(value: Any, *, field: str) -> int:
+    if not isinstance(value, int) or isinstance(value, bool) or abs(value) > _FILL_INT_LIMIT:
+        raise GatewayError(f"guided: fill field {field!r} must be a bounded integer")
+    return value
+
+
+def merge_skeleton_fill(skeleton: dict[str, Any], fill: dict[str, Any]) -> dict[str, Any]:
+    """Strictly merge model decisions into the trusted skeleton.
+
+    Shape-strict (exact keys, sane caps) and value-permissive: semantic rules
+    such as min<=max stay the strict loader's job, so admission is unchanged.
+    The skeleton's `None` slots are the ONLY positions the fill may occupy;
+    anything else raises. Returns a plain spec dict, still UNVALIDATED.
+    """
+    import copy as _copy
+
+    if not isinstance(fill, dict):
+        raise GatewayError("guided: fill must be an object")
+    try:
+        codes = fill["error_codes"]
+        add = fill["add"]
+        remove = fill["remove"]
+        label = add["label"]
+        amount = add["amount"]
+    except (KeyError, TypeError) as exc:
+        raise GatewayError("guided: fill misses required decisions") from exc
+    allowed_top = {"error_codes", "add", "list", "total", "remove"}
+    if set(fill) != allowed_top:
+        raise GatewayError("guided: fill carries unknown top-level keys")
+    if set(codes) != {"unknown_command", "invalid_input"}:
+        raise GatewayError("guided: fill error_codes shape rejected")
+    if set(add) != {"label", "amount", "unique_field", "unique_casefold",
+                    "label_error", "amount_error", "duplicate_error",
+                    "respond"}:
+        raise GatewayError("guided: fill add shape rejected")
+    if set(label) != {"min_length", "max_length", "trim"}:
+        raise GatewayError("guided: fill label shape rejected")
+    if set(amount) != {"minimum", "maximum"}:
+        raise GatewayError("guided: fill amount shape rejected")
+    if set(remove) != {"not_found_error", "respond"}:
+        raise GatewayError("guided: fill remove shape rejected")
+    for _name in ("list", "total"):
+        _section = fill.get(_name)
+        if not isinstance(_section, dict) or set(_section) != {"respond"}:
+            raise GatewayError(f"guided: fill {_name} shape rejected")
+    if not isinstance(add["unique_casefold"], bool) or not isinstance(label["trim"], bool):
+        raise GatewayError("guided: fill flags must be booleans")
+    spec = _copy.deepcopy(skeleton)
+    try:
+        spec["unknown_command_error"] = _fill_error(codes["unknown_command"], field="unknown_command")
+        spec["invalid_input_error"] = _fill_error(codes["invalid_input"], field="invalid_input")
+        add_spec = spec["commands"]["add"]
+        add_spec["params"]["label"].update({
+            "trim": label["trim"],
+            "min_length": _fill_int(label["min_length"], field="min_length"),
+            "max_length": _fill_int(label["max_length"], field="max_length"),
+        })
+        add_spec["params"]["amount"].update({
+            "minimum": _fill_int(amount["minimum"], field="minimum"),
+            "maximum": _fill_int(amount["maximum"], field="maximum"),
+        })
+        # Uniqueness selection is model-controlled but bounded: the field
+        # must be a param the trusted skeleton declares for that command.
+        # Presence of a rule on add is DSL-mandated, so a missing or foreign
+        # selection fails closed instead of silently defaulting to "label".
+        if add["unique_field"] not in set(add_spec["params"]):
+            raise GatewayError(
+                "guided: fill 'add' unique_field is not a declared add param")
+        add_spec["unique_field"] = add["unique_field"]
+        add_spec["respond"] = _check_respond("add", add["respond"])
+        spec["commands"]["list"]["respond"] = _check_respond(
+            "list", fill["list"]["respond"])
+        spec["commands"]["total"]["respond"] = _check_respond(
+            "total", fill["total"]["respond"])
+        spec["commands"]["remove"]["respond"] = _check_respond(
+            "remove", remove["respond"])
+        add_spec["unique_casefold"] = add["unique_casefold"]
+        add_spec["unique_error"] = _fill_error(add["duplicate_error"], field="duplicate_error")
+        add_spec["params"]["label"]["error"] = _fill_error(add["label_error"], field="label_error")
+        add_spec["params"]["amount"]["error"] = _fill_error(add["amount_error"], field="amount_error")
+        spec["commands"]["remove"]["not_found_error"] = _fill_error(
+            remove["not_found_error"], field="not_found_error")
+        spec["commands"]["remove"]["params"]["id"]["error"] = spec[
+            "commands"]["remove"]["not_found_error"]
+    except (KeyError, TypeError) as exc:
+        raise GatewayError("guided: skeleton slots missing") from exc
+    if any(value is None for value in (
+            spec["unknown_command_error"], spec["invalid_input_error"],
+            add_spec["unique_casefold"], add_spec["unique_error"],
+            add_spec["unique_field"],
+            spec["commands"]["remove"]["not_found_error"])):
+        raise GatewayError("guided: unfilled skeleton slots remain")
+    if any(not spec["commands"][_name]["respond"]
+           for _name in ("add", "list", "total", "remove")):
+        raise GatewayError("guided: unfilled respond bindings remain")
+    return spec
+
+
+def build_guided_request(safe_context: dict[str, Any], skeleton: dict[str, Any],
+                         *, max_output_tokens: int = 800) -> ModelRequest:
+    """Provider-bound v2 request: skeleton plus admitted context, fill schema.
+
+    The model returns ONLY the small fill object. Default output cap is 800
+    tokens (a fill is an order of magnitude smaller than a full spec).
+    """
+    user_content = {
+        "context": safe_context,
+        "skeleton": skeleton,
+    }
+    return ModelRequest(
+        stage=SYNTHESIZE_STAGE,
+        messages=(
+            {"role": "system", "content": SYNTHESIZE_SYSTEM_V2},
+            {
+                "role": "user",
+                "content": json.dumps(user_content, sort_keys=True, default=str),
+            },
+        ),
+        json_schema=FILL_JSON_SCHEMA,
+        max_output_tokens=max_output_tokens,
+        prompt_version=SYNTHESIZE_PROMPT_VERSION_V2,
+    )
+
+
+def request_guided_spec(context: dict[str, Any], gateway: ModelGateway, *,
+                        max_output_tokens: int = 800,
+                        contract: ScopeContract | None = None,
+                        public_manifest_digest: str | None = None,
+                        approved_evidence: Mapping[str, dict[str, Any]] | None = None,
+                        ) -> tuple[dict[str, Any], GenerationReceipt]:
+    """Ask the model for fill decisions only; merge into the trusted skeleton.
+
+    Same provenance pins and fail-closed gates as v1. Returns the merged spec
+    dict (STILL UNVALIDATED) plus a v2 receipt. Admission unchanged.
+    """
+    if gateway.is_real and (
+        contract is None
+        or public_manifest_digest is None
+        or approved_evidence is None
+    ):
+        raise GatewayError(
+            "synthesize: real inference requires provenance pins "
+            "(contract, manifest digest, approved registry); "
+            "refusing provider transport"
+        )
+    pinned = (contract is not None, public_manifest_digest is not None,
+              approved_evidence is not None)
+    if any(pinned) and not all(pinned):
+        raise GatewayError(
+            "synthesize: provenance pins must be supplied together"
+        )
+    if contract is not None:
+        safe_context = validate_context_against_pins(
+            context,
+            contract=contract,
+            public_manifest_digest=public_manifest_digest,
+            approved_evidence=approved_evidence,
+        )
+    else:
+        safe_context = _validate_context_shape(context)
+    skeleton = build_spec_skeleton(safe_context["public_commands"])
+    request = build_guided_request(
+        safe_context, skeleton, max_output_tokens=max_output_tokens
+    )
+    response = gateway.generate(request)
+    if response.parsed is None:
+        raise GatewayError("synthesize: model returned no parsed object")
+    if not isinstance(response.parsed, dict):
+        raise GatewayError("synthesize: model output is not an object")
+    merged = merge_skeleton_fill(skeleton, response.parsed)
+    receipt = GenerationReceipt(
+        origin=origin_of(response),
+        provider=response.provider,
+        real=response.real,
+        model=response.model,
+        response_id=response.response_id,
+        prompt_version=response.prompt_version,
+    )
+    return merged, receipt
