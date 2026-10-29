@@ -11,6 +11,14 @@ evidence/hypotheses, pinned generation broker, CandidateSpec loader, trusted
 interpreter (evaluator-owned worker), independent sealed evaluator, sanitized
 run report.
 
+## Guided synthesis binding
+
+Published reproduction baseline is main `2dd919bf54cbc77318be20ba1468698d7a49fbfb`; [post-merge CI 40845419026](https://github.com/Ankit6149/second-source/actions/runs/40845419026) passed Linux 504/0/3, Windows 505/0/2 and bootstrap 505/0/2 BOOTSTRAP_OK. Guided binding is implemented in source `3c77390f94c839364b83025918d7109c0e2bea3a`, [PR #11](https://github.com/Ankit6149/second-source/pull/11). Its exact-head CI and review are recorded on that PR; the baseline CI above does not certify this newer interface. Local independent checks passed all 17 new cases, including explicitly NON_AI controls.
+
+The existing command defaults to `--synthesis full` (maximum 2000 output tokens). `--synthesis guided` explicitly selects the guided protocol (maximum 800 output tokens). Use the same selection in zero-call preflight and any later separately authorized operation. A version-2 domain-separated input approval binds the protocol: a full-protocol context pin or spent historical packet cannot approve guided dispatch. Fresh exact-checkout preflight is required after code/protocol changes; no new spending is authorized here.
+
+The existing gateway audit hook writes create-once private run artifacts `generation-dispatch.v1.private.json` and `generation-result.v1.private.json`. A successful provider response is archived before semantic candidate admission so a later rejection can be inspected without another call. Invalid provider responses may not expose their raw body; do not promise universal raw-output recovery. The hook receives no credential or signing key. Original request/response content remains private and is excluded from sanitized public exports. Existing consumed attempts are unchanged and cannot be retroactively diagnosed by this archive path.
+
 ## Modes
 
 ```powershell
@@ -71,7 +79,7 @@ rejected before evidence loading or provider construction),
 `--confirm-real-run`, `--operator-context-pin`, operator
 ledger/hypotheses/digests, and a frozen `--suite`/`--suite-digest`. The broker
 additionally enforces single-use tickets, frozen code pins, and attempt
-limits. Proposed maximum spend for the first real run: **$0.50**.
+limits. The historical one-attempt **$0.50** proposals are consumed; this runbook proposes no new spending allowance.
 
 A complete version-2 G2 receipt with its external SHA-256 witness is also
 required. The original exported batch, exact observation set, target and
