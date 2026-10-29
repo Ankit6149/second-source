@@ -379,7 +379,7 @@ def _worker_main():
     from .candidate_runtime import CandidateInterpreter
     # Resolve imports and Pydantic lazy attributes before denying all filesystem opens.
     if mode in {"generation", "generation_probe"}:
-        from .candidate_generation import request_candidate_spec
+        from .candidate_generation import request_candidate_spec, request_guided_spec
         from .model_gateway import GatewayError, ModelGateway, MockProvider
         from .budgets import RunBudget
         from .contracts import Budgets
@@ -441,7 +441,11 @@ def _worker_main():
                 raise GatewayError("capture_complete")
             gateway = ModelGateway(MockProvider(responder=capture), RunBudget(Budgets(max_estimated_model_spend_usd=0)))
             try:
-                request_candidate_spec(data["context"], gateway)
+                synthesis = data.get("synthesis", "full")
+                if synthesis not in ("full", "guided"):
+                    raise GatewayError("Unsupported synthesis protocol")
+                generate = request_guided_spec if synthesis == "guided" else request_candidate_spec
+                generate(data["context"], gateway)
             except GatewayError:
                 pass
             response = {"request": captured[0].model_dump(mode="json")} if len(captured) == 1 else {"failure": "generation_rejected"}
