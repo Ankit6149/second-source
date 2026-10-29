@@ -10,13 +10,16 @@ Do not copy OAuth secrets or Supabase secret/service-role keys into Next.js.
 \`second_source.backend.auth.SupabaseIdentity(project_ref, publishable_key)\`
 validates incoming access tokens against the fixed HTTPS
 \`https://<project>.supabase.co/auth/v1/user\` endpoint. Supabase Auth verifies
-the signature, expiry and session validity, including legacy HS256 and
-asymmetric signing configurations. The adapter deliberately **never**
+the signature and expiry under the project's supported signing configuration. The adapter deliberately **never**
 authorizes by decoding unsigned JWT claims, emails or user_metadata. Its
 only result is the validated immutable user UUID, yielding the existing
-\`Principal(owner_id)\`. Invalid/revoked/expired tokens, redirect attempts,
-malformed responses, non-authenticated/anonymous users, oversized bodies and
-remote outages are rejected.
+\`Principal(owner_id)\`. Invalid or expired tokens, redirect attempts, malformed responses,
+non-authenticated/anonymous users, oversized bodies and remote outages are
+rejected. **Access tokens can remain usable after ordinary sign-out until
+expiry; this endpoint alone does not guarantee immediate JWT revocation.**
+For strict session invalidation, verify the returned session ID against
+auth.sessions using a separately reviewed privileged server-side check.
+See https://supabase.com/docs/guides/auth/sessions#how-to-ensure-an-access-token-jwt-cannot-be-used-after-a-user-signs-out .
 
 Application integration:
 
@@ -40,9 +43,11 @@ fail startup. The \`/v1/capabilities\` contract still truthfully advertises
 mock-only mode and zero paid inference. Network calls are bounded to 4 seconds,
 redirects are disallowed, response size is capped at 16 KiB, and remote
 errors never leak token/provider response details. No user-info cache
-is kept (revocations may take effect server-side). Future production should
-add bounded pre-auth global throttling, transport telemetry and an explicit
-auth service-availability health signal before internet-wide launch.
+is kept. Pre-auth global throttling and verification concurrency bounds are
+implemented as in-process guardrails; they are NOT a distributed rate limit
+across multiple Vercel instances. Before public multi-instance launch, add
+provider-aware distributed throttling, transport telemetry, revocation
+requirements and an explicit auth service-availability health signal.
 
 ## Key missing pieces
 
