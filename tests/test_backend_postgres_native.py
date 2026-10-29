@@ -138,6 +138,50 @@ def test_complete_owner_scoped_lifecycle_in_disposable_postgres():
                 backend.get_run(other, run.run_id)
             # The persisted state also survives a newly created service.
             assert BackendService(store=LocalPostgresStore()).get_run(owner, run.run_id) == completed
+
+            # Two independent workers competing for one committed queued run
+            # may never receive two execution leases. A serialization failure
+            # is a safe failure, not authorization for a hidden retry.
+            from concurrent.futures import ThreadPoolExecutor
+            contended = backend.create_run(owner, inv.investigation_id,
+                                           CreateRun(), "pg-concurrent-claim")
+            def compete(name):
+                try:
+                    return backend.claim(name, lease_seconds=30)
+                except BackendError as error:
+                    assert error.code == "STORAGE_UNAVAILABLE"
+                    return None
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                attempts = list(pool.map(compete, ("worker_a", "worker_b")))
+            leases = [result for result in attempts if result is not None]
+            assert len(leases) == 1, "Concurrent workers received duplicate leases"
+            assert leases[0].run.run_id == contended.run_id
+            claim_events = [
+                item for item in backend.events(owner, inv.investigation_id)
+                if item.run_id == contended.run_id and item.event_type == "run_claimed"
+            ]
+            assert len(claim_events) == 1, "A run was claimed more than once"
+
+            # Simulate process disappearance and expiry using *database*
+            # clock, not a wall-clock sleep or another process's clock.
+            with store.transaction() as db:
+                db.execute(
+                    "UPDATE runs SET lease_expires=? WHERE run_id=?",
+                    (db.database_epoch() - 5, contended.run_id),
+                )
+            assert backend.recover_expired() == 1
+            quarantined = backend.get_run(owner, contended.run_id)
+            assert quarantined.status.value == "needs_reconciliation"
+            assert backend.claim("worker_c") is None
+            with pytest.raises(BackendError) as stale_worker:
+                backend.stage(contended.run_id, leases[0].token, CodeStage.CAPTURE)
+            assert stale_worker.value.code == "LEASE_LOST"
+            assert len([
+                item for item in backend.events(owner, inv.investigation_id)
+                if item.run_id == contended.run_id
+                and item.event_type == "run_needs_reconciliation"
+            ]) == 1
+
         finally:
             stopped = subprocess.run([str(binaries / "pg_ctl"), "-D", str(directory),
                                       "-m", "immediate", "-w", "-t", "20", "stop"],

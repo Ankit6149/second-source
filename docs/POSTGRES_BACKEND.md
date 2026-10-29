@@ -34,3 +34,17 @@ probes skewed host-clock behavior in an isolated PostgreSQL cluster.
 
 Do not deploy or merge without independent concurrency and provider-identity
 review. The ss_runtime and ss schemas remain intentionally unsynchronized.
+
+## Native concurrency and process-loss acceptance
+
+The disposable Linux PostgreSQL lifecycle suite additionally launches two
+concurrent independent worker claims for one queued run, requires exactly one
+lease and a single durable claim event, simulates abrupt worker disappearance
+by expiring the lease according to the database clock, and verifies that
+recovery transitions the run to `needs_reconciliation` without auto-requeue
+or accepting a stale worker's stage update. A serialization error is allowed
+only as a sanitized failed claim, never as a second lease.
+
+This remains a test of the current trusted local DB semantics, **not** a
+cloud-hosted worker acceptance test, a proof of billing idempotency, or a
+substitute for a least-privilege Postgres role and live project credentials.
