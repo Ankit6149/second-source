@@ -22,7 +22,7 @@ import stat
 import sys
 import threading
 import time
-from typing import Any, Mapping
+from typing import Any, Callable, Literal, Mapping
 
 from .candidate_adapter import (
     CandidateExecutionLimits, CandidateReferenceAdapter,
@@ -43,6 +43,10 @@ OWNED_REFERENCE_DIGEST = "sha256:539cf592cee4c22c9abfece562e258aecb2d887a6a48368
 
 class EvaluationBlocked(RuntimeError):
     """Invalid scope, suite, provenance or boundary; no accepted score."""
+
+
+class _GenerationAuditFailed(RuntimeError):
+    """Private response publication failed after dispatch; never expose details."""
 
 
 _SAFE_CODE = re.compile(r"^[A-Z][A-Z0-9_]{1,63}$")
@@ -338,6 +342,7 @@ def evaluate_sealed_suite(
 def prepare_generation_request(
     context: dict[str, Any], *, approved_evidence: Mapping[str, dict[str, Any]],
     forbidden_markers: tuple[str, ...] = (), limits: CandidateExecutionLimits | None = None,
+    synthesis: Literal["full", "guided"] = "full",
 ) -> dict[str, Any]:
     """Prepare exact ModelRequest in an isolated, nonbillable worker for the broker.
 
@@ -345,6 +350,8 @@ def prepare_generation_request(
     evaluator results. Matching digest syntax alone is not provenance.
     Returned dict is a request for the provider broker, not an evaluator report.
     """
+    if type(synthesis) is not str or synthesis not in ("full", "guided"):
+        raise EvaluationBlocked("Unsupported synthesis protocol")
     limits = limits or CandidateExecutionLimits()
     try:
         detached = _checked_json(_encode(context), limits.max_input_bytes)
@@ -357,7 +364,10 @@ def prepare_generation_request(
             raise ValueError
     except Exception:
         raise EvaluationBlocked("Generation evidence is not approved observation evidence") from None
-    response = _run_worker("generation", {"context": detached}, limits)
+    payload = {"context": detached}
+    if synthesis == "guided":
+        payload["synthesis"] = synthesis
+    response = _run_worker("generation", payload, limits)
     request = response.get("request")
     if type(request) is not dict or "tools" in request:
         raise EvaluationBlocked("Isolated generation context rejected")
@@ -414,10 +424,13 @@ class PinnedEvaluatorRun:
     def __init__(self, suite: SealedSuite, contract: ScopeContract, *, ledger,
                  observation_digests: tuple[str, ...], hypotheses,
                  limits: CandidateExecutionLimits | None = None,
-                 operator_approved_context_digest: str | None = None):
+                 operator_approved_context_digest: str | None = None,
+                 synthesis: Literal["full", "guided"] = "full"):
         from .candidate_generation import build_generation_context, expected_scope_projection
         from .evidence import EvidenceLedger, redact
         from .hypotheses import HypothesisStore, validate_batch
+        if type(synthesis) is not str or synthesis not in ("full", "guided"):
+            raise EvaluationBlocked("Unsupported synthesis protocol")
         if type(ledger) is not EvidenceLedger or type(hypotheses) is not HypothesisStore:
             raise EvaluationBlocked("Trusted ledger and hypothesis store are required")
         self._contract_raw = contract.model_dump_json().encode("utf-8")
@@ -463,7 +476,10 @@ class PinnedEvaluatorRun:
         except Exception:
             raise EvaluationBlocked("Approved generation registry admission failed") from None
         self._context_raw = _encode(context)
-        self._approved_context_digest = _digest(self._context_raw)
+        # Full-mode pins retain their historical definition. Guided approval is
+        # domain-separated so a full-context approval cannot change protocols.
+        self._approved_context_digest = _digest(self._context_raw if synthesis == "full" else
+            _encode({"kind": "G3_GUIDED_INPUT_V1", "synthesis": synthesis, "context": context}))
         if (operator_approved_context_digest is not None
                 and operator_approved_context_digest != self._approved_context_digest):
             raise EvaluationBlocked("Context does not match operator's approved G2 input pin")
@@ -476,7 +492,9 @@ class PinnedEvaluatorRun:
             "operator_input_pin": operator_approved_context_digest,
             "observation_registry_digest": _digest(_encode(context["evidence"])),
             "hypothesis_registry_digest": _digest(_encode(context["hypotheses"])), "limits": self._limits.__dict__,
-            "run_id": secrets.token_hex(16)})
+            "run_id": secrets.token_hex(16), **({"synthesis": synthesis} if synthesis == "guided" else {})})
+        self._inspected_wire_digest: str | None = None
+        self._inspected_max_output_tokens: int | None = None
         self._key = secrets.token_bytes(32)
         self._used_requests: set[str] = set()
         self._evaluations: dict[str, bytes] = {}
@@ -494,6 +512,11 @@ class PinnedEvaluatorRun:
     def approved_context_digest(self) -> str:
         """For trusted operator review/pinning; not automatic G2 authentication."""
         return self._approved_context_digest
+
+    @property
+    def synthesis(self) -> str:
+        """Protocol belongs to the frozen signed plan, never mutable model data."""
+        return json.loads(self._plan_raw).get("synthesis", "full")
 
     def inspection_manifest(self) -> dict:
         """Detached frozen input/code pins for zero-call operator inspection.
@@ -514,6 +537,9 @@ class PinnedEvaluatorRun:
             "hypothesis_registry_digest": plan["hypothesis_registry_digest"],
             "operator_input_pin": self._operator_input_pin,
             "registry_authority": "LOCAL_LEDGER_AND_HYPOTHESIS_SNAPSHOT_REQUIRING_OPERATOR_G2_APPROVAL",
+            "synthesis": self.synthesis,
+            "inspected_request_digest": self._inspected_wire_digest,
+            "request_max_output_tokens": self._inspected_max_output_tokens,
         }
 
     def _check_frozen(self):
@@ -553,30 +579,37 @@ class PinnedEvaluatorRun:
                 public_manifest_digest=pin_public_manifest(approved["public_commands"]), approved_evidence=registry)
         except Exception:
             raise EvaluationBlocked("Pinned generation context rejected") from None
-        wire = prepare_generation_request(approved, approved_evidence=registry, limits=self._limits)
+        wire = prepare_generation_request(approved, approved_evidence=registry, limits=self._limits,
+            synthesis=self.synthesis)
         self._check_frozen()
+        self._inspected_wire_digest = _digest(_encode(wire))
+        self._inspected_max_output_tokens = wire["max_output_tokens"]
         return self._sign({"kind": "INSPECTED_REQUEST", "nonce": secrets.token_hex(16), "wire": wire})
 
-    def generate(self, ticket: BrokerArtifact, provider, budget, *, spending_approved: bool = False) -> BrokerArtifact:
+    def generate(self, ticket: BrokerArtifact, provider, budget, *, spending_approved: bool = False,
+                 audit: Callable[[str, dict[str, Any]], None] | None = None) -> BrokerArtifact:
         """Single-use inspected broker; real transport needs owner spend/input pins."""
         # Serialize consume+attempt so concurrent replay cannot race the nonce gate.
         with self._generation_lock:
-            return self._generate(ticket, provider, budget, spending_approved=spending_approved)
+            return self._generate(ticket, provider, budget, spending_approved=spending_approved, audit=audit)
 
-    def _generate(self, ticket: BrokerArtifact, provider, budget, *, spending_approved: bool) -> BrokerArtifact:
+    def _generate(self, ticket: BrokerArtifact, provider, budget, *, spending_approved: bool,
+                  audit: Callable[[str, dict[str, Any]], None] | None = None) -> BrokerArtifact:
         """Single-use broker. Real transport additionally requires explicit run approval.
 
         Never pass the inspected wire back into ModelGateway: that would inject the
         schema twice. Rebuild the frozen logical request and compare at complete().
         No credentials are read here; the owner supplies a configured provider.
         """
-        from .candidate_generation import build_synthesize_request
+        from .candidate_generation import build_synthesize_request, build_guided_request, build_spec_skeleton, merge_skeleton_fill
         from .model_gateway import (
             MetaProvider, MockProvider, ModelGateway, GatewayError,
             ProviderResponseError,
         )
         from .budgets import RunBudget
         contract = self._check_frozen()
+        if audit is not None and not callable(audit):
+            raise EvaluationBlocked("Trusted generation audit callback is invalid")
         request = self._verify(ticket, "INSPECTED_REQUEST")
         nonce = request["nonce"]
         if nonce in self._used_requests:
@@ -630,20 +663,29 @@ class PinnedEvaluatorRun:
                 return provider.model
 
         checked = CheckedMeta.__new__(CheckedMeta) if real else CheckedMock()
-        gateway = ModelGateway(checked, budget)
+        def record_result(event, payload):
+            try:
+                audit(event, payload)
+            except Exception:
+                raise _GenerationAuditFailed from None
+        gateway = ModelGateway(checked, budget, audit=record_result if audit is not None else None)
         # Consume BEFORE attempting transport, including schema/transport failures.
         self._used_requests.add(nonce)
         self._generation_attempts += 1
         phase = "gateway"
         try:
-            response = gateway.generate(build_synthesize_request(json.loads(self._context_raw)))
+            context = json.loads(self._context_raw)
+            skeleton = build_spec_skeleton(context["public_commands"]) if self.synthesis == "guided" else None
+            logical_request = build_guided_request(context, skeleton) if skeleton is not None else build_synthesize_request(context)
+            response = gateway.generate(logical_request)
             phase = "candidate_admission"
             self._check_frozen()
             if (len(calls) != 1 or response.real is not real or response.outcome != "ok"
                     or response.provider != provider.provider_name or response.model != provider.model
                     or not response.response_id or type(response.parsed) is not dict):
                 raise ValueError
-            spec_raw = _encode(response.parsed)
+            merged = merge_skeleton_fill(skeleton, response.parsed) if skeleton is not None else response.parsed
+            spec_raw = _encode(merged)
             candidate = CandidateReferenceAdapter(spec_raw, contract, limits=self._limits)
             receipt = {"origin": "real" if real else "mock", "real": real,
                 "provider": response.provider, "model": response.model, "response_id": response.response_id,
@@ -651,6 +693,8 @@ class PinnedEvaluatorRun:
                 "candidate_digest": candidate.spec_digest, "input_tokens": response.input_tokens,
                 "output_tokens": response.output_tokens, "estimated_cost_usd": response.estimated_cost_usd,
                 "uncertain_cost_usd": response.uncertain_cost_usd, "attempt": self._generation_attempts}
+            if self.synthesis == "guided":
+                receipt.update(synthesis="guided", model_output_digest=_digest(_encode(response.parsed)))
             return self._sign({"kind": "CANDIDATE_ORIGIN", "spec": spec_raw.decode("utf-8"), "receipt": receipt})
         except KeyboardInterrupt:
             # A transport can be interrupted after reserving possible charges
@@ -678,6 +722,9 @@ class PinnedEvaluatorRun:
                 exc, provider=provider, real=real,
                 attempt=self._generation_attempts, phase=phase,
                 gateway_receipt=failed_receipts[-1] if failed_receipts else None)
+            blocked.broker_diagnostic["transport_attempted"] = bool(calls)
+            if isinstance(exc, _GenerationAuditFailed):
+                blocked.broker_diagnostic.update(failure_stage="evidence_publication", failure_code="GENERATION_AUDIT_FAILED")
             raise blocked from None
 
     def evaluate(self, artifact: BrokerArtifact, *, claim: str = "TRUSTED_CONTROL") -> dict:

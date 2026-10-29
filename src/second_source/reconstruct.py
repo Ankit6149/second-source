@@ -153,6 +153,33 @@ def naive_mock_spec() -> dict[str, Any]:
     }
 
 
+def naive_mock_fill() -> dict[str, Any]:
+    """NON_AI projection of the same deliberately loose mock behavior.
+
+    This is a mock-provider response fixture only, never a repair or fallback
+    for genuine model output.
+    """
+    spec = naive_mock_spec()
+    commands = spec["commands"]
+    add = commands["add"]
+    label, amount = add["params"]["label"], add["params"]["amount"]
+    return {
+        "error_codes": {"unknown_command": spec["unknown_command_error"],
+                        "invalid_input": spec["invalid_input_error"]},
+        "add": {
+            "label": {key: label[key] for key in ("min_length", "max_length", "trim")},
+            "amount": {key: amount[key] for key in ("minimum", "maximum")},
+            "unique_field": add["unique_field"], "unique_casefold": add["unique_casefold"],
+            "label_error": label["error"], "amount_error": amount["error"],
+            "duplicate_error": add["unique_error"], "respond": add["respond"],
+        },
+        "list": {"respond": commands["list"]["respond"]},
+        "total": {"respond": commands["total"]["respond"]},
+        "remove": {"not_found_error": commands["remove"]["not_found_error"],
+                   "respond": commands["remove"]["respond"]},
+    }
+
+
 def mock_hypotheses(digests: Sequence[str]) -> HypothesisStore:
     """Deterministic mock hypotheses citing real ledger digests (MOCK only)."""
     by_index = list(digests)
@@ -371,14 +398,35 @@ def _write_failure_report(
         "usage": _budget_usage(budget),
         "report_path": str(run_dir / "G3_report.json"),
         "note": (
-            "Post-dispatch failure: the attempt was dispatched and is accounted "
-            "above. Pre-dispatch blocks (missing approvals) write no report and "
-            "record zero attempts."
+            "Stopped attempt accounted above. Broker diagnostics distinguish "
+            "transport attempted from private dispatch-publication failure; "
+            "an attempted reservation alone does not prove provider transport. "
+            "Missing-approval blocks write no report and record zero attempts."
         ),
     }
     _write_report(run_dir, report)
     _progress("stopped", run_dir.name, report["stop_reason"])
     return report
+
+
+def _generation_audit(run_dir: Path):
+    """Publish the existing gateway event privately before candidate admission.
+
+    The original successful response is retained verbatim inside this private
+    run archive. Public reports/exports use their existing allowlist. Provider
+    errors without a response retain only the gateway's receipt and counters.
+    No signing authority or credential is supplied to this callback.
+    """
+    def record(event: str, payload: dict[str, Any]) -> None:
+        if event not in {"model_dispatch", "model_result"}:
+            raise RuntimeError("Unexpected generation audit event")
+        raw = json.dumps({"kind": "G3_PRIVATE_MODEL_RESULT_V1", "run_id": run_dir.name,
+                          "event": event, **payload}, sort_keys=True, indent=2).encode("utf-8")
+        name = "generation-dispatch.v1.private.json" if event == "model_dispatch" else "generation-result.v1.private.json"
+        path = _write_once(run_dir / name, raw)
+        if path.read_bytes() != raw:
+            raise RuntimeError("Generation archive read-back mismatch")
+    return record
 
 
 def _persist_admission(run_dir: Path, artifact: Any, spec_digest: str) -> dict[str, str]:
@@ -450,6 +498,7 @@ def run_mock(args: argparse.Namespace) -> int:
     run = PinnedEvaluatorRun(
         suite, scope, ledger=ledger,
         observation_digests=tuple(digests), hypotheses=store,
+        synthesis=args.synthesis,
     )
     ticket = run.prepare()
     if g2_provenance is not None:
@@ -458,7 +507,7 @@ def run_mock(args: argparse.Namespace) -> int:
             "g2": g2_provenance,
         }, sort_keys=True).encode("utf-8"))
     _progress("inspected", run_dir.name, "broker request inspected, zero calls")
-    proposal = naive_mock_spec()
+    proposal = naive_mock_fill() if args.synthesis == "guided" else naive_mock_spec()
 
     def _responder(request: Any) -> dict[str, Any]:
         return {"content": proposal}
@@ -471,6 +520,7 @@ def run_mock(args: argparse.Namespace) -> int:
         artifact = run.generate(
             ticket, MockProvider(responder=_responder), budget,
             spending_approved=False,
+            audit=_generation_audit(run_dir),
         )
     except KeyboardInterrupt:
         stopped = _write_failure_report(
@@ -515,6 +565,7 @@ def run_mock(args: argparse.Namespace) -> int:
         "kind": "G3_RECONSTRUCT_RUN_REPORT",
         "run_id": run_dir.name,
         "mode": "mock",
+        "synthesis": run.synthesis,
         "g2_input_provenance": g2_provenance,
         "fixture": "owned-ledger",
         "origin": receipt["origin"],
@@ -692,6 +743,7 @@ def run_real(args: argparse.Namespace) -> int:
             suite, scope, ledger=ledger, observation_digests=digests,
             hypotheses=store,
             operator_approved_context_digest=args.operator_context_pin,
+            synthesis=args.synthesis,
         )
         run.prepare()
     except (EvaluationBlocked, GatewayError, RuntimeError) as exc:
@@ -718,7 +770,8 @@ def run_real(args: argparse.Namespace) -> int:
         ticket = run.prepare()
         _progress("inspected", run_dir.name, "broker request inspected, zero calls")
         artifact = run.generate(
-            ticket, MetaProvider(key), budget, spending_approved=True
+            ticket, MetaProvider(key), budget, spending_approved=True,
+            audit=_generation_audit(run_dir),
         )
     except KeyboardInterrupt:
         stopped = _write_failure_report(
@@ -763,6 +816,7 @@ def run_real(args: argparse.Namespace) -> int:
         "kind": "G3_RECONSTRUCT_RUN_REPORT",
         "run_id": run_dir.name,
         "mode": "real",
+        "synthesis": run.synthesis,
         "fixture": "owned-ledger",
         "origin": receipt["origin"],
         "real": receipt["real"],
@@ -863,6 +917,7 @@ def run_preflight(args: argparse.Namespace) -> int:
         run = PinnedEvaluatorRun(
             suite, scope, ledger=ledger, observation_digests=digests,
             hypotheses=store,
+            synthesis=args.synthesis,
         )
         run.prepare()
     except Exception:
@@ -877,6 +932,9 @@ def run_preflight(args: argparse.Namespace) -> int:
         "kind": "G3_PREFLIGHT_INSPECTION",
         "run_id": run_dir.name,
         "mode": "preflight",
+        "synthesis": manifest["synthesis"],
+        "inspected_request_digest": manifest["inspected_request_digest"],
+        "request_max_output_tokens": manifest["request_max_output_tokens"],
         "fixture": "owned-ledger",
         "origin": "inspection-only",
         "real": False,
@@ -932,6 +990,8 @@ def build_parser() -> argparse.ArgumentParser:
                         help=("mock: nonbillable plumbing run; preflight: zero-call "
                               "inspection of genuine operator G2 inputs; "
                               "real: gated Meta run"))
+    parser.add_argument("--synthesis", choices=("full", "guided"), default="full",
+                        help="full: original v1 protocol; guided: pinned v2 model-filled skeleton")
     parser.add_argument("--max-usd", type=float, default=0.0,
                         help="spend cap for this run (real mode only)")
     parser.add_argument("--run-dir", default=None,
