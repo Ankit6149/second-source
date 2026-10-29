@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="description" content="Second Source — optional live read-only view of a local backend. Token stays in memory only.">
+<title>Second Source — Live backend (read-only)</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:#1b263a;background:#f7f9fc;--ink:#1b263a;--sub:#57667f;--line:#e2e8f0;--blue:#255de5;--green:#148461;--amber:#a56814;--rose:#a03d2d;--white:#fff}
+*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button{cursor:pointer}
+button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px solid #8bb4ff;outline-offset:2px}
+button:disabled{cursor:not-allowed;opacity:.55}
+.wrap{max-width:1080px;margin:0 auto;padding:28px 24px 60px}
+.top{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;margin-bottom:20px}
+h1{font-size:26px;letter-spacing:-.5px;margin:0 0 6px}
+.sub{color:var(--sub);font-size:13.5px;margin:0;max-width:640px;line-height:1.65}
+.card{border:1px solid var(--line);background:var(--white);border-radius:14px;padding:20px;margin-bottom:16px}
+.card h2{font-size:14px;margin:0 0 12px;letter-spacing:-.2px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+.field{display:grid;gap:6px;min-width:0}
+.field label{font-size:11px;font-weight:700;color:var(--sub)}
+.field input{border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:13px;background:#fff;min-width:0}
+#baseUrl{width:280px}#apiToken{width:260px}
+.btn{border:1px solid var(--line);background:#fff;color:#26354c;border-radius:9px;padding:10px 14px;font-size:13px;font-weight:700}
+.btn:hover{border-color:#adc4e8;background:#f7fbff}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.primary:hover{background:#1d4dbe}
+.notice{border:1px solid #dce7ff;background:#f3f7ff;color:#365177;border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.65;margin:0 0 16px}
+.notice.err{border-color:#f2d3c8;background:#fdf3ef;color:#7c3a2b}
+.tag{display:inline-flex;border:1px solid #d9e5fa;color:#275ca7;background:#f4f8ff;border-radius:100px;padding:5px 11px;font-size:11px;font-weight:750;white-space:nowrap}
+.tag.good{color:var(--green);border-color:#d1eee2;background:#f0fbf5}
+.tag.warn{color:var(--amber);border-color:#f3e4c6;background:#fffaf0}
+.tag.bad{color:var(--rose);border-color:#f2d3c8;background:#fdf3ef}
+.tag.neutral{color:#6a7586;border-color:#e2e8f0;background:#f7f9fc}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+table.data{width:100%;border-collapse:collapse;font-size:12.5px}
+table.data th,table.data td{text-align:left;padding:9px 10px;border-bottom:1px solid #edf0f5;vertical-align:top}
+table.data th{color:var(--sub);font-size:11px}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;word-break:break-all}
+.list{display:grid;gap:8px}
+.item{border:1px solid #e6ebf3;border-radius:10px;padding:11px 13px;background:#fff;width:100%;text-align:left;display:block}
+.item:hover{border-color:#afc7ea;background:#fbfdff}
+.item.sel{background:#f4f8ff;border-color:#b8cdf4}
+.item b{font-size:12.5px;display:block}
+.item small{font-size:11px;color:var(--sub);display:block;margin-top:4px}
+.empty{padding:14px;border:1px dashed #ccd7e8;border-radius:10px;color:#5f6e86;font-size:12.5px;line-height:1.7;background:#fbfcfe}
+.foot{margin-top:20px;font-size:12px;color:#6b7a94;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.foot a{color:#3d63b8;text-decoration:none}
+@media(max-width:760px){.grid2{grid-template-columns:1fr}#baseUrl,#apiToken{width:100%}}
+@media(prefers-reduced-motion:no-preference){.item,.btn{transition:border-color .18s,background-color .18s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="top">
+<div><h1>Live backend &mdash; read-only</h1>
+<p class="sub">Optional operator view of a <strong>local</strong> Second Source backend. This page issues <strong>GET requests only</strong> (health, capabilities, investigations, runs, events) and <strong>never</strong> creates, authorizes, cancels, or spends anything.</p></div>
+<div><a class="btn" href="index.html">&larr; Evidence console</a></div>
+</div>
+<p class="notice" role="status"><strong>Memory-only credential.</strong> Your bearer token lives in a page variable while connected. It is never written to localStorage, sessionStorage, cookies, or the URL, and Disconnect wipes it. Use <span class="mono">http://127.0.0.1:PORT</span> only &mdash; never send an owner token to a remote host from this page.</p>
+<p class="notice err" id="errBox" role="alert" hidden></p>
+<section class="card" aria-label="Connection">
+<h2>1 · Connect</h2>
+<div class="row">
+<div class="field"><label for="baseUrl">Backend base URL</label><input id="baseUrl" type="url" value="http://127.0.0.1:8000" autocomplete="off" spellcheck="false"></div>
+<div class="field"><label for="apiToken">Owner bearer token</label><input id="apiToken" type="password" value="" autocomplete="off" spellcheck="false" placeholder="pasted for this session only"></div>
+<div><button class="btn primary" id="connectBtn">Connect</button> <button class="btn" id="disconnectBtn" disabled>Disconnect</button></div>
+<div><span class="tag neutral" id="connTag">Not connected</span></div>
+</div>
+</section>
+<section class="card" aria-label="Service state">
+<h2>2 · Service state <span class="tag neutral" id="healthTag">unknown</span></h2>
+<div class="grid2">
+<div><table class="data" id="healthTable"><tr><th>Check</th><th>Result</th></tr></table></div>
+<div><table class="data" id="capTable"><tr><th>Capability</th><th>Value</th></tr></table></div>
+</div>
+</section>
+<section class="card" aria-label="Investigations">
+<h2>3 · Investigations <span class="tag neutral" id="invTag">none loaded</span></h2>
+<div class="list" id="invList"><div class="empty">Connect first. Listing is read-only; creating or authorizing an investigation happens in the CLI/API, not here.</div></div>
+</section>
+<section class="card" aria-label="Runs and events">
+<h2>4 · Runs &amp; events <span class="tag neutral" id="runTag">no selection</span></h2>
+<div class="list" id="runList"><div class="empty">Select an investigation to list its runs. Run state maps to five operator states: Running, Needs you, Finished, Stopped, Can't verify.</div></div>
+<div id="eventBox" style="margin-top:12px"></div>
+</section>
+<footer class="foot"><span>Second Source · live read-only projection · 2026</span><span><a href="https://github.com/Ankit6149/second-source" target="_blank" rel="noopener noreferrer">Source repository</a></span></footer>
+</div>
+<script>
+"use strict";
+/* GET-only. No storage APIs. Token lives in `session` and is wiped on disconnect. */
+var session = { base: "", token: "", connected: false };
+function $(id){ return document.getElementById(id); }
+function esc(v){ return String(v == null ? "" : v).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+function fail(msg){ var b = $("errBox"); b.hidden = false; b.textContent = msg; }
+function clearFail(){ var b = $("errBox"); b.hidden = true; b.textContent = ""; }
+function tag(id, text, kind){ var t = $(id); t.textContent = text; t.className = "tag " + kind; }
+async function get(path){
+  var res = await fetch(session.base + path, { headers: { "Authorization": "Bearer " + session.token }, cache: "no-store" });
+  if(res.status === 401){ throw new Error("401 Unauthorized: this token was rejected. Check the owner token and try again."); }
+  if(res.status === 403){ throw new Error("403 Forbidden: this owner may not read this resource."); }
+  if(!res.ok){ throw new Error("HTTP " + res.status + " on GET " + path + "."); }
+  return res.json();
+}
+function opState(run){
+  var s = String((run && (run.status || run.state)) || "unknown").toLowerCase();
+  if(/run|cancel.*grace|progress|execut/.test(s)) return ["Running", "good"];
+  if(/await|approv|needs|blocked|auth/i.test(s)) return ["Needs you", "warn"];
+  if(/finish|complete|done|success|scored/.test(s)) return ["Finished", "good"];
+  if(/stop|cancel|interrupt/.test(s)) return ["Stopped", "neutral"];
+  return ["Can't verify", "bad"];
+}
+async function connect(){
+  clearFail();
+  var base = $("baseUrl").value.trim().replace(/\/+$/, "");
+  var token = $("apiToken").value;
+  if(!/^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(base) && !/^https?:\/\/localhost(:\d+)?$/.test(base)){
+    fail("Refused: this page connects to loopback hosts only (127.0.0.1 or localhost)."); return;
+  }
+  if(!token){ fail("Paste an owner bearer token. It stays in page memory and is wiped on Disconnect."); return; }
+  session = { base: base, token: token, connected: true };
+  $("apiToken").value = "";
+  $("connectBtn").disabled = true; $("disconnectBtn").disabled = false;
+  tag("connTag", "Connected (read-only)", "good");
+  try {
+    var live = await get("/health/live");
+    var ready = await get("/health/ready").catch(function(){ return { status: "unknown" }; });
+    var okLive = live && (live.status === "ok" || live.live === true || Object.keys(live).length > 0);
+    tag("healthTag", okLive ? "live" : "response unclear", okLive ? "good" : "warn");
+    $("healthTable").innerHTML = "<tr><th>Check</th><th>Result</th></tr>" +
+      "<tr><td>liveness</td><td class='mono'>" + esc(JSON.stringify(live).slice(0, 200)) + "</td></tr>" +
+      "<tr><td>readiness</td><td class='mono'>" + esc(JSON.stringify(ready).slice(0, 200)) + "</td></tr>";
+    var caps = await get("/v1/capabilities").catch(function(){ return null; });
+    $("capTable").innerHTML = "<tr><th>Capability</th><th>Value</th></tr>" +
+      (caps ? Object.keys(caps).slice(0, 12).map(function(k){
+        return "<tr><td>" + esc(k) + "</td><td class='mono'>" + esc(JSON.stringify(caps[k]).slice(0, 160)) + "</td></tr>";
+      }).join("") : "<tr><td colspan='2'>capabilities endpoint unavailable</td></tr>");
+    await loadInvestigations();
+  } catch(e){ fail("Connection failed: " + e.message + " The token stays in memory; Disconnect wipes it."); }
+}
+async function loadInvestigations(){
+  var page = await get("/v1/investigations");
+  var items = (page && (page.items || page.investigations)) || [];
+  tag("invTag", items.length + " loaded", items.length ? "good" : "neutral");
+  if(!items.length){ $("invList").innerHTML = "<div class='empty'>No investigations visible to this owner.</div>"; return; }
+  $("invList").innerHTML = "";
+  items.forEach(function(inv){
+    var b = document.createElement("button");
+    b.className = "item"; b.type = "button";
+    b.innerHTML = "<b>" + esc(inv.title || inv.id || inv.investigation_id) + "</b><small class='mono'>" +
+      esc(inv.id || inv.investigation_id || "") + " · " + esc(inv.status || inv.state || "unknown") + "</small>";
+    b.addEventListener("click", function(){
+      Array.prototype.forEach.call($("invList").children, function(x){ x.classList.remove("sel"); });
+      b.classList.add("sel"); loadRuns(inv.id || inv.investigation_id);
+    });
+    $("invList").appendChild(b);
+  });
+}
+async function loadRuns(invId){
+  clearFail();
+  try {
+    var page = await get("/v1/investigations/" + encodeURIComponent(invId) + "/runs");
+    var items = (page && (page.items || page.runs)) || [];
+    tag("runTag", items.length + " runs", items.length ? "good" : "neutral");
+    $("runList").innerHTML = items.length ? "" : "<div class='empty'>No runs for this investigation.</div>";
+    items.forEach(function(run){
+      var st = opState(run);
+      var d = document.createElement("div");
+      d.className = "item";
+      d.innerHTML = "<b>" + esc(run.run_id || run.id || "run") + " · " + esc(st[0]) + "</b><small class='mono'>" +
+        esc(run.status || run.state || "unknown") + " · model " + esc(run.model || run.model_id || "not recorded") +
+        " · cost " + esc(run.estimated_cost_usd != null ? run.estimated_cost_usd : (run.cost != null ? run.cost : "n/a")) + "</small>";
+      var badge = document.createElement("span"); badge.className = "tag " + st[1]; badge.textContent = st[0];
+      d.appendChild(badge);
+      d.style.cursor = "default";
+      d.addEventListener("click", function(){ loadEvents(invId, run.run_id || run.id); });
+      $("runList").appendChild(d);
+    });
+    $("eventBox").innerHTML = "";
+  } catch(e){ fail("Could not list runs: " + e.message); }
+}
+async function loadEvents(invId, runId){
+  clearFail();
+  try {
+    var page = await get("/v1/investigations/" + encodeURIComponent(invId) + "/events?run_id=" + encodeURIComponent(runId));
+    var items = (page && (page.items || page.events)) || [];
+    $("eventBox").innerHTML = "<table class='data'><tr><th>Sequence</th><th>Event</th><th>Detail</th></tr>" +
+      (items.length ? items.slice(0, 60).map(function(ev){
+        return "<tr><td class='mono'>" + esc(ev.sequence || ev.seq || "") + "</td><td>" + esc(ev.type || ev.kind || ev.stage || "event") +
+          "</td><td class='mono'>" + esc(JSON.stringify(ev).slice(0, 220)) + "</td></tr>";
+      }).join("") : "<tr><td colspan='3'>No events recorded for this run.</td></tr>") + "</table>";
+  } catch(e){ fail("Could not load events: " + e.message); }
+}
+function disconnect(){
+  session = { base: "", token: "", connected: false };
+  $("apiToken").value = ""; $("connectBtn").disabled = false; $("disconnectBtn").disabled = true;
+  tag("connTag", "Not connected", "neutral"); tag("healthTag", "unknown", "neutral");
+  tag("invTag", "none loaded", "neutral"); tag("runTag", "no selection", "neutral");
+  $("healthTable").innerHTML = "<tr><th>Check</th><th>Result</th></tr>";
+  $("capTable").innerHTML = "<tr><th>Capability</th><th>Value</th></tr>";
+  $("invList").innerHTML = "<div class='empty'>Connect first. Listing is read-only.</div>";
+  $("runList").innerHTML = "<div class='empty'>Select an investigation to list its runs.</div>";
+  $("eventBox").innerHTML = ""; clearFail();
+}
+$("connectBtn").addEventListener("click", connect);
+$("disconnectBtn").addEventListener("click", disconnect);
+</script>
+</body>
+</html>
