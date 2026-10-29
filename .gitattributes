@@ -1,0 +1,2 @@
+# The recovered, already-applied migration is an exact UTF-8 byte witness.
+supabase/migrations/20261028193413_initial_second_source_private_schema.sql -text
