@@ -91,6 +91,11 @@ class _Boundary:
         self.identity_resolver = identity_resolver
         self.max_body = max_body_bytes
         self.slots = threading.BoundedSemaphore(max_concurrent_requests)
+        # Limit pre-auth remote verifications too: invalid bearer tokens must
+        # not fan out into an unbounded number of Supabase Auth requests.
+        self.auth_slots = threading.BoundedSemaphore(max_concurrent_requests)
+        self.auth_rate = requests_per_minute
+        self.auth_times: deque[float] = deque()
         self.rate = requests_per_minute
         self.buckets: dict[str, deque[float]] = {}
         self.lock = threading.Lock()
@@ -149,7 +154,26 @@ class _Boundary:
 
         protected = scope["path"].startswith("/v1")
         if protected:
-            principal = await asyncio.to_thread(self._principal, headers)
+            if self.identity_resolver is not None:
+                with self.lock:
+                    now = time.monotonic()
+                    while self.auth_times and self.auth_times[0] <= now - 60:
+                        self.auth_times.popleft()
+                    allowed = len(self.auth_times) < self.auth_rate
+                    if allowed:
+                        self.auth_times.append(now)
+                if not allowed:
+                    await reject("RATE_LIMITED", "Authentication rate limit exceeded.", 429)
+                    return
+                if not self.auth_slots.acquire(blocking=False):
+                    await reject("BUSY", "Authentication concurrency limit exceeded.", 503)
+                    return
+                try:
+                    principal = await asyncio.to_thread(self._principal, headers)
+                finally:
+                    self.auth_slots.release()
+            else:
+                principal = self._principal(headers)
             if principal is None:
                 await reject("UNAUTHENTICATED", "A valid bearer token is required.", 401)
                 return

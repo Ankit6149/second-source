@@ -94,3 +94,16 @@ def test_mixed_auth_authorities_are_denied(tmp_path):
         create_app(service, {token_digest: "local"}, identity_resolver=identity())
     with pytest.raises(ValueError):
         create_app(service)
+
+
+def test_preauth_rate_limit_prevents_remote_verification_flood(tmp_path):
+    store = BackendService(tmp_path / "authburst.sqlite")
+    calls = []
+    def remote(token):
+        calls.append(token)
+        return Principal(owner_id=OWNER)
+    with TestClient(create_app(store, identity_resolver=remote, requests_per_minute=1)) as client:
+        assert client.get("/v1/capabilities", headers={"Authorization": "Bearer " + GOOD}).status_code == 200
+        second = client.get("/v1/capabilities", headers={"Authorization": "Bearer " + GOOD})
+        assert second.status_code == 429
+        assert calls == [GOOD]
