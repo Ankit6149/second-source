@@ -6,7 +6,7 @@ from second_source.backend.service import BackendService
 
 PROJECT = "jpqcqqbzriizxhigvjki"
 DSN = ("postgresql://postgres." + PROJECT + ":fake@aws-0-ap-south-1.pooler.supabase.com:6543/"
-       "postgres?sslmode=require")
+       "postgres?sslmode=verify-full")
 
 
 def test_tenant_and_tls_policy():
@@ -18,15 +18,21 @@ def test_tenant_and_tls_policy():
         raise
     assert adapter.SCHEMA_VERSION == 1
     with pytest.raises(ValueError):
-        PostgresStore(DSN.replace("sslmode=require", "sslmode=disable"), project_ref=PROJECT)
+        PostgresStore(DSN.replace("sslmode=verify-full", "sslmode=disable"), project_ref=PROJECT)
     with pytest.raises(ValueError):
         PostgresStore(DSN, project_ref="aaaaaaaaaaaaaaaaaaaa")
+    with pytest.raises(ValueError):
+        PostgresStore(DSN + "&hostaddr=203.0.113.1", project_ref=PROJECT)
+    with pytest.raises(ValueError):
+        PostgresStore(DSN.replace("verify-full", "require"), project_ref=PROJECT)
 
 
 def test_query_translation_uses_bound_parameters_and_locks_claims():
     assert _translate("SELECT * FROM runs WHERE status='queued' ORDER BY created_at,run_id LIMIT 1").endswith(
         "FOR UPDATE SKIP LOCKED")
     assert _translate("SELECT * FROM runs WHERE run_id=?") == "SELECT * FROM runs WHERE run_id=%s"
+    assert _translate("SELECT * FROM runs WHERE status='queued' AND run_id=? ORDER BY created_at,run_id LIMIT 1").endswith(
+        "FOR UPDATE SKIP LOCKED")
     for unsafe in ("DROP TABLE runs; DELETE FROM investigations", "PRAGMA user_version", "SELECT '%secret'"):
         with pytest.raises(BackendError):
             _translate(unsafe)

@@ -21,3 +21,16 @@ independent native Postgres integration test, a dedicated least-privilege
 database role, Cloud artifact storage, worker deployment, and a mapping between
 ss_runtime control-plane run identities and ss evidence records. The migration
 is NOT applied to the live project. No paid inference or Google OAuth setup.
+
+
+## Reviewed security amendments
+
+Connections reject libpq hostaddr/service overrides and require verified
+server identity with sslmode=verify-full. The service uses the PostgreSQL
+server clock for lease grants, fencing, heartbeats and expired-run quarantine,
+not client machine time; SQLite retains local time. Both generic and
+run-filtered queued claims use FOR UPDATE SKIP LOCKED. The added native test
+probes skewed host-clock behavior in an isolated PostgreSQL cluster.
+
+Do not deploy or merge without independent concurrency and provider-identity
+review. The ss_runtime and ss schemas remain intentionally unsynchronized.

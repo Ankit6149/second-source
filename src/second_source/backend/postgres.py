@@ -54,7 +54,8 @@ def _translate(query: str) -> str:
         raise BackendError("STORAGE_QUERY", "Unsupported storage statement", 503)
     sql = query.replace("?", "%s")
     # Concurrent worker claims must never select one row without a lock.
-    if sql == "SELECT * FROM runs WHERE status='queued' ORDER BY created_at,run_id LIMIT 1":
+    if sql in ("SELECT * FROM runs WHERE status='queued' ORDER BY created_at,run_id LIMIT 1",
+                  "SELECT * FROM runs WHERE status='queued' AND run_id=%s ORDER BY created_at,run_id LIMIT 1"):
         sql += " FOR UPDATE SKIP LOCKED"
     return sql
 
@@ -65,6 +66,10 @@ class _Connection:
 
     def execute(self, query: str, params=()):
         return _Cursor(self.raw.execute(_translate(query), params))
+
+    def database_epoch(self) -> float:
+        row = self.raw.execute("SELECT EXTRACT(EPOCH FROM clock_timestamp()) AS epoch").fetchone()
+        return float(row["epoch"])
 
 
 class PostgresStore:
@@ -83,9 +88,13 @@ class PostgresStore:
         host, user = config.get("host", ""), config.get("user", "")
         direct = host == f"db.{project_ref}.supabase.co" and user == "postgres"
         pool = bool(re.fullmatch(r"aws-[a-z0-9-]+\.pooler\.supabase\.com", host)) and user == f"postgres.{project_ref}"
-        if (not (direct or pool) or config.get("dbname") != "postgres"
-                or config.get("sslmode") not in ("verify-full", "verify-ca", "require")):
-            raise ValueError("Database TLS, host or tenant identity is not permitted")
+        disallowed = {"hostaddr", "service", "servicefile", "options", "target_session_attrs"}
+        if (any(key in config for key in disallowed)
+                or not (direct or pool) or config.get("dbname") != "postgres"
+                or config.get("sslmode") != "verify-full"
+                or (direct and config.get("port", "5432") != "5432")
+                or (pool and config.get("port", "5432") not in ("5432", "6543"))):
+            raise ValueError("Database identity, TLS or routing configuration is not permitted")
         self._dsn = dsn
 
     @contextmanager

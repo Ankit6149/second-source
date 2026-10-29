@@ -108,7 +108,16 @@ def test_complete_owner_scoped_lifecycle_in_disposable_postgres():
             assert approved.status.value == "authorized"
             run = backend.create_run(owner, inv.investigation_id, CreateRun(), "pg-run")
             assert backend.create_run(owner, inv.investigation_id, CreateRun(), "pg-run") == run
-            lease = backend.claim("native", lease_seconds=30)
+            # Host clock drift cannot invalidate a PostgreSQL-server-clock lease.
+            import second_source.backend.service as service_module
+            original_time = service_module.time.time
+            try:
+                service_module.time.time = lambda: 1.0
+                lease = backend.claim("native", lease_seconds=30)
+                assert lease and lease.run.run_id == run.run_id
+                backend.heartbeat(run.run_id, lease.token, lease_seconds=30)
+            finally:
+                service_module.time.time = original_time
             assert lease and lease.run.run_id == run.run_id
             for stage in CodeStage:
                 backend.stage(run.run_id, lease.token, stage)
