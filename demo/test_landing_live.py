@@ -63,6 +63,13 @@ class LivePageSmoke(unittest.TestCase):
         for route in ("/health/live", "/health/ready", "/v1/capabilities",
                       "/v1/investigations", "/runs", "/events"):
             self.assertIn(route, self.html)
+        # Events are investigation-scoped with after/limit paging; the page
+        # must not invent a per-run query parameter the API does not define.
+        self.assertIn("after=0&limit=100", self.html)
+        self.assertNotIn("run_id=", self.html)
+        for field in ("event_id", "event_type", "investigation_id",
+                      "run.result", "estimated_cost_usd", "needs_reconciliation"):
+            self.assertIn(field, self.html)
 
 
 if __name__ == "__main__":

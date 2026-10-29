@@ -103,13 +103,29 @@ async function get(path){
   if(!res.ok){ throw new Error("HTTP " + res.status + " on GET " + path + "."); }
   return res.json();
 }
+/* Maps the backend RunStatus enum (queued/running/completed/failed/
+   cancelled/needs_reconciliation) onto the five PRD operator states. */
 function opState(run){
-  var s = String((run && (run.status || run.state)) || "unknown").toLowerCase();
-  if(/run|cancel.*grace|progress|execut/.test(s)) return ["Running", "good"];
-  if(/await|approv|needs|blocked|auth/i.test(s)) return ["Needs you", "warn"];
-  if(/finish|complete|done|success|scored/.test(s)) return ["Finished", "good"];
-  if(/stop|cancel|interrupt/.test(s)) return ["Stopped", "neutral"];
+  var s = String((run && run.status) || "unknown").toLowerCase();
+  if(s === "queued" || s === "running") return ["Running", "good"];
+  if(s === "completed") return ["Finished", "good"];
+  if(s === "cancelled" || s === "failed") return ["Stopped", "neutral"];
+  if(s === "needs_reconciliation") return ["Needs you", "warn"];
   return ["Can't verify", "bad"];
+}
+function runCost(run){
+  try {
+    var u = run.result && run.result.usage;
+    if(u && u.estimated_cost_usd != null) return "$" + u.estimated_cost_usd;
+  } catch(e){}
+  return "n/a (mock engine spends nothing billable)";
+}
+function runScore(run){
+  try {
+    var e = run.result && run.result.evaluation;
+    if(e && e.total > 0) return e.passed + "/" + e.total + " (" + e.failed + " failed, " + e.indeterminate + " indeterminate)";
+  } catch(err){}
+  return "not scored";
 }
 async function connect(){
   clearFail();
@@ -126,15 +142,18 @@ async function connect(){
   try {
     var live = await get("/health/live");
     var ready = await get("/health/ready").catch(function(){ return { status: "unknown" }; });
-    var okLive = live && (live.status === "ok" || live.live === true || Object.keys(live).length > 0);
-    tag("healthTag", okLive ? "live" : "response unclear", okLive ? "good" : "warn");
+    var okLive = live && live.status === "ok";
+    tag("healthTag", okLive ? "live" : "NOT READY", okLive ? "good" : "bad");
     $("healthTable").innerHTML = "<tr><th>Check</th><th>Result</th></tr>" +
       "<tr><td>liveness</td><td class='mono'>" + esc(JSON.stringify(live).slice(0, 200)) + "</td></tr>" +
       "<tr><td>readiness</td><td class='mono'>" + esc(JSON.stringify(ready).slice(0, 200)) + "</td></tr>";
     var caps = await get("/v1/capabilities").catch(function(){ return null; });
+    /* Fixed capability contract: api_version, enabled_run_kinds, and three
+       Literal[False] flags proving this backend cannot do real inference. */
     $("capTable").innerHTML = "<tr><th>Capability</th><th>Value</th></tr>" +
-      (caps ? Object.keys(caps).slice(0, 12).map(function(k){
-        return "<tr><td>" + esc(k) + "</td><td class='mono'>" + esc(JSON.stringify(caps[k]).slice(0, 160)) + "</td></tr>";
+      (caps ? ["api_version", "enabled_run_kinds", "real", "real_inference_enabled",
+               "paid_authorization_enabled"].map(function(k){
+        return "<tr><td>" + esc(k) + "</td><td class='mono'>" + esc(JSON.stringify(caps[k])) + "</td></tr>";
       }).join("") : "<tr><td colspan='2'>capabilities endpoint unavailable</td></tr>");
     await loadInvestigations();
   } catch(e){ fail("Connection failed: " + e.message + " The token stays in memory; Disconnect wipes it."); }
@@ -148,11 +167,12 @@ async function loadInvestigations(){
   items.forEach(function(inv){
     var b = document.createElement("button");
     b.className = "item"; b.type = "button";
-    b.innerHTML = "<b>" + esc(inv.title || inv.id || inv.investigation_id) + "</b><small class='mono'>" +
-      esc(inv.id || inv.investigation_id || "") + " · " + esc(inv.status || inv.state || "unknown") + "</small>";
+    b.innerHTML = "<b>" + esc(inv.title || inv.investigation_id) + "</b><small class='mono'>" +
+      esc(inv.investigation_id || "") + " · " + esc(inv.status || "unknown") +
+      " · scope " + esc((inv.scope_digest || "").slice(0, 12)) + "</small>";
     b.addEventListener("click", function(){
       Array.prototype.forEach.call($("invList").children, function(x){ x.classList.remove("sel"); });
-      b.classList.add("sel"); loadRuns(inv.id || inv.investigation_id);
+      b.classList.add("sel"); loadRuns(inv.investigation_id);
     });
     $("invList").appendChild(b);
   });
@@ -168,28 +188,33 @@ async function loadRuns(invId){
       var st = opState(run);
       var d = document.createElement("div");
       d.className = "item";
-      d.innerHTML = "<b>" + esc(run.run_id || run.id || "run") + " · " + esc(st[0]) + "</b><small class='mono'>" +
-        esc(run.status || run.state || "unknown") + " · model " + esc(run.model || run.model_id || "not recorded") +
-        " · cost " + esc(run.estimated_cost_usd != null ? run.estimated_cost_usd : (run.cost != null ? run.cost : "n/a")) + "</small>";
+      d.innerHTML = "<b>" + esc(run.run_id || "run") + " · " + esc(st[0]) + "</b><small class='mono'>" +
+        esc(run.status || "unknown") + " · kind " + esc(run.kind || "?") +
+        " · stage " + esc(run.stage || "—") + " · cost " + esc(runCost(run)) +
+        " · score " + esc(runScore(run)) + "</small>";
       var badge = document.createElement("span"); badge.className = "tag " + st[1]; badge.textContent = st[0];
       d.appendChild(badge);
       d.style.cursor = "default";
-      d.addEventListener("click", function(){ loadEvents(invId, run.run_id || run.id); });
+      d.addEventListener("click", function(){ loadEvents(invId, run.run_id); });
       $("runList").appendChild(d);
     });
     $("eventBox").innerHTML = "";
   } catch(e){ fail("Could not list runs: " + e.message); }
 }
+/* Events are investigation-scoped (after/limit paging); selecting a run
+   filters that investigation's event stream client-side. Display only. */
 async function loadEvents(invId, runId){
   clearFail();
   try {
-    var page = await get("/v1/investigations/" + encodeURIComponent(invId) + "/events?run_id=" + encodeURIComponent(runId));
-    var items = (page && (page.items || page.events)) || [];
-    $("eventBox").innerHTML = "<table class='data'><tr><th>Sequence</th><th>Event</th><th>Detail</th></tr>" +
-      (items.length ? items.slice(0, 60).map(function(ev){
-        return "<tr><td class='mono'>" + esc(ev.sequence || ev.seq || "") + "</td><td>" + esc(ev.type || ev.kind || ev.stage || "event") +
-          "</td><td class='mono'>" + esc(JSON.stringify(ev).slice(0, 220)) + "</td></tr>";
-      }).join("") : "<tr><td colspan='3'>No events recorded for this run.</td></tr>") + "</table>";
+    var page = await get("/v1/investigations/" + encodeURIComponent(invId) + "/events?after=0&limit=100");
+    var items = (page && page.items) || [];
+    var shown = runId ? items.filter(function(ev){ return ev.run_id === runId; }) : items;
+    $("eventBox").innerHTML = "<table class='data'><tr><th>#</th><th>Event</th><th>Stage</th><th>Detail</th></tr>" +
+      (shown.length ? shown.slice(0, 60).map(function(ev){
+        return "<tr><td class='mono'>" + esc(ev.event_id) + "</td><td>" + esc(ev.event_type || "event") +
+          "</td><td>" + esc(ev.stage || "—") + "</td><td class='mono'>" + esc(ev.created_at || "") +
+          " · rev " + esc(ev.revision) + "</td></tr>";
+      }).join("") : "<tr><td colspan='4'>No events recorded" + (runId ? " for this run" : "") + ".</td></tr>") + "</table>";
   } catch(e){ fail("Could not load events: " + e.message); }
 }
 function disconnect(){
