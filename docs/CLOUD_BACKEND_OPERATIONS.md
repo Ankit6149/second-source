@@ -110,6 +110,30 @@ Auth/OAuth/Storage and exact frontend origin; deploy `render.yaml` manually
 two-owner persistence/report/export/restart acceptance succeeds. A cold-start
 loading response must be retried as a status read, never replay a paid action.
 
+## Activation decisions and nonbillable acceptance
+
+Run `python scripts/acceptance_nonbillable.py` with the development dependencies
+installed. It runs the existing authenticated mock worker, storage failure,
+isolation, restart, cancellation and export checks using SQLite, synthetic
+identities and fake Storage. It makes no cloud-acceptance claim. Native Linux
+PostgreSQL CI separately exercises the real database engine and non-owner role.
+
+The following are distinct owner-controlled decisions, not authorization to
+perform them merely by merging this document:
+
+| Operation | Effect and verification | Risk and recovery |
+|---|---|---|
+| Apply the reviewed runtime migrations | Add `ss_runtime`, constraints and a non-owner role; inspect migration history, schema/role privileges and existing `ss` data before and after. | Live DDL; verify backup/restore and halt execution on failure. Preserve evidence and use the recovery boundary in [POSTGRES_BACKEND.md](POSTGRES_BACKEND.md). |
+| Provision the dedicated role credential | Set a private password and configure a TLS-verified server-only DSN; confirm readiness and denied excess privileges. | A leaked credential crosses tenant boundaries; rotate/revoke it privately and restore the prior server configuration. |
+| Configure Auth and Google OAuth | Configure approved redirect origins and identity provider; verify sign-in, expiry and two-user isolation. | External console changes and user data; revert settings and revoke sessions as appropriate. |
+| Configure private Storage | Verify or create only the required private bucket and server-side access, then test owner-scoped retrieval and hashes. | Stored artifacts are sensitive; disable access on misconfiguration, preserve evidence and reconcile partial uploads. |
+| Provision one Render Free API | Deploy the reviewed commit with mock execution disabled; verify health, cold starts and the exact CORS origin. | Account eligibility and no-card/no-overage status are not verified; an existing payment method can permit overage billing. Stop the service and restore the previous configuration on failure. |
+| Enable bounded mock execution | Explicitly enable the zero-cost on-demand worker after security and persistence checks; verify an authorized run and reconciliation. | Interruptions can leave uncertain effects; disable execution and quarantine rather than replay. No inference or sandbox spending is authorized. |
+
+Railway is an alternative only, never a simultaneous authoritative worker.
+No live credentials, migrations, bucket creation or hosting changes are performed
+by the acceptance script.
+
 Rollback: stop new execution, quarantine expired/uncertain work, restore the
 previous reviewed API build/config. Do not drop ss/ss_runtime, rewind events,
 delete witnessed objects or reverse migrations blindly. Schema changes are
