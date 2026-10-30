@@ -90,8 +90,10 @@ or repair claim is introduced by this infrastructure.
 [Render Free](https://render.com/docs/free) currently sleeps after15 idle minutes,
 may take about one minute to cold-start, loses local files on restart and grants
 750 workspace instance-hours/month. No free permanent/background worker or
-persistent disk is assumed. Quota exhaustion can suspend services/builds; do not
-add a payment method or upgrade to conceal this. Excess outbound DB/Storage/API
+persistent disk is assumed. Quota exhaustion can suspend services/builds; Render
+documents that bandwidth and build-minute overages can instead be billed when a
+payment method is present. Confirm the workspace has no payment method and cannot
+incur overages before deployment; do not add a payment method or upgrade. Excess outbound DB/Storage/API
 traffic can also lead to suspension. The chosen service must remain a bounded
 hackathon demo, not a claimed always-on production system.
 

@@ -32,7 +32,7 @@ OTHER = Principal(owner_id='00000000-0000-4000-8000-000000000002')
 MIGRATIONS = [ROOT / 'supabase/migrations' / name for name in (
     '20261028193413_initial_second_source_private_schema.sql',
     '20261029_backend_runtime_schema.sql',
-    '../proposals/runtime_private_role_and_bindings.sql')]
+    '20261030180237_runtime_private_role_and_bindings.sql')]
 
 
 def _tools():
