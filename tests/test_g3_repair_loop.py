@@ -341,6 +341,29 @@ def test_operator_repair_versions_are_replayable(monkeypatch, tmp_path):
         assert json.loads((tmp_path / "run" / files["receipt"]).read_text(encoding="utf-8"))["evaluation"] == version["evaluation"]
 
 
+def test_repair_rounds_carry_no_sealed_or_reference_material(two_case_run):
+    """P1 boundary proof: retry wires equal the frozen initial wire and carry
+    no sealed case IDs, suite paths, reference source, or gold markers; the
+    aggregate feedback likewise exposes no case identities."""
+    from second_source.repair_loop import run_bounded_repair
+    import json as _json
+    wires = []
+    def responder(request):
+        wires.append(_json.dumps(request.model_dump(mode="json"), sort_keys=True))
+        return {"content": mid_content()}
+    report = run_bounded_repair(two_case_run, provider=MockProvider(responder=responder),
+                                budget=budget(), max_rounds=2)
+    assert report.rounds_used == 2 and len(wires) == 2
+    assert wires[0] == wires[1]
+    for wire in wires:
+        for marker in ("SYNTHETIC_LIST", "SYNTHETIC_TOTAL", "reference.py",
+                       "owned_ledger", "GOLD", "sealed"):
+            assert marker not in wire, marker
+    for attempt in report.versions:
+        blob = _json.dumps(attempt.feedback, sort_keys=True)
+        assert "SYNTHETIC_LIST" not in blob and "SYNTHETIC_TOTAL" not in blob
+
+
 def test_operator_improved_retry_aligns_every_primary_field(monkeypatch, tmp_path):
     """Genuinely improved MOCK retry: every top-level field must describe it."""
     from second_source import reconstruct as operator
