@@ -1,5 +1,13 @@
 # Backend API v1
 
+**Backend integration branch, 30 October:** existing routes remain compatible.
+The cloud factory is `second_source.backend.asgi:create_application`; it requires
+explicit private PostgreSQL/Auth/Storage configuration and never falls back to
+ephemeral SQLite. New typed session, exact-run execute, reconciliation, run-event
+and verification routes are described in [the frontend contract](FRONTEND_BACKEND_CONTRACT.md).
+On-demand mock execution is disabled by default. Its existence is not deployment
+or genuine engine acceptance. See [cloud operations](CLOUD_BACKEND_OPERATIONS.md).
+
 This is a local, durable control-plane slice around the existing G3 mock engine.
 It does not enable paid inference, authorize Meta spending, or demonstrate real
 model reconstruction. The authentic G2 archive and two consumed real G3 attempts

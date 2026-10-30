@@ -1,0 +1,13 @@
+# Alternative only. Never activate alongside the authoritative Render service.
+[build]
+builder = "RAILPACK"
+buildCommand = "pip install -r requirements-deploy.txt"
+
+[deploy]
+startCommand = "python -m second_source.backend.serve_cloud"
+healthcheckPath = "/health/ready"
+healthcheckTimeout = 120
+restartPolicyType = "NEVER"
+numReplicas = 1
+overlapSeconds = "0"
+drainingSeconds = "120"

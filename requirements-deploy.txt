@@ -1,0 +1,5 @@
+# No dev or sandbox SDK provider extras. Update pins through reviewed CI.
+-c constraints-deploy.txt
+# Retain the source checkout: the existing owned-fixture worker resolves its
+# trusted fixture/runtime assets relative to this repository, not a wheel.
+-e .[cloud]
