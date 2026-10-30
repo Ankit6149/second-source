@@ -17,7 +17,7 @@ jobs:
   foundation-and-g2:
     name: ${{ matrix.os }} / Python ${{ matrix.python }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 12
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:

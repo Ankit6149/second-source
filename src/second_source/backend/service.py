@@ -23,8 +23,9 @@ from .contracts import (
 from .store import SQLiteStore
 
 
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+def _now(connection=None) -> str:
+    getter = getattr(connection, "database_timestamp", None)
+    return getter() if callable(getter) else datetime.now(timezone.utc).isoformat()
 
 
 def _json(value) -> str:
@@ -36,10 +37,18 @@ def _error(code: str, message: str, status: int = 409):
 
 
 class BackendService:
-    def __init__(self, database_path: str | Path, *, max_queued_runs: int = 32):
+    def __init__(self, database_path: str | Path | None = None, *,
+                 store=None, max_queued_runs: int = 32):
         if type(max_queued_runs) is not int or not 1 <= max_queued_runs <= 10000:
             raise ValueError('Invalid queue limit')
-        self.store = SQLiteStore(database_path)
+        if store is None:
+            if database_path is None:
+                raise ValueError('A durable database path is required')
+            self.store = SQLiteStore(database_path)
+        else:
+            if database_path is not None or not callable(getattr(store, 'transaction', None)) or not callable(getattr(store, 'readiness', None)):
+                raise ValueError('An exclusive durable store is required')
+            self.store = store
         self.max_queued_runs = max_queued_runs
 
     def readiness(self) -> bool:
@@ -75,7 +84,7 @@ class BackendService:
     @staticmethod
     def _event(connection, investigation_id, run_id, event_type, revision, stage=None):
         connection.execute('INSERT INTO events(investigation_id,run_id,event_type,stage,created_at,revision) VALUES(?,?,?,?,?,?)',
-                           (investigation_id, run_id, event_type, stage, _now(), revision))
+                           (investigation_id, run_id, event_type, stage, _now(connection), revision))
 
     @staticmethod
     def _key(key):
@@ -101,7 +110,7 @@ class BackendService:
             old, digest = self._existing(connection, principal.owner_id, 'create_investigation', idempotency_key, request.model_dump(mode='python'))
             if old:
                 return self._investigation(self._owned(connection, principal, old))
-            identity, now = str(uuid.uuid4()), _now()
+            identity, now = str(uuid.uuid4()), _now(connection)
             scope_digest = scope_digest_of(request.scope).removeprefix('sha256:')
             connection.execute('INSERT INTO investigations VALUES(?,?,?,?,?,?,?,?,?)',
                                (identity, principal.owner_id, request.title, _json(request.scope.model_dump(mode='python')), scope_digest, 'created', 1, now, now))
@@ -132,8 +141,8 @@ class BackendService:
                 _error('INVALID_STATE', 'Investigation is already authorized')
             if request.scope_digest != row['scope_digest']:
                 _error('SCOPE_MISMATCH', 'Approval does not match the immutable scope')
-            connection.execute('INSERT INTO approvals VALUES(?,?,?,?,?)', (investigation_id, principal.owner_id, row['scope_digest'], _json(request.model_dump(mode='python')), _now()))
-            connection.execute("UPDATE investigations SET status='authorized',revision=revision+1,updated_at=? WHERE investigation_id=?", (_now(), investigation_id))
+            connection.execute('INSERT INTO approvals VALUES(?,?,?,?,?)', (investigation_id, principal.owner_id, row['scope_digest'], _json(request.model_dump(mode='python')), _now(connection)))
+            connection.execute("UPDATE investigations SET status='authorized',revision=revision+1,updated_at=? WHERE investigation_id=?", (_now(connection), investigation_id))
             self._event(connection, investigation_id, None, 'investigation_authorized_mock_only', row['revision'] + 1)
             return self._investigation(self._owned(connection, principal, investigation_id))
 
@@ -148,7 +157,7 @@ class BackendService:
                 _error('APPROVAL_REQUIRED', 'Mock-only scope approval is required')
             if connection.execute("SELECT COUNT(*) FROM runs WHERE status IN('queued','running')").fetchone()[0] >= self.max_queued_runs:
                 _error('QUEUE_FULL', 'The bounded execution queue is full', 429)
-            identity, now = str(uuid.uuid4()), _now()
+            identity, now = str(uuid.uuid4()), _now(connection)
             connection.execute('INSERT INTO runs(run_id,investigation_id,kind,status,revision,created_at,updated_at) VALUES(?,?,?,?,?,?,?)', (identity, investigation_id, request.kind, 'queued', 1, now, now))
             self._remember(connection, principal.owner_id, 'create_run', idempotency_key, digest, identity)
             self._event(connection, investigation_id, identity, 'run_queued', 1)
@@ -180,7 +189,7 @@ class BackendService:
             if row['status'] not in ('queued', 'running') or row['cancel_requested']:
                 _error('INVALID_STATE', 'Run cannot be cancelled in this state')
             status = 'cancelled' if row['status'] == 'queued' else 'running'
-            connection.execute('UPDATE runs SET status=?,cancel_requested=1,revision=revision+1,updated_at=? WHERE run_id=?', (status, _now(), run_id))
+            connection.execute('UPDATE runs SET status=?,cancel_requested=1,revision=revision+1,updated_at=? WHERE run_id=?', (status, _now(connection), run_id))
             self._event(connection, row['investigation_id'], run_id, 'run_cancelled' if status == 'cancelled' else 'run_cancellation_requested', row['revision'] + 1, row['stage'])
             return self._run(self._owned_run(connection, principal, run_id))
 
@@ -190,22 +199,36 @@ class BackendService:
             _error('INVALID_LEASE', 'Lease duration must be between 1 and 300 seconds', 422)
 
     @staticmethod
+    def _clock(connection) -> float:
+        getter = getattr(connection, "database_epoch", None)
+        return float(getter()) if callable(getter) else time.time()
+
+    @staticmethod
     def _fenced(connection, run_id, token):
-        row = connection.execute('SELECT * FROM runs WHERE run_id=?', (run_id,)).fetchone()
-        if row is None or row['status'] != 'running' or not isinstance(token, str) or not secrets.compare_digest(row['lease_token'] or '', token) or row['lease_expires'] <= time.time():
+        locker = getattr(connection, 'lock_run', None)
+        row = locker(run_id) if callable(locker) else connection.execute('SELECT * FROM runs WHERE run_id=?', (run_id,)).fetchone()
+        if row is None or row['status'] != 'running' or not isinstance(token, str) or not secrets.compare_digest(row['lease_token'] or '', token) or row['lease_expires'] <= BackendService._clock(connection):
             _error('LEASE_LOST', 'Execution lease is no longer valid')
+        guard = getattr(connection, 'set_fence', None)
+        if callable(guard):
+            guard(run_id, token)
         return row
 
-    def claim(self, worker_id: str, lease_seconds=30) -> Lease | None:
+    def claim(self, worker_id: str, lease_seconds=30, *, run_id: str | None = None) -> Lease | None:
         self._lease_seconds(lease_seconds)
         if not isinstance(worker_id, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,80}', worker_id):
             _error('INVALID_WORKER', 'Invalid worker identity', 422)
+        if run_id is not None and (not isinstance(run_id, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,80}', run_id)):
+            _error('INVALID_ID', 'Run identity is invalid', 422)
         with self.store.transaction() as connection:
-            row = connection.execute("SELECT * FROM runs WHERE status='queued' ORDER BY created_at,run_id LIMIT 1").fetchone()
+            if run_id is None:
+                row = connection.execute("SELECT * FROM runs WHERE status='queued' ORDER BY created_at,run_id LIMIT 1").fetchone()
+            else:
+                row = connection.execute("SELECT * FROM runs WHERE status='queued' AND run_id=? ORDER BY created_at,run_id LIMIT 1", (run_id,)).fetchone()
             if row is None:
                 return None
-            token, expires = secrets.token_hex(32), time.time() + lease_seconds
-            connection.execute("UPDATE runs SET status='running',worker_id=?,lease_token=?,lease_expires=?,revision=revision+1,updated_at=? WHERE run_id=?", (worker_id, token, expires, _now(), row['run_id']))
+            token, expires = secrets.token_hex(32), self._clock(connection) + lease_seconds
+            connection.execute("UPDATE runs SET status='running',worker_id=?,lease_token=?,lease_expires=?,revision=revision+1,updated_at=? WHERE run_id=?", (worker_id, token, expires, _now(connection), row['run_id']))
             self._event(connection, row['investigation_id'], row['run_id'], 'run_claimed', row['revision'] + 1)
             fresh = connection.execute('SELECT * FROM runs WHERE run_id=?', (row['run_id'],)).fetchone()
             scope = connection.execute('SELECT scope_json FROM investigations WHERE investigation_id=?', (row['investigation_id'],)).fetchone()[0]
@@ -215,7 +238,7 @@ class BackendService:
         self._lease_seconds(lease_seconds)
         with self.store.transaction() as connection:
             self._fenced(connection, run_id, token)
-            connection.execute('UPDATE runs SET lease_expires=? WHERE run_id=?', (time.time() + lease_seconds, run_id))
+            connection.execute('UPDATE runs SET lease_expires=? WHERE run_id=?', (self._clock(connection) + lease_seconds, run_id))
             return self._run(connection.execute('SELECT * FROM runs WHERE run_id=?', (run_id,)).fetchone())
 
     def stage(self, run_id: str, token: str, stage: CodeStage) -> Run:
@@ -228,7 +251,7 @@ class BackendService:
             previous = stages.index(CodeStage(row['stage'])) if row['stage'] else -1
             if stages.index(stage) != previous + 1:
                 _error('INVALID_STAGE', 'Run stages must advance once in order')
-            connection.execute('UPDATE runs SET stage=?,revision=revision+1,updated_at=? WHERE run_id=?', (stage.value, _now(), run_id))
+            connection.execute('UPDATE runs SET stage=?,revision=revision+1,updated_at=? WHERE run_id=?', (stage.value, _now(connection), run_id))
             self._event(connection, row['investigation_id'], run_id, 'stage_started', row['revision'] + 1, stage.value)
             return self._run(connection.execute('SELECT * FROM runs WHERE run_id=?', (run_id,)).fetchone())
 
@@ -241,17 +264,24 @@ class BackendService:
                 result = EngineResult.model_validate(result)
                 if result.usage.estimated_cost_usd != 0 or result.usage.uncertain_cost_usd != 0:
                     _error('MOCK_COST_VIOLATION', 'Mock execution cannot report paid usage')
-            status = 'cancelled' if row['cancel_requested'] or error_code == 'CANCELLED' else ('failed' if error_code or result is None else 'completed')
+            status = ('needs_reconciliation' if error_code == 'ARTIFACT_PUBLICATION_UNCERTAIN'
+                      else 'cancelled' if row['cancel_requested'] or error_code == 'CANCELLED'
+                      else 'failed' if error_code or result is None else 'completed')
             if status == 'completed' and row['stage'] != CodeStage.EXECUTE.value:
                 _error('INCOMPLETE_EXECUTION', 'Successful completion requires the final execution stage')
-            connection.execute('UPDATE runs SET status=?,result_json=?,error_code=?,lease_token=NULL,lease_expires=NULL,revision=revision+1,updated_at=? WHERE run_id=?', (status, _json(result.model_dump(mode='python')) if result else None, error_code or ('ENGINE_FAILED' if status == 'failed' else None), _now(), run_id))
+            connection.execute('UPDATE runs SET status=?,result_json=?,error_code=?,lease_token=NULL,lease_expires=NULL,revision=revision+1,updated_at=? WHERE run_id=?', (status, _json(result.model_dump(mode='python')) if result else None, error_code or ('ENGINE_FAILED' if status == 'failed' else None), _now(connection), run_id))
             self._event(connection, row['investigation_id'], run_id, 'run_' + status, row['revision'] + 1, row['stage'])
             return self._run(connection.execute('SELECT * FROM runs WHERE run_id=?', (run_id,)).fetchone())
 
-    def recover_expired(self) -> int:
+    def recover_expired(self, *, run_id: str | None = None) -> int:
+        if run_id is not None and (not isinstance(run_id, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,80}', run_id)):
+            _error('INVALID_ID', 'Run identity is invalid', 422)
         with self.store.transaction() as connection:
-            rows = connection.execute("SELECT * FROM runs WHERE status='running' AND lease_expires<=?", (time.time(),)).fetchall()
+            if run_id is None:
+                rows = connection.execute("SELECT * FROM runs WHERE status='running' AND lease_expires<=?", (self._clock(connection),)).fetchall()
+            else:
+                rows = connection.execute("SELECT * FROM runs WHERE status='running' AND lease_expires<=? AND run_id=?", (self._clock(connection), run_id)).fetchall()
             for row in rows:
-                connection.execute("UPDATE runs SET status='needs_reconciliation',error_code='LEASE_EXPIRED',lease_token=NULL,lease_expires=NULL,revision=revision+1,updated_at=? WHERE run_id=?", (_now(), row['run_id']))
+                connection.execute("UPDATE runs SET status='needs_reconciliation',error_code='LEASE_EXPIRED',lease_token=NULL,lease_expires=NULL,revision=revision+1,updated_at=? WHERE run_id=?", (_now(connection), row['run_id']))
                 self._event(connection, row['investigation_id'], row['run_id'], 'run_needs_reconciliation', row['revision'] + 1, row['stage'])
             return len(rows)

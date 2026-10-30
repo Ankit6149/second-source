@@ -133,10 +133,13 @@ class Worker:
     def stop(self) -> None:
         self.stopping = True
 
-    def once(self) -> bool:
+    def once(self, *, run_id: str | None = None) -> bool:
         if self.stopping:
             return False
-        lease = self.service.claim(self.worker_id, lease_seconds=self.lease_seconds)
+        if run_id is None:
+            lease = self.service.claim(self.worker_id, lease_seconds=self.lease_seconds)
+        else:
+            lease = self.service.claim(self.worker_id, lease_seconds=self.lease_seconds, run_id=run_id)
         if lease is None:
             return False
         last_heartbeat = 0.0

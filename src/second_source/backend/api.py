@@ -13,7 +13,7 @@ import re
 import secrets
 import threading
 import time
-from typing import Annotated, Any, Literal, Mapping, TYPE_CHECKING
+from typing import Annotated, Any, Callable, Literal, Mapping, TYPE_CHECKING
 import uuid
 
 from fastapi import Depends, FastAPI, Header, Path, Query, Request
@@ -27,7 +27,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from second_source.contracts import StrictModel
 from .contracts import (
     AuthorizeInvestigation, BackendError, CancelRun, CreateInvestigation,
-    CreateRun, ErrorBody, Investigation, LifecycleEvent, Principal, Run,
+    CreateRun, ErrorBody, EvaluationSummary, Investigation, LifecycleEvent, Principal, Run,
 )
 
 if TYPE_CHECKING:
@@ -67,6 +67,27 @@ class Capabilities(StrictModel):
     paid_authorization_enabled: Literal[False] = False
 
 
+class OnDemandCapabilities(Capabilities):
+    execution_mode: Literal["on_demand_mock"] = "on_demand_mock"
+
+
+class SessionIdentity(StrictModel):
+    owner_id: str
+    authenticated: Literal[True] = True
+
+
+class ExecuteRun(StrictModel):
+    expected_revision: int = Field(ge=1)
+
+
+class VerificationView(StrictModel):
+    origin: Literal["mock"] = "mock"
+    real: Literal[False] = False
+    evaluation: EvaluationSummary | None = None
+    candidate_availability: Literal["private_not_exposed"] = "private_not_exposed"
+    repair_history_availability: Literal["engine_integration_pending"] = "engine_integration_pending"
+
+
 def _error(code: str, message: str, status: int, correlation: str) -> JSONResponse:
     headers = {"X-Correlation-ID": correlation, "Cache-Control": "no-store"}
     if status == 401:
@@ -83,12 +104,19 @@ class _Boundary:
     """Bounded ASGI ingress; limits also apply to chunked bodies before parsing."""
 
     def __init__(self, app: ASGIApp, *, token_hashes: Mapping[str, Principal],
+                 identity_resolver: Callable[[str], Principal | None] | None = None,
                  max_body_bytes: int, max_concurrent_requests: int,
                  requests_per_minute: int, body_timeout_seconds: float):
         self.app = app
         self.tokens = tuple(token_hashes.items())
+        self.identity_resolver = identity_resolver
         self.max_body = max_body_bytes
         self.slots = threading.BoundedSemaphore(max_concurrent_requests)
+        # Limit pre-auth remote verifications too: invalid bearer tokens must
+        # not fan out into an unbounded number of Supabase Auth requests.
+        self.auth_slots = threading.BoundedSemaphore(max_concurrent_requests)
+        self.auth_rate = requests_per_minute
+        self.auth_times: deque[float] = deque()
         self.rate = requests_per_minute
         self.buckets: dict[str, deque[float]] = {}
         self.lock = threading.Lock()
@@ -102,9 +130,20 @@ class _Boundary:
             value = values[0].decode("ascii")
         except UnicodeError:
             return None
-        if not value.startswith("Bearer ") or not _TOKEN.fullmatch(value[7:]):
+        if not value.startswith("Bearer "):
             return None
-        supplied = hashlib.sha256(value[7:].encode("ascii")).hexdigest()
+        token = value[7:]
+        if self.identity_resolver is not None:
+            if len(token) > 8192 or not re.fullmatch(r"[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+){2}", token):
+                return None
+            try:
+                return self.identity_resolver(token)
+            except Exception:
+                # Never log bearer tokens or external provider response bodies.
+                return None
+        if not _TOKEN.fullmatch(token):
+            return None
+        supplied = hashlib.sha256(token.encode("ascii")).hexdigest()
         matched = None
         # Compare every configured digest; never use a plaintext token as a key.
         for digest, principal in self.tokens:
@@ -136,7 +175,26 @@ class _Boundary:
 
         protected = scope["path"].startswith("/v1")
         if protected:
-            principal = self._principal(headers)
+            if self.identity_resolver is not None:
+                with self.lock:
+                    now = time.monotonic()
+                    while self.auth_times and self.auth_times[0] <= now - 60:
+                        self.auth_times.popleft()
+                    allowed = len(self.auth_times) < self.auth_rate
+                    if allowed:
+                        self.auth_times.append(now)
+                if not allowed:
+                    await reject("RATE_LIMITED", "Authentication rate limit exceeded.", 429)
+                    return
+                if not self.auth_slots.acquire(blocking=False):
+                    await reject("BUSY", "Authentication concurrency limit exceeded.", 503)
+                    return
+                try:
+                    principal = await asyncio.to_thread(self._principal, headers)
+                finally:
+                    self.auth_slots.release()
+            else:
+                principal = self._principal(headers)
             if principal is None:
                 await reject("UNAUTHENTICATED", "A valid bearer token is required.", 401)
                 return
@@ -214,19 +272,25 @@ class _Boundary:
             self.slots.release()
 
 
-def create_app(service: BackendService, token_hashes: Mapping[str, str],
+def create_app(service: BackendService, token_hashes: Mapping[str, str] | None = None,
                artifact_store: Any | None = None, *, max_body_bytes: int = 65_536,
                max_concurrent_requests: int = 16, requests_per_minute: int = 120,
-               body_timeout_seconds: float = 30) -> FastAPI:
+               body_timeout_seconds: float = 30,
+               identity_resolver: Callable[[str], Principal | None] | None = None,
+               run_executor: Callable[[Principal, str, int], Run] | None = None) -> FastAPI:
     """Construct a local HTTP adapter using injected service and hashed tokens.
 
     An optional shared artifact store enables verified report and bundle reads.
     No arbitrary filesystem paths or private evaluator files are exposed.
     """
-    if not isinstance(token_hashes, Mapping) or not 1 <= len(token_hashes) <= 256:
-        raise ValueError("Configure between one and 256 token hashes.")
+    if identity_resolver is None:
+        if not isinstance(token_hashes, Mapping) or not 1 <= len(token_hashes) <= 256:
+            raise ValueError("Configure between one and 256 token hashes.")
+    else:
+        if token_hashes is not None or not callable(identity_resolver):
+            raise ValueError("Configure exactly one authentication authority.")
     principals = {}
-    for digest, owner in token_hashes.items():
+    for digest, owner in (token_hashes or {}).items():
         if not isinstance(digest, str) or not _DIGEST.fullmatch(digest):
             raise ValueError("Token configuration requires lowercase SHA-256 digests.")
         principals[digest] = Principal(owner_id=owner)
@@ -236,7 +300,8 @@ def create_app(service: BackendService, token_hashes: Mapping[str, str],
     errors = {status: {"model": ErrorBody} for status in (400, 401, 404, 405, 408, 409, 413, 415, 422, 429, 500, 503)}
     app = FastAPI(title="Second Source backend", version="1.0.0", docs_url=None,
                   redoc_url=None, responses=errors)
-    app.add_middleware(_Boundary, token_hashes=principals, max_body_bytes=max_body_bytes,
+    app.add_middleware(_Boundary, token_hashes=principals, identity_resolver=identity_resolver,
+                       max_body_bytes=max_body_bytes,
                        max_concurrent_requests=max_concurrent_requests,
                        requests_per_minute=requests_per_minute,
                        body_timeout_seconds=body_timeout_seconds)
@@ -282,9 +347,30 @@ def create_app(service: BackendService, token_hashes: Mapping[str, str],
             return JSONResponse(Health(status="not_ready").model_dump(), status_code=503)
         return Health(status="ok")
 
-    @app.get("/v1/capabilities", response_model=Capabilities, tags=["capabilities"])
+    @app.get("/v1/capabilities", response_model=OnDemandCapabilities if run_executor else Capabilities, tags=["capabilities"])
     def capabilities(principal: Principal = Depends(owner)) -> Capabilities:
-        return Capabilities()
+        return OnDemandCapabilities() if run_executor else Capabilities()
+
+    @app.get("/v1/session", response_model=SessionIdentity, tags=["authentication"])
+    def session(principal: Principal = Depends(owner)) -> SessionIdentity:
+        return SessionIdentity(owner_id=principal.owner_id)
+
+    @app.post("/v1/runs/{run_id}/execute", response_model=Run, tags=["runs"])
+    def execute_run(run_id: Annotated[str, Path(pattern=_IDENTIFIER)], body: ExecuteRun,
+                    principal: Principal = Depends(owner)) -> Run:
+        service.get_run(principal, run_id)
+        if run_executor is None:
+            raise BackendError("EXECUTION_DISABLED", "On-demand execution is disabled.", 409)
+        return run_executor(principal, run_id, body.expected_revision)
+
+    @app.post("/v1/runs/{run_id}/reconcile", response_model=Run, tags=["runs"])
+    def reconcile_run(run_id: Annotated[str, Path(pattern=_IDENTIFIER)], body: ExecuteRun,
+                      principal: Principal = Depends(owner)) -> Run:
+        run = service.get_run(principal, run_id)
+        if run.revision != body.expected_revision:
+            raise BackendError("REVISION_CONFLICT", "Resource revision changed")
+        service.recover_expired(run_id=run_id)
+        return service.get_run(principal, run_id)
 
     @app.post("/v1/investigations", response_model=Investigation, status_code=201, tags=["investigations"])
     def create_investigation(body: CreateInvestigation, principal: Principal = Depends(owner),
@@ -326,6 +412,21 @@ def create_app(service: BackendService, token_hashes: Mapping[str, str],
                  principal: Principal = Depends(owner)) -> Run:
         return service.get_run(principal, run_id)
 
+    @app.get("/v1/runs/{run_id}/verification", response_model=VerificationView, tags=["verification"])
+    def verification(run_id: Annotated[str, Path(pattern=_IDENTIFIER)],
+                     principal: Principal = Depends(owner)) -> VerificationView:
+        run = service.get_run(principal, run_id)
+        return VerificationView(evaluation=run.result.evaluation if run.result else None)
+
+    @app.get("/v1/runs/{run_id}/events", response_model=EventPage, tags=["events"])
+    def run_events(run_id: Annotated[str, Path(pattern=_IDENTIFIER)],
+                   principal: Principal = Depends(owner), after: Annotated[int, Query(ge=0)] = 0,
+                   limit: Annotated[int, Query(ge=1, le=500)] = 100) -> EventPage:
+        run = service.get_run(principal, run_id)
+        page = service.events(principal, run.investigation_id, after=after, limit=limit)
+        return EventPage(items=[e for e in page if e.run_id in (None, run_id)],
+                         next_after=page[-1].event_id if page else after)
+
     @app.post("/v1/runs/{run_id}/cancel", response_model=Run, tags=["runs"])
     def cancel_run(run_id: Annotated[str, Path(pattern=_IDENTIFIER)], body: CancelRun,
                     principal: Principal = Depends(owner)) -> Run:
@@ -345,7 +446,8 @@ def create_app(service: BackendService, token_hashes: Mapping[str, str],
         run = service.get_run(principal, run_id)
         if artifact_store is None or run.result is None or run.result.report is None:
             raise BackendError("NOT_FOUND", "Report is not available.", 404)
-        raw = artifact_store.read(run.run_id, run.result.report)
+        store = artifact_store.for_owner(principal) if hasattr(artifact_store, "for_owner") else artifact_store
+        raw = store.read(run.run_id, run.result.report)
         return Response(raw, media_type="application/json")
 
     @app.get("/v1/runs/{run_id}/export.zip", response_class=Response,
@@ -367,7 +469,8 @@ def create_app(service: BackendService, token_hashes: Mapping[str, str],
             if len(all_events) > 1000:
                 raise BackendError("EXPORT_LIMIT", "Investigation exceeds the bounded HTTP export limit.", 409)
             cursor = page[-1].event_id
-        raw = artifact_store.export_bundle(investigation, run, all_events)
+        store = artifact_store.for_owner(principal) if hasattr(artifact_store, "for_owner") else artifact_store
+        raw = store.export_bundle(investigation, run, all_events)
         return Response(raw, media_type="application/zip", headers={
             "Content-Disposition": f'attachment; filename="{run.run_id}.zip"',
         })
