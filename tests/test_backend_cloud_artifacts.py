@@ -78,6 +78,14 @@ def test_repair_projection_rejects_inconsistent_selection_and_redacts_feedback()
     report["selected"]["candidate_digest"] = report["spec_digest"] = "sha256:" + "b" * 64
     with pytest.raises(BackendError):
         sanitized_report(report)
+    improved = {"passed": 23, "failed": 2, "indeterminate": 0, "total": 25}
+    report["evaluation"] = report["selected"]["evaluation"] = improved
+    report["repair_history"]["versions"][1]["evaluation"] = improved
+    report["repair_history"]["verdict"] = "improved"
+    projected = sanitized_report(report)
+    assert projected["repair"]["selected_version"] == "repair-1"
+    assert projected["evaluation"] == improved
+    assert sanitized_report(projected) == projected
 
 
 @pytest.fixture
