@@ -167,10 +167,10 @@ python -m pytest -q
 python -m second_source.reconstruct --mode mock
 
 # Or exercise the local durable API → worker → evaluator workflow.
-python -m second_source.backend --data-dir ./local-operator-data mock
+python -m second_source.backend --data-dir ../second-source-operator-data mock
 ~~~
 
-The reconstruct command writes create-once run artifacts under `.runs/<run-id>/`, including a report and private candidate/broker evidence. The local backend command uses the provided data directory for its durable SQLite store; for real operator use, choose a protected directory **outside the checkout**, as described in the [backend operations guide](docs/BACKEND_OPERATIONS.md). Results remain **NON_AI**.
+The reconstruct command writes create-once run artifacts under `.runs/<run-id>/`, including a report and private candidate/broker evidence. The local backend command uses a data directory **outside the checkout** for its durable SQLite store. Keep that directory private and protected, as described in the [backend operations guide](docs/BACKEND_OPERATIONS.md). Results remain **NON_AI**.
 
 **Windows bootstrap** (from a fresh checkout):
 
