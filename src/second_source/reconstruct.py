@@ -542,10 +542,13 @@ def run_mock(args: argparse.Namespace) -> int:
             "g2": g2_provenance,
         }, sort_keys=True).encode("utf-8"))
     _progress("inspected", run_dir.name, "broker request inspected, zero calls")
-    proposal = naive_mock_fill() if args.synthesis == "guided" else naive_mock_spec()
+    # Each generation attempt draws a fresh mock proposal, mirroring the
+    # real broker where every attempt is an independent model call.
+    def _proposal() -> Any:
+        return naive_mock_fill() if args.synthesis == "guided" else naive_mock_spec()
 
     def _responder(request: Any) -> dict[str, Any]:
-        return {"content": proposal}
+        return {"content": _proposal()}
 
     from .g3_verification import EvaluationBlocked
     from .model_gateway import GatewayError
@@ -613,6 +616,7 @@ def run_mock(args: argparse.Namespace) -> int:
         run_dir, tag="v1", candidate_digest=seed.candidate_digest,
         result=result, feedback=seed.feedback)
     version_files = {0: dict(admitted)}
+    retry_artifacts = {}
     repair_history = None
     lineage = [seed]
     if getattr(args, "repair_rounds", 0):
@@ -624,9 +628,11 @@ def run_mock(args: argparse.Namespace) -> int:
                       f"bounded retry of up to {args.repair_rounds} round(s) after "
                       f"initial {seed.evaluation['failed']} failed / "
                       f"{seed.evaluation['indeterminate']} indeterminate")
+            retry_artifacts = {}
             def _keep(attempt, art):
                 if art is None:
                     return
+                retry_artifacts[attempt.round] = art
                 tag = f"r{attempt.round}"
                 files = _persist_version(
                     run_dir, art, attempt.candidate_digest, tag=tag,
@@ -666,6 +672,22 @@ def run_mock(args: argparse.Namespace) -> int:
     selected = lineage[select_best(lineage)]
     selected_files = version_files[selected.round]
     selected_label = "initial" if selected.round == 0 else f"repair-{selected.round}"
+    # The selected version's FULL independent manifest must back the primary
+    # report fields. The initial manifest is already in hand; a selected
+    # retry is replayed through the unchanged evaluator (deterministic), which
+    # also proves the persisted bytes are independently re-scorable. Counts
+    # must agree exactly or the run fails closed on inconsistency.
+    _write_once(run_dir / "evaluation-manifest.v1.json",
+                json.dumps(result, indent=2, sort_keys=True).encode("utf-8"))
+    if selected.round == 0:
+        selected_result = result
+    else:
+        selected_result = run.evaluate(retry_artifacts[selected.round],
+                                       claim="TRUSTED_CONTROL")
+        if selected_result.get("evaluation") != selected.evaluation:
+            raise RuntimeError("selected replay evaluation disagrees with repair history")
+        _write_once(run_dir / f"evaluation-manifest.r{selected.round}.json",
+                    json.dumps(selected_result, indent=2, sort_keys=True).encode("utf-8"))
     report = {
         "kind": "G3_RECONSTRUCT_RUN_REPORT",
         "run_id": run_dir.name,
@@ -701,7 +723,8 @@ def run_mock(args: argparse.Namespace) -> int:
         "reference_command_id": result["reference_identity"],
         "reference_source_digest": result["reference_source_digest"],
         "evaluation": selected.evaluation,
-        "evaluation_receipt": result,
+        "evaluation_receipt": selected_result,
+        "initial_evaluation_receipt": result,
         "usage": {
             "attempts": budget.attempts,
             "input_tokens": budget.input_tokens,
@@ -712,7 +735,7 @@ def run_mock(args: argparse.Namespace) -> int:
         "stop_reason": "completed_mock_run",
         "repair_history": repair_history,
         "evidence_artifact_count": len(digests),
-        "evaluation_summary": _readable_summary(result["evaluation"], "mock"),
+        "evaluation_summary": _readable_summary(selected.evaluation, "mock"),
         "manifest_digest": pin_public_manifest(public),
         "report_path": str(run_dir / "G3_report.json"),
         "report_labels": "MOCK_TRANSPORT_NAIVE_SPEC_TRUSTED_CONTROL_EVALUATION",

@@ -341,6 +341,42 @@ def test_operator_repair_versions_are_replayable(monkeypatch, tmp_path):
         assert json.loads((tmp_path / "run" / files["receipt"]).read_text(encoding="utf-8"))["evaluation"] == version["evaluation"]
 
 
+def test_operator_improved_retry_aligns_every_primary_field(monkeypatch, tmp_path):
+    """Genuinely improved MOCK retry: every top-level field must describe it."""
+    from second_source import reconstruct as operator
+    monkeypatch.delenv("MODEL_API_KEY", raising=False)
+    monkeypatch.setenv("SECOND_SOURCE_MAX_RUN_USD", "0")
+    proposals = [operator.naive_mock_spec(), good_content()]
+    monkeypatch.setattr(operator, "naive_mock_spec", lambda: proposals.pop(0))
+    run_dir = tmp_path / "run"
+    seal_dir = tmp_path / "sealed"
+    code = operator.main(["--mode", "mock", "--run-dir", str(run_dir),
+                          "--seal-dir", str(seal_dir), "--repair-rounds", "2"])
+    assert code == 0
+    report = json.loads((run_dir / "G3_report.json").read_text(encoding="utf-8"))
+    history = report["repair_history"]
+    assert history["verdict"] == "improved"
+    initial, final = history["versions"][0], history["versions"][-1]
+    assert initial["evaluation"]["failed"] > 0
+    assert final["evaluation"] == {"passed": 25, "failed": 0, "indeterminate": 0,
+                                   "total": 25, "failure_categories": {}}
+    assert final["candidate_digest"] != initial["candidate_digest"]
+    assert report["selected"]["version"] == f"repair-{final['round']}"
+    # Every primary field describes the SAME selected candidate.
+    assert report["evaluation"] == final["evaluation"]
+    assert report["spec_digest"] == final["candidate_digest"]
+    assert report["response_id"] == final["response_id"]
+    assert report["candidate_artifact"] == final["files"]["candidate"]
+    assert report["broker_artifact"] == final["files"]["envelope"]
+    assert report["evaluation_receipt"]["evaluation"] == final["evaluation"]
+    assert report["evaluation_receipt"]["origin"]["candidate_digest"] == final["candidate_digest"]
+    assert report["evaluation_summary"][0].startswith("25/25 sealed cases passed")
+    # The original stays preserved as immutable initial evidence.
+    assert report["initial_evaluation"] == initial["evaluation"]
+    assert report["initial_evaluation_receipt"]["evaluation"] == initial["evaluation"]
+    assert report["initial_candidate_digest"] == initial["candidate_digest"]
+
+
 def test_operator_real_mode_rejects_repair_without_authorization(monkeypatch, tmp_path, capsys):
     from second_source import reconstruct as operator
     monkeypatch.delenv("MODEL_API_KEY", raising=False)

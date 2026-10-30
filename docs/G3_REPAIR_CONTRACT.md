@@ -31,6 +31,15 @@ and all persistence/migration decisions. Engine changes live in
   candidate_artifact, broker_artifact}` where `version` is `"initial"` or
   `"repair-N"`. Top-level `evaluation`/`spec_digest`/`response_id`/
   `candidate_artifact`/`broker_artifact` always describe the SELECTED version.
+- `evaluation_receipt`: the FULL independent manifest of the SELECTED version
+  (a selected retry is replayed through the unchanged evaluator to obtain it;
+  counts must agree with history or the run fails closed).
+  `initial_evaluation_receipt` preserves the original's full manifest, and
+  `initial_evaluation` its counts. `evaluation_summary` is rendered from the
+  selected counts. Aggregate per-version receipts must never be confused with
+  these full manifests.
+- `evaluation-manifest.v1.json` (always) and `evaluation-manifest.rN.json`
+  (when a retry is selected) persist the corresponding full manifests.
 - `selection_policy`: `"best_failed_then_indeterminate_then_earliest"`.
   Minimum `(failed, indeterminate)`; ties keep the earliest version, so a
   later regression is never silently promoted.
