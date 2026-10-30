@@ -27,7 +27,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from second_source.contracts import StrictModel
 from .contracts import (
     AuthorizeInvestigation, BackendError, CancelRun, CreateInvestigation,
-    CreateRun, ErrorBody, Investigation, LifecycleEvent, Principal, Run,
+    CreateRun, ErrorBody, EvaluationSummary, Investigation, LifecycleEvent, Principal, Run,
 )
 
 if TYPE_CHECKING:
@@ -65,6 +65,27 @@ class Capabilities(StrictModel):
     real: Literal[False] = False
     real_inference_enabled: Literal[False] = False
     paid_authorization_enabled: Literal[False] = False
+
+
+class OnDemandCapabilities(Capabilities):
+    execution_mode: Literal["on_demand_mock"] = "on_demand_mock"
+
+
+class SessionIdentity(StrictModel):
+    owner_id: str
+    authenticated: Literal[True] = True
+
+
+class ExecuteRun(StrictModel):
+    expected_revision: int = Field(ge=1)
+
+
+class VerificationView(StrictModel):
+    origin: Literal["mock"] = "mock"
+    real: Literal[False] = False
+    evaluation: EvaluationSummary | None = None
+    candidate_availability: Literal["private_not_exposed"] = "private_not_exposed"
+    repair_history_availability: Literal["engine_integration_pending"] = "engine_integration_pending"
 
 
 def _error(code: str, message: str, status: int, correlation: str) -> JSONResponse:
@@ -255,7 +276,8 @@ def create_app(service: BackendService, token_hashes: Mapping[str, str] | None =
                artifact_store: Any | None = None, *, max_body_bytes: int = 65_536,
                max_concurrent_requests: int = 16, requests_per_minute: int = 120,
                body_timeout_seconds: float = 30,
-               identity_resolver: Callable[[str], Principal | None] | None = None) -> FastAPI:
+               identity_resolver: Callable[[str], Principal | None] | None = None,
+               run_executor: Callable[[Principal, str, int], Run] | None = None) -> FastAPI:
     """Construct a local HTTP adapter using injected service and hashed tokens.
 
     An optional shared artifact store enables verified report and bundle reads.
@@ -325,9 +347,30 @@ def create_app(service: BackendService, token_hashes: Mapping[str, str] | None =
             return JSONResponse(Health(status="not_ready").model_dump(), status_code=503)
         return Health(status="ok")
 
-    @app.get("/v1/capabilities", response_model=Capabilities, tags=["capabilities"])
+    @app.get("/v1/capabilities", response_model=OnDemandCapabilities if run_executor else Capabilities, tags=["capabilities"])
     def capabilities(principal: Principal = Depends(owner)) -> Capabilities:
-        return Capabilities()
+        return OnDemandCapabilities() if run_executor else Capabilities()
+
+    @app.get("/v1/session", response_model=SessionIdentity, tags=["authentication"])
+    def session(principal: Principal = Depends(owner)) -> SessionIdentity:
+        return SessionIdentity(owner_id=principal.owner_id)
+
+    @app.post("/v1/runs/{run_id}/execute", response_model=Run, tags=["runs"])
+    def execute_run(run_id: Annotated[str, Path(pattern=_IDENTIFIER)], body: ExecuteRun,
+                    principal: Principal = Depends(owner)) -> Run:
+        service.get_run(principal, run_id)
+        if run_executor is None:
+            raise BackendError("EXECUTION_DISABLED", "On-demand execution is disabled.", 409)
+        return run_executor(principal, run_id, body.expected_revision)
+
+    @app.post("/v1/runs/{run_id}/reconcile", response_model=Run, tags=["runs"])
+    def reconcile_run(run_id: Annotated[str, Path(pattern=_IDENTIFIER)], body: ExecuteRun,
+                      principal: Principal = Depends(owner)) -> Run:
+        run = service.get_run(principal, run_id)
+        if run.revision != body.expected_revision:
+            raise BackendError("REVISION_CONFLICT", "Resource revision changed")
+        service.recover_expired(run_id=run_id)
+        return service.get_run(principal, run_id)
 
     @app.post("/v1/investigations", response_model=Investigation, status_code=201, tags=["investigations"])
     def create_investigation(body: CreateInvestigation, principal: Principal = Depends(owner),
@@ -369,6 +412,21 @@ def create_app(service: BackendService, token_hashes: Mapping[str, str] | None =
                  principal: Principal = Depends(owner)) -> Run:
         return service.get_run(principal, run_id)
 
+    @app.get("/v1/runs/{run_id}/verification", response_model=VerificationView, tags=["verification"])
+    def verification(run_id: Annotated[str, Path(pattern=_IDENTIFIER)],
+                     principal: Principal = Depends(owner)) -> VerificationView:
+        run = service.get_run(principal, run_id)
+        return VerificationView(evaluation=run.result.evaluation if run.result else None)
+
+    @app.get("/v1/runs/{run_id}/events", response_model=EventPage, tags=["events"])
+    def run_events(run_id: Annotated[str, Path(pattern=_IDENTIFIER)],
+                   principal: Principal = Depends(owner), after: Annotated[int, Query(ge=0)] = 0,
+                   limit: Annotated[int, Query(ge=1, le=500)] = 100) -> EventPage:
+        run = service.get_run(principal, run_id)
+        page = service.events(principal, run.investigation_id, after=after, limit=limit)
+        return EventPage(items=[e for e in page if e.run_id in (None, run_id)],
+                         next_after=page[-1].event_id if page else after)
+
     @app.post("/v1/runs/{run_id}/cancel", response_model=Run, tags=["runs"])
     def cancel_run(run_id: Annotated[str, Path(pattern=_IDENTIFIER)], body: CancelRun,
                     principal: Principal = Depends(owner)) -> Run:
@@ -388,7 +446,8 @@ def create_app(service: BackendService, token_hashes: Mapping[str, str] | None =
         run = service.get_run(principal, run_id)
         if artifact_store is None or run.result is None or run.result.report is None:
             raise BackendError("NOT_FOUND", "Report is not available.", 404)
-        raw = artifact_store.read(run.run_id, run.result.report)
+        store = artifact_store.for_owner(principal) if hasattr(artifact_store, "for_owner") else artifact_store
+        raw = store.read(run.run_id, run.result.report)
         return Response(raw, media_type="application/json")
 
     @app.get("/v1/runs/{run_id}/export.zip", response_class=Response,
@@ -410,7 +469,8 @@ def create_app(service: BackendService, token_hashes: Mapping[str, str] | None =
             if len(all_events) > 1000:
                 raise BackendError("EXPORT_LIMIT", "Investigation exceeds the bounded HTTP export limit.", 409)
             cursor = page[-1].event_id
-        raw = artifact_store.export_bundle(investigation, run, all_events)
+        store = artifact_store.for_owner(principal) if hasattr(artifact_store, "for_owner") else artifact_store
+        raw = store.export_bundle(investigation, run, all_events)
         return Response(raw, media_type="application/zip", headers={
             "Content-Disposition": f'attachment; filename="{run.run_id}.zip"',
         })

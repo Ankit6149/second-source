@@ -1,5 +1,13 @@
 # Durable backend operator workflow
 
+For the prepared Render Free / Railway-alternative profile, use the separate
+[cloud runbook](CLOUD_BACKEND_OPERATIONS.md). The local workflow below remains
+operational. No hosted resource, migration, key or worker was activated by the
+backend integration code. Cloud state uses private PostgreSQL/Storage; temporary
+local files are processing only. No main merge or live action without owner
+approval; old standing automatic merge language is superseded by the current
+backend directive.
+
 This slice provides a local, modular control plane around the existing **NON_AI G3 engine**. It does not enable Meta inference, credential retrieval, candidate repair or deployment. See [API contracts](BACKEND_API.md) and the [current board](G3_DELIVERY_BOARD.md) for acceptance state; implemented code is not a production-readiness certification.
 
 ## Install and provision

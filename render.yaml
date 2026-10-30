@@ -1,0 +1,26 @@
+# Reviewed configuration only. Creating/applying this service needs owner approval.
+services:
+  - type: web
+    name: second-source-api
+    runtime: python
+    plan: free
+    autoDeployTrigger: "off"
+    buildCommand: pip install -r requirements-deploy.txt
+    startCommand: python -m second_source.backend.serve_cloud
+    healthCheckPath: /health/ready
+    maxShutdownDelaySeconds: 120
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.16
+      - key: SECOND_SOURCE_SUPABASE_PROJECT_REF
+        value: jpqcqqbzriizxhigvjki
+      - key: SECOND_SOURCE_DATABASE_URL
+        sync: false
+      - key: SECOND_SOURCE_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SECOND_SOURCE_STORAGE_SERVER_KEY
+        sync: false
+      - key: SECOND_SOURCE_CORS_ORIGINS
+        value: '[]'
+      - key: SECOND_SOURCE_ENABLE_MOCK_EXECUTION
+        value: 'false'
