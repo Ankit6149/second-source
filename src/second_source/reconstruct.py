@@ -429,19 +429,21 @@ def _generation_audit(run_dir: Path):
     return record
 
 
-def _persist_admission(run_dir: Path, artifact: Any, spec_digest: str) -> dict[str, str]:
-    """Archive the broker-issued admission immediately after generation.
+def _persist_version(run_dir: Path, artifact: Any, spec_digest: str, *, tag: str,
+                     result: Any = None, feedback: Any = None) -> dict[str, str]:
+    """Archive one admitted candidate version under immutable round-tagged files.
 
-    Stores the exact artifact payload/signature envelope plus the admitted
-    candidate bytes, each create-once with a read-back integrity check. The
-    envelope carries the broker's local attestation signature, never a
-    provider attestation; the HMAC authority key is never persisted.
+    Persists candidate bytes, the broker envelope, and the evaluation receipt
+    (counts plus origin receipt plus aggregate feedback) so every version is
+    independently traceable and eligible for offline replay. The envelope
+    carries the broker's local attestation signature, never a provider
+    attestation; the HMAC authority key is never persisted.
     """
     payload = artifact.payload
     if not isinstance(payload, bytes):
         raise RuntimeError("broker artifact payload is not bytes")
     raw_spec = json.loads(payload.decode("utf-8"))["spec"].encode("utf-8")
-    candidate_path = _write_once(run_dir / "candidate.v1.json", raw_spec)
+    candidate_path = _write_once(run_dir / f"candidate.{tag}.json", raw_spec)
     if candidate_path.read_bytes() != raw_spec:
         raise RuntimeError("candidate archive read-back mismatch")
     envelope = {
@@ -455,10 +457,43 @@ def _persist_admission(run_dir: Path, artifact: Any, spec_digest: str) -> dict[s
         ),
     }
     envelope_path = _write_once(
-        run_dir / "broker-artifact.v1.json",
+        run_dir / f"broker-artifact.{tag}.json",
         json.dumps(envelope, indent=2, sort_keys=True).encode("utf-8"),
     )
-    return {"candidate": candidate_path.name, "envelope": envelope_path.name}
+    files = {"candidate": candidate_path.name, "envelope": envelope_path.name}
+    if result is not None:
+        files["receipt"] = _persist_receipt(
+            run_dir, tag=tag, candidate_digest=spec_digest,
+            result=result, feedback=feedback)
+    return files
+
+
+def _persist_receipt(run_dir: Path, *, tag: str, candidate_digest: str,
+                     result: Any, feedback: Any) -> str:
+    """Archive one version's evaluation receipt (counts, origin, feedback)."""
+    receipt_doc = {
+        "kind": "VERSION_EVALUATION_RECEIPT",
+        "candidate_digest": candidate_digest,
+        "evaluation": result.get("evaluation"),
+        "origin": result.get("origin"),
+        "feedback": feedback,
+    }
+    receipt_path = _write_once(
+        run_dir / f"evaluation-receipt.{tag}.json",
+        json.dumps(receipt_doc, indent=2, sort_keys=True).encode("utf-8"),
+    )
+    return receipt_path.name
+
+
+def _persist_admission(run_dir: Path, artifact: Any, spec_digest: str) -> dict[str, str]:
+    """Archive the broker-issued admission immediately after generation.
+
+    Stores the exact artifact payload/signature envelope plus the admitted
+    candidate bytes, each create-once with a read-back integrity check. The
+    envelope carries the broker's local attestation signature, never a
+    provider attestation; the HMAC authority key is never persisted.
+    """
+    return _persist_version(run_dir, artifact, spec_digest, tag="v1")
 
 
 def run_mock(args: argparse.Namespace) -> int:
@@ -507,10 +542,13 @@ def run_mock(args: argparse.Namespace) -> int:
             "g2": g2_provenance,
         }, sort_keys=True).encode("utf-8"))
     _progress("inspected", run_dir.name, "broker request inspected, zero calls")
-    proposal = naive_mock_fill() if args.synthesis == "guided" else naive_mock_spec()
+    # Each generation attempt draws a fresh mock proposal, mirroring the
+    # real broker where every attempt is an independent model call.
+    def _proposal() -> Any:
+        return naive_mock_fill() if args.synthesis == "guided" else naive_mock_spec()
 
     def _responder(request: Any) -> dict[str, Any]:
-        return {"content": proposal}
+        return {"content": _proposal()}
 
     from .g3_verification import EvaluationBlocked
     from .model_gateway import GatewayError
@@ -560,7 +598,96 @@ def run_mock(args: argparse.Namespace) -> int:
         print(json.dumps(_summarize(failed), indent=2))
         return 1
     receipt = result["origin"]
-    candidate_path = admitted["candidate"]
+    from .repair_loop import (
+        RepairAttempt, is_perfect, run_bounded_repair, select_best, SELECTION_POLICY,
+    )
+    # The repair lineage starts at the true original: the already evaluated,
+    # user-visible initial candidate. Verdicts compare it against the final
+    # retry, never retry-vs-retry alone.
+    seed = RepairAttempt(
+        round=0,
+        candidate_digest=receipt["candidate_digest"],
+        response_id=receipt["response_id"],
+        origin=receipt["origin"],
+        evaluation=dict(result["evaluation"]),
+        feedback=dict(run.repair_feedback(artifact)),
+    )
+    admitted["receipt"] = _persist_receipt(
+        run_dir, tag="v1", candidate_digest=seed.candidate_digest,
+        result=result, feedback=seed.feedback)
+    version_files = {0: dict(admitted)}
+    retry_artifacts = {}
+    repair_history = None
+    lineage = [seed]
+    if getattr(args, "repair_rounds", 0):
+        if not isinstance(args.repair_rounds, int) or not 1 <= args.repair_rounds <= 3:
+            print("BLOCKED_CONTRACT: --repair-rounds must be 1, 2 or 3", file=sys.stderr)
+            return 2
+        if not is_perfect(seed.evaluation):
+            _progress("repair", run_dir.name,
+                      f"bounded retry of up to {args.repair_rounds} round(s) after "
+                      f"initial {seed.evaluation['failed']} failed / "
+                      f"{seed.evaluation['indeterminate']} indeterminate")
+            retry_artifacts = {}
+            def _keep(attempt, art):
+                if art is None:
+                    return
+                retry_artifacts[attempt.round] = art
+                tag = f"r{attempt.round}"
+                files = _persist_version(
+                    run_dir, art, attempt.candidate_digest, tag=tag,
+                    result={"evaluation": attempt.evaluation,
+                            "origin": {"candidate_digest": attempt.candidate_digest,
+                                       "response_id": attempt.response_id,
+                                       "origin": attempt.origin}},
+                    feedback=attempt.feedback)
+                version_files[attempt.round] = files
+            repair = run_bounded_repair(
+                run, provider=MockProvider(responder=_responder), budget=budget,
+                max_rounds=args.repair_rounds, seed=seed, on_version=_keep)
+            lineage = repair.versions
+            repair_history = {
+                "verdict": repair.verdict,
+                "stop_reason": repair.stop_reason,
+                "rounds_used": repair.rounds_used,
+                "selection_policy": SELECTION_POLICY,
+                "versions": [
+                    {"round": attempt.round,
+                     "candidate_digest": attempt.candidate_digest,
+                     "response_id": attempt.response_id,
+                     "origin": attempt.origin,
+                     "evaluation": attempt.evaluation,
+                     "feedback": attempt.feedback,
+                     "files": version_files.get(attempt.round)}
+                    for attempt in lineage
+                ],
+                "broker_diagnostic": repair.broker_diagnostic,
+            }
+            _write_once(run_dir / "G3_repair_history.json",
+                        json.dumps(repair_history, sort_keys=True).encode("utf-8"))
+            _progress("repaired" if repair.verdict == "improved" else "repair_done",
+                      run_dir.name, f"verdict {repair.verdict}")
+    # Explicit selection: best (failed, indeterminate), ties keep the
+    # earliest version, so a later regression is never silently promoted.
+    selected = lineage[select_best(lineage)]
+    selected_files = version_files[selected.round]
+    selected_label = "initial" if selected.round == 0 else f"repair-{selected.round}"
+    # The selected version's FULL independent manifest must back the primary
+    # report fields. The initial manifest is already in hand; a selected
+    # retry is replayed through the unchanged evaluator (deterministic), which
+    # also proves the persisted bytes are independently re-scorable. Counts
+    # must agree exactly or the run fails closed on inconsistency.
+    _write_once(run_dir / "evaluation-manifest.v1.json",
+                json.dumps(result, indent=2, sort_keys=True).encode("utf-8"))
+    if selected.round == 0:
+        selected_result = result
+    else:
+        selected_result = run.evaluate(retry_artifacts[selected.round],
+                                       claim="TRUSTED_CONTROL")
+        if selected_result.get("evaluation") != selected.evaluation:
+            raise RuntimeError("selected replay evaluation disagrees with repair history")
+        _write_once(run_dir / f"evaluation-manifest.r{selected.round}.json",
+                    json.dumps(selected_result, indent=2, sort_keys=True).encode("utf-8"))
     report = {
         "kind": "G3_RECONSTRUCT_RUN_REPORT",
         "run_id": run_dir.name,
@@ -572,18 +699,32 @@ def run_mock(args: argparse.Namespace) -> int:
         "real": receipt["real"],
         "provider": receipt["provider"],
         "model": receipt["model"],
-        "response_id": receipt["response_id"],
-        "spec_digest": result["candidate_digest"],
-        "candidate_artifact": candidate_path,
-        "broker_artifact": admitted["envelope"],
+        "response_id": selected.response_id,
+        "spec_digest": selected.candidate_digest,
+        "candidate_artifact": selected_files["candidate"],
+        "broker_artifact": selected_files["envelope"],
+        "initial_response_id": receipt["response_id"],
+        "initial_candidate_digest": receipt["candidate_digest"],
+        "initial_candidate_artifact": version_files[0]["candidate"],
+        "initial_evaluation": seed.evaluation,
+        "selected": {
+            "version": selected_label,
+            "candidate_digest": selected.candidate_digest,
+            "response_id": selected.response_id,
+            "evaluation": selected.evaluation,
+            "candidate_artifact": selected_files["candidate"],
+            "broker_artifact": selected_files["envelope"],
+        },
+        "selection_policy": SELECTION_POLICY,
         "scope_digest": result["scope_digest"],
         "suite_digest": result["suite_digest"],
         "approved_context_digest": result["approved_context_digest"],
         "plan_digest": result["plan_digest"],
         "reference_command_id": result["reference_identity"],
         "reference_source_digest": result["reference_source_digest"],
-        "evaluation": result["evaluation"],
-        "evaluation_receipt": result,
+        "evaluation": selected.evaluation,
+        "evaluation_receipt": selected_result,
+        "initial_evaluation_receipt": result,
         "usage": {
             "attempts": budget.attempts,
             "input_tokens": budget.input_tokens,
@@ -592,8 +733,9 @@ def run_mock(args: argparse.Namespace) -> int:
             "uncertain_cost_usd": budget.uncertain_cost_usd,
         },
         "stop_reason": "completed_mock_run",
+        "repair_history": repair_history,
         "evidence_artifact_count": len(digests),
-        "evaluation_summary": _readable_summary(result["evaluation"], "mock"),
+        "evaluation_summary": _readable_summary(selected.evaluation, "mock"),
         "manifest_digest": pin_public_manifest(public),
         "report_path": str(run_dir / "G3_report.json"),
         "report_labels": "MOCK_TRANSPORT_NAIVE_SPEC_TRUSTED_CONTROL_EVALUATION",
@@ -704,6 +846,9 @@ def _spend_ceiling(value: Any) -> float | None:
 
 def run_real(args: argparse.Namespace) -> int:
     """Owner-authorized real generation; fail closed on any missing approval."""
+    if getattr(args, "repair_rounds", 0):
+        return _blocked("real-mode repair needs a separate owner authorization; "
+                        "re-run with --repair-rounds 0.")
     from .g3_verification import EvaluationBlocked, PinnedEvaluatorRun, load_sealed_suite
     from .model_gateway import GatewayError
 
@@ -1016,6 +1161,9 @@ def build_parser() -> argparse.ArgumentParser:
                         help="G2_receipt.json from the single version2 journal (required for real)")
     parser.add_argument("--g2-receipt-sha256", default=None,
                         help="externally retained exact G2 receipt SHA-256; required with --g2-receipt")
+    parser.add_argument("--repair-rounds", type=int, default=0,
+                        help="bounded repair retries after a non-perfect mock evaluation "
+                             "(mock only; real repair needs separate authorization)")
     return parser
 
 
