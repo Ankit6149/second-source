@@ -36,10 +36,18 @@ def _error(code: str, message: str, status: int = 409):
 
 
 class BackendService:
-    def __init__(self, database_path: str | Path, *, max_queued_runs: int = 32):
+    def __init__(self, database_path: str | Path | None = None, *,
+                 store=None, max_queued_runs: int = 32):
         if type(max_queued_runs) is not int or not 1 <= max_queued_runs <= 10000:
             raise ValueError('Invalid queue limit')
-        self.store = SQLiteStore(database_path)
+        if store is None:
+            if database_path is None:
+                raise ValueError('A durable database path is required')
+            self.store = SQLiteStore(database_path)
+        else:
+            if database_path is not None or not callable(getattr(store, 'transaction', None)) or not callable(getattr(store, 'readiness', None)):
+                raise ValueError('An exclusive durable store is required')
+            self.store = store
         self.max_queued_runs = max_queued_runs
 
     def readiness(self) -> bool:
@@ -190,9 +198,14 @@ class BackendService:
             _error('INVALID_LEASE', 'Lease duration must be between 1 and 300 seconds', 422)
 
     @staticmethod
+    def _clock(connection) -> float:
+        getter = getattr(connection, "database_epoch", None)
+        return float(getter()) if callable(getter) else time.time()
+
+    @staticmethod
     def _fenced(connection, run_id, token):
         row = connection.execute('SELECT * FROM runs WHERE run_id=?', (run_id,)).fetchone()
-        if row is None or row['status'] != 'running' or not isinstance(token, str) or not secrets.compare_digest(row['lease_token'] or '', token) or row['lease_expires'] <= time.time():
+        if row is None or row['status'] != 'running' or not isinstance(token, str) or not secrets.compare_digest(row['lease_token'] or '', token) or row['lease_expires'] <= BackendService._clock(connection):
             _error('LEASE_LOST', 'Execution lease is no longer valid')
         return row
 
@@ -204,7 +217,7 @@ class BackendService:
             row = connection.execute("SELECT * FROM runs WHERE status='queued' ORDER BY created_at,run_id LIMIT 1").fetchone()
             if row is None:
                 return None
-            token, expires = secrets.token_hex(32), time.time() + lease_seconds
+            token, expires = secrets.token_hex(32), self._clock(connection) + lease_seconds
             connection.execute("UPDATE runs SET status='running',worker_id=?,lease_token=?,lease_expires=?,revision=revision+1,updated_at=? WHERE run_id=?", (worker_id, token, expires, _now(), row['run_id']))
             self._event(connection, row['investigation_id'], row['run_id'], 'run_claimed', row['revision'] + 1)
             fresh = connection.execute('SELECT * FROM runs WHERE run_id=?', (row['run_id'],)).fetchone()
@@ -215,7 +228,7 @@ class BackendService:
         self._lease_seconds(lease_seconds)
         with self.store.transaction() as connection:
             self._fenced(connection, run_id, token)
-            connection.execute('UPDATE runs SET lease_expires=? WHERE run_id=?', (time.time() + lease_seconds, run_id))
+            connection.execute('UPDATE runs SET lease_expires=? WHERE run_id=?', (self._clock(connection) + lease_seconds, run_id))
             return self._run(connection.execute('SELECT * FROM runs WHERE run_id=?', (run_id,)).fetchone())
 
     def stage(self, run_id: str, token: str, stage: CodeStage) -> Run:
@@ -250,7 +263,7 @@ class BackendService:
 
     def recover_expired(self) -> int:
         with self.store.transaction() as connection:
-            rows = connection.execute("SELECT * FROM runs WHERE status='running' AND lease_expires<=?", (time.time(),)).fetchall()
+            rows = connection.execute("SELECT * FROM runs WHERE status='running' AND lease_expires<=?", (self._clock(connection),)).fetchall()
             for row in rows:
                 connection.execute("UPDATE runs SET status='needs_reconciliation',error_code='LEASE_EXPIRED',lease_token=NULL,lease_expires=NULL,revision=revision+1,updated_at=? WHERE run_id=?", (_now(), row['run_id']))
                 self._event(connection, row['investigation_id'], row['run_id'], 'run_needs_reconciliation', row['revision'] + 1, row['stage'])
