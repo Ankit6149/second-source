@@ -8,6 +8,11 @@ This is a working, dependency-free, responsive investigation and result viewer f
 
 From the repo root, `python -m http.server 8000 --directory demo`, then visit `http://localhost:8000`. You may also open `demo/index.html` directly in a browser.
 
+Two companion pages ship alongside the console:
+
+- `landing/index.html` — public landing page (problem, CODE method, truthful capability status, verification, FAQ). Dependency-free; serve from `landing/` the same way.
+- `live.html` — optional **read-only** view of a local backend (`GET` health, capabilities, investigations, runs, events only). The owner token stays in page memory, is wiped on Disconnect, and loopback hosts only. It never creates, authorizes, cancels, or spends.
+
 Select built-in example records to inspect:
 - **Real G2 discovery** — summary numbers from an operator-reported genuine Meta run, not a signed or portable provider attestation.
 - **Real G3 failed synthesis** — a historical consumed attempt; both genuine attempts consumed, with no admitted candidate and **no sealed score**.

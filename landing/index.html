@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="description" content="Second Source — AI behavioral intelligence that observes authorized software, discovers its rules, rebuilds an independent candidate, and verifies it. Evidence over claims.">
+<title>Second Source — Know what your software actually does</title>
+<style>
+:root{
+  --paper:#ffffff; --wash:#f4f6fa; --ink:#17233a; --body:#3c4a63; --muted:#57667f;
+  --line:#dfe6f0; --cobalt:#1f4fd8; --cobalt-deep:#16389b; --sky:#e8effc;
+  --green:#157a57; --green-wash:#e9f5ee; --amber:#8a5c10; --amber-wash:#fdf3df;
+  --rose:#a03d2d; --rose-wash:#fbeee9; --slate-wash:#eef1f6;
+  --serif:"Iowan Old Style",Palatino,Palatino Linotype,Georgia,serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --r-sm:6px; --r-md:12px; --r-lg:20px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--body);font-family:var(--sans);font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased}
+h1,h2,h3{color:var(--ink);font-family:var(--serif);font-weight:600;line-height:1.18;letter-spacing:-.01em;margin:0}
+p{margin:0 0 1em}
+a{color:var(--cobalt)}
+.wrap{max-width:1160px;margin:0 auto;padding:0 28px}
+.skip{position:absolute;left:-9999px}
+.skip:focus{left:12px;top:12px;background:#fff;padding:10px 14px;z-index:99;border:2px solid var(--cobalt)}
+:focus-visible{outline:3px solid #9db9f5;outline-offset:2px}
+/* nav */
+.nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:saturate(1.4) blur(8px);border-bottom:1px solid var(--line)}
+.nav-inner{display:flex;align-items:center;gap:26px;height:64px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);font-weight:700;font-size:15px;letter-spacing:-.01em}
+.brand-mark{width:26px;height:26px;border:2px solid var(--cobalt-deep);border-radius:8px;position:relative;flex:none}
+.brand-mark::before,.brand-mark::after{content:"";position:absolute;width:7px;height:7px;border-radius:50%;background:var(--cobalt)}
+.brand-mark::before{left:3px;top:4px}.brand-mark::after{right:3px;bottom:4px;background:#8aa5e0}
+.nav-links{display:flex;gap:4px;margin-left:auto}
+.nav-links a{text-decoration:none;color:var(--body);font-size:13.5px;font-weight:600;padding:8px 12px;border-radius:8px}
+.nav-links a:hover{background:var(--wash);color:var(--ink)}
+.nav-cta{margin-left:8px}
+.btn{display:inline-flex;align-items:center;gap:8px;text-decoration:none;font-weight:700;font-size:14px;padding:11px 18px;border-radius:9px;border:1px solid var(--cobalt);cursor:pointer}
+.btn-solid{background:var(--cobalt);color:#fff}
+.btn-solid:hover{background:var(--cobalt-deep)}
+.btn-ghost{background:#fff;color:var(--cobalt)}
+.btn-ghost:hover{background:var(--sky)}
+.btn-sm{padding:8px 13px;font-size:13px}
+/* hero */
+.hero{padding:84px 0 64px;border-bottom:1px solid var(--line)}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1.02fr) minmax(0,.98fr);gap:56px;align-items:center}
+.kicker{font-size:12px;font-weight:800;letter-spacing:.14em;color:var(--cobalt);margin-bottom:18px}
+.hero h1{font-size:clamp(38px,4.6vw,60px);max-width:12ch;margin-bottom:20px}
+.hero h1 em{font-style:italic;color:var(--cobalt-deep)}
+.lede{font-size:18px;color:var(--body);max-width:44ch;margin-bottom:28px}
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:26px}
+.hero-note{font-size:13px;color:var(--muted);max-width:52ch}
+.hero-note strong{color:var(--body)}
+.trace-fig{border:1px solid var(--line);border-radius:var(--r-lg);background:var(--wash);padding:26px 24px 18px}
+.trace-fig figcaption{font-size:12.5px;color:var(--muted);margin-top:12px;line-height:1.6}
+.trace-fig figcaption code{font-family:var(--mono);font-size:11.5px;color:var(--body)}
+/* proof strip */
+.proof{padding:34px 0;border-bottom:1px solid var(--line);background:var(--wash)}
+.proof-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0}
+.proof-cell{padding:6px 28px;border-left:1px solid var(--line)}
+.proof-cell:first-child{border-left:0;padding-left:0}
+.proof-cell .n{font-family:var(--serif);font-size:34px;color:var(--ink);line-height:1.1}
+.proof-cell .n small{font-size:16px;color:var(--muted)}
+.proof-cell p{font-size:13px;color:var(--muted);margin:6px 0 0;line-height:1.55}
+/* sections */
+section.block{padding:76px 0}
+.sec-head{max-width:720px;margin-bottom:44px}
+.sec-head h2{font-size:clamp(28px,3vw,38px);margin-bottom:14px}
+.sec-head p{font-size:17px;color:var(--body)}
+.rule{width:56px;height:3px;background:var(--cobalt);border-radius:2px;margin-bottom:22px}
+/* CODE steps */
+.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;counter-reset:step}
+.step{border:1px solid var(--line);border-radius:var(--r-md);padding:24px 22px;background:#fff;position:relative}
+.step:nth-child(2){background:var(--wash)}
+.step .letter{font-family:var(--serif);font-size:30px;color:var(--cobalt-deep);display:block;margin-bottom:10px}
+.step h3{font-family:var(--sans);font-size:15px;font-weight:800;letter-spacing:.02em;margin-bottom:8px}
+.step p{font-size:13.5px;color:var(--body);margin:0}
+.step .tag-row{margin-top:14px}
+/* availability */
+.avail{width:100%;border-collapse:collapse;font-size:14px;background:#fff;border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden}
+.avail th,.avail td{text-align:left;padding:14px 18px;border-bottom:1px solid var(--line);vertical-align:top}
+.avail tr:last-child th,.avail tr:last-child td{border-bottom:0}
+.avail th{font-weight:700;color:var(--ink);width:26%}
+.avail td.desc{color:var(--body)}
+.pill{display:inline-block;font-size:11.5px;font-weight:800;letter-spacing:.06em;padding:4px 11px;border-radius:999px;white-space:nowrap}
+.pill.ok{background:var(--green-wash);color:var(--green)}
+.pill.wip{background:var(--amber-wash);color:var(--amber)}
+.pill.no{background:var(--slate-wash);color:var(--muted)}
+.pill.bad{background:var(--rose-wash);color:var(--rose)}
+/* verify */
+.verify-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start}
+.score-card{border:1px solid var(--line);border-radius:var(--r-lg);padding:30px;background:#fff}
+.score-card .big{font-family:var(--serif);font-size:56px;color:var(--ink);line-height:1;margin:8px 0 4px}
+.bar{height:8px;border-radius:99px;background:var(--slate-wash);overflow:hidden;margin:16px 0 10px}
+.bar i{display:block;height:100%;background:var(--cobalt);border-radius:99px}
+.compare{font-family:var(--mono);font-size:12.5px;background:var(--wash);border:1px solid var(--line);border-radius:var(--r-sm);padding:16px 18px;overflow-x:auto;line-height:1.7;color:var(--body)}
+.compare .miss{color:var(--rose);font-weight:700}
+.compare .match{color:var(--green)}
+.checklist{list-style:none;margin:22px 0 0;padding:0;display:grid;gap:10px;font-size:14px}
+.checklist li{padding-left:28px;position:relative}
+.checklist li::before{content:"";position:absolute;left:2px;top:7px;width:9px;height:9px;border-radius:50%;background:var(--green)}
+.checklist li.warn::before{background:#c98a1f}
+/* uses */
+.uses{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:14px}
+.use{border:1px solid var(--line);border-radius:var(--r-md);padding:26px 24px;background:#fff}
+.use:first-child{background:var(--cobalt-deep);border-color:var(--cobalt-deep);color:#dbe4f7}
+.use:first-child h3{color:#fff}
+.use:first-child p{color:#b9c7e6}
+.use h3{font-family:var(--sans);font-size:16px;font-weight:800;margin-bottom:10px}
+.use p{font-size:13.5px;margin:0}
+/* trust */
+.trust{background:var(--wash);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.trust-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.trust-cell{padding:4px 26px 4px 0}
+.trust-cell h3{font-family:var(--sans);font-size:14.5px;font-weight:800;margin-bottom:8px}
+.trust-cell p{font-size:13.5px;color:var(--body);margin:0}
+/* start */
+.start-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start}
+.cmd{font-family:var(--mono);font-size:13px;background:#101a30;color:#d7e1f5;border-radius:var(--r-md);padding:22px;overflow-x:auto;line-height:1.9}
+.cmd .c{color:#7d93c4}.cmd .k{color:#9fc0ff}
+/* faq */
+details.faq{border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin-bottom:10px;background:#fff}
+details.faq summary{cursor:pointer;font-weight:700;color:var(--ink);font-size:15px}
+details.faq p{font-size:14px;margin:10px 0 0}
+/* footer */
+footer.site{padding:52px 0 40px;background:#0e1730;color:#a9b6d2;font-size:13.5px}
+footer.site .wrap{display:flex;gap:32px;flex-wrap:wrap;justify-content:space-between;align-items:flex-start}
+footer.site b{color:#fff}
+footer.site a{color:#c9d6f2}
+.foot-note{width:100%;margin-top:26px;padding-top:20px;border-top:1px solid #263353;font-size:12.5px;color:#7e8db1}
+/* reveal */
+.reveal{opacity:0;transform:translateY(14px);transition:opacity .5s ease,transform .5s ease}
+.reveal.in{opacity:1;transform:none}
+.pulse{animation:pulse 2.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.flow-dash{stroke-dasharray:5 5;animation:dash 1.6s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-10}}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .reveal{opacity:1;transform:none;transition:none}
+  .pulse,.flow-dash{animation:none}
+  *{transition:none !important}
+}
+@media(max-width:960px){
+  .hero{padding:56px 0 48px}
+  .hero-grid,.verify-grid,.start-grid{grid-template-columns:1fr;gap:32px}
+  .steps{grid-template-columns:1fr 1fr}
+  .uses,.trust-grid{grid-template-columns:1fr}
+  .proof-grid{grid-template-columns:1fr 1fr;gap:20px}
+  .proof-cell{padding:0;border-left:0}
+  .nav-links{display:none}
+  section.block{padding:56px 0}
+}
+@media(max-width:560px){.steps{grid-template-columns:1fr}.proof-grid{grid-template-columns:1fr}}
+</style>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="nav"><div class="wrap nav-inner">
+<a class="brand" href="#top" aria-label="Second Source home"><span class="brand-mark" aria-hidden="true"></span>Second Source</a>
+<nav class="nav-links" aria-label="Page sections">
+<a href="#method">Method</a><a href="#status">Status</a><a href="#verification">Verification</a><a href="#uses">Uses</a><a href="#start">Start</a><a href="#faq">FAQ</a>
+</nav>
+<span class="nav-cta"><a class="btn btn-solid btn-sm" href="https://github.com/Ankit6149/second-source" target="_blank" rel="noopener">Repository</a></span>
+</div></header>
+<main id="main">
+<div class="hero" id="top"><div class="wrap hero-grid">
+<div>
+<div class="kicker">BEHAVIORAL INTELLIGENCE · META HACKATHON BUILD</div>
+<h1>Know what your software <em>actually does.</em></h1>
+<p class="lede">Second Source studies the observable behavior of software you are authorized to test, discovers its hidden rules, rebuilds an independent candidate &mdash; and then proves, case by case, whether the copy behaves like the original.</p>
+<div class="hero-actions">
+<a class="btn btn-solid" href="#verification">See the evidence</a>
+<a class="btn btn-ghost" href="https://github.com/Ankit6149/second-source/tree/main/demo" target="_blank" rel="noopener">Open the console</a>
+</div>
+<p class="hero-note"><strong>Evidence over claims.</strong> One genuine Meta discovery run is recorded. No candidate has yet passed independent evaluation &mdash; this page shows exactly where the science stands.</p>
+</div>
+<figure class="trace-fig" aria-label="Behavioral discovery trace diagram">
+<svg viewBox="0 0 460 300" width="100%" role="img" aria-describedby="trace-desc">
+<desc id="trace-desc">Four observed actions flow into three hypotheses; one discriminating experiment is selected and its outcome recorded as evidence.</desc>
+<g font-family="monospace" font-size="10" fill="#3c4a63">
+<rect x="8" y="18" width="120" height="34" rx="6" fill="#fff" stroke="#dfe6f0"/>
+<text x="20" y="39">add label=K amt=5</text>
+<rect x="8" y="60" width="120" height="34" rx="6" fill="#fff" stroke="#dfe6f0"/>
+<text x="20" y="81">add label=K amt=6</text>
+<rect x="8" y="102" width="120" height="34" rx="6" fill="#fff" stroke="#dfe6f0"/>
+<text x="20" y="123">list records</text>
+<rect x="8" y="144" width="120" height="34" rx="6" fill="#fff" stroke="#dfe6f0"/>
+<text x="20" y="165">total &rarr; count?</text>
+<rect x="176" y="46" width="122" height="40" rx="6" fill="#e8effc" stroke="#1f4fd8"/>
+<text x="188" y="62">H1 labels unique</text>
+<text x="188" y="76" fill="#68768f">2 citations</text>
+<rect x="176" y="96" width="122" height="40" rx="6" fill="#fff" stroke="#dfe6f0"/>
+<text x="188" y="112">H2 amounts capped</text>
+<text x="188" y="126" fill="#68768f">1 citation</text>
+<rect x="176" y="146" width="122" height="40" rx="6" fill="#fff" stroke="#dfe6f0"/>
+<text x="188" y="162">H3 total = &Sigma;</text>
+<text x="188" y="176" fill="#68768f">2 citations</text>
+<rect x="330" y="86" width="122" height="60" rx="6" fill="#16389b"/>
+<text x="342" y="106" fill="#fff">experiment</text>
+<text x="342" y="122" fill="#b9c7e6">add K &times;2, list</text>
+<text x="342" y="138" fill="#9fc0ff" class="pulse">&#9679; observed</text>
+<path d="M128 35 C 152 35 152 60 174 62" fill="none" stroke="#1f4fd8" stroke-width="1.5" class="flow-dash"/>
+<path d="M128 77 C 152 77 152 70 174 68" fill="none" stroke="#9db4dd" stroke-width="1.5"/>
+<path d="M128 119 C 152 119 152 152 174 158" fill="none" stroke="#9db4dd" stroke-width="1.5"/>
+<path d="M128 161 C 152 161 152 165 174 164" fill="none" stroke="#9db4dd" stroke-width="1.5"/>
+<path d="M298 66 C 314 66 314 100 328 108" fill="none" stroke="#1f4fd8" stroke-width="1.5" class="flow-dash"/>
+<path d="M298 166 C 314 166 314 130 328 124" fill="none" stroke="#9db4dd" stroke-width="1.5"/>
+</g>
+</svg>
+<figcaption>How one real run worked: <code>5 observations</code> &rarr; <code>3 hypotheses</code> &rarr; <code>1 Meta-chosen experiment</code> &rarr; recorded outcome. Source code was never shown to the model.</figcaption>
+</figure>
+</div></div>
+<div class="proof"><div class="wrap proof-grid">
+<div class="proof-cell"><div class="n">5 <small>/ 3 / 2</small></div><p>Real G2 run: five hash-valid observations, three original hypotheses, two signed model receipts.</p></div>
+<div class="proof-cell"><div class="n">$0.0135</div><p>Receipt-derived estimated cost of the genuine discovery run. Uncertain cost: $0.</p></div>
+<div class="proof-cell"><div class="n">22<small> / 25</small></div><p>Scripted NON_AI control in the independent evaluator. A calibration tool, not model quality.</p></div>
+<div class="proof-cell"><div class="n">0</div><p>Model-generated candidates admitted and scored so far. Both real attempts stopped before admission.</p></div>
+</div></div>
+<section class="block" id="method"><div class="wrap">
+<div class="sec-head reveal"><div class="rule"></div><h2>CODE: a method, not a metaphor</h2>
+<p>Every investigation follows the same four stages. Each stage hands validated, traceable data to the next &mdash; with durable run IDs, explicit statuses, and bounded execution.</p></div>
+<div class="steps">
+<div class="step reveal"><span class="letter">C</span><h3>Capture</h3><p>Authorized targets are observed through approved adapters. Every action and response is hashed, timestamped, and stored with provenance.</p><div class="tag-row"><span class="pill ok">OPERATIONAL</span></div></div>
+<div class="step reveal"><span class="letter">O</span><h3>Organize</h3><p>Observations become evidence-linked hypotheses with competing explanations, citations, and confidence &mdash; never free-floating claims.</p><div class="tag-row"><span class="pill ok">OPERATIONAL</span></div></div>
+<div class="step reveal"><span class="letter">D</span><h3>Distill</h3><p>Muse proposes the single experiment that best separates competing hypotheses, then constrained synthesis drafts a candidate from evidence alone.</p><div class="tag-row"><span class="pill wip">PARTIAL</span></div></div>
+<div class="step reveal"><span class="letter">E</span><h3>Execute</h3><p>The candidate runs in a trusted interpreter and faces a sealed suite it never saw. The evaluator &mdash; never the model &mdash; assigns the score.</p><div class="tag-row"><span class="pill no">UNPROVEN</span></div></div>
+</div>
+</div></section>
+<section class="block" id="status"><div class="wrap">
+<div class="sec-head reveal"><div class="rule"></div><h2>Where things stand</h2>
+<p>Every capability below carries its real state. Operational means tested on this checkout; unproven means exactly that: no simulated result is presented as success.</p></div>
+<table class="avail reveal">
+<tr><th scope="row">Scoped observation &amp; evidence ledger</th><td class="desc">Authorized CLI targets, deterministic replay, immutable hashed observations.</td><td><span class="pill ok">OPERATIONAL</span></td></tr>
+<tr><th scope="row">Meta reasoning (Muse Spark)</th><td class="desc">One genuine discovery run: 5 observations, 3 hypotheses, 1 model-chosen experiment, ~$0.0135.</td><td><span class="pill ok">DEMONSTRATED ONCE</span></td></tr>
+<tr><th scope="row">Constrained candidate synthesis</th><td class="desc">Trusted skeleton plus bounded model fill; strict loader admits or rejects with reasons.</td><td><span class="pill wip">ENGINEERING READY</span></td></tr>
+<tr><th scope="row">Independent sealed evaluation</th><td class="desc">Separate evaluator, withheld suite, exact pass/fail/indeterminate counts.</td><td><span class="pill ok">OPERATIONAL</span></td></tr>
+<tr><th scope="row">Genuine reconstruction score</th><td class="desc">Both real G3 attempts stopped before admission. No model candidate has been scored.</td><td><span class="pill bad">NOT YET MEASURED</span></td></tr>
+<tr><th scope="row">Bounded repair loop</th><td class="desc">Mismatch-only feedback, same-suite re-score, improvement-or-degradation reported honestly.</td><td><span class="pill no">NOT DEMONSTRATED</span></td></tr>
+<tr><th scope="row">Backend API &amp; persistence</th><td class="desc">Typed investigation/run endpoints, budgets, artifact export; Supabase &amp; auth in progress.</td><td><span class="pill wip">IN PROGRESS</span></td></tr>
+<tr><th scope="row">Operator console</th><td class="desc">Read-only evidence viewer with honest origin labels; live workflow after contracts validate.</td><td><span class="pill wip">PREVIEW</span></td></tr>
+</table>
+</div></section>
+<section class="block trust" id="verification"><div class="wrap">
+<div class="sec-head reveal"><div class="rule"></div><h2>Verification is the product</h2>
+<p>A candidate never grades its own homework. Reference and candidate run separately against the same sealed suite &mdash; one the model never saw &mdash; and every mismatch is categorized, not averaged away.</p></div>
+<div class="verify-grid">
+<div class="score-card reveal">
+<div class="kicker" style="margin-bottom:6px">INDEPENDENT EVALUATOR · SCRIPTED CONTROL</div>
+<div class="big">22 / 25</div>
+<div class="bar" role="img" aria-label="22 of 25 cases passed"><i style="width:88%"></i></div>
+<p style="font-size:14px">A deliberately naive scripted candidate, scored to calibrate the evaluator &mdash; <strong>not</strong> a measure of the model. The trusted hand-built control scores 25/25; a sabotaged variant scores 2/25. The instrument can tell the difference.</p>
+<ul class="checklist">
+<li>Deterministic reset before every case</li>
+<li>Mismatches linked to evidence, never to model claims</li>
+<li class="warn">A failed broker attempt is unmeasured &mdash; never reported as zero</li>
+</ul>
+</div>
+<div class="reveal">
+<div class="compare" aria-label="Example mismatch excerpt">case ledger-14 · <span class="match">match</span>
+  add(label="K", amount=5) &rarr; ok(id=1) · ok(id=1)
+case ledger-15 · <span class="miss">MISMATCH duplicate-label</span>
+  add(label="K", amount=9) &rarr; error(duplicate_label) · ok(id=2)
+  candidate accepted a repeat the reference rejects
+case ledger-16 · <span class="match">match</span>
+  total() &rarr; {count:1, amount:5} · {count:1, amount:5}</div>
+<p style="font-size:13.5px;color:var(--muted);margin-top:14px">Excerpt format, from the scripted control run. Real sealed cases stay withheld; only counts and mismatch signatures leave the evaluator.</p>
+</div>
+</div>
+</div></section>
+<section class="block" id="uses"><div class="wrap">
+<div class="sec-head reveal"><div class="rule"></div><h2>Built for the cases docs can't answer</h2>
+<p>Wherever behavior is the contract and the source is unavailable, unverified, or untrusted.</p></div>
+<div class="uses">
+<div class="use reveal"><h3>Legacy systems nobody dares touch</h3><p>Recover the real rules of aging internal tools from their behavior &mdash; then verify a safe replacement case by case instead of rewriting on folklore.</p></div>
+<div class="use reveal"><h3>Vendor black boxes</h3><p>Confirm that a third-party service still honors its contract after every update, with an independent behavioral fingerprint you own.</p></div>
+<div class="use reveal"><h3>Migration safety nets</h3><p>Rebuild a subsystem on a new stack and prove equivalence where it matters: observable behavior, error cases included.</p></div>
+</div>
+</div></section>
+<section class="block trust" id="trust"><div class="wrap">
+<div class="sec-head reveal"><div class="rule"></div><h2>Trust is a mechanism, not a mood</h2></div>
+<div class="trust-grid">
+<div class="trust-cell reveal"><h3>Authorization first</h3><p>Runs start only after ownership acknowledgement, scope limits, and budget reservation. Destructive or externally visible actions need explicit approval.</p></div>
+<div class="trust-cell reveal"><h3>Isolation by construction</h3><p>Reference source, sealed cases, and credentials never enter model context. Candidates are declarative policies in a trusted interpreter &mdash; never generated code.</p></div>
+<div class="trust-cell reveal"><h3>Uncertainty stays visible</h3><p>Unknown model state reads &ldquo;Can't verify,&rdquo; never &ldquo;Finished.&rdquo; Costs carry uncertain remainders. Partial runs export partial reports.</p></div>
+</div>
+</div></section>
+<section class="block" id="start"><div class="wrap">
+<div class="sec-head reveal"><div class="rule"></div><h2>Run it yourself in minutes</h2>
+<p>Free, local, and non-billable. The mock path exercises the full pipeline with zero model spend; the real path stays locked until you authorize an explicit budget.</p></div>
+<div class="start-grid">
+<div class="cmd reveal"><span class="c"># clone &amp; set up (Windows / Linux)</span><br>git clone https://github.com/Ankit6149/second-source<br>powershell -NoProfile -File scripts/bootstrap-windows.ps1<br><br><span class="c"># zero-cost end-to-end demo</span><br><span class="k">.venv/Scripts/python.exe -B -m second_source.reconstruct --mode mock</span><br><br><span class="c"># read-only evidence console</span><br><span class="k">python -m http.server 8000 --directory demo</span></div>
+<div class="reveal">
+<p style="font-size:15px"><strong>No paid calls by default.</strong> Real Meta inference requires a key you provide plus an explicit per-run dollar cap &mdash; otherwise the runner refuses before any network call.</p>
+<div class="hero-actions">
+<a class="btn btn-solid" href="https://github.com/Ankit6149/second-source" target="_blank" rel="noopener">Get the source</a>
+<a class="btn btn-ghost" href="https://github.com/Ankit6149/second-source/tree/main/demo" target="_blank" rel="noopener">Inspect the console</a>
+</div>
+</div>
+</div>
+</div></section>
+<section class="block" id="faq" style="padding-top:0"><div class="wrap">
+<div class="sec-head reveal"><div class="rule"></div><h2>Honest answers</h2></div>
+<details class="faq reveal"><summary>Has an AI actually reconstructed software with this?</summary><p>Partially. A genuine Meta run discovered real rules and chose a real experiment. But no model-generated candidate has yet been admitted and scored; both synthesis attempts failed beforehand. That gap is the current engineering focus, and this page will say when it closes.</p></details>
+<details class="faq reveal"><summary>Does it copy source code or break into software?</summary><p>No. It only studies targets you own or are authorized to test, through observable behavior. The model never sees reference source, and candidates are newly written behavioral policies, not recovered code.</p></details>
+<details class="faq reveal"><summary>What does it cost to run?</summary><p>Observation, evaluation, and the mock pipeline are free. Real model reasoning is capped by a per-run dollar limit you set &mdash; the recorded discovery run cost about $0.0135. Nothing billable ever runs without your explicit authorization.</p></details>
+<details class="faq reveal"><summary>Can I use it for my own system today?</summary><p>You can run scoped CLI investigations, the evidence ledger, and the independent evaluator locally. The hosted backend, auth, and full operator workflow are in progress &mdash; see the status table above for exact states.</p></details>
+</div></section>
+</main>
+<footer class="site"><div class="wrap">
+<div><b>Second Source</b><br>Behavioral intelligence · evidence over claims<br>Meta Global AI Developer Hackathon · Indie track</div>
+<div><a href="https://github.com/Ankit6149/second-source" target="_blank" rel="noopener">Source</a> · <a href="https://github.com/Ankit6149/second-source/tree/main/demo" target="_blank" rel="noopener">Console</a> · <a href="https://github.com/Ankit6149/second-source/blob/main/docs/MASTER_PRD.md" target="_blank" rel="noopener">PRD</a></div>
+<p class="foot-note">All scores shown are recorded local evidence or labeled NON_AI controls &mdash; never portable provider attestation. Sealed evaluation content is withheld by design. Page state: November 2026 build; verify current status against the repository delivery board.</p>
+</div></footer>
+<script>
+(function(){
+"use strict";
+var reduced=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+if(reduced||!("IntersectionObserver" in window)){return}
+var io=new IntersectionObserver(function(entries){
+entries.forEach(function(e){if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target)}});
+},{threshold:.12,rootMargin:"0px 0px -6% 0px"});
+document.querySelectorAll(".reveal").forEach(function(el){io.observe(el)});
+})();
+</script>
+</body>
+</html>
