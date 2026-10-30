@@ -71,6 +71,8 @@ class PublicPreview(unittest.TestCase):
         self.assertEqual(config["buildCommand"], "python3 web/build.py")
         self.assertEqual(config["outputDirectory"], "web/dist")
         self.assertEqual(config["installCommand"], "")
+        # This integration-only branch should not deploy each acceptance commit.
+        self.assertFalse(config["git"]["deploymentEnabled"]["integrate/product-completion-20261030"])
 
 
 if __name__ == "__main__":

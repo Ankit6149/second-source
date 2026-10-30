@@ -22,9 +22,28 @@ operator must separately review and apply, in order:
 The new migration was generated with the Supabase CLI and remains unapproved for
 live application. No linked target, history repair, reset or live DDL was used.
 The native acceptance tests replay all three in disposable clusters; the newly
-generated file requires a fresh CI run before approval. The new migration fails
+generated file passed at PR #21's `297b93b` head, but each new head requires its
+own CI run before approval. The new migration fails
 on invalid existing runtime owners or a
 pre-existing conflicting role instead of deleting/reassigning records.
+
+### Rollback and verification boundary
+
+The migration is transactional: a failure before commit rolls back its DDL and
+grants. Before any separately approved live application, inspect the existing
+schema and migration history, confirm a usable backup and a tested restore path,
+and independently review the SQL and role privileges. After application, verify
+the schema version, constraints, role flags, grants and policies against the
+approved migration, and check that existing `ss` rows and policies are preserved.
+Do not expose runtime tables through the browser Data API. The runtime RLS
+policies authorize the trusted backend role across owners; they do not replace
+the application's owner predicates.
+
+For a post-commit incident, disable new execution, reconcile in-flight work and
+restore the prior compatible API deployment. Preserve runtime records and
+evidence; a destructive schema down-migration is not a routine rollback and
+requires a separately reviewed recovery plan and explicit owner approval. A
+backup or transaction rollback is not proof of a tested live restore.
 
 `ss_runtime` preserves the existing service's revision checks, immutable scope,
 mock approval receipt, request-body-bound idempotency, ordered CODE events and
