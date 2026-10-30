@@ -85,15 +85,19 @@ def test_authenticated_actual_non_ai_http_worker_storage_export_restart(tmp_path
                            json={"expected_revision": 1}).status_code == 404
         done = client.post(path + "/execute", headers=HEADERS, json={"expected_revision": 1})
         assert done.status_code == 200, done.text
-        assert done.json()["status"] == "completed"
+        assert done.json()["status"] == "completed", done.text
         result = done.json()["result"]
         assert result["real"] is False and result["origin"] == "mock"
         assert result["evaluation"] == {"passed": 22, "failed": 3, "indeterminate": 0, "total": 25}
         assert result["usage"]["estimated_cost_usd"] == result["usage"]["uncertain_cost_usd"] == 0
         verified = client.get(path + "/verification", headers=HEADERS).json()
         assert verified["evaluation"] == result["evaluation"] and verified["real"] is False
-        assert verified["repair_history_availability"] == "engine_integration_pending"
-        assert client.get(path + "/events", headers=HEADERS).json()["items"]
+        assert verified["repair_history_availability"] == "available"
+        assert verified["repair"]["selected_version"] == "initial"
+        assert verified["repair"]["verdict"] == "no_change"
+        assert len(verified["repair"]["versions"]) == 2
+        events = client.get(path + "/events", headers=HEADERS).json()["items"]
+        assert [event["event_type"] for event in events if event["event_type"].startswith("repair_")] == ["repair_started", "repair_completed"]
         assert client.get(path + "/verification", headers={"Authorization": "Bearer " + OTHER}).status_code == 404
         calls = len(transport.calls)
         assert client.post(path + "/execute", headers=HEADERS, json={"expected_revision": 1}).json() == done.json()
@@ -102,11 +106,16 @@ def test_authenticated_actual_non_ai_http_worker_storage_export_restart(tmp_path
         assert verify_bundle(proof.content)["valid"]
         assert b"PRIVATE_TITLE_SENTINEL" not in proof.content and str(tmp_path).encode() not in proof.content
         assert any(key[2] == "private:candidate.v1.json" for key in db.refs)
+        for round_number in (1,):
+            for prefix in ("candidate", "broker-artifact", "evaluation-receipt"):
+                assert any(key[2] == f"private:{prefix}.r{round_number}.json" for key in db.refs)
+        assert any(key[2] == "private:G3_repair_history.json" for key in db.refs)
         assert client.get(path + "/report", headers={"Authorization": "Bearer " + OTHER}).status_code == 404
     restarted = build_cloud_app(config(False), store=LocalAcceptanceStore(tmp_path / "state.sqlite"),
                                 transport=transport, identity=identity)
     with TestClient(restarted) as client:
         assert client.get(path, headers=HEADERS).json() == done.json()
+        assert client.get(path + "/verification", headers=HEADERS).json() == verified
         assert client.get(path + "/export.zip", headers=HEADERS).content == proof.content
         assert client.post(path + "/execute", headers=HEADERS, json={"expected_revision": 1}).status_code == 409
 

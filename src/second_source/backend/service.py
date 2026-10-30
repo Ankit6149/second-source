@@ -255,6 +255,18 @@ class BackendService:
             self._event(connection, row['investigation_id'], run_id, 'stage_started', row['revision'] + 1, stage.value)
             return self._run(connection.execute('SELECT * FROM runs WHERE run_id=?', (run_id,)).fetchone())
 
+    def repair_progress(self, run_id: str, token: str, event_type: str) -> None:
+        if event_type not in ('repair_started', 'repair_completed'):
+            _error('INVALID_STAGE', 'Unsupported progress event', 422)
+        with self.store.transaction() as connection:
+            row = self._fenced(connection, run_id, token)
+            if row['cancel_requested']:
+                _error('CANCELLATION_REQUESTED', 'Run cancellation has been requested')
+            if row['stage'] != CodeStage.EXECUTE.value:
+                _error('INVALID_STAGE', 'Repair progress requires the execution stage')
+            connection.execute('UPDATE runs SET revision=revision+1,updated_at=? WHERE run_id=?', (_now(connection), run_id))
+            self._event(connection, row['investigation_id'], run_id, event_type, row['revision'] + 1, row['stage'])
+
     def finish(self, run_id: str, token: str, result: EngineResult | None, error_code=None) -> Run:
         if error_code is not None and (not isinstance(error_code, str) or not re.fullmatch(r'[A-Z][A-Z0-9_]{0,79}', error_code)):
             _error('INVALID_ERROR_CODE', 'A safe diagnostic code is required', 422)

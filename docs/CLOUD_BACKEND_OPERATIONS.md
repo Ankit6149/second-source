@@ -56,9 +56,10 @@ the cloud factory never substitutes ephemeral SQLite for unavailable PostgreSQL.
 An authorized user queues a run, then explicitly requests
 `POST /v1/runs/{id}/execute` with `{"expected_revision":1}` (use the actual
 revision). Execution is synchronous, process-concurrency1, exactly that owned
-run, existing zero-cost engine, 90-second engine bound and100-second publication
-deadline. No arbitrary command, model key, repair, source or suite path is
-accepted. Temporary processing is outside the checkout and is not durable state.
+run, existing zero-cost engine, 180-second engine bound and 210-second publication
+deadline. The worker supplies a fixed limit of one NON_AI repair attempt; the
+client cannot configure it. No arbitrary command, model key, source or suite path
+is accepted. Temporary processing is outside the checkout and is not durable state.
 
 The worker renews/checks its fenced lease and cancellation before report/private
 publication; metadata writes require the same active lease token. All retained
@@ -67,8 +68,8 @@ suite files or logs. Uploads/readbacks are bounded to3seconds per request in the
 cloud factory. Successful private bytes/hash metadata and the sanitized report
 are remote before completion. A failed/ambiguous publication becomes
 `needs_reconciliation`; no upload/regeneration/paid operation retries are hidden.
-Completed mock runs require all five mandatory original JSON artifacts; only
-G3_input_provenance is optional. The immutable runtime_artifact_refs rows are
+Completed mock runs require the original JSON artifacts and bounded admitted
+repair artifacts identified by the history. The immutable runtime_artifact_refs rows are
 the authoritative private hash manifest, rather than a second mutable file.
 
 Repeated execute requests for active or terminal runs return their durable
@@ -82,8 +83,8 @@ Reports and exports enforce service ownership and bind Storage access per
 principal. Public ZIPs contain only the existing sanitized integrity package;
 original responses/candidates remain private and sealed material never uploads.
 See `/openapi.json` for authoritative typed request/response/error contracts.
-Candidate/repair-history acceptance remains Muse's PR #18; no new real-engine
-or repair claim is introduced by this infrastructure.
+The repair history is a sanitized NON_AI projection; it is not a real-model or
+feedback-conditioned repair claim.
 
 ## Free-tier limits and deployment
 

@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 from collections import deque
 import hashlib
+import json
 import logging
 import re
 import secrets
@@ -80,12 +81,27 @@ class ExecuteRun(StrictModel):
     expected_revision: int = Field(ge=1)
 
 
+class RepairVersionView(StrictModel):
+    round: int = Field(ge=0, le=2)
+    candidate_digest: str = Field(pattern=r"^(sha256:)?[a-f0-9]{64}$")
+    evaluation: EvaluationSummary
+
+
+class RepairView(StrictModel):
+    verdict: Literal["no_repair_needed", "improved", "regressed", "no_change", "unrepaired"]
+    stop_reason: Literal["baseline_perfect", "perfect_score", "rounds_exhausted", "repaired_to_perfect", "broker_blocked", "invalid_evaluation_shape", "denominator_changed", "no_attempt_made"]
+    selected_version: Literal["initial", "repair-1", "repair-2"]
+    selected_digest: str = Field(pattern=r"^(sha256:)?[a-f0-9]{64}$")
+    versions: list[RepairVersionView] = Field(min_length=1, max_length=3)
+
+
 class VerificationView(StrictModel):
     origin: Literal["mock"] = "mock"
     real: Literal[False] = False
     evaluation: EvaluationSummary | None = None
     candidate_availability: Literal["private_not_exposed"] = "private_not_exposed"
-    repair_history_availability: Literal["engine_integration_pending"] = "engine_integration_pending"
+    repair_history_availability: Literal["available", "unavailable"] = "unavailable"
+    repair: RepairView | None = None
 
 
 def _error(code: str, message: str, status: int, correlation: str) -> JSONResponse:
@@ -416,7 +432,13 @@ def create_app(service: BackendService, token_hashes: Mapping[str, str] | None =
     def verification(run_id: Annotated[str, Path(pattern=_IDENTIFIER)],
                      principal: Principal = Depends(owner)) -> VerificationView:
         run = service.get_run(principal, run_id)
-        return VerificationView(evaluation=run.result.evaluation if run.result else None)
+        repair = None
+        if artifact_store is not None and run.result and run.result.report:
+            store = artifact_store.for_owner(principal) if hasattr(artifact_store, "for_owner") else artifact_store
+            report = json.loads(store.read(run_id, run.result.report))
+            repair = report.get("repair")
+        return VerificationView(evaluation=run.result.evaluation if run.result else None,
+            repair_history_availability="available" if repair is not None else "unavailable", repair=repair)
 
     @app.get("/v1/runs/{run_id}/events", response_model=EventPage, tags=["events"])
     def run_events(run_id: Annotated[str, Path(pattern=_IDENTIFIER)],

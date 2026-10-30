@@ -196,6 +196,24 @@ def test_cancel_queued_and_running_and_revisions(tmp_path):
     assert service.finish(second.run_id, lease.token, None).status == 'cancelled'
 
 
+def test_repair_progress_requires_live_lease_and_execution_stage(tmp_path):
+    service = new_service(tmp_path)
+    item = authorized(service)
+    queued = run(service, item.investigation_id)
+    lease = service.claim('worker')
+    assert_error('INVALID_STAGE', service.repair_progress, queued.run_id, lease.token, 'repair_started')
+    for stage in CodeStage:
+        service.stage(queued.run_id, lease.token, stage)
+    service.repair_progress(queued.run_id, lease.token, 'repair_started')
+    service.repair_progress(queued.run_id, lease.token, 'repair_completed')
+    events = service.events(OWNER, item.investigation_id)
+    assert [event.event_type for event in events if event.event_type.startswith('repair_')] == ['repair_started', 'repair_completed']
+    assert_error('LEASE_LOST', service.repair_progress, queued.run_id, 'wrong', 'repair_started')
+    current = service.get_run(OWNER, queued.run_id)
+    service.cancel_run(OWNER, queued.run_id, current.revision)
+    assert_error('CANCELLATION_REQUESTED', service.repair_progress, queued.run_id, lease.token, 'repair_started')
+
+
 def test_immutable_scope_approval_and_events(tmp_path):
     service = new_service(tmp_path)
     item = authorized(service)

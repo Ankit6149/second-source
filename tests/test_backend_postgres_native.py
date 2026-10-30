@@ -204,7 +204,8 @@ def test_native_cancellation_expired_recovery_and_stale_fences(native):
     assert native.fresh().get_run(OWNER, first.run_id).status == 'needs_reconciliation'
     assert service.recover_expired(run_id=first.run_id) == 0
     for operation, extra in ((service.heartbeat, ()), (service.stage, (CodeStage.CAPTURE,)),
-                             (service.finish, (None,))):
+                             (service.finish, (None,)),
+                             (service.repair_progress, ('repair_started',))):
         failure('LEASE_LOST', operation, first.run_id, leases[0].token, *extra)
     assert service.claim('replacement', run_id=first.run_id) is None
     assert service.recover_expired() == 1

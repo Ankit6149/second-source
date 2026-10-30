@@ -49,7 +49,7 @@ def _terminate(process: subprocess.Popen) -> None:
 
 class G3MockEngine:
     """Only explicitly approved fixed owned-ledger scope; keys never inherited."""
-    def __init__(self, data_root: str | Path, artifacts: ArtifactStore, *, timeout_seconds: float = 90):
+    def __init__(self, data_root: str | Path, artifacts: ArtifactStore, *, timeout_seconds: float = 180):
         self.root = _safe_directory(Path(data_root).absolute())
         if self.root == ROOT or ROOT in self.root.parents:
             raise BackendError("UNSAFE_STORAGE", "Private engine storage must be outside the checkout", 422)
@@ -73,7 +73,7 @@ class G3MockEngine:
         env = {k: os.environ[k] for k in ("SYSTEMROOT", "WINDIR", "TEMP", "TMP", "PATH") if k in os.environ}
         env.update(PYTHONPATH=str(ROOT / "src"), PYTHONDONTWRITEBYTECODE="1", SECOND_SOURCE_MAX_RUN_USD="0")
         argv = [sys.executable, "-B", "-m", "second_source.reconstruct", "--mode", "mock",
-            "--max-usd", "0", "--run-dir", str(run_dir), "--seal-dir", str(seal_dir)]
+            "--max-usd", "0", "--repair-rounds", "1", "--run-dir", str(run_dir), "--seal-dir", str(seal_dir)]
         stage(CodeStage.CAPTURE)
         if cancelled():
             raise BackendError("CANCELLED", "Run cancellation requested")
@@ -106,6 +106,8 @@ class G3MockEngine:
                         if event.get("run_id") == run_id or event.get("run_id") == "engine":
                             if event.get("progress") in stage_map:
                                 stage(stage_map[event["progress"]])
+                            elif event.get("progress") in ("repair", "repaired", "repair_done"):
+                                stage("repair_started" if event["progress"] == "repair" else "repair_completed")
                     if process.poll() is not None:
                         break
                     time.sleep(.05)
@@ -155,7 +157,12 @@ class Worker:
             run = self.service.get_run_by_lease(lease.run.run_id, lease.token) if hasattr(self.service, "get_run_by_lease") else None
             return bool(run and run.cancel_requested)
         try:
-            result = self.engine.execute(lease, lambda stage: self.service.stage(lease.run.run_id, lease.token, stage), cancelled)
+            def progress(value):
+                if isinstance(value, CodeStage):
+                    self.service.stage(lease.run.run_id, lease.token, value)
+                else:
+                    self.service.repair_progress(lease.run.run_id, lease.token, value)
+            result = self.engine.execute(lease, progress, cancelled)
             code = {"completed_mock_run": "RUN_COMPLETED", "broker_failed": "BROKER_FAILED",
                 "evaluation_failed": "EVALUATION_FAILED", "interrupted_stopped": "CANCELLED"}.get(result.stop_reason, "ENGINE_FAILED")
             self.service.finish(lease.run.run_id, lease.token, result,
