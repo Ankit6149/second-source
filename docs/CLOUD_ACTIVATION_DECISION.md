@@ -3,8 +3,19 @@
 **Prepared for review; no live operation is authorized by this document.** The
 target is a two-owner, zero-inference acceptance of one reviewed backend and an
 isolated frontend preview. The existing landing production deployment remains
-outside this change. No credentials, migration history, backup or live resources
-were accessed while preparing this packet.
+outside this change. Read-only metadata was inspected through the connected
+Supabase integration; no credentials, backup contents or live mutations were
+accessed or performed while preparing this packet.
+
+On November 1, 2026, the connected service reported project
+`jpqcqqbzriizxhigvjki` healthy in `ap-south-1` on the Free organization plan.
+Its migration history listed only `20261028193413` and its twelve reported `ss`
+tables had RLS enabled; read-only catalog checks found neither the `ss_runtime`
+schema nor the `second_source_backend` role. The existing
+`second-source-private` bucket was reported with `public=false`. These are
+metadata observations, not proof of the policies' correctness, tenant isolation,
+available quota, a usable backup or a tested restore. Recheck them immediately
+before any approved change.
 
 ## Proposed operations, each requiring explicit approval
 
