@@ -49,7 +49,7 @@ test('workspace controls drive an authorized NON_AI investigation through the lo
     const assetDir = path.join(directory, 'assets');
     const asset = (await readdir(assetDir)).find(name => name.endsWith('.js')); assert.ok(asset);
     const bundle = await readFile(path.join(assetDir, asset), 'utf8');
-    let failNextPoll = false; let executions = 0;
+    let failNextPoll = false; let loseExecuteAck = false; let lostAckCompleted = false; let executions = 0;
     function openWorkspace(userId, accessToken, priorStorage) {
       const instance = new Window({ url: 'https://preview.test/', settings: { disableJavaScriptFileLoading: true, disableCSSFileLoading: true } });
       windows.push(instance);
@@ -65,7 +65,17 @@ test('workspace controls drive an authorized NON_AI investigation through the lo
         const url = new URL(typeof input === 'string' ? input : input.url);
         if (url.origin !== 'https://backend.test') throw new Error('External transport forbidden');
         const method = options?.method || 'GET';
-        if (method === 'POST' && url.pathname.endsWith('/execute')) executions++;
+        if (method === 'POST' && url.pathname.endsWith('/execute')) {
+          executions++;
+          if (loseExecuteAck) {
+            loseExecuteAck = false;
+            // The server keeps processing while the client loses its acknowledgement.
+            void fetch(local + url.pathname + url.search, options).then(response => response.body?.cancel(), () => {});
+            return new Promise((_, reject) => setTimeout(() => {
+              lostAckCompleted = true; reject(new Error('Simulated lost acknowledgement'));
+            }, 1500));
+          }
+        }
         if (failNextPoll && method === 'GET' && /^\/v1\/runs\/[^/]+$/.test(url.pathname)) {
           failNextPoll = false;
           return Promise.resolve(new Response('{}', { status: 429 }));
@@ -91,7 +101,7 @@ test('workspace controls drive an authorized NON_AI investigation through the lo
     doc.querySelector('#scopeConsent').checked = true;
     doc.querySelector('[data-action="confirm-authorization"]').click();
     (await until(() => doc.querySelector('[data-action="queue"]'), 'authorization')).click();
-    failNextPoll = true;
+    failNextPoll = true; loseExecuteAck = true;
     (await until(() => {
       const button = doc.querySelector('[data-action="execute"]'); return button && !button.disabled ? button : null;
     }, 'queued run')).click();
@@ -100,6 +110,8 @@ test('workspace controls drive an authorized NON_AI investigation through the lo
     warning.querySelector('[data-action="refresh"]').click();
     await until(() => !doc.querySelector('#content').textContent.includes('status may be out of date'), 'progress recovery');
     (await until(() => doc.querySelector('[data-action="verification"]'), 'completed run', 200_000)).click();
+    await until(() => lostAckCompleted, 'lost execution acknowledgement', 200_000);
+    await until(() => !doc.querySelector('#content').textContent.includes('outcome is unknown'), 'verified outcome resolution');
     assert.equal(executions, 1, 'read-only polling must never repeat execution');
     assert.match(doc.querySelector('dialog').textContent, /NON_AI fixture comparison/);
     assert.match(doc.querySelector('dialog').textContent, /22 passed/);

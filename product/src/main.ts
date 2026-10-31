@@ -7,7 +7,7 @@ import { auth, observeSession, signIn, signOut } from './auth';
 import { Api, ApiError, validatedOrigin, type Target, type Investigation, type Run, type RunEvent, type Verification } from './api';
 import { detectReference } from './reference';
 import { clearOwnerNotes, loadNotes, saveNotes } from './notes';
-import { pollFailureMessage, pollRetryDelay } from './polling';
+import { outcomeConfirmed, pollFailureMessage, pollRetryDelay } from './polling';
 
 const icons = { PanelLeft, PanelLeftClose, SquarePen, FolderOpen, SwatchBook, ChevronUp, ArrowUp, ShieldCheck, FileText, ListChecks, Download, CircleHelp, X, Play, Square, RefreshCw, Clock, Check, AlertTriangle, LogIn, LogOut, Link, FlaskConical, MessageSquare, ExternalLink };
 const icon = (name: string) => `<i data-lucide="${name}" aria-hidden="true"></i>`;
@@ -18,10 +18,11 @@ const state: {
   session: Session | null; ownerId: string | null; investigations: Investigation[]; target: Target | null; selected: Investigation | null;
   run: Run | null; events: RunEvent[]; verification: Verification | null; messages: string[]; draft: string;
   view: 'home' | 'conversation' | 'library' | 'system'; loading: boolean; error: string; pollError: string; uncertain: boolean; actionUncertain: string | null;
+  executionError: { runId: string; message: string } | null;
   busy: boolean; executing: boolean; epoch: number;
 } = { session: null, ownerId: null, investigations: [], target: null, selected: null, run: null, events: [], verification: null,
   messages: [], draft: sessionStorage.getItem('ss-product-draft') || '', view: 'home', loading: false, error: '', pollError: '',
-  uncertain: false, actionUncertain: null, busy: false, executing: false, epoch: 0 };
+  uncertain: false, actionUncertain: null, executionError: null, busy: false, executing: false, epoch: 0 };
 const api = new Api(apiOrigin, () => state.session?.access_token || null);
 let pollTimer: number | undefined;
 let currentDialogReturn: HTMLElement | null = null;
@@ -57,7 +58,7 @@ function describe(error: unknown) {
   if (error instanceof ApiError) {
     if (error.status === 401) {
       state.session = null; state.ownerId = null; state.target = null; state.investigations = []; state.selected = null;
-      state.run = null; state.verification = null; state.events = []; state.messages = []; state.draft = ''; state.pollError = ''; state.view = 'home';
+      state.run = null; state.verification = null; state.events = []; state.messages = []; state.draft = ''; state.pollError = ''; state.executionError = null; state.view = 'home';
       sessionStorage.removeItem('ss-product-draft'); stopPolling();
     }
     return error.message + (error.correlationId ? ` Reference: ${error.correlationId}` : '');
@@ -161,7 +162,7 @@ async function hydrate(session: Session | null) {
     state.investigations = []; state.target = null; state.selected = null; state.run = null; state.events = []; state.verification = null;
     state.messages = []; state.draft = ''; state.view = 'home';
   }
-  state.session = session; state.ownerId = null; state.error = ''; state.pollError = ''; state.executing = false; state.busy = false; state.actionUncertain = null; stopPolling();
+  state.session = session; state.ownerId = null; state.error = ''; state.pollError = ''; state.executionError = null; state.executing = false; state.busy = false; state.actionUncertain = null; stopPolling();
   if (!session || !apiOrigin) {
     state.investigations = []; state.target = null; state.selected = null; state.run = null; state.events = []; state.verification = null;
     render(); return;
@@ -188,7 +189,7 @@ async function hydrate(session: Session | null) {
   finally { if (generation === state.epoch) { state.loading = false; render(); } }
 }
 async function openInvestigation(id: string) {
-  const generation = ++state.epoch; stopPolling(); state.executing = false; state.busy = false; state.loading = true; state.error = ''; state.pollError = ''; render();
+  const generation = ++state.epoch; stopPolling(); state.executing = false; state.busy = false; state.loading = true; state.error = ''; state.pollError = ''; state.executionError = null; render();
   try {
     const item = await api.investigation(id);
     const runs = await allPages(after => api.runs(id, after));
@@ -216,6 +217,10 @@ async function refresh(showErrors = true) {
     const [run, events] = await Promise.all([api.run(runId), allEvents(runId)]);
     if (state.run?.run_id !== runId) return;
     state.run = run; state.events = events; state.pollError = '';
+    if (state.executionError?.runId === runId && outcomeConfirmed(run.status)) {
+      if (state.error === state.executionError.message) state.error = '';
+      state.executionError = null;
+    }
     if (run.cancel_requested || !['queued', 'running'].includes(run.status)) {
       sessionStorage.removeItem(`ss-action-uncertain:${runId}`); state.actionUncertain = null;
     }
@@ -308,9 +313,15 @@ async function execute() {
     state.run = result;
     if (result.status !== 'queued' && result.status !== 'running') { sessionStorage.removeItem(`ss-execution-uncertain:${run.run_id}`); state.uncertain = false; }
   } catch (error) {
-    if (generation === state.epoch) state.error = describe(error);
+    if (generation === state.epoch) {
+      state.error = describe(error);
+      if (error instanceof ApiError && error.uncertain) state.executionError = { runId: run.run_id, message: state.error };
+    }
   } finally {
-    if (generation === state.epoch) { state.executing = false; await refresh(false); render(); }
+    if (generation === state.epoch) {
+      state.executing = false; await refresh(false);
+      render();
+    }
   }
 }
 function showVerification() {
@@ -350,7 +361,7 @@ document.addEventListener('click', event => {
   if (target.dataset.investigation) { void openInvestigation(target.dataset.investigation); return; }
   if (target.dataset.suggestion) { state.draft = target.dataset.suggestion; sessionStorage.setItem('ss-product-draft', state.draft); render(); const input = el<HTMLTextAreaElement>('promptInput'); input?.dispatchEvent(new Event('input', { bubbles: true })); input?.focus(); return; }
   const action = target.dataset.action;
-  if (action === 'new') { ++state.epoch; stopPolling(); state.executing = false; state.busy = false; state.view = 'home'; state.selected = null; state.run = null; state.events = []; state.verification = null; state.messages = []; state.pollError = ''; state.uncertain = false; state.actionUncertain = null; sessionStorage.removeItem('ss-selected-investigation'); render(); }
+  if (action === 'new') { ++state.epoch; stopPolling(); state.executing = false; state.busy = false; state.view = 'home'; state.selected = null; state.run = null; state.events = []; state.verification = null; state.messages = []; state.pollError = ''; state.executionError = null; state.uncertain = false; state.actionUncertain = null; sessionStorage.removeItem('ss-selected-investigation'); render(); }
   else if (action === 'library') { state.view = 'library'; render(); }
   else if (action === 'account') account();
   else if (action === 'sign-in') { void signIn().catch(setError); }

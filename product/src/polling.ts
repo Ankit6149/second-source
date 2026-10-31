@@ -7,3 +7,7 @@ export function pollFailureMessage(safeDetail?: string): string {
 export function pollRetryDelay(status?: number): number {
   return status === 429 ? 60_000 : 15_000;
 }
+
+export function outcomeConfirmed(status: string): boolean {
+  return ['completed', 'failed', 'cancelled'].includes(status);
+}
