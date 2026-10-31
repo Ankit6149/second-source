@@ -93,6 +93,12 @@ test('workspace controls drive an authorized NON_AI investigation through the lo
     assert.match(doc.querySelector('dialog').textContent, /3 failed/);
     assert.match(doc.querySelector('dialog').textContent, /25 total/);
     doc.querySelector('[data-action="close-dialog"]').click();
+    doc.querySelector('[data-action="report"]').click();
+    await until(() => doc.querySelector('dialog[open]')?.textContent.includes('NON_AI fixture result'), 'sanitized report');
+    assert.match(doc.querySelector('dialog').textContent, /22 passed/);
+    assert.match(doc.querySelector('dialog').textContent, /Authorized scope/);
+    assert.match(doc.querySelector('dialog').textContent, /Detailed cases and mismatch explanations are not exposed/);
+    doc.querySelector('[data-action="close-dialog"]').click();
     doc.querySelector('[data-action="export"]').click();
     await until(() => exported, 'export');
     const bytes = Buffer.from(await exported.arrayBuffer());

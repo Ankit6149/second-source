@@ -322,7 +322,20 @@ function showVerification() {
 }
 async function showReport() {
   if (!state.run) return;
-  try { const report = await api.report(state.run.run_id); showDialog('Sanitized report', `<p>Checksum-protected mock report from the backend.</p><pre class="scope-json">${esc(JSON.stringify(report, null, 2))}</pre><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Close</button></div>`); }
+  try {
+    const report = await api.report(state.run.run_id);
+    if (report.origin !== 'mock' || report.real !== false) throw new Error('This report has an unsupported origin.');
+    const evaluation = report.evaluation;
+    const counts = evaluation && typeof evaluation === 'object' ? evaluation as Record<string, unknown> : null;
+    const validCounts = counts && ['passed', 'failed', 'indeterminate', 'total'].every(key => Number.isSafeInteger(counts[key]) && (counts[key] as number) >= 0)
+      && (counts.passed as number) + (counts.failed as number) + (counts.indeterminate as number) === counts.total;
+    const labels: Record<string, string> = { scope_digest: 'Authorized scope', suite_digest: 'Evaluation suite', spec_digest: 'Candidate specification', approved_context_digest: 'Approved context', plan_digest: 'Plan' };
+    const digests = Object.entries(labels).flatMap(([key, label]) => {
+      const value = report[key];
+      return typeof value === 'string' && /^(?:sha256:)?[a-f0-9]{64}$/.test(value) ? [`<dt>${label}</dt><dd><code>${esc(value)}</code></dd>`] : [];
+    }).join('');
+    showDialog('Sanitized report', `<p><strong>NON_AI fixture result.</strong> This report is produced by the backend and does not represent a genuine model reconstruction.</p>${validCounts ? `<div class="scoreline"><strong>${counts.passed} passed</strong><span>${counts.failed} failed</span><span>${counts.indeterminate} indeterminate</span><span>${counts.total} total</span></div>` : '<p>Evaluation counts are unavailable.</p>'}${digests ? `<h3>Provenance</h3><dl class="report-meta">${digests}</dl>` : '<p>Provenance digests are unavailable.</p>'}<p class="component-note">These counts cover only the independent fixture suite. Detailed cases and mismatch explanations are not exposed by this API.</p><details><summary>View sanitized report data</summary><pre class="scope-json">${esc(JSON.stringify(report, null, 2))}</pre></details><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Close</button></div>`);
+  }
   catch (error) { setError(error); }
 }
 async function downloadExport() {
