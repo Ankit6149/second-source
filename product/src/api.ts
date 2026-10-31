@@ -27,7 +27,7 @@ const identifier = (value: string) => {
 };
 
 export class Api {
-  constructor(private origin: string, private token: () => string | null, private transport: typeof fetch = fetch) {}
+  constructor(private origin: string, private token: () => string | null, private transport: typeof fetch = (...args) => fetch(...args)) {}
   private async read(response: Response, maximum: number): Promise<Uint8Array> {
     const size = response.headers.get('content-length');
     if (size && (!/^\d+$/.test(size) || Number(size) > maximum)) throw new Error('Response too large');

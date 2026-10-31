@@ -52,11 +52,12 @@ async function allEvents(id: string): Promise<RunEvent[]> {
 function renderIcons() { createIcons({ icons }); }
 function toast(message: string) {
   const item = document.createElement('div'); item.className = 'toast'; item.textContent = message;
-  el('toasts').append(item); window.setTimeout(() => item.remove(), 5000);
+  el('toasts').replaceChildren(item); window.setTimeout(() => item.remove(), 5000);
 }
 function describe(error: unknown) {
   if (error instanceof ApiError) {
     if (error.status === 401) {
+      ++state.epoch; state.loading = false; state.busy = false; state.executing = false; state.uncertain = false; state.actionUncertain = null;
       state.session = null; state.ownerId = null; state.target = null; state.investigations = []; state.selected = null;
       state.run = null; state.verification = null; state.events = []; state.messages = []; state.draft = ''; state.pollError = ''; state.executionError = null; state.view = 'home';
       sessionStorage.removeItem('ss-product-draft'); stopPolling();
@@ -185,7 +186,7 @@ async function hydrate(session: Session | null) {
     state.investigations = items.sort((a, b) => b.created_at.localeCompare(a.created_at));
     const saved = sessionStorage.getItem('ss-selected-investigation');
     if (saved && items.some(item => item.investigation_id === saved)) await openInvestigation(saved);
-  } catch (error) { if (generation === state.epoch) state.error = describe(error); }
+  } catch (error) { if (generation === state.epoch) { state.error = describe(error); render(); } }
   finally { if (generation === state.epoch) { state.loading = false; render(); } }
 }
 async function openInvestigation(id: string) {
@@ -200,22 +201,23 @@ async function openInvestigation(id: string) {
     state.actionUncertain = state.run ? sessionStorage.getItem(`ss-action-uncertain:${state.run.run_id}`) : null;
     sessionStorage.setItem('ss-selected-investigation', id); state.view = 'conversation';
     if (state.run) await refresh(false);
-  } catch (error) { if (generation === state.epoch) state.error = describe(error); }
+  } catch (error) { if (generation === state.epoch) { state.error = describe(error); render(); } }
   finally { if (generation === state.epoch) { state.loading = false; render(); } }
 }
 async function refresh(showErrors = true) {
   if (!state.session) return;
+  const generation = state.epoch;
   if (!state.run && state.selected) {
     const id = state.selected.investigation_id;
-    try { const item = await api.investigation(id); if (state.selected?.investigation_id === id) { state.selected = item; render(); } }
-    catch (error) { if (showErrors) setError(error); }
+    try { const item = await api.investigation(id); if (generation === state.epoch && state.selected?.investigation_id === id) { state.selected = item; render(); } }
+    catch (error) { if (generation === state.epoch && showErrors) setError(error); }
     return;
   }
   if (!state.run) return;
   const runId = state.run.run_id;
   try {
     const [run, events] = await Promise.all([api.run(runId), allEvents(runId)]);
-    if (state.run?.run_id !== runId) return;
+    if (generation !== state.epoch || state.run?.run_id !== runId) return;
     state.run = run; state.events = events; state.pollError = '';
     if (state.executionError?.runId === runId && outcomeConfirmed(run.status)) {
       if (state.error === state.executionError.message) state.error = '';
@@ -225,7 +227,9 @@ async function refresh(showErrors = true) {
       sessionStorage.removeItem(`ss-action-uncertain:${runId}`); state.actionUncertain = null;
     }
     if (run.status === 'completed') {
-      state.verification = await api.verification(runId);
+      const verification = await api.verification(runId);
+      if (generation !== state.epoch || state.run?.run_id !== runId) return;
+      state.verification = verification;
       sessionStorage.removeItem(`ss-execution-uncertain:${runId}`); state.uncertain = false;
     } else if (run.status !== 'queued' && run.status !== 'running') {
       sessionStorage.removeItem(`ss-execution-uncertain:${runId}`); state.uncertain = false;
@@ -233,7 +237,7 @@ async function refresh(showErrors = true) {
     render();
     if (run.status === 'running' || state.executing) { stopPolling(); pollTimer = window.setTimeout(() => { void refresh(false); }, 10000); }
   } catch (error) {
-    if (!state.session || state.run?.run_id !== runId) return;
+    if (generation !== state.epoch || !state.session || state.run?.run_id !== runId) return;
     if (showErrors || error instanceof ApiError && error.status === 401) state.error = describe(error);
     else state.pollError = pollFailureMessage(error instanceof ApiError ? error.message : undefined);
     render();
@@ -299,7 +303,7 @@ async function mutate(action: string) {
       const reconciled = await api.reconcile(state.run); if (generation !== state.epoch) return;
       sessionStorage.removeItem(actionKey); state.actionUncertain = null; state.run = reconciled; await refresh(false); toast('Run status checked.');
     }
-  } catch (error) { if (generation === state.epoch) state.error = describe(error); }
+  } catch (error) { if (generation === state.epoch) { state.error = describe(error); render(); } }
   finally { if (generation === state.epoch) { state.busy = false; render(); } }
 }
 async function execute() {
@@ -316,6 +320,7 @@ async function execute() {
     if (generation === state.epoch) {
       state.error = describe(error);
       if (error instanceof ApiError && error.uncertain) state.executionError = { runId: run.run_id, message: state.error };
+      render();
     }
   } finally {
     if (generation === state.epoch) {
@@ -336,8 +341,10 @@ function showResearch() {
 }
 async function showReport() {
   if (!state.run) return;
+  const generation = state.epoch; const runId = state.run.run_id;
   try {
-    const report = await api.report(state.run.run_id);
+    const report = await api.report(runId);
+    if (generation !== state.epoch || state.run?.run_id !== runId) return;
     if (report.origin !== 'mock' || report.real !== false) throw new Error('This report has an unsupported origin.');
     const evaluation = report.evaluation;
     const counts = evaluation && typeof evaluation === 'object' ? evaluation as Record<string, unknown> : null;
@@ -350,12 +357,13 @@ async function showReport() {
     }).join('');
     showDialog('Sanitized report', `<p><strong>NON_AI fixture result.</strong> This report is produced by the backend and does not represent a genuine model reconstruction.</p>${validCounts ? `<div class="scoreline"><strong>${counts.passed} passed</strong><span>${counts.failed} failed</span><span>${counts.indeterminate} indeterminate</span><span>${counts.total} total</span></div>` : '<p>Evaluation counts are unavailable.</p>'}${digests ? `<h3>Provenance</h3><dl class="report-meta">${digests}</dl>` : '<p>Provenance digests are unavailable.</p>'}<p class="component-note">These counts cover only the independent fixture suite. Detailed cases and mismatch explanations are not exposed by this API.</p><details><summary>View sanitized report data</summary><pre class="scope-json">${esc(JSON.stringify(report, null, 2))}</pre></details><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Close</button></div>`);
   }
-  catch (error) { setError(error); }
+  catch (error) { if (generation === state.epoch) setError(error); }
 }
 async function downloadExport() {
   if (!state.run) return;
-  try { const blob = await api.export(state.run.run_id); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `second-source-${state.run.run_id}.zip`; link.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000); }
-  catch (error) { setError(error); }
+  const generation = state.epoch; const runId = state.run.run_id;
+  try { const blob = await api.export(runId); if (generation !== state.epoch || state.run?.run_id !== runId) return; const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `second-source-${runId}.zip`; link.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000); }
+  catch (error) { if (generation === state.epoch) setError(error); }
 }
 
 document.addEventListener('click', event => {
@@ -407,8 +415,16 @@ document.addEventListener('keydown', event => {
     event.preventDefault(); el<HTMLFormElement>('composer').requestSubmit();
   }
 });
-el('toggleSide').addEventListener('click', () => { const shell = el('shell'); const mobile = matchMedia('(max-width: 760px)').matches; shell.classList.toggle(mobile ? 'mobile-open' : 'sidebar-collapsed'); el('toggleSide').setAttribute('aria-expanded', String(mobile ? shell.classList.contains('mobile-open') : !shell.classList.contains('sidebar-collapsed'))); });
-for (const id of ['closeSide', 'mobileScrim']) el(id).addEventListener('click', () => { el('shell').classList.remove('mobile-open'); el('toggleSide').setAttribute('aria-expanded', 'false'); });
+const sidebarMedia = matchMedia('(max-width: 760px)');
+function syncSidebar() {
+  const shell = el('shell');
+  const expanded = sidebarMedia.matches ? shell.classList.contains('mobile-open') : !shell.classList.contains('sidebar-collapsed');
+  el('sidebar').inert = !expanded;
+  el('toggleSide').setAttribute('aria-expanded', String(expanded));
+}
+el('toggleSide').addEventListener('click', () => { const shell = el('shell'); shell.classList.toggle(sidebarMedia.matches ? 'mobile-open' : 'sidebar-collapsed'); syncSidebar(); });
+for (const id of ['closeSide', 'mobileScrim']) el(id).addEventListener('click', () => { const focusedInside = el('sidebar').contains(document.activeElement); const shell = el('shell'); if (sidebarMedia.matches) shell.classList.remove('mobile-open'); else shell.classList.add('sidebar-collapsed'); syncSidebar(); if (focusedInside) el('toggleSide').focus(); });
+sidebarMedia.addEventListener('change', syncSidebar); syncSidebar();
 el<HTMLDialogElement>('dialog').addEventListener('close', () => { if (currentDialogReturn?.isConnected) currentDialogReturn.focus(); else el('main').focus(); });
 state.view = new URLSearchParams(location.search).get('screen') === 'system' ? 'system' : 'home';
 render(); observeSession(session => { void hydrate(session); });

@@ -1,14 +1,14 @@
 # Second Source — Hackathon Submission & Demo Runbook
 
-**Status pointer - 29 October 2026 IST.** Use the [single current delivery board](G3_DELIVERY_BOARD.md) for exact published SHA/CI, both consumed real G3 attempts, evidence and backend acceptance. This document does not authorize inference, credentials or deployment.
+**Status pointer - 1 November 2026 IST.** Use [issue #25](https://github.com/Ankit6149/second-source/issues/25) for current heads, scientific review and release gates. The older delivery-board and dated sections below are historical unless independently updated. This document does not authorize inference, credentials or deployment.
 
-**CURRENT - 29 October 2026 IST:** Submission completion, final video and organizer acceptance UNVERIFIED. Genuine reconstruction/product acceptance remains NO-GO. Track Indie is a planning choice. Deadline from PRD: 2026-11-05 02:00 UTC / 07:30 IST; no new organizer verification. Target November 4 IST submission.
+**CURRENT - 1 November 2026 IST:** Submission completion, final video, organizer acceptance and hosted product acceptance remain unverified. A historical genuine Meta-generated candidate was reported as admitted and independently evaluated at 14 passed / 11 failed / 0 indeterminate out of 25; the original private receipts still need independent artifact-level audit. The separately measured NON_AI control scored 22/25. Neither is a new hosted-app inference, and no genuine repair improvement is established. Track Indie and deadline remain to be confirmed against the organizer's submission form.
 
 ## Current evidence and submission stop
 
 Use [single delivery board](G3_DELIVERY_BOARD.md) for exact source/CI and [approval package](G2_G3_APPROVAL_PACKAGE.md) for spent grants/evidence identities. PRs #5-#8 merged. G3-D exists and is engineering-tested. New genuine G2 has complete original hypotheses/receipts; older missing historical statements remain missing.
 
-Both real G3 attempts consumed: no admitted candidate or real score. No inference/retry/repair authorized. NON_AI trusted 25/25, deliberate negatives 2/2/1 and scripted 22/25 never measure Meta quality. Frontend expansion stopped while backend/intelligence reliability is built. Read-only console is not complete backend/product acceptance or authenticated portable evidence bundle.
+The prior real-attempt summary is superseded by the recorded result above; consumed authorizations do not authorize another inference, retry or repair. NON_AI trusted 25/25, deliberate negatives 2/2/1 and scripted 22/25 never measure Meta quality. A local synthetic-identity fixture journey does not establish hosted product acceptance.
 
 Keep submission checklist boxes unverified until direct evidence exists. Plans/example records/commits do not establish a submitted portal entry. Routine merges follow [charter](COORDINATION_CHARTER.md); paid/credential/deployment operations remain separately gated.
 
