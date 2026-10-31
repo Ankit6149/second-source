@@ -2,7 +2,8 @@
 
 **Status: PREPARED — NOT APPROVED. No inference authorized by this document.**
 
-**Revision 4 (exact-head re-pin):** the executable source is `875eb64e8cb81a7151b3d48119d2db5f0c581fc6` (`eng/g3-readiness` head; exact-head CI run `41195766252` green on Linux and Windows). `git diff dcda5fb..875eb64` touches only `tests/test_g3_readiness.py` and this packet — `src/` is byte-identical, so code pins, wire digest, and context digest are unchanged from rev 3. Fresh zero-call preflight from the exact checkout: `.runs/g3-20261031T113051Z-c7a1aad2/G3_preflight.json` (SHA-256 `eb1a83cb33dc2bbb44dae52471dc6141f04eb25b996d7e212cd5fefdb3fe6123`), result `preflight_ready`, provider calls `0`, plan digest `sha256:c4958cd645864e712d1c5c60ae89409f7ccca0481cf77dad9944d5a60178ca7e` (per-run unique by design: the frozen plan binds a fresh `run_id`, so plan digests differ between preflights while context/wire/code pins stay identical).
+**Revision 5 (envelope-key fix):** the executable source is `4b6676306b0a42a09f153a9855b3e447b79ad315` (`eng/g3-readiness` head; exact-head CI run `41205135657` green on Linux and Windows). Fixes the rev-4 attempt failure at its root: the request now declares the runtime envelope (`ok`/`error` owned by runtime), the fill schema forbids those keys, the prompt names them, and the merger diagnostic names the envelope. Fresh zero-call preflight from the exact checkout: `.runs/g3-preflight-guided-4b66763/G3_preflight.json` (SHA-256 `617c9ad1276087068b72ff2ddce6112192e97d60ef54e5a1569a144fcaac34b3`), result `preflight_ready`, provider calls `0`, context `sha256:93a9a01a…` (unchanged inputs), new wire `sha256:8274d439929d6c432fa1656fd914a17562eefd421c5dc18700a9865c9b240178` with cap 4096, code pins `candidate_generation 8189001c…`, `schema_validate 74a85aef…` (all other pins unchanged).
+**Revision 4 (exact-head re-pin):** the executable source was `875eb64e8cb81a7151b3d48119d2db5f0c581fc6` (exact-head CI run `41195766252` green on Linux and Windows; `src/` identical to `dcda5fb`). `git diff dcda5fb..875eb64` touches only `tests/test_g3_readiness.py` and this packet — `src/` is byte-identical, so code pins, wire digest, and context digest are unchanged from rev 3. Fresh zero-call preflight from the exact checkout: `.runs/g3-20261031T113051Z-c7a1aad2/G3_preflight.json` (SHA-256 `eb1a83cb33dc2bbb44dae52471dc6141f04eb25b996d7e212cd5fefdb3fe6123`), result `preflight_ready`, provider calls `0`, plan digest `sha256:c4958cd645864e712d1c5c60ae89409f7ccca0481cf77dad9944d5a60178ca7e` (per-run unique by design: the frozen plan binds a fresh `run_id`, so plan digests differ between preflights while context/wire/code pins stay identical).
 **Revision 3 (source identity + reservation proof):** the executable source was
 `dcda5fbf86417282a0d0ba7c46a9654992bd6671` (`eng/g3-readiness` head, which
 contains the 4096 remediation; `main @ bc16065` predates it and MUST NOT be
@@ -55,7 +56,7 @@ pinned digests. Historical authorizations are consumed and are not reused.
 ## Exact frozen inputs
 
 - Operator checkout (exact executable source SHA):
-  `875eb64e8cb81a7151b3d48119d2db5f0c581fc6` (branch `eng/g3-readiness`, rev 4;
+  `4b6676306b0a42a09f153a9855b3e447b79ad315` (branch `eng/g3-readiness`, rev 5;
   verified `git rev-parse HEAD`; `dcda5fb` (rev 3) is src-identical and superseded). Earlier revisions named `bc16065`, which
   lacks the 4096 remediation — that pairing is withdrawn.
 - Genuine G2 run: `real-g2-20261028T163538Z-fd60310f` (`REAL_EXPERIMENT_OBSERVED`;
@@ -105,9 +106,10 @@ Repair rounds reuse the frozen wire byte-for-byte
 - Attempt 1: `broker_failed` before admission; candidate admitted: no;
   evaluation: none; precise rejection cause UNKNOWN by record (the broker
   collapsed detail; no response ID retained). Do not infer a cause.
+- Attempt 3 (rev-4 authorized): genuine response `chatcmpl-01a191e3-…` (2556 in / 1242 out tokens, $0.0084735, uncertain $0) but `POST_MODEL_ADMISSION_REJECTED` at `candidate_admission`: the fill echoed envelope key `ok` as a respond binding. Evidence in `.runs/real-g3-guided-20261031T121200Z-authorized1/`. Root cause fixed in rev 5; allowance consumed.
 - Attempt 2: broker failure at dispatch (`MODEL_GATEWAY_ERROR`, response
   `chatcmpl-01a183bf-…`, 3314 in / 1343 out tokens); evaluation: none.
-- Neither attempt admitted a candidate or produced a score. This packet
+- No attempt has admitted a candidate or produced a score. This packet
   proposes the next attempt, not a retry of either allowance.
 
 ## Expected outputs on approval
