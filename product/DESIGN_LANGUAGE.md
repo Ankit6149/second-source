@@ -88,4 +88,4 @@ These are design lenses, **not empirical proof of usability**. Formal accessibil
 
 ## Critical safety disclosure
 
-The v0.8 UI never inspects targets, initiates sign-in, performs purchases, synthesizes model candidates or produces a genuine G3 score. It uses a browser-local data sample (22/25 scripted fixture control) and stores drafts locally only. A test email is not sufficient payment security; a production system needs enforceable tool/action restrictions, approval rules and sandboxed payment testing.
+The original v0.8 design reference was a browser-local prototype. The application implementation can initiate sign-in and request an authorized NON_AI fixture run when a backend is configured; the isolated preview is not connected. Draft notes remain in browser session storage. The historical research record is separate from live runs, and genuine inference is not available in this application. A test email is not sufficient payment security; a production system needs enforceable tool/action restrictions, approval rules and sandboxed payment testing.

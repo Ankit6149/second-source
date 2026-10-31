@@ -93,3 +93,20 @@ test('showroom actions remain separate from investigation results', () => {
     assert.match(doc.querySelector('dialog').textContent, /component example/i);
   } finally { window.happyDOM.abort(); }
 });
+
+test('historical research is explicitly separated from live and NON_AI results', () => {
+  const window = workspace();
+  try {
+    const doc = window.document;
+    doc.querySelector('[data-action="research"]').click();
+    const dialog = doc.querySelector('dialog');
+    assert.equal(dialog.open, true);
+    assert.match(dialog.textContent, /not an investigation run from this application/i);
+    assert.match(dialog.textContent, /14 passed/);
+    assert.match(dialog.textContent, /11 failed/);
+    assert.match(dialog.textContent, /22 passed, 3 failed/);
+    assert.match(dialog.textContent, /independent artifact-level audit/i);
+    assert.match(dialog.textContent, /not a fair performance comparison/i);
+    assert.equal(dialog.querySelector('a').href, 'https://github.com/Ankit6149/second-source/issues/25#issuecomment-6547391799');
+  } finally { window.happyDOM.abort(); }
+});
