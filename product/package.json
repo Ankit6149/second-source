@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
-    "test": "node --experimental-transform-types --test tests/*.test.ts"
+    "test": "node --experimental-transform-types --test tests/*.test.ts",
+    "test:integration": "node --experimental-transform-types --test integration/*.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.118.0",

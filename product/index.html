@@ -30,7 +30,7 @@
     <div class="main-area">
       <header class="topbar"><div class="top-left"><button class="icon-button menu-btn" id="toggleSide" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="sidebar"><i data-lucide="panel-left"></i></button><span class="top-name" id="topName">Second Source</span></div><div class="top-right"><span class="preview-label" id="connectionLabel">Checking connection</span><button class="icon-button" type="button" title="New investigation" aria-label="New investigation" data-action="new"><i data-lucide="square-pen"></i></button></div></header>
       <main class="main" id="main" tabindex="-1">
-        <div class="scroll-area" id="scrollArea"><div class="content" id="content" aria-live="polite"></div></div>
+        <div class="scroll-area" id="scrollArea"><div class="content" id="content"></div></div>
         <div class="dock" id="dock"><div class="dock-inner" id="dockInner"></div><p class="dock-foot">Only investigate software you own or are authorized to study.</p></div>
       </main>
     </div>
@@ -38,6 +38,7 @@
     <div class="panel-scrim" id="panelScrim"></div>
   </div>
   <dialog id="dialog" aria-labelledby="dialogTitle"><div id="dialogContent"></div></dialog>
+  <div id="liveStatus" class="sr-only" role="status" aria-live="polite"></div>
   <div class="toast-stack" id="toasts" role="status" aria-live="polite"></div>
   <script type="module" src="/src/main.ts"></script>
 </body>
