@@ -1,0 +1,17 @@
+/* Functional states added to the approved v0.8 visual system. */
+[hidden]{display:none!important}
+.dock{flex-shrink:0;padding-bottom:max(12px,env(safe-area-inset-bottom))}
+.scroll-area{min-height:0;overscroll-behavior:contain}
+.composer textarea{max-height:180px;overflow-y:auto;resize:none}
+.quiet-dismiss{margin-left:auto;border:0;background:transparent;color:inherit;font-size:18px;cursor:pointer}
+dialog{width:min(600px,calc(100% - 32px));max-height:min(80dvh,760px);overflow:auto;border:1px solid var(--border);border-radius:20px;background:var(--bg);color:var(--ink);padding:24px;box-shadow:var(--shadow)}
+dialog::backdrop{background:rgba(20,35,25,.28)}
+dialog h2{font:700 21px/1.3 var(--display);margin:0}
+dialog h3{font:700 15px var(--display);margin:22px 0 8px}
+dialog p,dialog li{color:var(--secondary);line-height:1.7}
+.scope-json{max-height:280px;overflow:auto;background:var(--soft);padding:14px;border-radius:12px;font:12px/1.6 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere}
+.scope-list{padding-left:20px}.check-row{margin:18px 0;gap:10px;align-items:flex-start}.check-row input{margin-top:4px}
+.scoreline{display:flex;flex-wrap:wrap;gap:12px 18px;margin:20px 0;color:var(--secondary)}
+.scoreline strong{color:var(--accent)}.lineage{padding-left:20px}.activity{margin:18px 0;color:var(--secondary)}.activity summary,dialog summary{cursor:pointer;font-weight:650}.activity ol{padding-left:20px}.component-note{color:var(--secondary);line-height:1.65}
+.history-item,.list-row{cursor:pointer}.top-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:45vw}
+@media(max-width:760px){dialog{padding:20px;max-height:80dvh}.dock{padding-bottom:max(10px,env(safe-area-inset-bottom))}.composer textarea{font-size:16px}.top-name{max-width:42vw}}
