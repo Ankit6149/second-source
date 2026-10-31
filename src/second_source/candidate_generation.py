@@ -635,6 +635,7 @@ FILL_JSON_SCHEMA: dict[str, Any] = {
                     "minProperties": 1,
                     "maxProperties": 4,
                     "additionalProperties": {"type": "string"},
+                    "properties": {"ok": False, "error": False},
                 },
             },
         },
@@ -648,6 +649,7 @@ FILL_JSON_SCHEMA: dict[str, Any] = {
                     "minProperties": 1,
                     "maxProperties": 4,
                     "additionalProperties": {"type": "string"},
+                    "properties": {"ok": False, "error": False},
                 },
             },
         },
@@ -661,6 +663,7 @@ FILL_JSON_SCHEMA: dict[str, Any] = {
                     "minProperties": 1,
                     "maxProperties": 4,
                     "additionalProperties": {"type": "string"},
+                    "properties": {"ok": False, "error": False},
                 },
             },
         },
@@ -675,6 +678,7 @@ FILL_JSON_SCHEMA: dict[str, Any] = {
                     "minProperties": 1,
                     "maxProperties": 4,
                     "additionalProperties": {"type": "string"},
+                    "properties": {"ok": False, "error": False},
                 },
             },
         },
@@ -689,7 +693,7 @@ SYNTHESIZE_SYSTEM_V2 = (
     "case handling, and the exact error-code strings shown in the "
     "observations. Derive every value ONLY from the attached observations. "
     "Do not invent hidden internals, approvals, file paths, imports, shell, "
-    "network, or code of any kind. Output JSON only."
+    "network, or code of any kind. Output JSON only. Respond keys name inner payload fields only: 'ok' and 'error' are owned by the runtime envelope declared in this request and must never appear as respond keys."
 )
 
 _ERROR_CODE_LIMIT = 64
@@ -798,7 +802,7 @@ def _check_respond(command: str, respond: Any) -> dict[str, str]:
                 f"guided: fill {command!r} has bad respond key {key!r}")
         if key in _RESERVED_RESPOND_KEYS:
             raise GatewayError(
-                f"guided: fill {command!r} respond key {key!r} is reserved")
+                f"guided: fill {command!r} respond key {key!r} is reserved (runtime envelope key)")
         if not isinstance(source, str) or not source or len(source) > 32:
             raise GatewayError(
                 f"guided: fill {command!r} has bad respond source")
@@ -914,6 +918,14 @@ def build_guided_request(safe_context: dict[str, Any], skeleton: dict[str, Any],
     user_content = {
         "context": safe_context,
         "skeleton": skeleton,
+        # Trusted protocol note, fixed by code: the runtime wraps every
+        # success payload under "ok" and every failure under "error", so
+        # those keys are envelope-owned and never valid respond bindings.
+        "response_envelope": {
+            "success_key": "ok",
+            "failure_key": "error",
+            "owned_by": "runtime",
+        },
     }
     return ModelRequest(
         stage=SYNTHESIZE_STAGE,
