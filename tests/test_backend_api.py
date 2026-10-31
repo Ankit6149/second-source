@@ -69,6 +69,36 @@ def assert_safe(response, status, secret=None):
     return body
 
 
+def test_supported_target_is_authenticated_exact_scope_and_not_authorization(client):
+    from second_source.contracts import ScopeContract
+    from second_source.g2_persistence import scope_digest_of
+    from second_source.reconstruct import create_scope
+
+    assert client.get('/v1/targets').status_code == 401
+    response = client.get('/v1/targets', headers=HEADERS)
+    assert response.status_code == 200
+    target, = response.json()
+    assert target['target_id'] == 'owned-ledger-v1'
+    assert target['origin'] == 'mock' and target['real'] is False
+    assert target['execution_enabled'] is False
+    scope = ScopeContract.model_validate(target['scope'])
+    assert scope_digest_of(scope) == scope_digest_of(create_scope(0))
+    assert target['scope_digest'] == scope_digest_of(scope).removeprefix('sha256:')
+    assert client.get('/v1/investigations', headers=HEADERS).json()['items'] == []
+    created = client.post('/v1/investigations', headers={**HEADERS, 'Idempotency-Key': 'discovered-target'},
+                          json={'title': 'Owned fixture', 'scope': target['scope']})
+    assert created.status_code == 201
+    item = created.json()
+    assert item['scope_digest'] == target['scope_digest'] and item['status'] == 'created'
+    approved = client.post(f"/v1/investigations/{item['investigation_id']}/authorize", headers=HEADERS,
+        json={'expected_revision': item['revision'], 'scope_digest': item['scope_digest']})
+    assert approved.status_code == 200 and approved.json()['status'] == 'authorized'
+    queued = client.post(f"/v1/investigations/{item['investigation_id']}/runs",
+        headers={**HEADERS, 'Idempotency-Key': 'discovered-run'}, json={'kind': target['run_kind']})
+    assert queued.status_code == 201 and queued.json()['status'] == 'queued'
+    assert '/v1/targets' in client.get('/openapi.json').json()['paths']
+
+
 def test_durable_api_lifecycle_reuses_service_and_resume_state(client, service):
     item, run = queued(client)
     assert run["status"] == "queued"

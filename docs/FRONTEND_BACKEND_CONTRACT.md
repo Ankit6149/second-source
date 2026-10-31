@@ -10,14 +10,15 @@ cannot be mixed. A browser sends no service-role/database/model/sandbox key.
 |---|---|
 | Validate session | GET `/v1/session`: verified immutable owner ID;401 for rejected identity. Ordinary sign-out does not prove immediate JWT revocation; clear browser tokens and respect expiry |
 | Availability | GET `/v1/capabilities`: only `g3_mock`, real/paid false; `execution_mode: on_demand_mock` appears only when configured/enabled. Legacy queued capabilities remain unchanged |
+| Choose a supported target | GET `/v1/targets`: the exact owned-ledger mock scope and digest, plus whether on-demand execution is enabled. This discovery response does not create or authorize an investigation; browser, arbitrary URL and real-model targets are not advertised |
 | Capture/list | POST/GET `/v1/investigations`: title + existing ScopeContract, Idempotency-Key; server assigns owner |
 | Scope review/authorize | GET investigation, then POST `/{id}/authorize` with expected_revision, exact scope_digest, mode mock and maximum_model_spend_usd0 |
 | Queue | POST investigation `/{id}/runs` with kind g3_mock and Idempotency-Key.201 means queued, never completed |
 | Start bounded job | POST `/v1/runs/{id}/execute` with expected_revision.409 when disabled,503 when occupied,200 with actual durable state after execution; active/terminal states never replay |
-| Progress | GET run plus `/v1/runs/{id}/events?after=...&limit=...`; process lifecycle events only, polling is not engine execution |
+| Progress | GET run plus `/v1/runs/{id}/events?after=...&limit=...`; `repair_started` and `repair_completed` are fenced engine progress events; polling does not execute a run |
 | Cancel | POST run `/{id}/cancel`, expected_revision; distinguish cancellation requested from confirmed terminal cancellation |
 | Interrupted worker | POST run `/{id}/reconcile`, expected_revision: expired execution becomes needs_reconciliation, not requeued/successful |
-| Verification | GET run `/{id}/verification`: actual independent summary or null. real remains false; candidate_availability private_not_exposed, repair_history_availability engine_integration_pending |
+| Verification | GET run `/{id}/verification`: independent mock summary or null; `real` remains false, candidates remain private, and `repair` exposes bounded aggregate lineage when available |
 | Evidence/report | GET run `/{id}/report`: hash-checked sanitized JSON only; missing report404, not a fabricated empty score |
 | Export | GET run `/{id}/export.zip`: bounded existing integrity bundle, no raw model/secret/sealed content |
 
@@ -33,7 +34,7 @@ Return-to-login versus retry-status handling should preserve401,409,429,503
 distinctions; do not retry execute automatically after a timeout. Read run state
 and reconcile uncertain operations explicitly.
 
-No SSE, live OAuth browser flow, public candidate download, genuine Meta or repair
-history integration is claimed. Muse owns PR #18 and its remaining engine gates;
-this contract deliberately marks unavailable fields rather than inventing results.
+No SSE, live OAuth browser flow, public candidate download or genuine Meta
+execution is claimed. Repair history is a sanitized NON_AI projection; raw
+candidate and evaluator materials remain private.
 Expose supported capabilities progressively and preserve NON_AI labels.

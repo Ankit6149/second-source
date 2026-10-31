@@ -59,6 +59,35 @@ def raw_report(**updates):
     return report
 
 
+def test_repair_projection_rejects_inconsistent_selection_and_redacts_feedback():
+    from second_source.backend.artifacts import sanitized_report
+    digest = "sha256:" + "a" * 64
+    evaluation = {"passed": 22, "failed": 3, "indeterminate": 0, "total": 25}
+    report = raw_report(selected={"version": "initial", "candidate_digest": digest,
+        "evaluation": evaluation}, repair_history={"verdict": "no_change",
+        "stop_reason": "rounds_exhausted", "versions": [
+            {"round": 0, "candidate_digest": digest, "evaluation": evaluation,
+             "feedback": "SEALED_SENTINEL"},
+            {"round": 1, "candidate_digest": "sha256:" + "b" * 64, "evaluation": evaluation,
+             "files": {"candidate": "/PRIVATE_PATH_SENTINEL"}},
+        ]})
+    projected = sanitized_report(report)
+    assert sanitized_report(projected) == projected
+    assert "SEALED_SENTINEL" not in str(projected) and "PRIVATE_PATH_SENTINEL" not in str(projected)
+    report["selected"]["version"] = "repair-1"  # ties must keep the original
+    report["selected"]["candidate_digest"] = report["spec_digest"] = "sha256:" + "b" * 64
+    with pytest.raises(BackendError):
+        sanitized_report(report)
+    improved = {"passed": 23, "failed": 2, "indeterminate": 0, "total": 25}
+    report["evaluation"] = report["selected"]["evaluation"] = improved
+    report["repair_history"]["versions"][1]["evaluation"] = improved
+    report["repair_history"]["verdict"] = "improved"
+    projected = sanitized_report(report)
+    assert projected["repair"]["selected_version"] == "repair-1"
+    assert projected["evaluation"] == improved
+    assert sanitized_report(projected) == projected
+
+
 @pytest.fixture
 def configured(tmp_path):
     service = BackendService(tmp_path / "state.sqlite")

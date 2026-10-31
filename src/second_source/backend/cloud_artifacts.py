@@ -29,6 +29,10 @@ PRIVATE_ARTIFACT_NAMES = frozenset({
     "candidate.v1.json", "broker-artifact.v1.json",
     "generation-dispatch.v1.private.json", "generation-result.v1.private.json",
     "G3_report.json", "G3_input_provenance.json",
+    "G3_repair_history.json", "evaluation-receipt.v1.json", "evaluation-manifest.v1.json",
+    "candidate.r1.json", "candidate.r2.json", "broker-artifact.r1.json", "broker-artifact.r2.json",
+    "evaluation-receipt.r1.json", "evaluation-receipt.r2.json",
+    "evaluation-manifest.r1.json", "evaluation-manifest.r2.json",
 })
 _OBJECT_PATH = re.compile(
     r"^/storage/v1/object/(?:authenticated/)?second-source-private/v1/"

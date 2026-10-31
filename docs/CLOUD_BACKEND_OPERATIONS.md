@@ -56,9 +56,10 @@ the cloud factory never substitutes ephemeral SQLite for unavailable PostgreSQL.
 An authorized user queues a run, then explicitly requests
 `POST /v1/runs/{id}/execute` with `{"expected_revision":1}` (use the actual
 revision). Execution is synchronous, process-concurrency1, exactly that owned
-run, existing zero-cost engine, 90-second engine bound and100-second publication
-deadline. No arbitrary command, model key, repair, source or suite path is
-accepted. Temporary processing is outside the checkout and is not durable state.
+run, existing zero-cost engine, 180-second engine bound and 210-second publication
+deadline. The worker supplies a fixed limit of one NON_AI repair attempt; the
+client cannot configure it. No arbitrary command, model key, source or suite path
+is accepted. Temporary processing is outside the checkout and is not durable state.
 
 The worker renews/checks its fenced lease and cancellation before report/private
 publication; metadata writes require the same active lease token. All retained
@@ -67,9 +68,17 @@ suite files or logs. Uploads/readbacks are bounded to3seconds per request in the
 cloud factory. Successful private bytes/hash metadata and the sanitized report
 are remote before completion. A failed/ambiguous publication becomes
 `needs_reconciliation`; no upload/regeneration/paid operation retries are hidden.
-Completed mock runs require all five mandatory original JSON artifacts; only
-G3_input_provenance is optional. The immutable runtime_artifact_refs rows are
+Completed mock runs require the original JSON artifacts and bounded admitted
+repair artifacts identified by the history. The immutable runtime_artifact_refs rows are
 the authoritative private hash manifest, rather than a second mutable file.
+
+On cancellation or engine timeout, the worker attempts to preserve existing
+allowlisted private artifacts while its lease is valid, without restarting the
+engine or publishing a successful report. Cancellation during publication
+continues only with artifacts that have not already been acknowledged. An
+expired lease prevents publication; an upload or metadata failure becomes
+`needs_reconciliation`, and the ephemeral local copy may be lost. A preserved
+partial file is not by itself proof of an admitted or evaluated candidate.
 
 Repeated execute requests for active or terminal runs return their durable
 state. Queued is never completed. After an interrupted process, an owner can
@@ -82,16 +91,18 @@ Reports and exports enforce service ownership and bind Storage access per
 principal. Public ZIPs contain only the existing sanitized integrity package;
 original responses/candidates remain private and sealed material never uploads.
 See `/openapi.json` for authoritative typed request/response/error contracts.
-Candidate/repair-history acceptance remains Muse's PR #18; no new real-engine
-or repair claim is introduced by this infrastructure.
+The repair history is a sanitized NON_AI projection; it is not a real-model or
+feedback-conditioned repair claim.
 
 ## Free-tier limits and deployment
 
 [Render Free](https://render.com/docs/free) currently sleeps after15 idle minutes,
 may take about one minute to cold-start, loses local files on restart and grants
 750 workspace instance-hours/month. No free permanent/background worker or
-persistent disk is assumed. Quota exhaustion can suspend services/builds; do not
-add a payment method or upgrade to conceal this. Excess outbound DB/Storage/API
+persistent disk is assumed. Quota exhaustion can suspend services/builds; Render
+documents that bandwidth and build-minute overages can instead be billed when a
+payment method is present. Confirm the workspace has no payment method and cannot
+incur overages before deployment; do not add a payment method or upgrade. Excess outbound DB/Storage/API
 traffic can also lead to suspension. The chosen service must remain a bounded
 hackathon demo, not a claimed always-on production system.
 
@@ -107,6 +118,30 @@ Auth/OAuth/Storage and exact frontend origin; deploy `render.yaml` manually
 (`autoDeployTrigger: off`). Keep mock execution disabled until actual signed-in
 two-owner persistence/report/export/restart acceptance succeeds. A cold-start
 loading response must be retried as a status read, never replay a paid action.
+
+## Activation decisions and nonbillable acceptance
+
+Run `python scripts/acceptance_nonbillable.py` with the development dependencies
+installed. It runs the existing authenticated mock worker, storage failure,
+isolation, restart, cancellation and export checks using SQLite, synthetic
+identities and fake Storage. It makes no cloud-acceptance claim. Native Linux
+PostgreSQL CI separately exercises the real database engine and non-owner role.
+
+The following are distinct owner-controlled decisions, not authorization to
+perform them merely by merging this document:
+
+| Operation | Effect and verification | Risk and recovery |
+|---|---|---|
+| Apply the reviewed runtime migrations | Add `ss_runtime`, constraints and a non-owner role; inspect migration history, schema/role privileges and existing `ss` data before and after. | Live DDL; verify backup/restore and halt execution on failure. Preserve evidence and use the recovery boundary in [POSTGRES_BACKEND.md](POSTGRES_BACKEND.md). |
+| Provision the dedicated role credential | Set a private password and configure a TLS-verified server-only DSN; confirm readiness and denied excess privileges. | A leaked credential crosses tenant boundaries; rotate/revoke it privately and restore the prior server configuration. |
+| Configure Auth and Google OAuth | Configure approved redirect origins and identity provider; verify sign-in, expiry and two-user isolation. | External console changes and user data; revert settings and revoke sessions as appropriate. |
+| Configure private Storage | Verify or create only the required private bucket and server-side access, then test owner-scoped retrieval and hashes. | Stored artifacts are sensitive; disable access on misconfiguration, preserve evidence and reconcile partial uploads. |
+| Provision one Render Free API | Deploy the reviewed commit with mock execution disabled; verify health, cold starts and the exact CORS origin. | Account eligibility and no-card/no-overage status are not verified; an existing payment method can permit overage billing. Stop the service and restore the previous configuration on failure. |
+| Enable bounded mock execution | Explicitly enable the zero-cost on-demand worker after security and persistence checks; verify an authorized run and reconciliation. | Interruptions can leave uncertain effects; disable execution and quarantine rather than replay. No inference or sandbox spending is authorized. |
+
+Railway is an alternative only, never a simultaneous authoritative worker.
+No live credentials, migrations, bucket creation or hosting changes are performed
+by the acceptance script.
 
 Rollback: stop new execution, quarantine expired/uncertain work, restore the
 previous reviewed API build/config. Do not drop ss/ss_runtime, rewind events,

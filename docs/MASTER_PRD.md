@@ -302,6 +302,19 @@ Classify every test as deterministic, seeded, time-dependent, stochastic or exte
 
 **Primary baseline A:** naive direct generation from the visible initial examples, no active experiments. **Baseline B:** fixed sequential probes with the same query budget. **Treatment C:** Muse-guided active experiments with identical budget. **Optional D:** treatment C with repair feedback. Isolate one variable at a time. The primary public claim must come from `C vs A/B` on identical held-out examples; separate effect of repair via `D vs C`.
 
+**Judge demonstration comparison [PLANNED]:** Pin the target, authorization,
+initial examples, candidate contract, evaluator version and sealed suite digest
+before either arm runs. Give baseline A and treatment C the same initial
+information and model/output constraints; record the additional observations,
+reference-query budget, model calls, time and actual cost used by C separately.
+Neither arm receives sealed cases or gold outputs. Evaluate each admitted
+candidate independently with the same reset-per-case suite and unchanged
+denominator; retain invalid and failed attempts as unscored rather than zero.
+Record request identity, provider/model and usage receipt, candidate digest,
+evaluator identity, and passed/failed/skipped/indeterminate counts. Report the
+observed comparison and limitations only; a mock or unrun arm is not a score or
+evidence of an advantage. Real inference requires its own explicit approval.
+
 **Seed corpus [TARGET, not already available]:** 3 owned CLI/API fixtures and 1 owned browser fixture. Each fixture should contain >1 hidden rule, >1 state transition, and negative cases. Reserve ≥20–30 gold evaluation cases/fixture if feasible; split by **behavioral path**, not only random records, to avoid easy leakage. Report all failures and excluded runs.
 
 **Research log:** maintain `research/experiments/YYYY-MM-DD-runname.md` with fixture digest, model/version, prompts digest, seed, budget, method, results, confidence, deviations and next hypothesis. Changes to harness require rerunning baselines.
@@ -1849,6 +1862,63 @@ All persisted events include `event_schema_version`; all artifacts have `artifac
 ## 29.6 Plugin test kit (`tests/contract/`) [REQ]
 
 Every adapter runs, at minimum: missing capabilities; inconsistent descriptor; unauthorized action denial; deterministic fixture parity; timeout; cancellation; target version drift; reset failure; malformed result; duplicate action ID; stale state token; concurrency collision; large output truncation with digest; secrets not logged; cleanup after exception; schema major mismatch. Providers additionally test rate-limit/backoff, invalid JSON, partial tool-call streams, missing usage metadata, model alias changes and simulated billing-exhaustion. A README example alone is not an adapter implementation.
+
+## 29.7 Model Context Protocol integration [PLANNED / NOT IMPLEMENTED]
+
+MCP is a future integration boundary, not a claim of support for arbitrary MCP
+servers. H0 is documentation only; existing adapters and authorized workflows
+remain the supported paths. This design extends the typed plugin contracts in
+§29 and uses the same tool-call boundary in §31.5. The implementation target is
+the [MCP 2026-07-28 specification](https://modelcontextprotocol.io/specification/2026-07-28)
+and the [official Python SDK](https://py.sdk.modelcontextprotocol.io/) v2 line;
+pin and test an exact SDK release before adoption. Version-specific transport,
+authentication and negotiation behavior must be verified against that release.
+
+**Client.** Connect only to explicitly approved server identities and endpoints,
+under the authenticated owner's scoped authorization. Discover tools and
+resources and negotiate protocol version/capabilities as specified; pin approved
+server identity, protocol revision, capability and input/output schemas. Map
+validated capabilities to versioned typed adapter contracts, not directly to
+model-selected unrestricted tools. Unsupported or changed capabilities fail
+closed and require review. Distinguish read-only observations from state-changing
+calls; the latter require exact scope and separate authorization. Use per-owner,
+least-privilege credentials held by the trusted service, never the model or a
+candidate sandbox. Bound time, calls, bytes, concurrency and spending; propagate
+cancellation and record success, failure, timeout and uncertain-effect receipts.
+Do not retry an uncertain mutation automatically.
+
+**Optional server.** A future owner-authenticated MCP server may expose scoped
+`list_investigations`, `get_run_status`, `get_evidence_summary` and
+`get_verification_report` tools. Run-triggering actions require a separate
+reviewed contract and explicit approval. Enforce per-user authorization on every
+object; expose only sanitized, authorized summaries. Never expose keys, sealed
+cases, private reference internals or unfiltered candidate material.
+
+**Security and provenance.** Treat server descriptions, schemas, tool output
+and resources as untrusted data: they confer no authority and may contain prompt
+injection or malicious definitions. Pin schemas, bound validation and do not
+automatically resolve external schema references. Defend against confused-deputy
+and token-passthrough attacks, cross-tenant access, unauthorized writes, SSRF and
+DNS rebinding with server identity verification, explicit destination/egress
+allowlists and per-request scope enforcement. No unbounded shell or browser
+execution. Every call passes the existing scope guard, admission policy and
+spending controls. Observation evidence retains its own target, scope, content
+hash and provenance; MCP transport metadata and receipts supplement but never
+replace it.
+
+**Lifecycle and conformance.** Define versioned capability and schema fixtures
+and conformance tests for discovery, negotiation, cancellation, authorization,
+isolation, failures, revocation, recovery and unsupported versions. Support
+approved local stdio and remote transports only after their distinct trust and
+egress boundaries are reviewed. Connection, disconnection, revocation and
+reauthorization must not silently widen authority; incompatible changes require
+explicit review. Audit each call with a bounded, sanitized receipt and preserve
+unknown outcomes. Backward compatibility is tested, not assumed.
+
+**Roadmap.** H0: this architecture only; no MCP implementation is required for
+the hackathon. H1: one read-only integration with conformance and security tests.
+H2: controlled server exposure and additional approved target adapters after
+independent review. No phase authorizes live execution or spending by itself.
 
 # 30. Scientific observation and active experimentation engine
 
