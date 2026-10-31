@@ -10,9 +10,13 @@ from __future__ import annotations
 from typing import Any
 
 
-def validate_json_schema(instance: Any, schema: dict[str, Any], path: str = "$") -> list[str]:
+def validate_json_schema(instance: Any, schema: dict[str, Any] | bool, path: str = "$") -> list[str]:
     """Return a list of violations; empty means valid."""
     errors: list[str] = []
+    if schema is True:
+        return []
+    if schema is False:
+        return [f"{path}: forbidden by schema"]
     if not isinstance(schema, dict):
         return [f"{path}: schema must be an object"]
     schema_type = schema.get("type")
@@ -42,6 +46,9 @@ def validate_json_schema(instance: Any, schema: dict[str, Any], path: str = "$")
                 if key not in properties:
                     errors.append(f"{path}: additional property {key!r} forbidden")
         for key, subschema in properties.items():
+            if key in instance and subschema is False:
+                errors.append(f"{path}.{key}: forbidden by schema")
+                continue
             if key in instance and isinstance(subschema, dict):
                 errors.extend(validate_json_schema(instance[key], subschema, f"{path}.{key}"))
         if "minProperties" in schema and len(instance) < schema["minProperties"]:

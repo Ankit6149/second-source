@@ -32,6 +32,17 @@ CANDIDATE_SUBSYSTEM = "cli_ledger"
 MANIFEST_PATH = "candidate.json"
 MANIFEST_VERSION = "1"
 ALLOWED_COMMANDS = ("add", "list", "total", "remove")
+# Resolvable respond sources per command: the payload field names each
+# command's execution can emit. This is observable public behavior (every
+# evidence output shows these keys), shared here as the single source of
+# truth for both strict admission and the guided skeleton's model-visible
+# vocabulary. Changing this table changes the DSL contract.
+RESPOND_SOURCES: dict[str, frozenset[str]] = {
+    "add": frozenset({"id", "label", "amount"}),
+    "list": frozenset({"items"}),
+    "total": frozenset({"count", "amount"}),
+    "remove": frozenset({"id"}),
+}
 
 MAX_SPEC_BYTES = 65_536
 ERROR_CODE_RE = re.compile(r"[a-z][a-z0-9_]*\Z")
@@ -200,12 +211,7 @@ def _check_command(name: str, cmd: CommandSpec) -> None:
             f"command {name!r}: aggregate_sum_field needs aggregate_count"
         )
 
-    allowed_sources = {
-        "add": {"id", "label", "amount"},
-        "list": {"items"},
-        "total": {"count", "amount"},
-        "remove": {"id"},
-    }[name]
+    allowed_sources = RESPOND_SOURCES[name]
     for key in sorted(cmd.respond):
         source = cmd.respond[key]
         if not PARAM_NAME_RE.fullmatch(key):
