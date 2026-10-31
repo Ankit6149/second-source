@@ -113,7 +113,8 @@ Repair rounds reuse the frozen wire byte-for-byte
 - Attempt 3 (rev-4 authorized): genuine response `chatcmpl-01a191e3-…` (2556 in / 1242 out tokens, $0.0084735, uncertain $0) but `POST_MODEL_ADMISSION_REJECTED` at `candidate_admission`: the fill echoed envelope key `ok` as a respond binding. Evidence in `.runs/real-g3-guided-20261031T121200Z-authorized1/`. Root cause fixed in rev 5; allowance consumed.
 - Attempt 2: broker failure at dispatch (`MODEL_GATEWAY_ERROR`, response
   `chatcmpl-01a183bf-…`, 3314 in / 1343 out tokens); evaluation: none.
-- No attempt has admitted a candidate or produced a score. This packet
+- Attempt 5 (rev-6 authorized, executed 2026-10-31): ADMITTED and independently scored — `completed_real_run`, response `chatcmpl-01a19314-…`, candidate `sha256:ee1f3f32…a146cd`, **14 passed / 11 failed / 0 indeterminate / 25** (2 error-category + 9 schema-category mismatches), 2756 in / 2555 out tokens, $0.01430375 estimated, $0 uncertain. Evidence in `.runs/real-g3-guided-20261031T153000Z-rev6/`. Offline replay of the preserved candidate bytes reproduces 14/11/0 identically. Allowance consumed; no repair authorized or attempted.
+- Attempts 1–4 admitted no candidate and produced no score. This packet
   proposes the next attempt, not a retry of either allowance.
 
 ## Expected outputs on approval
