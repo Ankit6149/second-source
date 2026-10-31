@@ -49,6 +49,7 @@ test('workspace controls drive an authorized NON_AI investigation through the lo
     const assetDir = path.join(directory, 'assets');
     const asset = (await readdir(assetDir)).find(name => name.endsWith('.js')); assert.ok(asset);
     const bundle = await readFile(path.join(assetDir, asset), 'utf8');
+    let failNextPoll = false; let executions = 0;
     function openWorkspace(userId, accessToken, priorStorage) {
       const instance = new Window({ url: 'https://preview.test/', settings: { disableJavaScriptFileLoading: true, disableCSSFileLoading: true } });
       windows.push(instance);
@@ -63,6 +64,12 @@ test('workspace controls drive an authorized NON_AI investigation through the lo
       instance.fetch = (input, options) => {
         const url = new URL(typeof input === 'string' ? input : input.url);
         if (url.origin !== 'https://backend.test') throw new Error('External transport forbidden');
+        const method = options?.method || 'GET';
+        if (method === 'POST' && url.pathname.endsWith('/execute')) executions++;
+        if (failNextPoll && method === 'GET' && /^\/v1\/runs\/[^/]+$/.test(url.pathname)) {
+          failNextPoll = false;
+          return Promise.resolve(new Response('{}', { status: 429 }));
+        }
         return fetch(local + url.pathname + url.search, options);
       };
       instance.document.write(html); instance.eval(bundle); return instance;
@@ -84,10 +91,16 @@ test('workspace controls drive an authorized NON_AI investigation through the lo
     doc.querySelector('#scopeConsent').checked = true;
     doc.querySelector('[data-action="confirm-authorization"]').click();
     (await until(() => doc.querySelector('[data-action="queue"]'), 'authorization')).click();
+    failNextPoll = true;
     (await until(() => {
       const button = doc.querySelector('[data-action="execute"]'); return button && !button.disabled ? button : null;
     }, 'queued run')).click();
+    const warning = await until(() => [...doc.querySelectorAll('.inline-note')].find(item => item.textContent.includes('status may be out of date')), 'stale-status warning');
+    assert.equal(executions, 1);
+    warning.querySelector('[data-action="refresh"]').click();
+    await until(() => !doc.querySelector('#content').textContent.includes('status may be out of date'), 'progress recovery');
     (await until(() => doc.querySelector('[data-action="verification"]'), 'completed run', 200_000)).click();
+    assert.equal(executions, 1, 'read-only polling must never repeat execution');
     assert.match(doc.querySelector('dialog').textContent, /NON_AI fixture comparison/);
     assert.match(doc.querySelector('dialog').textContent, /22 passed/);
     assert.match(doc.querySelector('dialog').textContent, /3 failed/);
