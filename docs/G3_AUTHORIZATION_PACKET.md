@@ -2,6 +2,13 @@
 
 **Status: PREPARED — NOT APPROVED. No inference authorized by this document.**
 
+**Revision 3 (source identity + reservation proof):** the executable source is
+`dcda5fbf86417282a0d0ba7c46a9654992bd6671` (`eng/g3-readiness` head, which
+contains the 4096 remediation; `main @ bc16065` predates it and MUST NOT be
+used for this attempt). Code pins from the zero-call preflight:
+`candidate_generation 476be65c…`, matching the working tree byte for byte.
+If PR #23 merges before approval, re-pin to the new `main` SHA and re-run
+preflight; do not substitute SHAs.
 **Revision 2 (remediation):** guided `max_completion_tokens` raised 800 → 4096
 after the 2026-10-31 attempt returned `EMPTY_MODEL_RESPONSE`
 (`finish_reason=length`; 798 reasoning tokens consumed inside the 800 cap
@@ -32,7 +39,11 @@ pinned digests. Historical authorizations are consumed and are not reused.
   measured worst case: **under $0.022** (guided input measured at 2556
   tokens on the failed attempt × $1.25/M ≈ $0.0032, plus the full 4096-token
   output cap × $4.25/M ≈ $0.0174). The cap admits ~798 reasoning tokens plus
-  fill content with margin; `reasoning_effort` stays `low`.
+  fill content with margin; `reasoning_effort` stays `low`. Reservation proof
+  (`model_gateway.py`): real-provider calls reserve `est_out =
+  request.max_output_tokens` BEFORE dispatch and breach raises, so the full
+  4096-token ceiling (reasoning included, as reasoning tokens bill as output)
+  is covered by the $0.50 ceiling or the call never dispatches.
 - Uncertain-cost handling: the run fails closed if `uncertain_cost_usd`
   cannot be bounded inside the ceiling; uncertain remainder is reported, not
   absorbed.
@@ -42,7 +53,10 @@ pinned digests. Historical authorizations are consumed and are not reused.
 
 ## Exact frozen inputs
 
-- Operator checkout (source SHA): `bc16065bae17be1e96f29f16cd20ae66b2c8e3a8`
+- Operator checkout (exact executable source SHA):
+  `dcda5fbf86417282a0d0ba7c46a9654992bd6671` (branch `eng/g3-readiness`;
+  verified `git rev-parse HEAD`). Earlier revisions named `bc16065`, which
+  lacks the 4096 remediation — that pairing is withdrawn.
 - Genuine G2 run: `real-g2-20261028T163538Z-fd60310f` (`REAL_EXPERIMENT_OBSERVED`;
   2 real calls, `muse-spark-1.3`, `$0.013486` estimated, `$0` uncertain).
 - G2 receipt SHA-256: `947910b0f645b78b9234859a899db3412171cbbbb3c400e072c9f661840e31f8`
@@ -52,7 +66,12 @@ pinned digests. Historical authorizations are consumed and are not reused.
 - Evidence ledger (5 artifacts): `630c986a…cfdc40`, `8909c2c6…f8452d71e`,
   `c3c08bbe…6c54f4`, `ca3922a0…9e2ccc530`, `da499546…a59eb9` (full digests in
   the preflight file below).
-- Zero-call preflight (4096 cap): `.runs/g3-readiness-preflight-guided-4096/G3_preflight.json`
+- Zero-call preflight (4096 cap, exact head): `.runs/g3-preflight-guided-dcda5fb/G3_preflight.json`,
+  result `preflight_ready`, provider calls `0`, plan digest
+  `sha256:70b3f103be742d9d5bc39135e1979b69b7c38c03a2f196d66d64a898ad91ff8d`.
+  Inspected guided wire digest `sha256:f1e72efb…` with
+  `request_max_output_tokens: 4096`, `reasoning_effort: low`.
+- Superseded 4096 preflight: `.runs/g3-readiness-preflight-guided-4096/G3_preflight.json`
   SHA-256 computed at approval time from that file; result `preflight_ready`,
   provider calls `0`, inspected wire digest
   `sha256:f1e72efb6e296aaabe939e28c074e6b4c8f5424907d15a3773a700ae3056aadb`

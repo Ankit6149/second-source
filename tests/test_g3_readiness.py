@@ -178,6 +178,70 @@ def test_generation_wires_carry_no_sealed_material(ready_inputs):
     assert len(seen["guided"]) < len(seen["full"])
 
 
+def test_duplicate_ticket_reuse_rejected(ready_inputs):
+    scope = ready_inputs[0]
+    run = _run(ready_inputs)
+    ticket = run.prepare()
+    budget = RunBudget(scope.budgets)
+    run.generate(ticket, MockProvider(script=[{"content": CONTROL}]), budget)
+    with pytest.raises(EvaluationBlocked):
+        run.generate(ticket, MockProvider(script=[{"content": CONTROL}]), budget)
+
+
+def test_broker_attempt_cap_blocks_fourth_generation(ready_inputs):
+    scope = ready_inputs[0]
+    run = _run(ready_inputs)
+    budget = RunBudget(scope.budgets)
+    for _ in range(3):
+        run.generate(run.prepare(), MockProvider(script=[{"content": CONTROL}]), budget)
+    with pytest.raises(EvaluationBlocked):
+        run.generate(run.prepare(), MockProvider(script=[{"content": CONTROL}]), budget)
+    assert budget.attempts == 3
+
+
+def test_provider_timeout_books_uncertain_spend_and_blocks(ready_inputs):
+    import urllib.error
+    scope = ready_inputs[0]
+    run = _run(ready_inputs)
+    budget = RunBudget(scope.budgets)
+    def responder(request):
+        raise urllib.error.URLError("simulated timeout")
+    with pytest.raises(EvaluationBlocked):
+        run.generate(run.prepare(), MockProvider(responder=responder), budget)
+    # Mock reservations are $0 by design, so no spend is booked; the attempt
+    # is consumed and no call is recorded. Priced uncertain-spend booking is
+    # unit-proven in test_g2_budgets.py::test_failure_books_uncertain_spend.
+    assert budget.model_calls == 0
+    assert budget.estimated_cost_usd == 0
+    assert budget.attempts == 1
+
+
+def test_interruption_during_generate_propagates(ready_inputs):
+    scope = ready_inputs[0]
+    run = _run(ready_inputs)
+    budget = RunBudget(scope.budgets)
+    def responder(request):
+        raise KeyboardInterrupt()
+    with pytest.raises(KeyboardInterrupt):
+        run.generate(run.prepare(), MockProvider(responder=responder), budget)
+    assert budget.attempts == 1
+
+
+def test_valid_guided_admission_and_evaluator_replay(ready_inputs):
+    scope = ready_inputs[0]
+    run = _run(ready_inputs, "guided")
+    budget = RunBudget(scope.budgets)
+    artifact = run.generate(run.prepare(),
+                            MockProvider(script=[{"content": correct_fill()}]),
+                            budget)
+    first = run.evaluate(artifact)
+    assert first["evaluation"]["failed"] == 0
+    assert first["evaluation"]["indeterminate"] == 0
+    second = run.evaluate(artifact)
+    assert second["evaluation"] == first["evaluation"]
+    assert second["origin"]["candidate_digest"] == first["origin"]["candidate_digest"]
+
+
 def test_staged_generation_modules_import_without_stderr():
     """The isolated worker treats ANY subprocess stderr output as failure, so
     staged generation modules must import warning-free (a SyntaxWarning once
