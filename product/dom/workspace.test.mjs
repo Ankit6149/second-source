@@ -68,6 +68,20 @@ test('suggestion populates the composer and keyboard submission preserves it', (
   } finally { window.happyDOM.abort(); }
 });
 
+test('excessively long notes are rejected without losing the draft', () => {
+  const window = workspace();
+  try {
+    const doc = window.document;
+    const input = doc.querySelector('#promptInput');
+    input.value = 'x'.repeat(4001);
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    doc.querySelector('#composer').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+    assert.match(doc.querySelector('#content').textContent, /within 4,000 characters/);
+    assert.equal(input.value.length, 4001);
+    assert.equal(doc.activeElement, input);
+  } finally { window.happyDOM.abort(); }
+});
+
 test('showroom actions remain separate from investigation results', () => {
   const window = workspace('/?screen=system');
   try {

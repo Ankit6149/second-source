@@ -371,7 +371,11 @@ document.addEventListener('click', event => {
 document.addEventListener('submit', event => {
   if (!(event.target instanceof HTMLFormElement) || event.target.id !== 'composer') return;
   event.preventDefault(); const input = el<HTMLTextAreaElement>('promptInput'); const text = input.value.trim(); if (!text) { input.focus(); return; }
-  state.messages.push(text); state.draft = ''; sessionStorage.removeItem('ss-product-draft'); state.view = 'conversation';
+  if (text.length > 4000 || state.messages.length >= 100) {
+    state.error = text.length > 4000 ? 'Keep each note within 4,000 characters.' : 'This tab can hold up to 100 notes. Start a new investigation to continue.';
+    render(); input.focus(); return;
+  }
+  state.error = ''; state.messages.push(text); state.draft = ''; sessionStorage.removeItem('ss-product-draft'); state.view = 'conversation';
   if (state.ownerId && state.selected && !saveNotes(sessionStorage, state.ownerId, state.selected.investigation_id, state.messages)) toast('Notes could not be saved in this tab.');
   render();
   el<HTMLTextAreaElement>('promptInput').focus(); el('scrollArea').scrollTop = el('scrollArea').scrollHeight;
