@@ -2,7 +2,8 @@
 
 **Status: PREPARED — NOT APPROVED. No inference authorized by this document.**
 
-**Revision 3 (source identity + reservation proof):** the executable source is
+**Revision 4 (exact-head re-pin):** the executable source is `875eb64e8cb81a7151b3d48119d2db5f0c581fc6` (`eng/g3-readiness` head; exact-head CI run `41195766252` green on Linux and Windows). `git diff dcda5fb..875eb64` touches only `tests/test_g3_readiness.py` and this packet — `src/` is byte-identical, so code pins, wire digest, and context digest are unchanged from rev 3. Fresh zero-call preflight from the exact checkout: `.runs/g3-20261031T113051Z-c7a1aad2/G3_preflight.json` (SHA-256 `eb1a83cb33dc2bbb44dae52471dc6141f04eb25b996d7e212cd5fefdb3fe6123`), result `preflight_ready`, provider calls `0`, plan digest `sha256:c4958cd645864e712d1c5c60ae89409f7ccca0481cf77dad9944d5a60178ca7e` (per-run unique by design: the frozen plan binds a fresh `run_id`, so plan digests differ between preflights while context/wire/code pins stay identical).
+**Revision 3 (source identity + reservation proof):** the executable source was
 `dcda5fbf86417282a0d0ba7c46a9654992bd6671` (`eng/g3-readiness` head, which
 contains the 4096 remediation; `main @ bc16065` predates it and MUST NOT be
 used for this attempt). Code pins from the zero-call preflight:
@@ -54,8 +55,8 @@ pinned digests. Historical authorizations are consumed and are not reused.
 ## Exact frozen inputs
 
 - Operator checkout (exact executable source SHA):
-  `dcda5fbf86417282a0d0ba7c46a9654992bd6671` (branch `eng/g3-readiness`;
-  verified `git rev-parse HEAD`). Earlier revisions named `bc16065`, which
+  `875eb64e8cb81a7151b3d48119d2db5f0c581fc6` (branch `eng/g3-readiness`, rev 4;
+  verified `git rev-parse HEAD`; `dcda5fb` (rev 3) is src-identical and superseded). Earlier revisions named `bc16065`, which
   lacks the 4096 remediation — that pairing is withdrawn.
 - Genuine G2 run: `real-g2-20261028T163538Z-fd60310f` (`REAL_EXPERIMENT_OBSERVED`;
   2 real calls, `muse-spark-1.3`, `$0.013486` estimated, `$0` uncertain).
@@ -66,7 +67,8 @@ pinned digests. Historical authorizations are consumed and are not reused.
 - Evidence ledger (5 artifacts): `630c986a…cfdc40`, `8909c2c6…f8452d71e`,
   `c3c08bbe…6c54f4`, `ca3922a0…9e2ccc530`, `da499546…a59eb9` (full digests in
   the preflight file below).
-- Zero-call preflight (4096 cap, exact head): `.runs/g3-preflight-guided-dcda5fb/G3_preflight.json`,
+- Current zero-call preflight (4096 cap, exact head `875eb64`): `.runs/g3-20261031T113051Z-c7a1aad2/G3_preflight.json`, SHA-256 `eb1a83cb33dc2bbb44dae52471dc6141f04eb25b996d7e212cd5fefdb3fe6123`, result `preflight_ready`, provider calls `0`, context `sha256:93a9a01a…`, wire `sha256:f1e72efb…`, plan `sha256:c4958cd6…` (per-run unique by design).
+- Superseded zero-call preflight (4096 cap, `dcda5fb`): `.runs/g3-preflight-guided-dcda5fb/G3_preflight.json`,
   result `preflight_ready`, provider calls `0`, plan digest
   `sha256:70b3f103be742d9d5bc39135e1979b69b7c38c03a2f196d66d64a898ad91ff8d`.
   Inspected guided wire digest `sha256:f1e72efb…` with
