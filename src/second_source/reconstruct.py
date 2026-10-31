@@ -748,7 +748,7 @@ def run_mock(args: argparse.Namespace) -> int:
     }
     _write_report(run_dir, report)
     _progress("evaluated", run_dir.name,
-              f"{result['evaluation']['passed']}/{result['evaluation']['total']} sealed cases")
+              f"{selected.evaluation['passed']}/{selected.evaluation['total']} sealed cases")
     _progress("reported", run_dir.name, "G3_report.json")
     print(json.dumps(_summarize(report), indent=2))
     print(json.dumps({
