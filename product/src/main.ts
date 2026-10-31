@@ -6,6 +6,7 @@ import type { Session } from '@supabase/supabase-js';
 import { auth, observeSession, signIn, signOut } from './auth';
 import { Api, ApiError, validatedOrigin, type Target, type Investigation, type Run, type RunEvent, type Verification } from './api';
 import { detectReference } from './reference';
+import { clearOwnerNotes, loadNotes, saveNotes } from './notes';
 
 const icons = { PanelLeft, PanelLeftClose, SquarePen, FolderOpen, SwatchBook, ChevronUp, ArrowUp, ShieldCheck, FileText, ListChecks, Download, CircleHelp, X, Play, Square, RefreshCw, Clock, Check, AlertTriangle, LogIn, LogOut, Link, FlaskConical, MessageSquare, ExternalLink };
 const icon = (name: string) => `<i data-lucide="${name}" aria-hidden="true"></i>`;
@@ -13,11 +14,11 @@ const esc = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({ 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const apiOrigin = validatedOrigin(import.meta.env.VITE_API_ORIGIN || '', import.meta.env.DEV);
 const state: {
-  session: Session | null; investigations: Investigation[]; target: Target | null; selected: Investigation | null;
+  session: Session | null; ownerId: string | null; investigations: Investigation[]; target: Target | null; selected: Investigation | null;
   run: Run | null; events: RunEvent[]; verification: Verification | null; messages: string[]; draft: string;
   view: 'home' | 'conversation' | 'library' | 'system'; loading: boolean; error: string; uncertain: boolean; actionUncertain: string | null;
   busy: boolean; executing: boolean; epoch: number;
-} = { session: null, investigations: [], target: null, selected: null, run: null, events: [], verification: null,
+} = { session: null, ownerId: null, investigations: [], target: null, selected: null, run: null, events: [], verification: null,
   messages: [], draft: sessionStorage.getItem('ss-product-draft') || '', view: 'home', loading: false, error: '',
   uncertain: false, actionUncertain: null, busy: false, executing: false, epoch: 0 };
 const api = new Api(apiOrigin, () => state.session?.access_token || null);
@@ -53,7 +54,7 @@ function toast(message: string) {
 }
 function describe(error: unknown) {
   if (error instanceof ApiError) {
-    if (error.status === 401) { state.session = null; state.target = null; state.investigations = []; state.selected = null; state.run = null; state.verification = null; state.events = []; stopPolling(); }
+    if (error.status === 401) { state.session = null; state.ownerId = null; state.target = null; state.investigations = []; state.selected = null; state.run = null; state.verification = null; state.events = []; stopPolling(); }
     return error.message + (error.correlationId ? ` Reference: ${error.correlationId}` : '');
   }
   return error instanceof Error ? error.message : 'Something went wrong. Try again.';
@@ -106,7 +107,7 @@ function eventName(event: RunEvent) {
 }
 function investigationCard() {
   const run = state.run;
-  return `<div class="message assistant"><div class="assistant-mark">${icon('shield-check')}</div><div class="response"><h2>${state.selected ? esc(state.selected.title) : 'Choose what to investigate.'}</h2><p>${state.selected ? 'This investigation is limited to the approved owned-ledger fixture.' : 'The only supported target is the owned ledger fixture. Selecting a URL or software name does not grant permission or start an investigation.'}</p>${state.selected ? `<div class="artifact"><div class="artifact-top"><div class="artifact-symbol">${icon('file-text')}</div><div><strong>Owned ledger · NON_AI</strong><small>Scope ${esc(state.selected.scope_digest.slice(0, 12))}…</small></div><span class="artifact-tag">${esc(run?.status || state.selected.status)}</span></div>${run ? `<div class="artifact-bottom">${esc(run.stage ? `Stage: ${run.stage}` : 'No stage reported')}${run.error_code ? ` · ${esc(run.error_code)}` : ''}</div>` : ''}</div>` : ''}${state.events.length ? `<details class="activity"><summary>Activity (${state.events.length})</summary><ol>${state.events.map(e => `<li>${esc(eventName(e))}</li>`).join('')}</ol></details>` : ''}<div class="response-actions">${controls()}</div><p class="component-note">Messages in this view are local to this tab. The backend does not yet save conversations or answer follow-up questions.</p></div></div>`;
+  return `<div class="message assistant"><div class="assistant-mark">${icon('shield-check')}</div><div class="response"><h2>${state.selected ? esc(state.selected.title) : 'Choose what to investigate.'}</h2><p>${state.selected ? 'This investigation is limited to the approved owned-ledger fixture.' : 'The only supported target is the owned ledger fixture. Selecting a URL or software name does not grant permission or start an investigation.'}</p>${state.selected ? `<div class="artifact"><div class="artifact-top"><div class="artifact-symbol">${icon('file-text')}</div><div><strong>Owned ledger · NON_AI</strong><small>Scope ${esc(state.selected.scope_digest.slice(0, 12))}…</small></div><span class="artifact-tag">${esc(run?.status || state.selected.status)}</span></div>${run ? `<div class="artifact-bottom">${esc(run.stage ? `Stage: ${run.stage}` : 'No stage reported')}${run.error_code ? ` · ${esc(run.error_code)}` : ''}</div>` : ''}</div>` : ''}${state.events.length ? `<details class="activity"><summary>Activity (${state.events.length})</summary><ol>${state.events.map(e => `<li>${esc(eventName(e))}</li>`).join('')}</ol></details>` : ''}<div class="response-actions">${controls()}</div><p class="component-note">Your notes are kept only in this browser tab and are cleared on sign-out. The backend does not yet save conversations or answer follow-up questions.</p></div></div>`;
 }
 function conversation() {
   const messages = state.messages.map(message => `<div class="message user"><div class="bubble">${esc(message)}</div></div>`).join('');
@@ -149,7 +150,7 @@ function render() {
 
 async function hydrate(session: Session | null) {
   const generation = ++state.epoch;
-  state.session = session; state.error = ''; state.executing = false; state.busy = false; state.actionUncertain = null; stopPolling();
+  state.session = session; state.ownerId = null; state.error = ''; state.executing = false; state.busy = false; state.actionUncertain = null; stopPolling();
   if (!session || !apiOrigin) {
     state.investigations = []; state.target = null; state.selected = null; state.run = null; state.events = []; state.verification = null;
     render(); return;
@@ -158,6 +159,7 @@ async function hydrate(session: Session | null) {
   try {
     const identity = await api.session();
     if (generation !== state.epoch) return;
+    state.ownerId = identity.owner_id;
     const priorOwner = sessionStorage.getItem('ss-session-owner');
     if (priorOwner && priorOwner !== identity.owner_id) {
       sessionStorage.removeItem('ss-selected-investigation'); sessionStorage.removeItem('ss-create-pending');
@@ -179,7 +181,7 @@ async function openInvestigation(id: string) {
     const item = await api.investigation(id);
     const runs = await allPages(after => api.runs(id, after));
     if (generation !== state.epoch) return;
-    if (state.selected?.investigation_id !== id) state.messages = [];
+    if (state.selected?.investigation_id !== id) state.messages = state.ownerId ? loadNotes(sessionStorage, state.ownerId, id) : [];
     state.selected = item; state.run = [...runs].sort((a, b) => b.created_at.localeCompare(a.created_at))[0] || null; state.events = []; state.verification = null;
     state.uncertain = !!state.run && sessionStorage.getItem(`ss-execution-uncertain:${state.run.run_id}`) === '1';
     state.actionUncertain = state.run ? sessionStorage.getItem(`ss-action-uncertain:${state.run.run_id}`) : null;
@@ -247,6 +249,7 @@ async function mutate(action: string) {
       const created = await api.create(title, state.target.scope, key);
       if (generation !== state.epoch) return;
       state.selected = created;
+      if (state.ownerId && !saveNotes(sessionStorage, state.ownerId, created.investigation_id, state.messages)) toast('Notes could not be saved in this tab.');
       sessionStorage.removeItem('ss-create-pending'); sessionStorage.setItem('ss-selected-investigation', state.selected.investigation_id);
       state.view = 'conversation'; closeDialog();
       if (created.scope_digest !== state.target.scope_digest) throw new Error('The stored scope differs from the reviewed scope. Do not authorize it; contact an operator.');
@@ -321,7 +324,7 @@ document.addEventListener('click', event => {
   else if (action === 'library') { state.view = 'library'; render(); }
   else if (action === 'account') account();
   else if (action === 'sign-in') { void signIn().catch(setError); }
-  else if (action === 'sign-out') { void signOut().then(() => { sessionStorage.removeItem('ss-selected-investigation'); sessionStorage.removeItem('ss-create-pending'); sessionStorage.removeItem('ss-product-draft'); state.draft = ''; state.messages = []; closeDialog(); }).catch(setError); }
+  else if (action === 'sign-out') { const owner = state.ownerId; void signOut().then(() => { if (owner) clearOwnerNotes(sessionStorage, owner); sessionStorage.removeItem('ss-selected-investigation'); sessionStorage.removeItem('ss-create-pending'); sessionStorage.removeItem('ss-product-draft'); state.draft = ''; state.messages = []; closeDialog(); }).catch(setError); }
   else if (action === 'select-target' || action === 'review-scope') reviewScope();
   else if (action === 'authorize') confirmAuthorization();
   else if (action === 'create' || action === 'confirm-authorization' || action === 'queue' || action === 'cancel' || action === 'reconcile') void mutate(action);
@@ -338,7 +341,9 @@ document.addEventListener('click', event => {
 document.addEventListener('submit', event => {
   if (!(event.target instanceof HTMLFormElement) || event.target.id !== 'composer') return;
   event.preventDefault(); const input = el<HTMLTextAreaElement>('promptInput'); const text = input.value.trim(); if (!text) { input.focus(); return; }
-  state.messages.push(text); state.draft = ''; sessionStorage.removeItem('ss-product-draft'); state.view = 'conversation'; render();
+  state.messages.push(text); state.draft = ''; sessionStorage.removeItem('ss-product-draft'); state.view = 'conversation';
+  if (state.ownerId && state.selected && !saveNotes(sessionStorage, state.ownerId, state.selected.investigation_id, state.messages)) toast('Notes could not be saved in this tab.');
+  render();
   el<HTMLTextAreaElement>('promptInput').focus(); el('scrollArea').scrollTop = el('scrollArea').scrollHeight;
 });
 document.addEventListener('input', event => {
