@@ -637,7 +637,7 @@ flowchart TD
 
 **ADR-007 — Two reference classes through one typed adapter:** initial CLI/API plus web stretch, not two independently coded products.
 
-**ADR-008 — No Playwright:** direct CDP for browser capture; record CDP version compatibility and use an integration contract so alternatives remain possible later.
+**ADR-008 — No Playwright for target observation:** direct CDP for browser capture; record CDP version compatibility and use an integration contract so alternatives remain possible later. Owner-directed exception, November 1, 2026: Playwright may be used solely for isolated acceptance testing of the Second Source frontend against local synthetic fixtures. This does not authorize Playwright for reference-target observation, production credentials, live inference or external-site automation.
 
 **ADR-009 - Reviewed engineering integration (updated 29 October 2026 IST):** The [owner backend directive](https://github.com/Ankit6149/second-source/issues/2#issuecomment-6477673246) and subsequent parallel-engineering instruction grant standing authorization for routine engineering PR merges only after green exact-head Linux/Windows CI, independent review and repository protections. Use file-disjoint short-lived branches and serialize integration. This supersedes the earlier blanket agent-merge prohibition. No protection bypass, self-review of security-critical changes, paid inference/retries, credential operations, live deployment or material scope expansion is authorized. Those operations need separate explicit owner approval. A merge never grants spending.
 
@@ -1596,7 +1596,7 @@ Potential buyers are modernization and QA teams rather than casual website cloni
 | OQ-13 | **OPEN** | License for generated candidate outputs and app repo | Choose permissive license only after asset review | Rights confusion |
 | OQ-14 | **OPEN** | Whether agent coordinator is worth shipping within event | Defer if P0 late; local run can prove core | Schedule overrun |
 
-**Decisions already made [DEC]:** the product is general behavioral reconstruction (not website clone); Meta models must be central; controlled test targets only; reference source/gold test isolation; P0 CLI/API with web P1; Python core, Next.js UI, CDP bridge, optional cloud worker; no Playwright; always-on availability requires cloud worker + durable state; no unapproved spend or unreviewed merge (ADR-009 defines standing engineering authorization); all numerical scores must come from real runs.
+**Decisions already made [DEC]:** the product is general behavioral reconstruction (not website clone); Meta models must be central; controlled test targets only; reference source/gold test isolation; P0 CLI/API with web P1; Python core, Next.js UI, CDP bridge, optional cloud worker; no Playwright for target observation (the isolated frontend-test exception is in ADR-008); always-on availability requires cloud worker + durable state; no unapproved spend or unreviewed merge (ADR-009 defines standing engineering authorization); all numerical scores must come from real runs.
 
 # 25. Bibliography, authoritative references and evidence labeling
 

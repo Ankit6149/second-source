@@ -1,0 +1,25 @@
+{
+  "name": "second-source-product",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "test": "node --experimental-transform-types --test tests/*.test.ts",
+    "test:dom": "npm run build && node --test dom/*.test.mjs",
+    "test:dom-integration": "node --test integration/workspace_dom.test.mjs",
+    "test:integration": "node --experimental-transform-types --test integration/*.test.ts",
+    "test:browser": "node browser/acceptance.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.118.0",
+    "lucide": "0.468.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "happy-dom": "21.0.4",
+    "typescript": "5.9.3",
+    "vite": "8.3.5"
+  }
+}
