@@ -83,6 +83,9 @@ def test_authenticated_actual_non_ai_http_worker_storage_export_restart(tmp_path
         assert queued["status"] == "queued" and queued["result"] is None
         assert client.post(path + "/execute", headers={"Authorization": "Bearer " + OTHER},
                            json={"expected_revision": 1}).status_code == 404
+        assert client.post(path + "/execute", headers=HEADERS,
+                           json={"expected_revision": 1, "repair_rounds": 3}).status_code == 422
+        assert client.get(path, headers=HEADERS).json()["status"] == "queued"
         done = client.post(path + "/execute", headers=HEADERS, json={"expected_revision": 1})
         assert done.status_code == 200, done.text
         assert done.json()["status"] == "completed", done.text
@@ -111,12 +114,14 @@ def test_authenticated_actual_non_ai_http_worker_storage_export_restart(tmp_path
                 assert any(key[2] == f"private:{prefix}.r{round_number}.json" for key in db.refs)
         assert any(key[2] == "private:G3_repair_history.json" for key in db.refs)
         assert client.get(path + "/report", headers={"Authorization": "Bearer " + OTHER}).status_code == 404
+        assert client.get(path + "/export.zip", headers={"Authorization": "Bearer " + OTHER}).status_code == 404
     restarted = build_cloud_app(config(False), store=LocalAcceptanceStore(tmp_path / "state.sqlite"),
                                 transport=transport, identity=identity)
     with TestClient(restarted) as client:
         assert client.get(path, headers=HEADERS).json() == done.json()
         assert client.get(path + "/verification", headers=HEADERS).json() == verified
         assert client.get(path + "/export.zip", headers=HEADERS).content == proof.content
+        assert client.get(path + "/export.zip", headers={"Authorization": "Bearer " + OTHER}).status_code == 404
         assert client.post(path + "/execute", headers=HEADERS, json={"expected_revision": 1}).status_code == 409
 
 
