@@ -1,6 +1,6 @@
 # G3 Exact-Input Inference Authorization Packet
 
-**Status: PREPARED — NOT APPROVED. No inference authorized by this document.**
+**Status: REV-6 APPROVAL CONSUMED 2026-10-31 (attempt 5: admitted, 14/25). No open inference authorization remains in this document; any further paid call needs a new packet revision and explicit approval.**
 
 **Revision 6 (source-vocabulary grounding):** the executable source is `54d5f7947d200479aac0f8bd5cced35b4f1084ed` (`eng/g3-readiness` head; exact-head CI run `41211853605` green on Linux and Windows). Addresses the rev-5 attempt failure at its root: the strict loader's per-command source table is now a shared constant (`RESPOND_SOURCES`) published model-visibly in the request envelope, with the prompt directing bindings from each command's own list; loader semantics unchanged. Fresh zero-call preflight from the exact checkout: `.runs/g3-preflight-guided-54d5f79/G3_preflight.json` (SHA-256 `36daa2c5204da1d38af43207f602030b28369ad7e3401a0f1c6c46e2c35239c2`), result `preflight_ready`, provider calls `0`, context `sha256:93a9a01a…` (unchanged inputs), new wire `sha256:5e111137007339e1aa78f5f84fb61f02e8290d5487e99ff7fb049421a1e98fab` with cap 4096, code pins `candidate_generation 52d88fd5…`, `candidate_spec edc76e44…` (all other pins unchanged).
 **Revision 5 (envelope-key fix):** the executable source was `4b6676306b0a42a09f153a9855b3e447b79ad315` (exact-head CI run `41205135657` green on Linux and Windows). Fixes the rev-4 attempt failure at its root: the request now declares the runtime envelope (`ok`/`error` owned by runtime), the fill schema forbids those keys, the prompt names them, and the merger diagnostic names the envelope. Fresh zero-call preflight from the exact checkout: `.runs/g3-preflight-guided-4b66763/G3_preflight.json` (SHA-256 `617c9ad1276087068b72ff2ddce6112192e97d60ef54e5a1569a144fcaac34b3`), result `preflight_ready`, provider calls `0`, context `sha256:93a9a01a…` (unchanged inputs), new wire `sha256:8274d439929d6c432fa1656fd914a17562eefd421c5dc18700a9865c9b240178` with cap 4096, code pins `candidate_generation 8189001c…`, `schema_validate 74a85aef…` (all other pins unchanged).
@@ -125,7 +125,7 @@ model response identity, token/uncertain-cost receipts, and a sanitized
 report — or a truthful `broker_failed`/`evaluation_failed` report with the
 same provenance. A mock result is never a substitute.
 
-## Owner approval checklist (out of band)
+## Owner approval checklist (out of band) — CONSUMED by attempt 5; retained as procedure for future revisions
 
 1. Confirm suite reuse (digest above) or cut a fresh sealed bundle.
 2. Approve provider, model, guided protocol, 1 attempt, $0.50 ceiling.

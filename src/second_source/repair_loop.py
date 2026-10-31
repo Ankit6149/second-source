@@ -11,10 +11,14 @@ The FIRST version is the caller's already-evaluated initial candidate
 (``seed``): verdicts compare the true original against the final retry, never
 retry-vs-retry alone. Regeneration uses the frozen approved context: the
 current broker builds each request from that context, so a repair round is an
-honestly labeled bounded retry informed by the recorded aggregate feedback,
-NOT feedback-conditioned synthesis. Feeding mismatch detail back into the
-model request would need a versioned, reviewed broker amendment (documented
-blocker, not done here).
+honestly labeled bounded retry informed by the recorded aggregate feedback.
+Rounds after the first generation use feedback-conditioned synthesis
+(``synthesize-v2-repair1``): the broker re-issues the request with the
+run's own aggregate evaluation (counts plus mismatch-category names only)
+attached as repair guidance. No case ids, inputs, or expected outputs ever
+reach the model; the sanitizer rejects any other feedback shape.
+Caller-supplied seeds that carry no broker artifact start with one frozen
+retry; conditioned rounds begin once a broker-issued artifact exists.
 
 Perfect means exactly ``passed == total`` with zero failures AND zero
 indeterminate results; counts are strictly validated (nonnegative integers,
@@ -60,6 +64,10 @@ class RepairAttempt:
     origin: str
     evaluation: dict[str, Any]
     feedback: dict[str, Any]
+    # Broker artifact this version was generated from (rounds >= 1); None
+    # for caller-supplied seeds reconstructed without one, whose first retry
+    # therefore reuses the frozen context instead of conditioned guidance.
+    artifact: Any = None
 
 
 @dataclass
@@ -149,6 +157,7 @@ def run_bounded_repair(
     if seed is not None and (type(seed) is not RepairAttempt or seed.round != 0):
         raise ValueError("seed must be a round-0 RepairAttempt")
     report = RepairReport()
+    pending_artifact = seed.artifact if seed is not None else None
     baseline_total: int | None = None
     if seed is not None:
         checked_counts(seed.evaluation)
@@ -162,8 +171,14 @@ def run_bounded_repair(
             return report
     while report.rounds_used < max_rounds:
         try:
-            ticket = run.prepare()
+            if (pending_artifact is not None
+                    and getattr(run, "synthesis", None) == "guided"
+                    and hasattr(run, "prepare_repair")):
+                ticket = run.prepare_repair(pending_artifact)
+            else:
+                ticket = run.prepare()
             artifact = run.generate(ticket, provider, budget)
+            pending_artifact = artifact
             result = run.evaluate(artifact, claim=claim)
             feedback = run.repair_feedback(artifact)
         except EvaluationBlocked as blocked:
@@ -191,6 +206,7 @@ def run_bounded_repair(
             origin=str(receipt.get("origin", "")),
             evaluation=evaluation,
             feedback=dict(feedback) if isinstance(feedback, dict) else {},
+            artifact=artifact,
         )
         report.versions.append(attempt)
         if on_version is not None:
