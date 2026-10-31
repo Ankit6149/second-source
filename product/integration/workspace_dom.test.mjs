@@ -110,6 +110,17 @@ test('workspace controls drive an authorized NON_AI investigation through the lo
     other.document.querySelector('[data-action="library"]').click();
     assert.match(other.document.querySelector('#content').textContent, /No investigations yet/);
     assert.doesNotMatch(other.document.querySelector('#content').textContent, /Local investigation note/);
+    doc.querySelector('[data-action="new"]').click();
+    doc.querySelector('[data-action="select-target"]').click();
+    doc.querySelector('#scopeConsent').checked = true;
+    doc.querySelector('[data-action="create"]').click();
+    (await until(() => doc.querySelector('[data-action="authorize"]'), 'second investigation')).click();
+    doc.querySelector('#scopeConsent').checked = true;
+    doc.querySelector('[data-action="confirm-authorization"]').click();
+    (await until(() => doc.querySelector('[data-action="queue"]'), 'second authorization')).click();
+    (await until(() => doc.querySelector('[data-action="cancel"]'), 'second queued run')).click();
+    await until(() => doc.querySelector('.artifact-tag')?.textContent === 'cancelled', 'queued cancellation');
+    assert.equal(doc.querySelector('[data-action="verification"]'), null);
   } finally {
     for (const instance of windows) instance.happyDOM.abort();
     server.kill();
