@@ -87,19 +87,18 @@ function renderHome() {
 }
 function controls() {
   if (!state.session) return `<button class="pill-btn primary" data-action="account">${icon('log-in')} Sign in to start</button>`;
-  if (!state.target) return `<button class="pill-btn" disabled>Supported target unavailable</button>`;
-  if (!state.selected) return `<button class="pill-btn primary" data-action="review-scope" ${state.busy ? 'disabled' : ''}>${icon('shield-check')} Review scope</button>`;
-  if (state.selected.status === 'created') return state.selected.scope_digest === state.target.scope_digest
+  if (!state.selected) return state.target ? `<button class="pill-btn primary" data-action="review-scope" ${state.busy ? 'disabled' : ''}>${icon('shield-check')} Review scope</button>` : `<button class="pill-btn" disabled>Supported target unavailable</button>`;
+  if (state.selected.status === 'created') return state.target && state.selected.scope_digest === state.target.scope_digest
     ? `<button class="pill-btn primary" data-action="authorize" ${state.busy ? 'disabled' : ''}>${icon('shield-check')} Confirm scope</button>`
     : `<p class="component-note">This stored scope differs from the currently supported scope. Authorization is unavailable; contact an operator.</p>`;
-  if (!state.run) return `<button class="pill-btn primary" data-action="queue" ${state.busy ? 'disabled' : ''}>${icon('clock')} Queue mock run</button>`;
+  if (!state.run) return `<button class="pill-btn primary" data-action="queue" ${state.busy || !state.target ? 'disabled' : ''}>${icon('clock')} Queue mock run</button>${!state.target ? '<p class="component-note">The supported target is unavailable.</p>' : ''}`;
   if (state.run.status === 'queued') return state.uncertain
     ? `<button class="pill-btn" data-action="refresh">${icon('refresh-cw')} Check status</button><p class="component-note">The execution request has an uncertain outcome. It will not be retried automatically.</p>`
-    : `<button class="pill-btn primary" data-action="execute" ${state.busy || state.executing || state.actionUncertain || !state.target.execution_enabled ? 'disabled' : ''}>${icon('play')} Start NON_AI run</button><button class="pill-btn" data-action="cancel" ${state.busy || state.actionUncertain ? 'disabled' : ''}>${icon('square')} Cancel queued run</button>${state.actionUncertain ? '<p class="component-note">The cancellation outcome is uncertain; check status before taking another action.</p><button class="pill-btn quiet" data-action="refresh">Check status</button>' : ''}${!state.target.execution_enabled ? '<p class="component-note">Execution is disabled on this backend.</p>' : ''}`;
+    : `<button class="pill-btn primary" data-action="execute" ${state.busy || state.executing || state.actionUncertain || !state.target?.execution_enabled ? 'disabled' : ''}>${icon('play')} Start NON_AI run</button><button class="pill-btn" data-action="cancel" ${state.busy || state.actionUncertain ? 'disabled' : ''}>${icon('square')} Cancel queued run</button>${state.actionUncertain ? '<p class="component-note">The cancellation outcome is uncertain; check status before taking another action.</p><button class="pill-btn quiet" data-action="refresh">Check status</button>' : ''}${!state.target?.execution_enabled ? '<p class="component-note">Execution is disabled or unavailable on this backend.</p>' : ''}`;
   if (state.run.status === 'running') return `<button class="pill-btn" data-action="cancel" ${state.busy || state.run.cancel_requested || state.actionUncertain ? 'disabled' : ''}>${icon('square')} ${state.run.cancel_requested ? 'Cancellation requested' : 'Cancel run'}</button><button class="pill-btn quiet" data-action="refresh">${icon('refresh-cw')} Check status</button><button class="pill-btn quiet" data-action="reconcile" ${state.busy || state.actionUncertain ? 'disabled' : ''}>Check recovery</button>${state.actionUncertain ? '<p class="component-note">The previous request has an uncertain outcome; it will not be repeated automatically.</p>' : ''}`;
   if (state.run.status === 'needs_reconciliation') return `<p class="component-note">This run is quarantined after an uncertain or interrupted operation. It will not restart automatically; an operator must review it.</p><button class="pill-btn quiet" data-action="refresh">Check status</button>`;
   if (state.run.status === 'completed') return `<button class="pill-btn primary" data-action="verification">${icon('list-checks')} View verification</button><button class="pill-btn" data-action="report">${icon('file-text')} Open report</button><button class="pill-btn" data-action="export">${icon('download')} Download integrity export</button>`;
-  return `<button class="pill-btn" data-action="refresh">${icon('refresh-cw')} Refresh status</button>`;
+  return `<button class="pill-btn" data-action="refresh">${icon('refresh-cw')} Refresh status</button>${state.run.status === 'failed' || state.run.status === 'cancelled' ? `<button class="pill-btn" data-action="queue" ${state.busy || !state.target ? 'disabled' : ''}>${icon('clock')} Queue a new mock run</button>` : ''}`;
 }
 function eventName(event: RunEvent) {
   const labels: Record<string,string> = { run_claimed: 'Worker claimed the run', stage_started: `Stage: ${event.stage || 'unknown'}`, repair_started: 'Bounded mock retry started', repair_completed: 'Bounded mock retry finished', run_completed: 'Run completed', run_failed: 'Run failed', run_cancelled: 'Run cancelled', run_needs_reconciliation: 'Run needs reconciliation', run_queued: 'Run queued' };
@@ -168,7 +167,7 @@ async function hydrate(session: Session | null) {
     const [targets, items] = await Promise.all([api.targets(), allPages(after => api.investigations(after))]);
     if (generation !== state.epoch) return;
     state.target = targets.find(target => target.target_id === 'owned-ledger-v1' && target.origin === 'mock' && target.real === false) || null;
-    state.investigations = items;
+    state.investigations = items.sort((a, b) => b.created_at.localeCompare(a.created_at));
     const saved = sessionStorage.getItem('ss-selected-investigation');
     if (saved && items.some(item => item.investigation_id === saved)) await openInvestigation(saved);
   } catch (error) { if (generation === state.epoch) state.error = describe(error); }
@@ -251,7 +250,7 @@ async function mutate(action: string) {
       sessionStorage.removeItem('ss-create-pending'); sessionStorage.setItem('ss-selected-investigation', state.selected.investigation_id);
       state.view = 'conversation'; closeDialog();
       if (created.scope_digest !== state.target.scope_digest) throw new Error('The stored scope differs from the reviewed scope. Do not authorize it; contact an operator.');
-      state.investigations = await allPages(after => api.investigations(after)); toast('Investigation created. Confirm its scope to continue.');
+      state.investigations = (await allPages(after => api.investigations(after))).sort((a, b) => b.created_at.localeCompare(a.created_at)); toast('Investigation created. Confirm its scope to continue.');
     } else if (action === 'confirm-authorization') {
       const checkbox = document.getElementById('scopeConsent') as HTMLInputElement | null;
       if (!checkbox?.checked) { checkbox?.focus(); return; }
