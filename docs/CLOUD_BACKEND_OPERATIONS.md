@@ -72,6 +72,14 @@ Completed mock runs require the original JSON artifacts and bounded admitted
 repair artifacts identified by the history. The immutable runtime_artifact_refs rows are
 the authoritative private hash manifest, rather than a second mutable file.
 
+On cancellation or engine timeout, the worker attempts to preserve existing
+allowlisted private artifacts while its lease is valid, without restarting the
+engine or publishing a successful report. Cancellation during publication
+continues only with artifacts that have not already been acknowledged. An
+expired lease prevents publication; an upload or metadata failure becomes
+`needs_reconciliation`, and the ephemeral local copy may be lost. A preserved
+partial file is not by itself proof of an admitted or evaluated candidate.
+
 Repeated execute requests for active or terminal runs return their durable
 state. Queued is never completed. After an interrupted process, an owner can
 request `POST /v1/runs/{id}/reconcile` with its actual revision: an expired lease

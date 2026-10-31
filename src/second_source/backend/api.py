@@ -25,7 +25,7 @@ from pydantic import Field
 from starlette.exceptions import HTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from second_source.contracts import StrictModel
+from second_source.contracts import ScopeContract, StrictModel
 from .contracts import (
     AuthorizeInvestigation, BackendError, CancelRun, CreateInvestigation,
     CreateRun, ErrorBody, EvaluationSummary, Investigation, LifecycleEvent, Principal, Run,
@@ -75,6 +75,17 @@ class OnDemandCapabilities(Capabilities):
 class SessionIdentity(StrictModel):
     owner_id: str
     authenticated: Literal[True] = True
+
+
+class SupportedTarget(StrictModel):
+    target_id: Literal["owned-ledger-v1"] = "owned-ledger-v1"
+    label: Literal["Owned ledger fixture"] = "Owned ledger fixture"
+    run_kind: Literal["g3_mock"] = "g3_mock"
+    origin: Literal["mock"] = "mock"
+    real: Literal[False] = False
+    execution_enabled: bool
+    scope: ScopeContract
+    scope_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
 
 
 class ExecuteRun(StrictModel):
@@ -370,6 +381,16 @@ def create_app(service: BackendService, token_hashes: Mapping[str, str] | None =
     @app.get("/v1/session", response_model=SessionIdentity, tags=["authentication"])
     def session(principal: Principal = Depends(owner)) -> SessionIdentity:
         return SessionIdentity(owner_id=principal.owner_id)
+
+    @app.get("/v1/targets", response_model=list[SupportedTarget], tags=["capabilities"])
+    def supported_targets(principal: Principal = Depends(owner)) -> list[SupportedTarget]:
+        """Return the exact zero-spend owned-fixture scope, not an authorization."""
+        from second_source.g2_persistence import scope_digest_of
+        from second_source.reconstruct import create_scope
+
+        scope = create_scope(0)
+        return [SupportedTarget(execution_enabled=run_executor is not None,
+                                scope=scope, scope_digest=scope_digest_of(scope).removeprefix("sha256:"))]
 
     @app.post("/v1/runs/{run_id}/execute", response_model=Run, tags=["runs"])
     def execute_run(run_id: Annotated[str, Path(pattern=_IDENTIFIER)], body: ExecuteRun,

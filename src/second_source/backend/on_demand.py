@@ -10,6 +10,7 @@ import time
 
 from .cloud_artifacts import PRIVATE_ARTIFACT_NAMES
 from .contracts import BackendError, Principal
+from .paths import checked_regular_file
 from .worker import G3MockEngine, Worker
 
 
@@ -36,12 +37,32 @@ class OnDemandMockExecutor:
 
                 class DurableEngine:
                     def execute(self, lease, stage, cancelled):
-                        def check_publication():
+                        def check_publication(*, preserve_after_stop=False):
                             if time.monotonic() >= deadline:
                                 raise BackendError("ARTIFACT_PUBLICATION_UNCERTAIN", "Publication deadline exceeded")
                             state = publisher.service.heartbeat(lease.run.run_id, lease.token)
-                            if state.cancel_requested or cancelled():
+                            if not preserve_after_stop and (state.cancel_requested or cancelled()):
                                 raise BackendError("CANCELLED", "Run cancellation requested")
+
+                        directory = root / "private" / lease.run.run_id / "engine"
+                        archived_names = set()
+
+                        def archive_existing(*, preserve_after_stop=False):
+                            for name in sorted(PRIVATE_ARTIFACT_NAMES):
+                                if name in archived_names:
+                                    continue
+                                path = directory / name
+                                if not path.exists() and not path.is_symlink():
+                                    continue
+                                checked_regular_file(path)
+                                if not path.is_file() or path.stat().st_size > 2_000_000:
+                                    raise ValueError("Unsafe private artifact")
+                                raw = path.read_bytes()
+                                check_publication(preserve_after_stop=preserve_after_stop)
+                                reference = private.retain_private(lease.run.run_id, name, raw,
+                                    expected_sha256=hashlib.sha256(raw).hexdigest())
+                                publisher.record_artifact(principal, lease.run.run_id, reference, lease_token=lease.token)
+                                archived_names.add(name)
 
                         class FencedReports:
                             def publish_report(self, run_id, report):
@@ -52,12 +73,19 @@ class OnDemandMockExecutor:
                         try:
                             result = engine.execute(lease, stage, cancelled)
                         except BackendError as error:
+                            if error.code in {"CANCELLED", "ENGINE_TIMEOUT"}:
+                                try:
+                                    # Preserve only existing allowlisted bytes. The lease
+                                    # remains mandatory; no model or execution is retried.
+                                    archive_existing(preserve_after_stop=True)
+                                except Exception:
+                                    raise BackendError("ARTIFACT_PUBLICATION_UNCERTAIN",
+                                                       "Artifact publication needs reconciliation") from None
                             if error.code.startswith("CLOUD_STORAGE") or error.code == "ARTIFACT_INTEGRITY":
                                 raise BackendError("ARTIFACT_PUBLICATION_UNCERTAIN",
                                                    "Artifact publication needs reconciliation") from None
                             raise
                         try:
-                            directory = root / "private" / lease.run.run_id / "engine"
                             mandatory = {"candidate.v1.json", "broker-artifact.v1.json",
                                 "generation-dispatch.v1.private.json", "generation-result.v1.private.json",
                                 "G3_report.json", "evaluation-receipt.v1.json", "evaluation-manifest.v1.json"}
@@ -83,19 +111,19 @@ class OnDemandMockExecutor:
                             if result.stop_reason == "completed_mock_run" and any(
                                     not (directory / name).is_file() for name in mandatory):
                                 raise ValueError("Required private archive is missing")
-                            for name in sorted(PRIVATE_ARTIFACT_NAMES):
-                                path = directory / name
-                                if not path.exists():
-                                    continue
-                                if path.is_symlink() or not path.is_file() or path.stat().st_size > 2_000_000:
-                                    raise ValueError
-                                raw = path.read_bytes()
-                                check_publication()
-                                reference = private.retain_private(lease.run.run_id, name, raw,
-                                    expected_sha256=hashlib.sha256(raw).hexdigest())
-                                publisher.record_artifact(principal, lease.run.run_id, reference, lease_token=lease.token)
+                            archive_existing()
                             if result.report is not None:
                                 publisher.record_artifact(principal, lease.run.run_id, result.report, lease_token=lease.token)
+                        except BackendError as error:
+                            if error.code == "CANCELLED":
+                                try:
+                                    archive_existing(preserve_after_stop=True)
+                                except Exception:
+                                    raise BackendError("ARTIFACT_PUBLICATION_UNCERTAIN",
+                                                       "Artifact publication needs reconciliation") from None
+                                raise
+                            raise BackendError("ARTIFACT_PUBLICATION_UNCERTAIN",
+                                               "Artifact publication needs reconciliation") from None
                         except Exception:
                             # Execution happened; an upload/metadata acknowledgement
                             # may be ambiguous. Quarantine, never regenerate/retry.

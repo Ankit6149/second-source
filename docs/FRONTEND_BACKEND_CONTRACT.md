@@ -10,6 +10,7 @@ cannot be mixed. A browser sends no service-role/database/model/sandbox key.
 |---|---|
 | Validate session | GET `/v1/session`: verified immutable owner ID;401 for rejected identity. Ordinary sign-out does not prove immediate JWT revocation; clear browser tokens and respect expiry |
 | Availability | GET `/v1/capabilities`: only `g3_mock`, real/paid false; `execution_mode: on_demand_mock` appears only when configured/enabled. Legacy queued capabilities remain unchanged |
+| Choose a supported target | GET `/v1/targets`: the exact owned-ledger mock scope and digest, plus whether on-demand execution is enabled. This discovery response does not create or authorize an investigation; browser, arbitrary URL and real-model targets are not advertised |
 | Capture/list | POST/GET `/v1/investigations`: title + existing ScopeContract, Idempotency-Key; server assigns owner |
 | Scope review/authorize | GET investigation, then POST `/{id}/authorize` with expected_revision, exact scope_digest, mode mock and maximum_model_spend_usd0 |
 | Queue | POST investigation `/{id}/runs` with kind g3_mock and Idempotency-Key.201 means queued, never completed |
