@@ -23,7 +23,7 @@ import json
 import re
 from typing import Any, Literal, Mapping, Sequence
 
-from .candidate_spec import LoadedCandidate, load_candidate
+from .candidate_spec import LoadedCandidate, load_candidate, RESPOND_SOURCES
 from .contracts import Observation, ScopeContract, StrictModel
 from .evidence import redact
 from .model_gateway import GatewayError, ModelGateway, ModelRequest, ModelResponse
@@ -693,7 +693,7 @@ SYNTHESIZE_SYSTEM_V2 = (
     "case handling, and the exact error-code strings shown in the "
     "observations. Derive every value ONLY from the attached observations. "
     "Do not invent hidden internals, approvals, file paths, imports, shell, "
-    "network, or code of any kind. Output JSON only. Respond keys name inner payload fields only: 'ok' and 'error' are owned by the runtime envelope declared in this request and must never appear as respond keys."
+    "network, or code of any kind. Output JSON only. Respond keys name inner payload fields only: 'ok' and 'error' are owned by the runtime envelope declared in this request and must never appear as respond keys. Each command lists its resolvable respond_sources in this request; bind every respond source from that command's own list."
 )
 
 _ERROR_CODE_LIMIT = 64
@@ -925,6 +925,14 @@ def build_guided_request(safe_context: dict[str, Any], skeleton: dict[str, Any],
             "success_key": "ok",
             "failure_key": "error",
             "owned_by": "runtime",
+            # Trusted source vocabulary, fixed by the strict loader's
+            # RESPOND_SOURCES: the payload field names each command can
+            # emit. Bind every respond source from the command's own list;
+            # anything else fails admission as unresolvable.
+            "respond_sources": {
+                name: sorted(RESPOND_SOURCES[name])
+                for name in ("add", "list", "total", "remove")
+            },
         },
     }
     return ModelRequest(

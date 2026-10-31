@@ -99,11 +99,9 @@ def test_envelope_declared_in_request_and_prompt():
     )
     user = json.loads(
         next(m["content"] for m in request.messages if m["role"] == "user"))
-    assert user["response_envelope"] == {
-        "success_key": "ok",
-        "failure_key": "error",
-        "owned_by": "runtime",
-    }
+    assert user["response_envelope"]["success_key"] == "ok"
+    assert user["response_envelope"]["failure_key"] == "error"
+    assert user["response_envelope"]["owned_by"] == "runtime"
     assert "'ok' and 'error'" in SYNTHESIZE_SYSTEM_V2
     assert "must never appear as respond keys" in SYNTHESIZE_SYSTEM_V2
 
@@ -144,6 +142,72 @@ def test_corrected_genuine_fill_admits_and_executes(cli_scope):
     assert observations[1].output["ok"] is True
     assert observations[2].output["ok"] is True
     assert observations[3].output["ok"] is True
+
+
+# Exact bytes of the rev-5 genuine response
+# `chatcmpl-01a1925f-97e0-73f9-a41d-6a5a61cb0147` (514 chars, sha256
+# 941b5d36806258a1ed8bc36dc5d798ec242b699a63be2a1568cdc627ec3c289c):
+# envelope-clean, but list binds the invented source "records".
+GENUINE_REV5_FILL_TEXT = (
+    '{"add":{"amount":{"maximum":1000000,"minimum":1},'
+    '"amount_error":"invalid_amount","duplicate_error":"duplicate_label",'
+    '"label":{"max_length":64,"min_length":1,"trim":true},'
+    '"label_error":"invalid_label","respond":{"id":"id"},'
+    '"unique_casefold":false,"unique_field":"label"},'
+    '"error_codes":{"invalid_input":"invalid_input",'
+    '"unknown_command":"unknown_command"},'
+    '"list":{"respond":{"records":"records"}},'
+    '"remove":{"not_found_error":"not_found","respond":{"id":"id"}},'
+    '"total":{"respond":{"amount":"amount","count":"count"}}}'
+)
+
+
+def test_request_carries_loader_source_vocabulary():
+    from second_source.candidate_spec import RESPOND_SOURCES
+    request = build_guided_request(
+        {"scope": {}, "public_commands": PUBLIC, "evidence": [],
+         "hypotheses": []},
+        build_spec_skeleton(PUBLIC),
+    )
+    user = json.loads(
+        next(m["content"] for m in request.messages if m["role"] == "user"))
+    assert user["response_envelope"]["respond_sources"] == {
+        name: sorted(RESPOND_SOURCES[name])
+        for name in ("add", "list", "total", "remove")
+    }
+    assert "respond_sources" in SYNTHESIZE_SYSTEM_V2
+
+
+def test_rev5_invented_source_rejected_but_correctable(cli_scope):
+    from second_source.candidate_spec import CandidateError
+    assert len(GENUINE_REV5_FILL_TEXT) == 514
+    fill = json.loads(GENUINE_REV5_FILL_TEXT)
+    # Passes the gateway schema layer and the merger: the envelope fix held.
+    assert validate_json_schema(fill, FILL_JSON_SCHEMA) == []
+    merged = merge_skeleton_fill(build_spec_skeleton(PUBLIC), fill)
+    # The strict loader rejects the invented source, naming it precisely.
+    with pytest.raises(CandidateError, match="unresolvable"):
+        validate_generated_spec(merged, cli_scope, _receipt(
+            origin="real", provider="meta-direct", real=True,
+            model="muse-spark-1.3", response_id="rev5-replay",
+            prompt_version="synthesize-v2"))
+    # The minimal vocabulary correction the clarified contract asks for.
+    fill["list"]["respond"] = {"items": "items"}
+    corrected = merge_skeleton_fill(build_spec_skeleton(PUBLIC), fill)
+    loaded, stamped = validate_generated_spec(
+        corrected, cli_scope, _receipt(
+            origin="mock", provider="mock", real=False,
+            model="mock-muse-0", response_id="rev5-corrected"))
+    assert stamped.spec_digest == loaded.digest
+    candidate = CandidateInterpreter(loaded.spec)
+    observations = candidate.execute_sequence([
+        {"command": "add", "label": "Alpha", "amount": 3},
+        {"command": "list"},
+        {"command": "total"},
+        {"command": "remove", "id": "1"},
+    ]).observations
+    assert all(entry.output["ok"] is True for entry in observations)
+    assert observations[2].output["count"] == 1
 
 
 def _context():
