@@ -176,3 +176,40 @@ def test_generation_wires_carry_no_sealed_material(ready_inputs):
         for marker in ("reference.py", "gold", ".runs", "AppData"):
             assert marker not in wire, (protocol, marker)
     assert len(seen["guided"]) < len(seen["full"])
+
+
+def test_staged_generation_modules_import_without_stderr():
+    """The isolated worker treats ANY subprocess stderr output as failure, so
+    staged generation modules must import warning-free (a SyntaxWarning once
+    broke guided preflight with an empty-looking rejection)."""
+    import subprocess
+    import sys
+    modules = ("contracts", "scope_guard", "candidate_spec", "candidate_runtime",
+               "candidate_adapter", "candidate_generation", "model_gateway",
+               "budgets", "runner", "reference", "evidence", "schema_validate")
+    completed = subprocess.run(
+        [sys.executable, "-W", "error::SyntaxWarning", "-B", "-c",
+         "import " + ", ".join("second_source." + name for name in modules)],
+        capture_output=True, text=True, timeout=120)
+    assert completed.returncode == 0, completed.stderr[-2000:]
+    assert completed.stderr == "", completed.stderr[-2000:]
+
+
+def test_guided_wire_carries_raised_cap_and_low_reasoning(ready_inputs):
+    """The fake transport must observe the remediated 4096 cap (not the
+    failed 800) with reasoning_effort low: 798 measured reasoning tokens
+    plus fill content must fit."""
+    from second_source.model_gateway import MockProvider
+    scope = ready_inputs[0]
+    seen = []
+
+    def respond(request):
+        seen.append(request.model_dump(mode="json"))
+        return {"content": correct_fill()}
+
+    guided = _run(ready_inputs, "guided")
+    guided.generate(guided.prepare(), MockProvider(responder=respond),
+                    RunBudget(scope.budgets))
+    assert len(seen) == 1
+    assert seen[0]["max_output_tokens"] == 4096
+    assert seen[0]["reasoning_effort"] == "low"

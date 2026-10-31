@@ -905,11 +905,11 @@ def merge_skeleton_fill(skeleton: dict[str, Any], fill: dict[str, Any]) -> dict[
 
 
 def build_guided_request(safe_context: dict[str, Any], skeleton: dict[str, Any],
-                         *, max_output_tokens: int = 800) -> ModelRequest:
+                         *, max_output_tokens: int = 4096) -> ModelRequest:
     """Provider-bound v2 request: skeleton plus admitted context, fill schema.
 
-    The model returns ONLY the small fill object. Default output cap is 800
-    tokens (a fill is an order of magnitude smaller than a full spec).
+    The model returns ONLY the small fill object. Default output cap is 4096
+    tokens: the measured 2026-10-31 genuine attempt spent 798 reasoning tokens before any content inside an 800-token cap and returned empty (finish_reason=length), so the cap must admit reasoning plus the ~150 tokens of fill content. Worst case at table rates stays under $0.022, far inside the $0.50 application ceiling. reasoning_effort stays low.
     """
     user_content = {
         "context": safe_context,
@@ -931,7 +931,7 @@ def build_guided_request(safe_context: dict[str, Any], skeleton: dict[str, Any],
 
 
 def request_guided_spec(context: dict[str, Any], gateway: ModelGateway, *,
-                        max_output_tokens: int = 800,
+                        max_output_tokens: int = 4096,
                         contract: ScopeContract | None = None,
                         public_manifest_digest: str | None = None,
                         approved_evidence: Mapping[str, dict[str, Any]] | None = None,
