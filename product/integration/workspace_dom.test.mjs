@@ -11,6 +11,8 @@ import { Window } from 'happy-dom';
 
 const token = 'a'.repeat(32) + '.' + 'b'.repeat(32) + '.' + 'c'.repeat(48);
 const owner = 'a186fb18-72b4-4071-9794-e8746c3e4231';
+const otherToken = 'x'.repeat(32) + '.' + 'y'.repeat(32) + '.' + 'z'.repeat(48);
+const otherOwner = '194d8e1f-b8d2-4b59-a387-92698d47678c';
 const storageKey = 'sb-jpqcqqbzriizxhigvjki-auth-token';
 
 async function until(predicate, label, timeout = 20_000) {
@@ -25,7 +27,7 @@ async function until(predicate, label, timeout = 20_000) {
 test('workspace controls drive an authorized NON_AI investigation through the local worker', { timeout: 240_000 }, async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'ss-dom-integration-'));
   const server = spawn(process.env.PYTHON || 'python', ['integration/local_backend.py'], { stdio: ['ignore', 'pipe', 'pipe'] });
-  let stderr = ''; let window;
+  let stderr = ''; const windows = [];
   server.stderr.on('data', chunk => { stderr += String(chunk).slice(0, 4000); });
   try {
     const [chunk] = await Promise.race([
@@ -47,24 +49,34 @@ test('workspace controls drive an authorized NON_AI investigation through the lo
     const assetDir = path.join(directory, 'assets');
     const asset = (await readdir(assetDir)).find(name => name.endsWith('.js')); assert.ok(asset);
     const bundle = await readFile(path.join(assetDir, asset), 'utf8');
-    window = new Window({ url: 'https://preview.test/', settings: { disableJavaScriptFileLoading: true, disableCSSFileLoading: true } });
-    // The simulator stringifies ArrayBuffers in Blob parts; use Node's standards-compliant Blob.
-    window.Blob = globalThis.Blob;
-    window.sessionStorage.setItem(storageKey, JSON.stringify({ access_token: token, refresh_token: 'synthetic-refresh',
-      expires_at: Math.floor(Date.now() / 1000) + 3600, expires_in: 3600, token_type: 'bearer', user: { id: owner } }));
-    // All transport is restricted to the local test server. No Supabase or model URL can be reached.
-    window.fetch = (input, options) => {
-      const url = new URL(typeof input === 'string' ? input : input.url);
-      if (url.origin !== 'https://backend.test') throw new Error('External transport forbidden');
-      return fetch(local + url.pathname + url.search, options);
-    };
+    function openWorkspace(userId, accessToken, priorStorage) {
+      const instance = new Window({ url: 'https://preview.test/', settings: { disableJavaScriptFileLoading: true, disableCSSFileLoading: true } });
+      windows.push(instance);
+      // The simulator stringifies ArrayBuffers in Blob parts; use Node's standards-compliant Blob.
+      instance.Blob = globalThis.Blob;
+      if (priorStorage) for (let i = 0; i < priorStorage.length; i++) {
+        const key = priorStorage.key(i); instance.sessionStorage.setItem(key, priorStorage.getItem(key));
+      }
+      instance.sessionStorage.setItem(storageKey, JSON.stringify({ access_token: accessToken, refresh_token: 'synthetic-refresh',
+        expires_at: Math.floor(Date.now() / 1000) + 3600, expires_in: 3600, token_type: 'bearer', user: { id: userId } }));
+      // All transport is restricted to the local test server. No Supabase or model URL can be reached.
+      instance.fetch = (input, options) => {
+        const url = new URL(typeof input === 'string' ? input : input.url);
+        if (url.origin !== 'https://backend.test') throw new Error('External transport forbidden');
+        return fetch(local + url.pathname + url.search, options);
+      };
+      instance.document.write(html); instance.eval(bundle); return instance;
+    }
+    const window = openWorkspace(owner, token);
     let exported;
     window.URL.createObjectURL = blob => { exported = blob; return 'blob:https://preview.test/local-test'; };
     window.URL.revokeObjectURL = () => {};
     window.HTMLAnchorElement.prototype.click = function () {};
-    window.document.write(html); window.eval(bundle);
     const doc = window.document;
     await until(() => doc.querySelector('.home-note')?.textContent.includes('Available here:'), 'target discovery');
+    const input = doc.querySelector('#promptInput'); input.value = 'Local investigation note';
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    doc.querySelector('#composer').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
     doc.querySelector('[data-action="select-target"]').click();
     doc.querySelector('#scopeConsent').checked = true;
     doc.querySelector('[data-action="create"]').click();
@@ -90,8 +102,17 @@ test('workspace controls drive an authorized NON_AI investigation through the lo
     { input: bytes, encoding: 'utf8', timeout: 30_000 });
     assert.equal(verifier.status, 0, 'local integrity verifier completed');
     assert.equal(verifier.stdout.trim(), 'valid');
+    const reloaded = openWorkspace(owner, token, window.sessionStorage);
+    await until(() => reloaded.document.querySelector('[data-action="verification"]'), 'investigation recovery');
+    assert.match(reloaded.document.querySelector('#content').textContent, /Local investigation note/);
+    const other = openWorkspace(otherOwner, otherToken, window.sessionStorage);
+    await until(() => other.document.querySelector('.home-note')?.textContent.includes('Available here:'), 'second owner session');
+    other.document.querySelector('[data-action="library"]').click();
+    assert.match(other.document.querySelector('#content').textContent, /No investigations yet/);
+    assert.doesNotMatch(other.document.querySelector('#content').textContent, /Local investigation note/);
   } finally {
-    window?.happyDOM.abort(); server.kill();
+    for (const instance of windows) instance.happyDOM.abort();
+    server.kill();
     const resolvedTemp = await realpath(os.tmpdir());
     const resolvedDirectory = await realpath(directory);
     if (path.dirname(resolvedDirectory) === resolvedTemp && path.basename(resolvedDirectory).startsWith('ss-dom-integration-')) {
