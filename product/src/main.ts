@@ -54,7 +54,11 @@ function toast(message: string) {
 }
 function describe(error: unknown) {
   if (error instanceof ApiError) {
-    if (error.status === 401) { state.session = null; state.ownerId = null; state.target = null; state.investigations = []; state.selected = null; state.run = null; state.verification = null; state.events = []; stopPolling(); }
+    if (error.status === 401) {
+      state.session = null; state.ownerId = null; state.target = null; state.investigations = []; state.selected = null;
+      state.run = null; state.verification = null; state.events = []; state.messages = []; state.draft = ''; state.view = 'home';
+      sessionStorage.removeItem('ss-product-draft'); stopPolling();
+    }
     return error.message + (error.correlationId ? ` Reference: ${error.correlationId}` : '');
   }
   return error instanceof Error ? error.message : 'Something went wrong. Try again.';
@@ -150,6 +154,11 @@ function render() {
 
 async function hydrate(session: Session | null) {
   const generation = ++state.epoch;
+  const previousUser = state.session?.user.id;
+  if (previousUser && previousUser !== session?.user.id) {
+    state.investigations = []; state.target = null; state.selected = null; state.run = null; state.events = []; state.verification = null;
+    state.messages = []; state.draft = ''; state.view = 'home';
+  }
   state.session = session; state.ownerId = null; state.error = ''; state.executing = false; state.busy = false; state.actionUncertain = null; stopPolling();
   if (!session || !apiOrigin) {
     state.investigations = []; state.target = null; state.selected = null; state.run = null; state.events = []; state.verification = null;
@@ -164,6 +173,7 @@ async function hydrate(session: Session | null) {
     if (priorOwner && priorOwner !== identity.owner_id) {
       sessionStorage.removeItem('ss-selected-investigation'); sessionStorage.removeItem('ss-create-pending');
       sessionStorage.removeItem('ss-product-draft'); state.messages = []; state.draft = '';
+      state.investigations = []; state.target = null; state.selected = null; state.run = null; state.events = []; state.verification = null; state.view = 'home';
     }
     sessionStorage.setItem('ss-session-owner', identity.owner_id);
     const [targets, items] = await Promise.all([api.targets(), allPages(after => api.investigations(after))]);
