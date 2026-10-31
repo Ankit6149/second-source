@@ -7,6 +7,7 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
     "test": "node --experimental-transform-types --test tests/*.test.ts",
+    "test:dom": "npm run build && node --test dom/*.test.mjs",
     "test:integration": "node --experimental-transform-types --test integration/*.test.ts"
   },
   "dependencies": {
@@ -14,6 +15,7 @@
     "lucide": "0.468.0"
   },
   "devDependencies": {
+    "happy-dom": "21.0.4",
     "typescript": "5.9.3",
     "vite": "8.3.5"
   }
