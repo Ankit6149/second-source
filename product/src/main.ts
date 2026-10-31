@@ -212,10 +212,10 @@ async function refresh(showErrors = true) {
       sessionStorage.removeItem(`ss-execution-uncertain:${runId}`); state.uncertain = false;
     }
     render();
-    if (run.status === 'running' || state.executing) { stopPolling(); pollTimer = window.setTimeout(() => { void refresh(false); }, 3000); }
+    if (run.status === 'running' || state.executing) { stopPolling(); pollTimer = window.setTimeout(() => { void refresh(false); }, 10000); }
   } catch (error) {
     if (showErrors || error instanceof ApiError && error.status === 401) { state.error = describe(error); render(); }
-    else if (state.executing || state.run?.status === 'running') { stopPolling(); pollTimer = window.setTimeout(() => { void refresh(false); }, 6000); }
+    else if (state.executing || state.run?.status === 'running') { stopPolling(); pollTimer = window.setTimeout(() => { void refresh(false); }, 15000); }
   }
 }
 function reviewScope() {
