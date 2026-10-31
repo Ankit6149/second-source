@@ -8,6 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "test": "node --experimental-transform-types --test tests/*.test.ts",
     "test:dom": "npm run build && node --test dom/*.test.mjs",
+    "test:dom-integration": "node --test integration/workspace_dom.test.mjs",
     "test:integration": "node --experimental-transform-types --test integration/*.test.ts"
   },
   "dependencies": {
