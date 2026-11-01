@@ -6,9 +6,9 @@
       "integrate/product-completion-20261030": false
     }
   },
-  "buildCommand": "python3 web/build.py",
+  "buildCommand": "python3 web/build.py --with-app",
   "outputDirectory": "web/dist",
-  "installCommand": "",
+  "installCommand": "npm ci --prefix product --no-audit --no-fund",
   "headers": [
     {
       "source": "/(.*)",

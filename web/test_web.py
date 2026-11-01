@@ -48,9 +48,25 @@ class PublicPreview(unittest.TestCase):
             if reference.startswith("#"):
                 self.assertIn(reference[1:], page.ids)
             elif reference.startswith("./"):
+                if reference == "./app/" and not (ROOT / "dist/app/index.html").is_file():
+                    # The Python-only suite does not install frontend dependencies.
+                    continue
                 with urlopen(self.origin + "/" + reference[2:]) as response:
                     self.assertEqual(response.status, 200)
                     self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
+
+    @unittest.skipUnless((ROOT.parent / "product/node_modules/.bin/vite").exists()
+                         or (ROOT.parent / "product/node_modules/.bin/vite.cmd").exists(),
+                         "Frontend dependencies are not installed")
+    def test_combined_build_serves_the_workspace_and_assets(self):
+        output = build(include_app=True)
+        page = (output / "app/index.html").read_text(encoding="utf-8")
+        self.assertIn('/app/assets/', page)
+        with urlopen(self.origin + "/app/") as response:
+            self.assertEqual(response.status, 200)
+            self.assertIn(b"Investigation workspace", response.read())
+        with urlopen(self.origin + "/app/fonts/dm-sans.ttf") as response:
+            self.assertEqual(response.status, 200)
 
     def test_server_exposes_no_repository_or_source_routes(self):
         for path in ("/pyproject.toml", "/.env", "/preview.py", "/assets/../../pyproject.toml", "/assets/%2e%2e/README.md", "/v1/capabilities"):
@@ -68,9 +84,9 @@ class PublicPreview(unittest.TestCase):
 
     def test_vercel_publishes_only_built_site(self):
         config = json.loads((ROOT.parent / "vercel.json").read_text(encoding="utf-8"))
-        self.assertEqual(config["buildCommand"], "python3 web/build.py")
+        self.assertEqual(config["buildCommand"], "python3 web/build.py --with-app")
         self.assertEqual(config["outputDirectory"], "web/dist")
-        self.assertEqual(config["installCommand"], "")
+        self.assertEqual(config["installCommand"], "npm ci --prefix product --no-audit --no-fund")
         # This integration-only branch should not deploy each acceptance commit.
         self.assertFalse(config["git"]["deploymentEnabled"]["integrate/product-completion-20261030"])
 
