@@ -6,7 +6,7 @@ import type { Session } from '@supabase/supabase-js';
 import { auth, observeSession, signIn, signOut } from './auth';
 import { Api, ApiError, validatedOrigin, type Target, type Investigation, type Run, type RunEvent, type Verification } from './api';
 import { detectReference } from './reference';
-import { supportedTarget } from './targets';
+import { supportedTargets } from './targets';
 import { clearOwnerNotes, loadNotes, saveNotes } from './notes';
 import { acceptsRunRevision, executionDefinitelyRefused, outcomeConfirmed, pollFailureMessage, pollRetryDelay } from './polling';
 
@@ -16,12 +16,12 @@ const esc = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({ 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const apiOrigin = validatedOrigin(import.meta.env.VITE_API_ORIGIN || '', import.meta.env.DEV);
 const state: {
-  session: Session | null; ownerId: string | null; investigations: Investigation[]; target: Target | null; selected: Investigation | null;
+  session: Session | null; ownerId: string | null; investigations: Investigation[]; targets: Target[]; target: Target | null; selected: Investigation | null;
   run: Run | null; events: RunEvent[]; verification: Verification | null; messages: string[]; draft: string;
   view: 'home' | 'conversation' | 'library' | 'system'; loading: boolean; error: string; pollError: string; uncertain: boolean; actionUncertain: string | null;
   executionError: { runId: string; message: string } | null;
   busy: boolean; executing: boolean; epoch: number;
-} = { session: null, ownerId: null, investigations: [], target: null, selected: null, run: null, events: [], verification: null,
+} = { session: null, ownerId: null, investigations: [], targets: [], target: null, selected: null, run: null, events: [], verification: null,
   messages: [], draft: sessionStorage.getItem('ss-product-draft') || '', view: 'home', loading: false, error: '', pollError: '',
   uncertain: false, actionUncertain: null, executionError: null, busy: false, executing: false, epoch: 0 };
 const api = new Api(apiOrigin, () => state.session?.access_token || null);
@@ -59,7 +59,7 @@ function describe(error: unknown) {
   if (error instanceof ApiError) {
     if (error.status === 401) {
       ++state.epoch; state.loading = false; state.busy = false; state.executing = false; state.uncertain = false; state.actionUncertain = null;
-      state.session = null; state.ownerId = null; state.target = null; state.investigations = []; state.selected = null;
+      state.session = null; state.ownerId = null; state.targets = []; state.target = null; state.investigations = []; state.selected = null;
       state.run = null; state.verification = null; state.events = []; state.messages = []; state.draft = ''; state.pollError = ''; state.executionError = null; state.view = 'home';
       sessionStorage.removeItem('ss-product-draft'); stopPolling();
     }
@@ -92,7 +92,7 @@ function composer() {
 }
 
 function renderHome() {
-  return `<section class="empty-home"><h1>Understand how software <em>really works.</em></h1><p>Explore behavior and independent verification. Start with a question or a reference.</p><div class="suggestion-row"><button class="suggestion" data-suggestion="Understand how the owned ledger handles repeated inputs.">${icon('search')} Understand behavior</button><button class="suggestion" data-suggestion="Compare the owned ledger with a scoped candidate.">${icon('git-branch')} Compare versions</button><button class="suggestion" data-suggestion="Explore how the owned ledger workflow could be reconstructed.">${icon('puzzle')} Reconstruct a workflow</button></div><p class="home-note">${state.session ? state.target ? 'Available here: the owned ledger NON_AI fixture.' : 'No supported target is currently available.' : 'Sign in to see the targets available from the connected service.'} Websites and genuine AI reconstruction are not yet available here.</p></section>`;
+  return `<section class="empty-home"><h1>Understand how software <em>really works.</em></h1><p>Explore behavior and independent verification. Start with a question or a reference.</p><div class="suggestion-row"><button class="suggestion" data-suggestion="Understand how the owned ledger handles repeated inputs.">${icon('search')} Understand behavior</button><button class="suggestion" data-suggestion="Compare the owned ledger with a scoped candidate.">${icon('git-branch')} Compare versions</button><button class="suggestion" data-suggestion="Explore how the owned ledger workflow could be reconstructed.">${icon('puzzle')} Reconstruct a workflow</button></div><p class="home-note">${state.session ? state.target ? (state.targets.length > 1 ? 'Available here: owned ledger and HTTP task-workflow NON_AI fixtures.' : 'Available here: the owned ledger NON_AI fixture.') : 'No supported target is currently available.' : 'Sign in to see the targets available from the connected service.'} Websites and genuine AI reconstruction are not yet available here.</p></section>`;
 }
 function controls() {
   if (!state.session) return `<button class="pill-btn primary" data-action="account">${icon('log-in')} Sign in to start</button>`;
@@ -100,10 +100,10 @@ function controls() {
   if (state.selected.status === 'created') return state.target && state.selected.scope_digest === state.target.scope_digest
     ? `<button class="pill-btn primary" data-action="authorize" ${state.busy ? 'disabled' : ''}>${icon('shield-check')} Confirm scope</button>`
     : `<p class="component-note">This stored scope differs from the currently supported scope. Authorization is unavailable; contact an operator.</p>`;
-  if (!state.run) return `<button class="pill-btn primary" data-action="queue" ${state.busy || !state.target ? 'disabled' : ''}>${icon('clock')} Queue mock run</button>${!state.target ? '<p class="component-note">The supported target is unavailable.</p>' : ''}`;
+  if (!state.run) return `<button class="pill-btn primary" data-action="queue" ${state.busy || !state.target || state.selected.scope_digest !== state.target.scope_digest ? 'disabled' : ''}>${icon('clock')} Queue mock run</button>${!state.target ? '<p class="component-note">The supported target is unavailable.</p>' : ''}`;
   if (state.run.status === 'queued') return state.uncertain
     ? `<button class="pill-btn" data-action="refresh">${icon('refresh-cw')} Check status</button><p class="component-note">The execution request has an uncertain outcome. It will not be retried automatically.</p>`
-    : `<button class="pill-btn primary" data-action="execute" ${state.busy || state.executing || state.actionUncertain || !state.target?.execution_enabled ? 'disabled' : ''}>${icon('play')} Start NON_AI run</button><button class="pill-btn" data-action="cancel" ${state.busy || state.actionUncertain ? 'disabled' : ''}>${icon('square')} Cancel queued run</button>${state.actionUncertain ? '<p class="component-note">The cancellation outcome is uncertain; check status before taking another action.</p><button class="pill-btn quiet" data-action="refresh">Check status</button>' : ''}${!state.target?.execution_enabled ? '<p class="component-note">Execution is disabled or unavailable on this backend.</p>' : ''}`;
+    : `<button class="pill-btn primary" data-action="execute" ${state.busy || state.executing || state.actionUncertain || !state.target?.execution_enabled || state.selected.scope_digest !== state.target.scope_digest ? 'disabled' : ''}>${icon('play')} Start NON_AI run</button><button class="pill-btn" data-action="cancel" ${state.busy || state.actionUncertain ? 'disabled' : ''}>${icon('square')} Cancel queued run</button>${state.actionUncertain ? '<p class="component-note">The cancellation outcome is uncertain; check status before taking another action.</p><button class="pill-btn quiet" data-action="refresh">Check status</button>' : ''}${!state.target?.execution_enabled || state.selected.scope_digest !== state.target.scope_digest ? '<p class="component-note">Execution is disabled or unavailable for this scope on this backend.</p>' : ''}`;
   if (state.run.status === 'running') return `<button class="pill-btn" data-action="cancel" ${state.busy || state.run.cancel_requested || state.actionUncertain ? 'disabled' : ''}>${icon('square')} ${state.run.cancel_requested ? 'Cancellation requested' : 'Cancel run'}</button><button class="pill-btn quiet" data-action="refresh">${icon('refresh-cw')} Check status</button><button class="pill-btn quiet" data-action="reconcile" ${state.busy || state.actionUncertain ? 'disabled' : ''}>Check recovery</button>${state.actionUncertain ? '<p class="component-note">The previous request has an uncertain outcome; it will not be repeated automatically.</p>' : ''}`;
   if (state.run.status === 'needs_reconciliation') return `<p class="component-note">This run is quarantined after an uncertain or interrupted operation. It will not restart automatically; an operator must review it.</p><button class="pill-btn quiet" data-action="refresh">Check status</button>`;
   if (state.run.status === 'completed') return `<button class="pill-btn primary" data-action="verification">${icon('list-checks')} View verification</button><button class="pill-btn" data-action="report">${icon('file-text')} Open report</button><button class="pill-btn" data-action="export">${icon('download')} Download integrity export</button>`;
@@ -115,7 +115,7 @@ function eventName(event: RunEvent) {
 }
 function investigationCard() {
   const run = state.run;
-  return `<div class="message assistant"><div class="assistant-mark">${icon('shield-check')}</div><div class="response"><h2>${state.selected ? esc(state.selected.title) : 'Choose what to investigate.'}</h2><p>${state.selected ? 'This investigation is limited to the approved owned-ledger fixture.' : !state.session ? 'Sign in to see the targets available from the connected service. A URL or software name does not grant permission or start an investigation.' : state.target ? 'This service currently offers the owned-ledger fixture. A URL or software name does not grant permission or start an investigation.' : 'No supported target is currently available from this service.'}</p>${state.selected ? `<div class="artifact"><div class="artifact-top"><div class="artifact-symbol">${icon('file-text')}</div><div><strong>Owned ledger · NON_AI</strong><small>Scope ${esc(state.selected.scope_digest.slice(0, 12))}…</small></div><span class="artifact-tag">${esc(run?.status || state.selected.status)}</span></div>${run ? `<div class="artifact-bottom">${esc(run.stage ? `Stage: ${run.stage}` : 'No stage reported')}${run.error_code ? ` · ${esc(run.error_code)}` : ''}</div>` : ''}</div>` : ''}${state.events.length ? `<details class="activity"><summary>Activity (${state.events.length})</summary><ol>${state.events.map(e => `<li>${esc(eventName(e))}</li>`).join('')}</ol></details>` : ''}<div class="response-actions">${controls()}</div><p class="component-note">Your notes are kept only in this browser tab and are cleared on sign-out. The backend does not yet save conversations or answer follow-up questions.</p></div></div>`;
+  return `<div class="message assistant"><div class="assistant-mark">${icon('shield-check')}</div><div class="response"><h2>${state.selected ? esc(state.selected.title) : 'Choose what to investigate.'}</h2><p>${state.selected ? 'This investigation is limited to its approved fixture scope.' : !state.session ? 'Sign in to see the targets available from the connected service. A URL or software name does not grant permission or start an investigation.' : state.target ? 'Choose an available owned fixture. A URL or software name does not grant permission or start an investigation.' : 'No supported target is currently available from this service.'}</p>${state.selected ? `<div class="artifact"><div class="artifact-top"><div class="artifact-symbol">${icon('file-text')}</div><div><strong>${esc(state.target?.label || 'Unsupported fixture')} · NON_AI</strong><small>Scope ${esc(state.selected.scope_digest.slice(0, 12))}…</small></div><span class="artifact-tag">${esc(run?.status || state.selected.status)}</span></div>${run ? `<div class="artifact-bottom">${esc(run.stage ? `Stage: ${run.stage}` : 'No stage reported')}${run.error_code ? ` · ${esc(run.error_code)}` : ''}</div>` : ''}</div>` : ''}${state.events.length ? `<details class="activity"><summary>Activity (${state.events.length})</summary><ol>${state.events.map(e => `<li>${esc(eventName(e))}</li>`).join('')}</ol></details>` : ''}<div class="response-actions">${controls()}</div><p class="component-note">Your notes are kept only in this browser tab and are cleared on sign-out. The backend does not yet save conversations or answer follow-up questions.</p></div></div>`;
 }
 function conversation() {
   const messages = state.messages.map(message => `<div class="message user"><div class="bubble">${esc(message)}</div></div>`).join('');
@@ -161,12 +161,12 @@ async function hydrate(session: Session | null) {
   const generation = ++state.epoch;
   const previousUser = state.session?.user.id;
   if (previousUser && previousUser !== session?.user.id) {
-    state.investigations = []; state.target = null; state.selected = null; state.run = null; state.events = []; state.verification = null;
+    state.investigations = []; state.targets = []; state.target = null; state.selected = null; state.run = null; state.events = []; state.verification = null;
     state.messages = []; state.draft = ''; state.view = 'home';
   }
   state.session = session; state.ownerId = null; state.error = ''; state.pollError = ''; state.executionError = null; state.executing = false; state.busy = false; state.actionUncertain = null; stopPolling();
   if (!session || !apiOrigin) {
-    state.investigations = []; state.target = null; state.selected = null; state.run = null; state.events = []; state.verification = null;
+    state.investigations = []; state.targets = []; state.target = null; state.selected = null; state.run = null; state.events = []; state.verification = null;
     render(); return;
   }
   state.loading = true; render();
@@ -178,12 +178,13 @@ async function hydrate(session: Session | null) {
     if (priorOwner && priorOwner !== identity.owner_id) {
       sessionStorage.removeItem('ss-selected-investigation'); sessionStorage.removeItem('ss-create-pending');
       sessionStorage.removeItem('ss-product-draft'); state.messages = []; state.draft = '';
-      state.investigations = []; state.target = null; state.selected = null; state.run = null; state.events = []; state.verification = null; state.view = 'home';
+      state.investigations = []; state.targets = []; state.target = null; state.selected = null; state.run = null; state.events = []; state.verification = null; state.view = 'home';
     }
     sessionStorage.setItem('ss-session-owner', identity.owner_id);
     const [targets, items] = await Promise.all([api.targets(), allPages(after => api.investigations(after))]);
     if (generation !== state.epoch) return;
-    state.target = supportedTarget(targets);
+    state.targets = supportedTargets(targets);
+    state.target = state.targets.find(target => target.target_id === 'owned-ledger-v1') || state.targets[0] || null;
     state.investigations = items.sort((a, b) => b.created_at.localeCompare(a.created_at));
     const saved = sessionStorage.getItem('ss-selected-investigation');
     if (saved && items.some(item => item.investigation_id === saved)) await openInvestigation(saved);
@@ -197,7 +198,8 @@ async function openInvestigation(id: string) {
     const runs = await allPages(after => api.runs(id, after));
     if (generation !== state.epoch) return;
     if (state.selected?.investigation_id !== id) state.messages = state.ownerId ? loadNotes(sessionStorage, state.ownerId, id) : [];
-    state.selected = item; state.run = [...runs].sort((a, b) => b.created_at.localeCompare(a.created_at))[0] || null; state.events = []; state.verification = null;
+    state.selected = item; state.target = state.targets.find(target => target.scope_digest === item.scope_digest) || null;
+    state.run = [...runs].sort((a, b) => b.created_at.localeCompare(a.created_at))[0] || null; state.events = []; state.verification = null;
     state.uncertain = !!state.run && sessionStorage.getItem(`ss-execution-uncertain:${state.run.run_id}`) === '1';
     state.actionUncertain = state.run ? sessionStorage.getItem(`ss-action-uncertain:${state.run.run_id}`) : null;
     sessionStorage.setItem('ss-selected-investigation', id); state.view = 'conversation';
@@ -249,11 +251,19 @@ async function refresh(showErrors = true) {
     }
   }
 }
+function chooseTarget() {
+  if (!state.session) { account(); return; }
+  if (state.selected) { toast('Start a new investigation to choose another target.'); return; }
+  if (!state.targets.length) { toast('No supported target is available from this backend.'); return; }
+  if (state.targets.length === 1) { state.target = state.targets[0]; reviewScope(); return; }
+  showDialog('Choose a supported target', `<p>These owned fixtures are provided by the connected service. Both run without AI inference.</p><div class="target-options">${state.targets.map(target => `<button class="list-row" type="button" data-target-id="${esc(target.target_id)}">${icon('flask-conical')}<span class="row-main"><strong>${esc(target.label)}</strong><small>${target.target_id === 'owned-ledger-v1' ? 'CLI ledger · 25-case suite' : 'Loopback HTTP tasks · 30-case suite'} · NON_AI${target.execution_enabled ? '' : ' · execution unavailable'}</small></span></button>`).join('')}</div><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Cancel</button></div>`);
+}
 function reviewScope() {
   if (!state.session) { account(); return; }
   if (!state.target) { toast('No supported target is available from this backend.'); return; }
   const scope = state.target.scope;
-  showDialog('Review scope', `<p>Investigate the owned ledger fixture using the NON_AI control. No website will be visited and no model call or spending is authorized.</p><ul class="scope-list"><li>Observe the fixture’s add, list, total and remove behavior.</li><li>Evaluate a separate scripted candidate against the independent fixture suite.</li><li>Store the run and permitted evidence under your account.</li></ul><details><summary>View exact scope</summary><pre class="scope-json">${esc(JSON.stringify(scope, null, 2))}</pre><p>Scope digest: <code>${esc(state.target.scope_digest)}</code></p></details><label class="check-row"><input type="checkbox" id="scopeConsent"> I confirm this scope and understand the run is NON_AI.</label><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Cancel</button><button class="pill-btn primary" data-action="create">Create investigation</button></div>`);
+  const http = state.target.target_id === 'owned-http-task-workflow-v1';
+  showDialog('Review scope', `<p>Investigate the ${http ? 'owned HTTP task-workflow fixture on loopback' : 'owned ledger fixture'} using the NON_AI control. No external website will be visited and no model call or spending is authorized.</p><ul class="scope-list"><li>${http ? 'Observe scoped task creation, transitions and access rules on the owned local fixture.' : 'Observe the fixture’s add, list, total and remove behavior.'}</li><li>Evaluate a separate scripted candidate against the independent fixture suite.</li><li>Store the run and permitted evidence under your account.</li></ul><details><summary>View exact scope</summary><pre class="scope-json">${esc(JSON.stringify(scope, null, 2))}</pre><p>Scope digest: <code>${esc(state.target.scope_digest)}</code></p></details><label class="check-row"><input type="checkbox" id="scopeConsent"> I confirm this scope and understand the run is NON_AI.</label><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Cancel</button><button class="pill-btn primary" data-action="create">Create investigation</button></div>`);
 }
 function confirmAuthorization() {
   const item = state.selected; if (!item) return;
@@ -272,7 +282,7 @@ async function mutate(action: string) {
       // Reuse both key and immutable payload after a lost acknowledgement.
       const pending = JSON.parse(sessionStorage.getItem('ss-create-pending') || 'null') as { key: string; title: string; digest: string } | null;
       if (pending && pending.digest !== state.target.scope_digest) throw new Error('The available scope changed. Resolve the previous request before creating another.');
-      const title = pending?.title || (state.messages[0]?.trim().slice(0, 120) || 'Owned ledger investigation');
+      const title = pending?.title || (state.messages[0]?.trim().slice(0, 120) || `${state.target.label} investigation`);
       const key = pending?.key || crypto.randomUUID();
       sessionStorage.setItem('ss-create-pending', JSON.stringify({ key, title, digest: state.target.scope_digest }));
       const created = await api.create(title, state.target.scope, key);
@@ -317,7 +327,7 @@ async function mutate(action: string) {
   finally { if (generation === state.epoch) { state.busy = false; render(); } }
 }
 async function execute() {
-  if (!state.run || !state.target?.execution_enabled || state.executing || state.uncertain) return;
+  if (!state.run || !state.selected || !state.target?.execution_enabled || state.selected.scope_digest !== state.target.scope_digest || state.executing || state.uncertain) return;
   const run = state.run; const generation = state.epoch;
   state.executing = true; state.uncertain = true; sessionStorage.setItem(`ss-execution-uncertain:${run.run_id}`, '1'); render();
   pollTimer = window.setTimeout(() => { void refresh(false); }, 1000);
@@ -347,7 +357,7 @@ function showVerification() {
   if (!v?.evaluation) { toast('Verification is not available for this run.'); return; }
   const e = v.evaluation;
   const repair = v.repair;
-  showDialog('Independent verification', `<p><strong>NON_AI fixture comparison</strong> · not a genuine model score.</p><div class="scoreline"><strong>${e.passed} passed</strong><span>${e.failed} failed</span><span>${e.indeterminate} indeterminate</span><span>${e.total} total</span></div>${repair ? `<h3>Candidate lineage</h3><p>Selected: ${esc(repair.selected_version)} · ${esc(repair.verdict.replaceAll('_', ' '))}</p><ol class="lineage">${repair.versions.map(version => `<li>Round ${version.round}: ${version.evaluation.passed}/${version.evaluation.total} passed · ${esc(version.candidate_digest.slice(0, 19))}…</li>`).join('')}</ol>` : '<p>Repair history is unavailable.</p>'}<p class="component-note">Candidate files, detailed observations and sealed evaluator cases are not available in this interface.</p><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Close</button></div>`);
+  showDialog('Independent verification', `<p><strong>NON_AI fixture comparison</strong> · not a genuine model score.</p><div class="scoreline"><strong>${e.passed} passed</strong><span>${e.failed} failed</span><span>${e.indeterminate} indeterminate</span><span>${e.total} total</span></div>${repair ? `<h3>Candidate lineage</h3><p>Selected: ${esc(repair.selected_version)} · ${esc(repair.verdict.replaceAll('_', ' '))}</p><ol class="lineage">${repair.versions.map(version => `<li>Round ${version.round}: ${version.evaluation.passed}/${version.evaluation.total} passed · ${esc(version.candidate_digest.slice(0, 19))}…</li>`).join('')}</ol>${state.target?.target_id === 'owned-http-task-workflow-v1' ? '<p class="component-note">This deterministic repair control uses previously collected active evidence; it does not show AI independently discovering a fix.</p>' : ''}` : '<p>Repair history is unavailable.</p>'}<p class="component-note">Candidate files, detailed observations and sealed evaluator cases are not available in this interface.</p><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Close</button></div>`);
 }
 function showResearch() {
   showDialog('Historical research record', `<p>This is a previously recorded research result, not an investigation run from this application. Starting genuine model inference is not available here.</p><h3>Meta-generated candidate</h3><p>The research record reports an admitted candidate generated by <strong>muse-spark-1.3</strong> and evaluated using the independent ledger suite.</p><div class="scoreline"><strong>14 passed</strong><span>11 failed</span><span>0 indeterminate</span><span>25 total</span></div><dl class="report-meta"><dt>Candidate SHA-256</dt><dd><code>ee1f3f32e66050bbdf2dde86aaba09e56d17b25c21c35762eeea6208c2a146cd</code></dd><dt>Evaluation suite SHA-256</dt><dd><code>0423935021db574bb68f654c1c37896c6ad4f6e5c40707c1bbe38459178b015b</code></dd></dl><p>No genuine repair was performed. The original private model and evaluator receipts have not yet received an independent artifact-level audit. This result does not establish general equivalence.</p><h3>Separate NON_AI control</h3><p>A local deterministic mock test recorded 22 passed, 3 failed and 0 indeterminate out of 25. It is not a Meta-generated candidate or a live result from this application. These figures are not a fair performance comparison.</p><p><a href="https://github.com/Ankit6149/second-source/issues/25#issuecomment-6547391799" target="_blank" rel="noopener noreferrer">Read the research review and limitations</a></p><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Close</button></div>`);
@@ -380,8 +390,13 @@ async function downloadExport() {
 }
 
 document.addEventListener('click', event => {
-  const target = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-action],[data-investigation],[data-suggestion]') : null;
+  const target = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-action],[data-investigation],[data-suggestion],[data-target-id]') : null;
   if (!target) return;
+  if (target.dataset.targetId) {
+    const chosen = state.targets.find(item => item.target_id === target.dataset.targetId);
+    if (chosen && !state.selected) { state.target = chosen; reviewScope(); }
+    return;
+  }
   if (target.dataset.investigation) { void openInvestigation(target.dataset.investigation); return; }
   if (target.dataset.suggestion) { state.draft = target.dataset.suggestion; sessionStorage.setItem('ss-product-draft', state.draft); render(); const input = el<HTMLTextAreaElement>('promptInput'); input?.dispatchEvent(new Event('input', { bubbles: true })); input?.focus(); return; }
   const action = target.dataset.action;
@@ -390,7 +405,7 @@ document.addEventListener('click', event => {
   else if (action === 'account') account();
   else if (action === 'sign-in') { void signIn().catch(setError); }
   else if (action === 'sign-out') { const owner = state.ownerId; void signOut().then(() => { if (owner) clearOwnerNotes(sessionStorage, owner); sessionStorage.removeItem('ss-selected-investigation'); sessionStorage.removeItem('ss-create-pending'); sessionStorage.removeItem('ss-product-draft'); state.draft = ''; state.messages = []; closeDialog(); }).catch(setError); }
-  else if (action === 'select-target' || action === 'review-scope') reviewScope();
+  else if (action === 'select-target' || action === 'review-scope') chooseTarget();
   else if (action === 'authorize') confirmAuthorization();
   else if (action === 'create' || action === 'confirm-authorization' || action === 'queue' || action === 'cancel' || action === 'reconcile') void mutate(action);
   else if (action === 'execute') void execute();

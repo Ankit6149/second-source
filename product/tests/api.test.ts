@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Api, ApiError, validatedOrigin, type Run } from '../src/api.ts';
 import { detectReference } from '../src/reference.ts';
-import { supportedTarget } from '../src/targets.ts';
+import { supportedTarget, supportedTargets } from '../src/targets.ts';
 
 const run: Run = { run_id: '12345678-1234-1234-1234-123456789abc', investigation_id: '12345678-1234-1234-1234-123456789abc', status: 'queued', stage: null, revision: 1, created_at: '2026-01-01T00:00:00Z', cancel_requested: false, error_code: null, result: null };
 
@@ -13,6 +13,15 @@ test('target discovery fails closed for unknown, malformed and ambiguous capabil
   assert.equal(supportedTarget([valid, valid]), null);
   for (const input of [null, {}, [null], [valid, { ...valid, run_kind: 'g3_real' }], [{ ...valid, target_id: 'future-http' }], [{ ...valid, run_kind: 'g3_real' }], [{ ...valid, execution_enabled: 'true' }], [{ ...valid, scope_digest: 'bad' }], [{ ...valid, scope: [] }], [{ ...valid, scope: {} }], [{ ...valid, scope: { ...scope, budgets: { ...scope.budgets, max_estimated_model_spend_usd: 1 } } }]])
     assert.equal(supportedTarget(input), null);
+});
+
+test('HTTP target is accepted only for the exact nonbillable loopback scope', () => {
+  const scope = { scope_version: '1', target: { kind: 'http', permission_ref: 'owned-http-task-workflow-v1', reference_url: 'http://127.0.0.1:8000/', reference_command_id: null }, goal: 'Reconstruct the owned stateful HTTP task-workflow API service', mode: 'selected_flows', observation: { allowed_url_patterns: ['/v1/tasks', '/v1/tasks/*'], allowed_roles: ['bob', 'admin', 'alice', 'viewer', 'guest'], permitted_actions: ['http_patch', 'http_delete', 'http_get', 'http_post'], allowed_commands: [], authenticated_access: 'authorized_test_account' }, implementation: { route_patterns: ['/v1/tasks', '/v1/tasks/*'], required_flows: ['task_crud', 'task_transitions', 'task_rbac', 'task_query'], requirements: ['REQ-HTTP-TASKS'], allowed_subsystems: ['http_task_workflow'], fidelity: ['behavioral'] }, exclusions: { url_patterns: ['/__admin/**'], subsystems: ['billing', 'external_webhooks', 'real_oauth'], external_side_effects: ['email', 'webhook'] }, budgets: { max_reference_experiments: 40, max_model_calls: 10, max_repair_rounds: 2, max_wall_seconds: 600, max_estimated_model_spend_usd: 0 } };
+  const target = { target_id: 'owned-http-task-workflow-v1', label: 'Owned HTTP task-workflow fixture', run_kind: 'g3_mock', origin: 'mock', real: false, execution_enabled: true, scope, scope_digest: '190a19810a956c5626594bd6d48f7b6d37d3355e28ffaa50f177d6df6c85f8fe' };
+  assert.deepEqual(supportedTargets([target]), [target]);
+  assert.deepEqual(supportedTargets([target, target]), []);
+  assert.deepEqual(supportedTargets([{ ...target, scope: { ...scope, target: { ...scope.target, reference_url: 'https://example.com/' } } }]), []);
+  assert.deepEqual(supportedTargets([{ ...target, scope: { ...scope, budgets: { ...scope.budgets, max_estimated_model_spend_usd: 1 } } }]), []);
 });
 
 test('origins are fixed HTTPS origins, with localhost only in development', () => {

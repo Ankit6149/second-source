@@ -1,7 +1,7 @@
 /** Browser contract for the reviewed v1 OpenAPI. No privileged credentials. */
 export type RunStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled' | 'needs_reconciliation';
 export type Scope = Record<string, unknown>;
-export interface Target { target_id: 'owned-ledger-v1'; label: string; run_kind: 'g3_mock'; origin: 'mock'; real: false; execution_enabled: boolean; scope: Scope; scope_digest: string }
+export interface Target { target_id: 'owned-ledger-v1' | 'owned-http-task-workflow-v1'; label: string; run_kind: 'g3_mock'; origin: 'mock'; real: false; execution_enabled: boolean; scope: Scope; scope_digest: string }
 export interface Investigation { investigation_id: string; title: string; scope: Scope; scope_digest: string; status: 'created' | 'authorized'; revision: number; created_at: string }
 export interface Evaluation { passed: number; failed: number; indeterminate: number; total: number }
 export interface Run { run_id: string; investigation_id: string; status: RunStatus; stage: string | null; revision: number; created_at: string; cancel_requested: boolean; error_code: string | null; result: { origin: 'mock'; real: false; evaluation: Evaluation | null } | null }
@@ -74,7 +74,7 @@ export class Api {
   }
   session() { return this.json<{ owner_id: string; authenticated: true }>('/v1/session'); }
   capabilities() { return this.json<{ enabled_run_kinds: string[]; real_inference_enabled: false; execution_mode?: string }>('/v1/capabilities'); }
-  targets() { return this.json<Target[]>('/v1/targets'); }
+  targets() { return this.json<Target[]>('/v1/targets?include_g4=true'); }
   investigations(after?: string) { return this.json<{ items: Investigation[]; next_after: string | null }>(`/v1/investigations?limit=100${after ? `&after=${identifier(after)}` : ''}`); }
   investigation(id: string) { return this.json<Investigation>(`/v1/investigations/${identifier(id)}`); }
   create(title: string, scope: Scope, key: string) { return this.json<Investigation>('/v1/investigations', { method: 'POST', headers: { 'Idempotency-Key': key }, body: JSON.stringify({ title, scope }) }, true); }

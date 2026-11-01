@@ -69,9 +69,16 @@ the recorded evaluator. It exits nonzero on an invalid or unreadable bundle.
 4. Show the report's counts, candidate lineage where available, and verify the
    exported ZIP with the command above. Explain any unavailable evidence and
    that no genuine repair improvement has been measured.
-5. Do not present the HTTP target as integrated until its full worker path is
-   independently accepted. Record the walkthrough with the operator's normal
-   screen recorder and review it for private data before sharing.
+5. If the connected backend offers the owned HTTP task-workflow fixture, select
+   it explicitly, review its loopback-only scope, authorize it and run the
+   NON_AI control. Show its actual verification and selected candidate lineage.
+   Its deterministic repair uses previously collected active evidence; it is
+   not an AI-discovered fix or a genuine Meta score. Export and verify the
+   bundle. The HTTP target is unavailable when the backend does not advertise
+   its exact supported contract.
+6. Record the walkthrough with the operator's normal screen recorder and review
+   it for private data before sharing. State that two synthetic identities and
+   fake Storage are local test substitutes, not hosted acceptance.
 
 The three-minute length in the submission runbook is an internal target, not a
 verified organizer requirement. Check the actual submission portal before

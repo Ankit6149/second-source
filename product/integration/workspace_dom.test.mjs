@@ -95,6 +95,7 @@ test('workspace controls drive an authorized NON_AI investigation through the lo
     input.dispatchEvent(new window.Event('input', { bubbles: true }));
     doc.querySelector('#composer').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
     doc.querySelector('[data-action="select-target"]').click();
+    doc.querySelector('[data-target-id="owned-ledger-v1"]').click();
     doc.querySelector('#scopeConsent').checked = true;
     doc.querySelector('[data-action="create"]').click();
     (await until(() => doc.querySelector('[data-action="authorize"]'), 'created investigation')).click();
@@ -143,6 +144,7 @@ test('workspace controls drive an authorized NON_AI investigation through the lo
     assert.doesNotMatch(other.document.querySelector('#content').textContent, /Local investigation note/);
     doc.querySelector('[data-action="new"]').click();
     doc.querySelector('[data-action="select-target"]').click();
+    doc.querySelector('[data-target-id="owned-ledger-v1"]').click();
     doc.querySelector('#scopeConsent').checked = true;
     doc.querySelector('[data-action="create"]').click();
     (await until(() => doc.querySelector('[data-action="authorize"]'), 'second investigation')).click();

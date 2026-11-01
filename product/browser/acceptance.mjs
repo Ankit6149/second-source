@@ -157,9 +157,9 @@ try {
 
   const switching = await context({ viewport: { width: 1280, height: 800 } }, { userId: owner, accessToken: token });
   const switchPage = await switching.newPage(); await switchPage.goto(origin);
-  await switchPage.getByText('Available here: the owned ledger NON_AI fixture.', { exact: false }).waitFor();
+  await switchPage.getByText('Available here: owned ledger and HTTP task-workflow NON_AI fixtures.', { exact: false }).waitFor();
   await switchPage.locator('#promptInput').fill('Private stale list marker'); await switchPage.locator('#promptInput').press('Enter');
-  await switchPage.getByRole('button', { name: 'Choose a supported target' }).click(); await switchPage.locator('#scopeConsent').check();
+  await switchPage.getByRole('button', { name: 'Choose a supported target' }).click(); await switchPage.locator('[data-target-id="owned-ledger-v1"]').click(); await switchPage.locator('#scopeConsent').check();
   holdList = true; await switchPage.getByRole('button', { name: 'Create investigation' }).click();
   await Promise.race([listRequested, new Promise((_, reject) => setTimeout(() => reject(new Error('Delayed investigation list was not requested')), 15000))]);
   await switchPage.locator('[data-action="account"]').click(); await switchPage.getByRole('button', { name: 'Sign out' }).click();
@@ -175,10 +175,11 @@ try {
   app.on('requestfailed', request => console.error('Browser request failed:', new URL(request.url()).origin, request.failure()?.errorText));
   app.on('console', message => { if (message.type() === 'error') console.error('Browser console:', message.text()); });
   await app.goto(origin);
-  try { await app.getByText('Available here: the owned ledger NON_AI fixture.', { exact: false }).waitFor({ timeout: 15000 }); }
+  try { await app.getByText('Available here: owned ledger and HTTP task-workflow NON_AI fixtures.', { exact: false }).waitFor({ timeout: 15000 }); }
   catch (error) { console.error('Workspace state:', (await app.locator('body').innerText()).slice(0, 1600)); throw error; }
   await app.locator('#promptInput').fill('Real browser fixture acceptance'); await app.locator('#promptInput').press('Enter');
   await app.getByRole('button', { name: 'Choose a supported target' }).click();
+  await app.locator('[data-target-id="owned-ledger-v1"]').click();
   await app.locator('#scopeConsent').check(); await app.getByRole('button', { name: 'Create investigation' }).click();
   await app.getByRole('button', { name: 'Confirm scope' }).click(); await app.locator('#scopeConsent').check();
   await app.getByRole('button', { name: 'Authorize scope' }).click(); await app.getByRole('button', { name: 'Queue mock run' }).click();
@@ -228,9 +229,39 @@ try {
   const reportResponse = app.waitForResponse(response => response.headers()['x-ss-test-response'] === 'delayed-report');
   releaseReport(); await (await reportResponse).finished(); await app.evaluate(() => new Promise(resolve => setTimeout(resolve, 0)));
   assert.equal(await app.locator('dialog[open]').count(), 0, 'a stale report cannot appear after navigation');
+
+  // The separate HTTP fixture is discovered from the real local API and remains NON_AI.
+  await app.locator('#promptInput').fill('HTTP task workflow acceptance'); await app.locator('#promptInput').press('Enter');
+  await app.getByRole('button', { name: 'Choose a supported target' }).click();
+  await app.locator('[data-target-id="owned-http-task-workflow-v1"]').click();
+  assert.match(await app.locator('dialog').innerText(), /loopback/);
+  await app.locator('#scopeConsent').check(); await app.getByRole('button', { name: 'Create investigation' }).click();
+  await app.getByRole('button', { name: 'Confirm scope' }).click(); await app.locator('#scopeConsent').check();
+  await app.getByRole('button', { name: 'Authorize scope' }).click(); await app.getByRole('button', { name: 'Queue mock run' }).click();
+  const g4RunId = latestQueuedSnapshot.run_id;
+  await app.getByRole('button', { name: 'Start NON_AI run' }).click();
+  await app.getByRole('button', { name: 'View verification' }).waitFor({ timeout: 200000 });
+  await app.getByRole('button', { name: 'View verification' }).click();
+  assert.match(await app.locator('dialog').innerText(), /30 passed/);
+  assert.match(await app.locator('dialog').innerText(), /previously collected active evidence/);
+  await app.screenshot({ path: path.join(output, 'g4-desktop-verification.png') });
+  await app.getByRole('button', { name: 'Close', exact: true }).last().click();
+  await app.getByRole('button', { name: 'Open report' }).click();
+  await app.getByRole('heading', { name: 'Sanitized report' }).waitFor();
+  assert.match(await app.locator('dialog').innerText(), /NON_AI fixture result/);
+  await app.getByRole('button', { name: 'Close', exact: true }).last().click();
+  const g4DownloadPromise = app.waitForEvent('download');
+  await app.getByRole('button', { name: 'Download integrity export' }).click();
+  const g4ExportPath = path.join(output, 'g4-fixture-export.zip');
+  await (await g4DownloadPromise).saveAs(g4ExportPath);
+  const g4Verified = spawnSync(process.env.PYTHON || 'python', ['-c', 'import sys; sys.path.insert(0,"../src"); from second_source.backend.artifacts import verify_bundle; print(verify_bundle(open(sys.argv[1],"rb").read())["valid"])', g4ExportPath], { encoding: 'utf8' });
+  assert.equal(g4Verified.status, 0, g4Verified.stderr); assert.equal(g4Verified.stdout.trim(), 'True');
+  await app.reload(); await app.getByRole('button', { name: 'View verification' }).waitFor();
+  assert.match(await app.locator('#content').innerText(), /HTTP task-workflow fixture/);
+
   const other = await context({ ...devices['iPhone 13'], defaultBrowserType: undefined }, { userId: otherOwner, accessToken: otherToken });
   const second = await other.newPage(); await second.goto(origin);
-  await second.getByText('Available here: the owned ledger NON_AI fixture.', { exact: false }).waitFor();
+  await second.getByText('Available here: owned ledger and HTTP task-workflow NON_AI fixtures.', { exact: false }).waitFor();
   await second.getByRole('button', { name: 'Toggle navigation' }).click();
   await second.getByRole('button', { name: 'Your work' }).click();
   assert.match(await second.locator('#content').innerText(), /No investigations yet/);
@@ -240,9 +271,15 @@ try {
     return response.status;
   }, { id: firstRunId, accessToken: otherToken });
   assert.equal(forbidden, 404, 'second owner cannot read the first owner run');
+  for (const suffix of ['', '/report', '/export.zip']) {
+    const status = await second.evaluate(async ({ id, accessToken, suffix }) => (await fetch(`https://backend.test/v1/runs/${id}${suffix}`, { headers: { Authorization: `Bearer ${accessToken}` } })).status,
+      { id: g4RunId, accessToken: otherToken, suffix });
+    assert.equal(status, 404, 'second owner cannot read the HTTP run or its artifacts');
+  }
   await second.getByRole('button', { name: 'Close navigation' }).click();
   await second.locator('.topbar [data-action="new"]').click();
   await second.getByRole('button', { name: 'Choose a supported target' }).click();
+  await second.locator('[data-target-id="owned-ledger-v1"]').click();
   await second.locator('#scopeConsent').check(); await second.getByRole('button', { name: 'Create investigation' }).click();
   await second.getByRole('button', { name: 'Confirm scope' }).click(); await second.locator('#scopeConsent').check();
   await second.getByRole('button', { name: 'Authorize scope' }).click(); await second.getByRole('button', { name: 'Queue mock run' }).click();
@@ -267,6 +304,24 @@ try {
   releaseExecution(); await (await executionResponse).finished();
   await second.waitForFunction(() => { const button = document.querySelector('[data-action="queue"]'); return button && !button.disabled; }, null, { timeout: 15000 });
   syntheticTerminal = null;
+  await second.locator('.topbar [data-action="new"]').click();
+  await second.locator('#promptInput').fill('Mobile HTTP fixture'); await second.locator('#promptInput').press('Enter');
+  await second.getByRole('button', { name: 'Choose a supported target' }).click();
+  await second.locator('[data-target-id="owned-http-task-workflow-v1"]').click();
+  await second.locator('#scopeConsent').check(); await second.getByRole('button', { name: 'Create investigation' }).click();
+  await second.getByRole('button', { name: 'Confirm scope' }).click(); await second.locator('#scopeConsent').check();
+  await second.getByRole('button', { name: 'Authorize scope' }).click(); await second.getByRole('button', { name: 'Queue mock run' }).click();
+  const mobileG4RunId = latestQueuedSnapshot.run_id;
+  await second.getByRole('button', { name: 'Start NON_AI run' }).click();
+  await second.getByRole('button', { name: 'View verification' }).waitFor({ timeout: 200000 });
+  await second.getByRole('button', { name: 'View verification' }).click();
+  assert.match(await second.locator('dialog').innerText(), /30 passed/);
+  await second.screenshot({ path: path.join(output, 'g4-mobile-verification.png') });
+  await second.getByRole('button', { name: 'Close', exact: true }).last().click();
+  await second.reload(); await second.getByRole('button', { name: 'View verification' }).waitFor();
+  const reverseOwner = await app.evaluate(async ({ id, accessToken }) => (await fetch(`https://backend.test/v1/runs/${id}/report`, { headers: { Authorization: `Bearer ${accessToken}` } })).status,
+    { id: mobileG4RunId, accessToken: token });
+  assert.equal(reverseOwner, 404, 'first owner cannot read the second owner HTTP report');
   rejectSession = true; await second.reload();
   await second.getByText(/session has expired/i).waitFor();
   assert.doesNotMatch(await second.locator('#content').innerText(), /cancelled/i);
