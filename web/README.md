@@ -1,7 +1,9 @@
 # Second Source public research preview
 
-A static landing page and an actual local evidence viewer. No account, model,
-backend, database, telemetry or external font request is made by these pages.
+A static landing page and an actual local evidence viewer. The landing and
+viewer make no account, model, backend, database, telemetry or external font
+request. The optional workspace can contact its configured identity and API
+services; it remains unconfigured by default.
 The landing experiment is illustrative; the console distinguishes historical
 operator-reported real attempts, NON_AI controls and unverified local imports.
 No control launches inference or authorizes spending.
