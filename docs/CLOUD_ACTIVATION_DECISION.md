@@ -48,6 +48,19 @@ adds a unique constraint to existing `ss.runs`, an additive **schema change**
 that must be specifically reviewed even though it does not intentionally alter
 rows. Recheck live history, role grants and existing data before any approved DDL.
 
+## Alternative: isolated synthetic staging project
+
+Read-only inventory shows the existing Free organization has two active projects.
+Supabase documents a two-active-Free-project limit, so a third active project
+appears unavailable without a separate owner decision; account-specific eligibility
+and a project-specific cost quote are unverified. Do not pause, delete or repurpose
+another project. A new project also cannot be wired by changing environment
+variables alone: frontend Auth, backend project validation and Storage currently
+pin the existing project. A reviewed explicit project-selection contract and
+cross-project rejection tests are prerequisites. No project creation, credentials,
+migrations or hosting changes are authorized by this analysis. See
+[Supabase billing guidance](https://supabase.com/docs/guides/platform/billing-on-supabase).
+
 ## Stable staging origin and CI limits
 
 The existing separate preview project has the branch alias

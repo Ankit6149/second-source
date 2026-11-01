@@ -10,6 +10,16 @@ import pytest
 HTML = (Path(__file__).resolve().parents[1] / "demo" / "index.html").read_text(encoding="utf-8")
 
 
+def test_public_research_status_is_historical_and_not_live_inference():
+    root = Path(__file__).resolve().parents[1]
+    for name in ("web/index.html", "landing/index.html"):
+        page = (root / name).read_text(encoding="utf-8")
+        assert "14 passed" in page and "11 failed" in page
+        assert "independent artifact audit" in page
+        assert "live inference" in page
+        assert "Both real attempts stopped before admission" not in page
+
+
 class Nodes(HTMLParser):
     def __init__(self):
         super().__init__()

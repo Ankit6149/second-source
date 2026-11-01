@@ -29,7 +29,7 @@ The product **does not** recover source code, bypass access controls, clone unsp
 7. **Bounded repair:** if implemented and observed, show before/after improvement using the **same** independent tests. Never claim repair if not demonstrated.
 8. **Final audit view:** runtime, model ID, estimated cost vs provider billing, exclusions, unknowns, evidence references.
 
-## Three-minute recorded story (180 seconds MAX)
+## Three-minute recorded story (internal target; organizer video limit unverified)
 
 | Elapsed | Visual / voiceover | Proof artifact |
 |---|---|---|
@@ -52,7 +52,7 @@ The product **does not** recover source code, bypass access controls, clone unsp
 - [ ] Model-generated candidate **if claimed** with its manifest, bounded executor proof, reference separation
 - [ ] Independent withheld evaluation, reported denominator, concrete passed/failed/indeterminate counts
 - [ ] Controlled negative case: forbidden command/output file rejected, no secret or privileged action disclosed
-- [ ] Demo video <=180 seconds, audible narration, readable terminal and result labels, public accessible URL
+- [ ] Demo video targets <=180 seconds, with audible narration, readable terminal and result labels and a public URL; confirm the actual organizer limit in the participant portal
 - [ ] Live hosted demo URL **only if working and safe**; fallback local deterministic demo noted as such
 - [ ] Screenshot/thumbnail: scope > hypothesis > experiment > evidence > candidate > score
 - [ ] Description: problem, technical novelty, Meta API use, safeguards, target users, limitations, comparison against baseline
