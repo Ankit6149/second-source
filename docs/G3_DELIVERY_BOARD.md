@@ -1,8 +1,27 @@
 # Second Source — authoritative delivery board
 
-**CURRENT — 29 October 2026 IST.** Single current status source. Dated audit records are historical. [Product PRD](MASTER_PRD.md); [owner backend directive](https://github.com/Ankit6149/second-source/issues/2#issuecomment-6477673246); [ownership/policy](COORDINATION_CHARTER.md).
+**CURRENT STATUS — 1 November 2026 IST.** This is the canonical source for the active implementation/release gates. The dated October 29 records *below the current status table* are preserved as **historical evidence**, not today's branch or acceptance verdict. [Document index](README.md) · [Master PRD](MASTER_PRD.md) · [Coordination](COORDINATION_CHARTER.md) · [Issue #25](https://github.com/Ankit6149/second-source/issues/25).
 
-## Published baseline
+## Current verified status
+
+**Verified coordination snapshot — 1 November 2026.** Repository `main` is `951ed681ab707a54e9e76a3377546235c98a0369` (reviewed backend PR [#21](https://github.com/Ankit6149/second-source/pull/21) merged). The scientific and product enhancements below remain **on unmerged PR branches**; they are not runtime capabilities of `main`.
+
+| Gate | Verified evidence | Current decision |
+|:--|:--|:--|
+| **G3, genuine Meta reconstruction** | [Scientific PR #23](https://github.com/Ankit6149/second-source/pull/23) at `d7508ce33e67b414370b29cc0db713800d72fb59`, [exact-head Linux/Windows CI success](https://github.com/Ankit6149/second-source/actions/runs/41237650430). Its archived rev-6 record reports an **admitted real model-generated candidate: 14 passed / 11 failed / 0 indeterminate out of 25**; a local zero-call replay reportedly agrees. | **Genuine candidate demonstrated on PR; independent inspection of private run receipts still outstanding.** No verified genuine repair improvement. |
+| **G4, second distinct surface** | PR #23 includes `fixtures/owned_ledger_variant/` with altered rules but the **same JSONL add/list/total/remove surface**. | **BLOCKED:** not yet an independently demonstrated distinct HTTP/browser target. |
+| **G5, hosted application** | [Frontend PR #24](https://github.com/Ankit6149/second-source/pull/24) at `ee81f37d5ba735685aa8586e7122db9d033b8784`, [exact-head Linux/Windows Python CI success](https://github.com/Ankit6149/second-source/actions/runs/41279523175); local real-Chromium synthetic journey reported passing. Hosted Supabase/Render Auth/worker/two-user acceptance unverified. | **NO-GO:** existing Supabase project has no verified project-specific database + private Storage restore, and live migrations are not approved. Frontend workflow is prepared but not installed. |
+| **G6, submission** | Submission runbook exists; genuine and NON_AI demonstrations are distinguishable. | **NOT COMPLETE:** final verified hosted demo, evidence bundle, recording and portal submission remain open. |
+
+**Accuracy and provenance:** The distinct deterministic **NON_AI** fixture scored **22/25**; it is **not** the genuine Meta result. The genuine **14/25** result is recorded in the unmerged scientific PR, not a newly executed run in the hosted product. Neither score establishes generalized software equivalence or superiority to other AI coding systems. All paid model calls, migrations, data exports, resource creation, credentials, protected merges and production promotions require separate explicit approvals. GitHub source/CI verification does not substitute for local private-artifact or hosted acceptance verification.
+
+---
+
+## Archived October 29 delivery snapshot (historical, not current)
+
+> The following `CURRENT`, `Current verified main`, test totals and pending status statements were authored at the old checkpoint and must not override the November 1 table. Existing historical citations and hashes are retained.
+
+### Published baseline — 29 October archived
 
 **Current verified main:** `1ba89054b7335aa7c26a0fa9e347d7d766eeeafe`, merged
 [PR #11](https://github.com/Ankit6149/second-source/pull/11) with
@@ -29,7 +48,7 @@ Muse owns intelligence/gateway/generation/admission. [Guided synthesis PR #9](ht
 
 Backend reproduction: [operations](BACKEND_OPERATIONS.md), [typed API/OpenAPI contract](BACKEND_API.md). The shared CLI/API control plane persists mock-only approvals, idempotent queueing, fenced leases, durable CODE events, cancellation and expired-run quarantine without replay. Its bounded worker calls the existing engine and reproduces **22/3/0/25 NON_AI**, then verifies a sanitized integrity bundle and restart. No paid engine adapter or HTTP spending authority is enabled; private original engine artifacts remain outside the public export.
 
-## Frozen operator proposal — no spending authorization
+### Frozen operator proposal — no spending authorization
 
 The [latest Issue #2 handoff](https://github.com/Ankit6149/second-source/issues/2#issuecomment-6493220085)
 records independent reproduction in the actual operator checkout at `1ba8905`:
@@ -55,7 +74,7 @@ Raw-byte operator code pins are authoritative; LF/CRLF differs across worktrees.
 Backend work in the verifier checkout does not authorize substituting that
 checkout, editing frozen inputs, or refreshing the proposal silently.
 
-## Nonbillable database continuation
+### Nonbillable database continuation
 
 `feat/postgres-baseline` in the separate verifier checkout records the
 [unchanged already-applied SQL and lifecycle mapping](../supabase/README.md).
@@ -68,7 +87,7 @@ Independent review and exact-head CI are still required before merge.
 This is a baseline prerequisite, not an implemented/connected cloud adapter.
 No live DB access, credentials, migration application, inference or deployment.
 
-## Genuine evidence — never confuse with controls
+### Genuine evidence — never confuse with controls
 
 New genuine G2 `real-g2-20261028T163538Z-fd60310f`: 3 original hypotheses, 5 observations, one model-selected 3-action experiment, 2 real meta-direct/muse-spark-1.3 receipts. Input 2809/output 2347; estimate USD0.013486, uncertain 0. Witness `947910b0f645b78b9234859a899db3412171cbbbb3c400e072c9f661840e31f8`; original batch SHA `8fb04fa0dcf9e86b5fac5716bea2693966bc6144851ee34a785ca8071e7e615f`. Original witnesses/all five observations rechecked during continuation. Old 27 October missing hypotheses remain missing, not reconstructed.
 
@@ -83,11 +102,11 @@ Original evidence remains only in operator checkout's ignored `.runs`; second au
 
 **NON_AI:** trusted positive 25/25; deliberate negative sensitivity 2/2/1; scripted mock 22/25. Never genuine reconstruction quality.
 
-## Historical pins — spent authorization
+### Historical pins — spent authorization
 
 Second G3 source `ceb28b6f2f2292f75f766fbd3fbefc0822cfef98`; context `sha256:8c65ba3baf30f4b08328200b6b27e77cc64cab3b23ff40c06e72c1294996493e`; unchanged private 25-case suite `sha256:0423935021db574bb68f654c1c37896c6ad4f6e5c40707c1bbe38459178b015b`. Packet SHA `a970f53eb955f6761c80d65eb0233a33c63d312f1631f49e6e3d32d50a5c1b5a` authorized one attempt, USD0.50 ceiling, no retries/repair; **consumed**. Changed main/backend requires fresh exact-checkout zero-call preflight and separate owner spending authorization. No credentials during nonbillable work.
 
-## Acceptance and execution
+### Acceptance and execution — 29 October archived
 
 | Priority | Deliverable | State / exact acceptance condition |
 |---|---|---|
