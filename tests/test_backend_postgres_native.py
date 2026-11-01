@@ -32,7 +32,7 @@ OTHER = Principal(owner_id='00000000-0000-4000-8000-000000000002')
 MIGRATIONS = [ROOT / 'supabase/migrations' / name for name in (
     '20261028193413_initial_second_source_private_schema.sql',
     '20261029_backend_runtime_schema.sql',
-    '../proposals/runtime_private_role_and_bindings.sql')]
+    '20261030180237_runtime_private_role_and_bindings.sql')]
 
 
 def _tools():
@@ -204,7 +204,8 @@ def test_native_cancellation_expired_recovery_and_stale_fences(native):
     assert native.fresh().get_run(OWNER, first.run_id).status == 'needs_reconciliation'
     assert service.recover_expired(run_id=first.run_id) == 0
     for operation, extra in ((service.heartbeat, ()), (service.stage, (CodeStage.CAPTURE,)),
-                             (service.finish, (None,))):
+                             (service.finish, (None,)),
+                             (service.repair_progress, ('repair_started',))):
         failure('LEASE_LOST', operation, first.run_id, leases[0].token, *extra)
     assert service.claim('replacement', run_id=first.run_id) is None
     assert service.recover_expired() == 1
@@ -288,13 +289,18 @@ def test_native_explicit_immutable_evidence_bindings_and_private_refs(native):
     assert bindings['artifacts'] == [{'run_id': run.run_id, 'evidence_artifact_id': matching[2]}]
     failure('NOT_FOUND', store.evidence_bindings, OTHER, item.investigation_id)
     failure('NOT_FOUND', store.bind_run, OTHER, run.run_id, matching[1])
-    ref = ArtifactReference(artifact_id='private_manifest', sha256='a' * 64, size_bytes=17, media_type='application/json')
+    ref = ArtifactReference(artifact_id='private:candidate.r1.json', sha256='a' * 64, size_bytes=17, media_type='application/json')
     lease = service.claim('artifact_worker', run_id=run.run_id)
     store.record_artifact_ref(OWNER, run.run_id, ref, lease_token=lease.token)
     store.record_artifact_ref(OWNER, run.run_id, ref, lease_token=lease.token)
     failure('BINDING_CONFLICT', store.record_artifact_ref, OWNER, run.run_id,
             ref.model_copy(update={'sha256': 'b' * 64}), lease_token=lease.token)
     assert store.artifact_refs(OWNER, run.run_id) == [ref]
+    restarted_store = type(store)(f'host=db.{PROJECT}.supabase.co dbname=postgres '
+                                  f'user={RUNTIME_ROLE} password=NON_SECRET_TEST_ONLY sslmode=verify-full',
+                                  project_ref=PROJECT)
+    assert restarted_store.artifact_refs(OWNER, run.run_id) == [ref]
+    failure('NOT_FOUND', restarted_store.artifact_refs, OTHER, run.run_id)
     failure('NOT_FOUND', store.artifact_refs, OTHER, run.run_id)
     failure('NOT_FOUND', store.record_artifact_ref, OTHER, run.run_id, ref, lease_token=lease.token)
     failure('LEASE_LOST', store.record_artifact_ref, OWNER, run.run_id, ref, lease_token='incorrect')

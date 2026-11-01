@@ -1,6 +1,6 @@
--- Reviewed additive proposal ONLY. No password, hosted application, or grants
+-- Additive migration prepared for review. No password, hosted application, or grants
 -- to browser roles. Apply after both retained baselines, never at app startup.
--- Generate a tracked migration with the Supabase CLI before application.
+-- Do not apply to the live project without explicit owner approval.
 BEGIN;
 
 CREATE ROLE second_source_backend LOGIN NOINHERIT NOSUPERUSER NOCREATEDB

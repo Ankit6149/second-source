@@ -364,7 +364,7 @@ def test_repair_rounds_carry_no_sealed_or_reference_material(two_case_run):
         assert "SYNTHETIC_LIST" not in blob and "SYNTHETIC_TOTAL" not in blob
 
 
-def test_operator_improved_retry_aligns_every_primary_field(monkeypatch, tmp_path):
+def test_operator_improved_retry_aligns_every_primary_field(monkeypatch, tmp_path, capsys):
     """Genuinely improved MOCK retry: every top-level field must describe it."""
     from second_source import reconstruct as operator
     monkeypatch.delenv("MODEL_API_KEY", raising=False)
@@ -394,6 +394,9 @@ def test_operator_improved_retry_aligns_every_primary_field(monkeypatch, tmp_pat
     assert report["evaluation_receipt"]["evaluation"] == final["evaluation"]
     assert report["evaluation_receipt"]["origin"]["candidate_digest"] == final["candidate_digest"]
     assert report["evaluation_summary"][0].startswith("25/25 sealed cases passed")
+    progress = [json.loads(line) for line in capsys.readouterr().err.splitlines() if line.startswith('{')]
+    evaluated = [event for event in progress if event.get("progress") == "evaluated"]
+    assert len(evaluated) == 1 and evaluated[0]["detail"] == "25/25 sealed cases"
     # The original stays preserved as immutable initial evidence.
     assert report["initial_evaluation"] == initial["evaluation"]
     assert report["initial_evaluation_receipt"]["evaluation"] == initial["evaluation"]

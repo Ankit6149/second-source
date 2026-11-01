@@ -15,6 +15,7 @@ import zipfile
 
 from second_source.evidence import publish_once
 from second_source.g2_persistence import canonical
+from second_source.repair_loop import checked_counts
 from .contracts import (
     ArtifactReference, BackendError, CodeStage, EngineResult, EvaluationSummary,
     Investigation, LifecycleEvent, Run, RunStatus, UsageSummary,
@@ -24,6 +25,66 @@ from .paths import safe_directory as _safe_directory
 _ID = re.compile(r"^[a-f0-9-]{36}$")
 _DIGEST = re.compile(r"^(sha256:)?[a-f0-9]{64}$")
 _MAX_BYTES = 2_000_000
+
+
+def _repair_summary(report: dict, evaluation: EvaluationSummary | None) -> dict | None:
+    """Project only bounded aggregate mock lineage; never export feedback or paths."""
+    raw = report.get("repair")
+    if raw is None and report.get("repair_history") is not None:
+        history, selected = report["repair_history"], report.get("selected")
+        try:
+            if selected["evaluation"] != report["evaluation"]:
+                raise ValueError
+            raw = {"verdict": history["verdict"], "stop_reason": history["stop_reason"],
+                "selected_version": selected["version"], "selected_digest": selected["candidate_digest"],
+                "versions": [{"round": v["round"], "candidate_digest": v["candidate_digest"],
+                    "evaluation": {k: v["evaluation"][k] for k in ("passed", "failed", "indeterminate", "total")}}
+                    for v in history["versions"]]}
+        except (TypeError, KeyError, ValueError):
+            raise BackendError("INVALID_REPORT", "Repair lineage is invalid", 422) from None
+    if raw is None:
+        return None
+    try:
+        if set(raw) != {"verdict", "stop_reason", "selected_version", "selected_digest", "versions"}:
+            raise ValueError
+        if raw["verdict"] not in {"no_repair_needed", "improved", "regressed", "no_change", "unrepaired"}:
+            raise ValueError
+        if raw["stop_reason"] not in {"baseline_perfect", "perfect_score", "rounds_exhausted", "repaired_to_perfect", "broker_blocked", "invalid_evaluation_shape", "denominator_changed", "no_attempt_made"}:
+            raise ValueError
+        versions = raw["versions"]
+        if not isinstance(versions, list) or not 1 <= len(versions) <= 3:
+            raise ValueError
+        for index, version in enumerate(versions):
+            if set(version) != {"round", "candidate_digest", "evaluation"} or type(version["round"]) is not int or version["round"] != index:
+                raise ValueError
+            if not isinstance(version["candidate_digest"], str) or not _DIGEST.fullmatch(version["candidate_digest"]):
+                raise ValueError
+            checked_counts(version["evaluation"])
+            if set(version["evaluation"]) != {"passed", "failed", "indeterminate", "total"}:
+                raise ValueError
+            if version["evaluation"]["total"] != versions[0]["evaluation"]["total"]:
+                raise ValueError
+        selected_round = 0 if raw["selected_version"] == "initial" else int(raw["selected_version"].removeprefix("repair-"))
+        if selected_round >= len(versions) or selected_round < 0 or raw["selected_version"] != ("initial" if selected_round == 0 else f"repair-{selected_round}"):
+            raise ValueError
+        chosen = versions[selected_round]
+        best = min(range(len(versions)), key=lambda i: (versions[i]["evaluation"]["failed"], versions[i]["evaluation"]["indeterminate"], i))
+        if selected_round != best:
+            raise ValueError
+        first = versions[0]["evaluation"]
+        last = versions[-1]["evaluation"]
+        first_score = (first["failed"], first["indeterminate"])
+        last_score = (last["failed"], last["indeterminate"])
+        expected = ("no_repair_needed" if first["passed"] == first["total"] else "unrepaired") if len(versions) == 1 else ("improved" if last_score < first_score else "regressed" if last_score > first_score else "no_change")
+        if raw["verdict"] != expected:
+            raise ValueError
+        if raw["selected_digest"] != chosen["candidate_digest"] or evaluation is None or chosen["evaluation"] != evaluation.model_dump(mode="json"):
+            raise ValueError
+        if report.get("spec_digest") != chosen["candidate_digest"]:
+            raise ValueError
+        return raw
+    except (KeyError, TypeError, ValueError, AttributeError):
+        raise BackendError("INVALID_REPORT", "Repair lineage is invalid", 422) from None
 
 
 def sanitized_report(report: dict) -> dict:
@@ -48,6 +109,9 @@ def sanitized_report(report: dict) -> dict:
         val = report.get(key)
         if isinstance(val, str) and _DIGEST.fullmatch(val):
             value[key] = val
+    repair = _repair_summary(report, evaluation)
+    if repair is not None:
+        value["repair"] = repair
     return value
 
 
