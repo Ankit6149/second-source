@@ -50,6 +50,9 @@ server. Close the window to stop the launcher. The demo session and fake Storage
 are temporary; do not use this launcher with real user data or credentials.
 `npm run demo:local -- --smoke` runs a headless HTTP-fixture investigation and
 verifies that the resulting NON_AI score is displayed.
+`npm run demo:local -- --record` additionally records the same synthetic
+journey and screenshots in `.runs/submission-video/`. Review the recording
+before sharing; it does not demonstrate hosted login or live model inference.
 
 ## Check a downloaded export
 

@@ -2,10 +2,13 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { mkdir } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
 
 const smoke = process.argv.includes('--smoke');
+const record = process.argv.includes('--record');
 const token = 'a'.repeat(32) + '.' + 'b'.repeat(32) + '.' + 'c'.repeat(48);
 const owner = 'a186fb18-72b4-4071-9794-e8746c3e4231';
 const identityOrigin = 'https://jpqcqqbzriizxhigvjki.supabase.co';
@@ -33,8 +36,11 @@ try {
   });
   await server.listen();
   const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
-  browser = await chromium.launch({ headless: smoke, ...(process.env.SS_BROWSER_PATH ? { executablePath: process.env.SS_BROWSER_PATH } : {}) });
-  const context = await browser.newContext({ acceptDownloads: true });
+  browser = await chromium.launch({ headless: smoke || record, ...(process.env.SS_BROWSER_PATH ? { executablePath: process.env.SS_BROWSER_PATH } : {}) });
+  const recordingDir = resolve('../.runs/submission-video');
+  if (record) await mkdir(recordingDir, { recursive: true });
+  const context = await browser.newContext({ acceptDownloads: true, viewport: { width: 1280, height: 720 },
+    ...(record ? { recordVideo: { dir: recordingDir, size: { width: 1280, height: 720 } } } : {}) });
   await context.route('**/*', async route => {
     const request = route.request(), url = new URL(request.url());
     if (url.origin === origin) return route.continue();
@@ -67,10 +73,20 @@ try {
   await page.goto(origin);
   await page.getByText('Available here: owned ledger and HTTP task-workflow NON_AI fixtures.', { exact: false }).waitFor({ timeout: 30000 });
   console.log('LOCAL DEMO: synthetic identity, temporary fake Storage, no model calls. Close the window to stop.');
-  if (smoke) {
+  if (smoke || record) {
+    if (record) {
+      await page.waitForTimeout(2000);
+      await page.screenshot({ path: resolve(recordingDir, 'home.png') });
+      await page.locator('[data-action="research"]').first().click();
+      await page.waitForTimeout(2500);
+      await page.screenshot({ path: resolve(recordingDir, 'historical-meta.png') });
+      await page.getByRole('button', { name: 'Close', exact: true }).first().click();
+    }
     await page.getByRole('button', { name: 'Choose a supported target' }).click();
     assert.equal(await page.locator('[data-target-id]').count(), 2);
+    if (record) await page.waitForTimeout(2500);
     await page.locator('[data-target-id="owned-http-task-workflow-v1"]').click();
+    if (record) { await page.waitForTimeout(2500); await page.screenshot({ path: resolve(recordingDir, 'scope.png') }); }
     await page.locator('#scopeConsent').check(); await page.getByRole('button', { name: 'Create investigation' }).click();
     await page.getByRole('button', { name: 'Confirm scope' }).click(); await page.locator('#scopeConsent').check();
     await page.getByRole('button', { name: 'Authorize scope' }).click(); await page.getByRole('button', { name: 'Queue mock run' }).click();
@@ -78,8 +94,10 @@ try {
     await page.getByRole('button', { name: 'View verification' }).waitFor({ timeout: 200000 });
     await page.getByRole('button', { name: 'View verification' }).click();
     assert.match(await page.locator('dialog').innerText(), /30 passed/);
+    if (record) { await page.waitForTimeout(5000); await page.screenshot({ path: resolve(recordingDir, 'verification.png') }); }
     console.log('PASS: local demo discovered both fixtures and ran the HTTP NON_AI worker to verification.');
     await context.close();
+    if (record) console.log(`Synthetic local browser recording: ${await page.video().path()}`);
   } else {
     await new Promise(resolve => context.once('close', resolve));
   }
