@@ -40,3 +40,9 @@ def test_http_report_export_and_owner_isolation_after_restart(tmp_path):
             if suffix == "/export.zip":
                 assert verify_bundle(response.content)["valid"]
             assert client.get(url, headers=other_headers).status_code == 404
+        # A corrupted persisted report must not be returned or exported after restart.
+        (tmp_path / "reports" / queued.run_id / "report.json").write_bytes(b"{}")
+        for suffix in ("/report", "/export.zip"):
+            response = client.get(f"/v1/runs/{queued.run_id}{suffix}", headers=owner_headers)
+            assert response.status_code == 409
+            assert response.json()["code"] == "ARTIFACT_INTEGRITY"

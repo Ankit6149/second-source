@@ -97,5 +97,8 @@ jobs:
             .runs/browser-acceptance/desktop-verification.png
             .runs/browser-acceptance/mobile-home.png
             .runs/browser-acceptance/mobile-queued.png
+            .runs/browser-acceptance/g4-desktop-verification.png
+            .runs/browser-acceptance/g4-mobile-verification.png
+            .runs/browser-acceptance/ledger-mobile-verification.png
           if-no-files-found: error
           retention-days: 2
