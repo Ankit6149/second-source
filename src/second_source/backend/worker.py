@@ -16,6 +16,7 @@ import time
 from typing import Callable, Protocol
 
 from second_source.g2_persistence import scope_digest_of
+from second_source.g4_http_reconstruct import create_g4_http_scope
 from second_source.reconstruct import create_scope
 from .artifacts import ArtifactStore, _safe_directory
 from .contracts import BackendError, CodeStage, EngineResult, EvaluationSummary, Lease, UsageSummary
@@ -60,7 +61,14 @@ class G3MockEngine:
 
     def execute(self, lease: Lease, stage: Callable[[CodeStage], None],
                 cancelled: Callable[[], bool]) -> EngineResult:
-        if lease.run.kind != "g3_mock" or scope_digest_of(lease.scope) != scope_digest_of(create_scope(0)):
+        digest = scope_digest_of(lease.scope)
+        if lease.run.kind != "g3_mock":
+            raise BackendError("UNSUPPORTED_SCOPE", "Mock engine requires its exact published zero-cost scope", 422)
+        if digest == scope_digest_of(create_scope(0)):
+            module = "second_source.reconstruct"
+        elif digest == scope_digest_of(create_g4_http_scope(0)):
+            module = "second_source.g4_http_reconstruct"
+        else:
             raise BackendError("UNSUPPORTED_SCOPE", "Mock engine requires its exact published zero-cost scope", 422)
         # The control plane owns IDs, never a submitted command/path or shell.
         run_id = lease.run.run_id
@@ -71,8 +79,8 @@ class G3MockEngine:
         run_dir, seal_dir = work / "engine", work / "sealed"
         stdout_path, progress_path = work / "stdout.private.log", work / "progress.private.log"
         env = {k: os.environ[k] for k in ("SYSTEMROOT", "WINDIR", "TEMP", "TMP", "PATH") if k in os.environ}
-        env.update(PYTHONPATH=str(ROOT / "src"), PYTHONDONTWRITEBYTECODE="1", SECOND_SOURCE_MAX_RUN_USD="0")
-        argv = [sys.executable, "-B", "-m", "second_source.reconstruct", "--mode", "mock",
+        env.update(PYTHONPATH=os.pathsep.join([str(ROOT / "src"), str(ROOT)]), PYTHONDONTWRITEBYTECODE="1", SECOND_SOURCE_MAX_RUN_USD="0")
+        argv = [sys.executable, "-B", "-m", module, "--mode", "mock",
             "--max-usd", "0", "--repair-rounds", "1", "--run-dir", str(run_dir), "--seal-dir", str(seal_dir)]
         stage(CodeStage.CAPTURE)
         if cancelled():
