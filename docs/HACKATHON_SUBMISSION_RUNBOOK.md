@@ -2,7 +2,7 @@
 
 **Status pointer - 1 November 2026 IST.** Use [issue #25](https://github.com/Ankit6149/second-source/issues/25) for current heads, scientific review and release gates. The older delivery-board and dated sections below are historical unless independently updated. This document does not authorize inference, credentials or deployment.
 
-**CURRENT - 1 November 2026 IST:** Submission completion, final video, organizer acceptance and hosted product acceptance remain unverified. A historical genuine Meta-generated candidate was reported as admitted and independently evaluated at 14 passed / 11 failed / 0 indeterminate out of 25; the original private receipts still need independent artifact-level audit. The separately measured NON_AI control scored 22/25. Neither is a new hosted-app inference, and no genuine repair improvement is established. Track Indie and deadline remain to be confirmed against the organizer's submission form.
+**CURRENT - 1 November 2026 IST:** Submission completion, final video, organizer acceptance and hosted product acceptance remain unverified. A historical genuine Meta-generated candidate was reported as admitted and independently evaluated at 14 passed / 11 failed / 0 indeterminate out of 25; the original local receipts passed consistency checks and a pinned-source, pinned-suite offline replay; provider attestation and the ephemeral broker signature remain unverified. The separately measured NON_AI control scored 22/25. Neither is a new hosted-app inference, and no genuine repair improvement is established. Track Indie and deadline remain to be confirmed against the organizer's submission form.
 
 ## Current evidence and submission stop
 
@@ -31,8 +31,8 @@ The workspace exposes supported fixture targets, run state, verification and a
 sanitized integrity export. See `product/README.md` for the local commands.
 
 **Evidence.** The historical genuine Meta `muse-spark-1.3` candidate is reported
-at 14/25 (9 schema and 2 error mismatches); original private receipts still need
-independent artifact-level review. Separately, the local ledger and owned HTTP
+at 14/25 (9 schema and 2 error mismatches); the original local receipts passed internal consistency checks and the pinned-source,
+pinned-suite offline replay; provider and ephemeral broker signatures remain unverified. Separately, the local ledger and owned HTTP
 fixtures are deterministic NON_AI controls. The HTTP 25/30 to 30/30 repair uses
 previously collected active evidence; it is not a genuine Meta run or proof of
 AI independently discovering a fix. Scores from different suites are not a
@@ -47,9 +47,9 @@ improvement is claimed. Inspect the recording and exported material for private
 data before sharing. Do not represent a browser automation run as a live Google
 login, or a checksum as provider attestation.
 
-**Before submission.** Confirm the exact video and portal requirements in the
-organizer's participant interface; the three-minute storyboard below is an
-internal target. Open all final links in a private browser, preserve the tested
+**Before submission.** The owner-provided participant guide requires a three-minute
+demo video. Confirm the current format and submission details in the organizer's
+participant interface. Open all final links in a private browser, preserve the tested
 commit and artifact digests, and retain an actual portal confirmation. The
 official event page lists the November 4, 9 p.m. Eastern deadline, subject to
 change: <https://dev.meta.ai/events/global-hackathon>.
@@ -65,7 +65,7 @@ change: <https://dev.meta.ai/events/global-hackathon>.
 7. **Bounded repair:** if implemented and observed, show before/after improvement using the **same** independent tests. Never claim repair if not demonstrated.
 8. **Final audit view:** runtime, model ID, estimated cost vs provider billing, exclusions, unknowns, evidence references.
 
-## Three-minute recorded story (internal target; organizer video limit unverified)
+## Required three-minute recorded story
 
 | Elapsed | Visual / voiceover | Proof artifact |
 |---|---|---|
@@ -88,7 +88,7 @@ change: <https://dev.meta.ai/events/global-hackathon>.
 - [ ] Model-generated candidate **if claimed** with its manifest, bounded executor proof, reference separation
 - [ ] Independent withheld evaluation, reported denominator, concrete passed/failed/indeterminate counts
 - [ ] Controlled negative case: forbidden command/output file rejected, no secret or privileged action disclosed
-- [ ] Demo video targets <=180 seconds, with audible narration, readable terminal and result labels and a public URL; confirm the actual organizer limit in the participant portal
+- [ ] Required three-minute demo video (at most 180 seconds), with audible narration, readable result labels and a public URL; confirm current upload details in the participant portal
 - [ ] Live hosted demo URL **only if working and safe**; fallback local deterministic demo noted as such
 - [ ] Screenshot/thumbnail: scope > hypothesis > experiment > evidence > candidate > score
 - [ ] Description: problem, technical novelty, Meta API use, safeguards, target users, limitations, comparison against baseline
