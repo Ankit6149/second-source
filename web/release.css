@@ -21,7 +21,10 @@ a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var
 .site-grain{display:none}
 .progress-rail span{box-shadow:none}
 .hero-title,.statement,.process-title,.contrast-intro h2,.explore-head h2,.final-grid h2{letter-spacing:-.04em}
-.wordmark{letter-spacing:-.065em}
+.wordmark{letter-spacing:-.065em;font-weight:800;gap:11px}
+.word-light{font-weight:550}
+.wordmark-icon{width:22px;height:22px;display:grid;place-items:center;border:1.8px solid #b9dfb2;border-radius:7px 7px 8px 3px;transform:rotate(-7deg)}
+.wordmark-icon span{width:7px;height:7px;border-radius:50%;background:#b9dfb2}
 .hero-bottom{color:#b1c2b5}
 .hero-title{font-size:clamp(49px,4.45vw,68px)}
 .hero-bottom{margin-top:42px}
