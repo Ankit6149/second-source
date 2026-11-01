@@ -103,11 +103,19 @@ The public observation contract is the **only** target metadata provided to the 
 
 ## 4. Matched-Budget & Observation-Derived Benchmark (`run_competitive_benchmark`)
 
+**Interpretation for review and demonstration:** These are deterministic,
+target-specific controls, not generated Meta candidates or evidence of general
+AI superiority. The rule extractor includes target-specific prior constants and
+error labels. In the mock repair sequence, active observations are collected
+before initial candidate generation and retained for the scripted repair; the
+25/30 to 30/30 result does not show that aggregate feedback alone discovered a
+fix. Counts below describe this owned fixture and its fixed suite only.
+
 ### 4.1 Upgraded v2 Benchmark Design (`2.0-matched-budget-observation-derived`)
 
 To eliminate action-budget asymmetry and predetermined per-arm fills:
 1. **Strict Action & Experiment Budget Parity (Arm B vs. Arm C):** Both `B_passive_fixed_probes` (`passive_matched_probe_sequences()`) and `C_active_evidence_driven` (`active_discriminating_sequences()`) execute **5 experiments** and **15 HTTP actions** (`3 actions per sequence`), with an identical `4096` output-token ceiling and the identical 30-case held-out stateful suite.
-2. **Uniform Blinded Observation-to-Spec Rule Extractor:** Every arm starts from the exact same uninformed prior (`build_uninformed_prior_fill()`) and updates spec parameters strictly through `derive_fill_from_observations(observations)`. A rule parameter is updated **only** when an observed `(input_action, output)` pair provides direct empirical evidence for that rule.
+2. **Common Observation-to-Spec Rule Extractor:** Every arm starts from the same initial fixture prior (`build_uninformed_prior_fill()`) and updates spec parameters through `derive_fill_from_observations(observations)`. The extractor contains target-specific constants and expected error labels; the comparison is therefore an evidence-sufficiency control for this fixture, not a blinded general-purpose generation benchmark.
 3. **Explicit Evidence Attribution (`evidence_attribution`):** Every arm records:
    - `rules_revealed_by_probes`: map of `{rule_key: [observation_id_or_digest, ...]}` proving which specific HTTP probe revealed each hidden rule.
    - `prior_assumptions_retained`: list of discoverable hidden rules that were never triggered by that arm's probes and therefore remained at the uninformed prior.
@@ -118,9 +126,9 @@ To eliminate action-budget asymmetry and predetermined per-arm fills:
 | **`A_direct_synthesis`** | Uninformed prior + 1 seed sequence | `1 exp / 3 actions` | `0 / 8` | All 8 hidden rules | **19 / 30 (`63.3%`)** |
 | **`B_passive_fixed_probes`** | Matched-budget happy-path & basic bound probes | `5 exps / 15 actions` | `4 / 8` (`title_max_length_64`, `priority_maximum_5`, `duplicate_title_casefold_per_owner`, `pagination_max_limit_50`) | `cancelled_frees_title`, `forbid_shortcut_transitions_to_done`, `terminal_statuses_locked`, `delete_in_progress_blocked` | **25 / 30 (`83.3%`)** |
 | **`C_active_evidence_driven`** | Matched-budget boundary-discriminating probes | `5 exps / 15 actions` | `8 / 8` (all hidden rules empirically witnessed) | `[]` (`0` left at prior) | **30 / 30 (`100.0%`)** |
-| **`D_bounded_repair`** | Aggregate-feedback repair from Arm B + 4 targeted probes | `5 + 4 exps / 27 actions` | `8 / 8` | `[]` (`0` left at prior) | **25 / 30 -> 30 / 30 (`+16.7%`)** |
+| **`D_bounded_repair`** | Scripted repair using previously collected active evidence | `5 + 4 exps / 27 actions` | `8 / 8` | `[]` (`0` left at prior) | **25 / 30 -> 30 / 30 (`+16.7%`)** |
 
-> **Scientific Limitation Disclosure:** All arms in `run_competitive_benchmark()` use the deterministic rule extractor `derive_fill_from_observations` (`origin="mock", real=False`, `claim="NON_AI_DETERMINISTIC_SCAFFOLDING_NOT_MODEL_QUALITY"`). This proves that under an **identical 5-experiment / 15-action budget**, active boundary-falsifying probes empirically reveal the 4 hidden workflow/deletion/cancellation rules that passive probes miss. It does **not** prove genuine Meta LLM reasoning superiority, which remains **BLOCKED** pending owner-authorized paid inference.
+> **Scientific Limitation Disclosure:** All arms use the deterministic, target-specific rule extractor `derive_fill_from_observations` (`origin="mock", real=False`, `claim="NON_AI_DETERMINISTIC_SCAFFOLDING_NOT_MODEL_QUALITY"`). The matched-action fixture experiment records the observations and scores for the selected fixed probe sets; it does not establish general causal superiority or genuine Meta LLM reasoning quality. Genuine G4 model evaluation remains **BLOCKED** pending a separately authorized inference packet.
 
 ### 4.2 Retained Historical v1 Scaffolding (`historical_v1_scaffolding`)
 
