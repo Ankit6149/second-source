@@ -5,6 +5,9 @@ local API and bounded NON_AI worker with **synthetic identities and fake private
 Storage**. It blocks external browser requests and model transport. It does not
 sign in to Google or establish hosted authentication, cloud persistence, or
 live Meta inference. Test state is temporary and is deleted when the server stops.
+The test server uses a 120-requests/minute ceiling so multiple synthetic sessions
+can share its pre-authentication bucket; the browser test injects a separate 429.
+The production default remains 60 requests/minute.
 
 ## Fresh checkout
 

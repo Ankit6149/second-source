@@ -24,7 +24,11 @@ def forbidden(*args, **kwargs):
 
 MetaProvider.complete = forbidden
 with tempfile.TemporaryDirectory(prefix="ss-client-integration-") as directory:
-    app = build_cloud_app(config(), store=LocalAcceptanceStore(Path(directory) / "state.sqlite"),
+    # Multiple synthetic browser sessions share one pre-authentication bucket.
+    # Keep the suite below its permitted test ceiling; browser acceptance injects
+    # a separate 429 and production settings remain unchanged.
+    settings = config().model_copy(update={"requests_per_minute": 120})
+    app = build_cloud_app(settings, store=LocalAcceptanceStore(Path(directory) / "state.sqlite"),
                           transport=FakeStorage(), identity=identity)
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listener.bind(("127.0.0.1", 0))
