@@ -106,7 +106,7 @@ function controls() {
   if (state.run.status === 'running') return `<button class="pill-btn" data-action="cancel" ${state.busy || state.run.cancel_requested || state.actionUncertain ? 'disabled' : ''}>${icon('square')} ${state.run.cancel_requested ? 'Cancellation requested' : 'Cancel run'}</button><button class="pill-btn quiet" data-action="refresh">${icon('refresh-cw')} Check status</button><button class="pill-btn quiet" data-action="reconcile" ${state.busy || state.actionUncertain ? 'disabled' : ''}>Check recovery</button>${state.actionUncertain ? '<p class="component-note">The previous request has an uncertain outcome; it will not be repeated automatically.</p>' : ''}`;
   if (state.run.status === 'needs_reconciliation') return `<p class="component-note">This run is quarantined after an uncertain or interrupted operation. It will not restart automatically; an operator must review it.</p><button class="pill-btn quiet" data-action="refresh">Check status</button>`;
   if (state.run.status === 'completed') return `<button class="pill-btn primary" data-action="verification">${icon('list-checks')} View verification</button><button class="pill-btn" data-action="report">${icon('file-text')} Open report</button><button class="pill-btn" data-action="export">${icon('download')} Download integrity export</button>`;
-  return `<button class="pill-btn" data-action="refresh">${icon('refresh-cw')} Refresh status</button>${state.run.status === 'failed' || state.run.status === 'cancelled' ? `<button class="pill-btn" data-action="queue" ${state.busy || !state.target ? 'disabled' : ''}>${icon('clock')} Queue a new mock run</button>` : ''}`;
+  return `<button class="pill-btn" data-action="refresh">${icon('refresh-cw')} Refresh status</button>${state.run.status === 'failed' || state.run.status === 'cancelled' ? `<button class="pill-btn" data-action="queue" ${state.busy || state.executing || !state.target ? 'disabled' : ''}>${icon('clock')} Queue a new mock run</button>${state.executing ? '<p class="component-note">Wait for the previous execution request to finish before queueing another run.</p>' : ''}` : ''}`;
 }
 function eventName(event: RunEvent) {
   const labels: Record<string,string> = { run_claimed: 'Worker claimed the run', stage_started: `Stage: ${event.stage || 'unknown'}`, repair_started: 'Bounded mock retry started', repair_completed: 'Bounded mock retry finished', run_completed: 'Run completed', run_failed: 'Run failed', run_cancelled: 'Run cancelled', run_needs_reconciliation: 'Run needs reconciliation', run_queued: 'Run queued' };
@@ -291,10 +291,15 @@ async function mutate(action: string) {
       const authorized = await api.authorize(state.selected); if (generation !== state.epoch) return;
       state.selected = authorized; closeDialog(); toast('Scope authorized.');
     } else if (action === 'queue') {
-      if (!state.selected) return;
+      if (!state.selected || state.executing) return;
       const storageKey = `ss-queue-key:${state.selected.investigation_id}`;
       const key = sessionStorage.getItem(storageKey) || crypto.randomUUID(); sessionStorage.setItem(storageKey, key);
       const queued = await api.queue(state.selected.investigation_id, key); if (generation !== state.epoch) return;
+      if (state.run?.run_id !== queued.run_id) {
+        state.events = []; state.verification = null; state.pollError = ''; state.executionError = null;
+        state.uncertain = sessionStorage.getItem(`ss-execution-uncertain:${queued.run_id}`) === '1';
+        state.actionUncertain = sessionStorage.getItem(`ss-action-uncertain:${queued.run_id}`);
+      }
       state.run = queued; sessionStorage.removeItem(storageKey); toast('Run queued.');
     } else if (action === 'cancel') {
       if (!state.run) return;
@@ -321,7 +326,7 @@ async function execute() {
     if (acceptsRunRevision(state.run, result)) state.run = result;
     if (state.run.status !== 'queued' && state.run.status !== 'running') { sessionStorage.removeItem(`ss-execution-uncertain:${run.run_id}`); state.uncertain = false; }
   } catch (error) {
-    if (generation === state.epoch) {
+    if (generation === state.epoch && state.run?.run_id === run.run_id) {
       if (error instanceof ApiError && executionDefinitelyRefused(error.status, error.code)) {
         sessionStorage.removeItem(`ss-execution-uncertain:${run.run_id}`); state.uncertain = false;
       }
@@ -330,7 +335,7 @@ async function execute() {
       render();
     }
   } finally {
-    if (generation === state.epoch) {
+    if (generation === state.epoch && state.run?.run_id === run.run_id) {
       state.executing = false; await refresh(false);
       render();
     }

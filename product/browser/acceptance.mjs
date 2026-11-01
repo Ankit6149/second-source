@@ -40,7 +40,10 @@ try {
   let dispatches = 0;
   let firstRunId = '';
   let failNextRunRead = false;
-  let refuseNextExecution = true, refusedExecutions = 0, queuedSnapshot;
+  let refuseNextExecution = true, refusedExecutions = 0, queuedSnapshot, latestQueuedSnapshot;
+  let holdSyntheticExecution = false, syntheticTerminal = null, executionSeen, releaseExecution;
+  const executionRequested = new Promise(resolve => { executionSeen = resolve; });
+  const executionMayFinish = new Promise(resolve => { releaseExecution = resolve; });
   let holdOldPoll = false, oldPollSeen, releaseOldPoll;
   const oldPollRequested = new Promise(resolve => { oldPollSeen = resolve; });
   const oldPollMayFinish = new Promise(resolve => { releaseOldPoll = resolve; });
@@ -79,11 +82,19 @@ try {
       }
       if (req.method() === 'POST' && url.pathname.endsWith('/execute')) {
         if (refuseNextExecution) { refuseNextExecution = false; refusedExecutions++; return route.fulfill({ status: 429, headers: cors, body: '{"code":"RATE_LIMITED"}' }); }
+        if (holdSyntheticExecution) {
+          holdSyntheticExecution = false;
+          syntheticTerminal = { ...latestQueuedSnapshot, status: 'failed', revision: latestQueuedSnapshot.revision + 1, error_code: 'ENGINE_FAILED' };
+          executionSeen(); await executionMayFinish;
+          return route.fulfill({ status: 429, headers: { ...cors, 'x-ss-test-response': 'held-execute' }, body: '{"code":"RATE_LIMITED"}' });
+        }
         dispatches++; firstRunId ||= url.pathname.split('/')[3];
       }
       if (failNextRunRead && req.method() === 'GET' && /^\/v1\/runs\/[^/]+$/.test(url.pathname)) {
         failNextRunRead = false; return route.fulfill({ status: 429, headers: cors, body: '{}' });
       }
+      if (syntheticTerminal && req.method() === 'GET' && url.pathname === `/v1/runs/${syntheticTerminal.run_id}`)
+        return route.fulfill({ status: 200, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify(syntheticTerminal) });
       const headers = { ...req.headers() }; delete headers.host; delete headers.origin; delete headers['content-length'];
       const response = await fetch(`http://127.0.0.1:${port}${url.pathname}${url.search}`, {
         method: req.method(), headers, body: req.postDataBuffer() || undefined,
@@ -94,7 +105,9 @@ try {
       const responseHeaders = Object.fromEntries(response.headers); delete responseHeaders['content-encoding'];
       console.log('Local API status:', response.status);
       const body = Buffer.from(await response.arrayBuffer());
-      if (!queuedSnapshot && req.method() === 'POST' && /^\/v1\/investigations\/[^/]+\/runs$/.test(url.pathname) && response.status === 201) queuedSnapshot = JSON.parse(body.toString());
+      if (req.method() === 'POST' && /^\/v1\/investigations\/[^/]+\/runs$/.test(url.pathname) && response.status === 201) {
+        latestQueuedSnapshot = JSON.parse(body.toString()); queuedSnapshot ||= latestQueuedSnapshot;
+      }
       return route.fulfill({ status: response.status, headers: { ...responseHeaders, ...cors, ...(testResponse ? { 'x-ss-test-response': testResponse } : {}) }, body });
     });
     if (identity) await ctx.addInitScript(({ key, userId, accessToken }) => {
@@ -240,6 +253,20 @@ try {
   await second.getByRole('button', { name: 'Cancel queued run' }).click();
   await second.getByText('cancelled', { exact: true }).waitFor();
   assert.equal(await second.getByRole('button', { name: 'View verification' }).count(), 0);
+  await second.waitForFunction(() => document.querySelector('details.activity')?.textContent?.includes('Run cancelled'), null, { timeout: 15000 });
+  await second.getByRole('button', { name: 'Queue a new mock run' }).click();
+  await second.getByText('queued', { exact: true }).waitFor();
+  assert.equal(await second.locator('details.activity').count(), 0, 'a new queued run must not display the prior run activity');
+  // Synthetic terminal polling while an execution acknowledgement is held: no worker is dispatched.
+  holdSyntheticExecution = true;
+  await second.getByRole('button', { name: 'Start NON_AI run' }).click();
+  await Promise.race([executionRequested, new Promise((_, reject) => setTimeout(() => reject(new Error('Held execution was not requested')), 15000))]);
+  await second.getByText('failed', { exact: true }).waitFor({ timeout: 20000 });
+  assert.equal(await second.getByRole('button', { name: 'Queue a new mock run' }).isDisabled(), true, 'a prior execution request must settle before another run is queued');
+  const executionResponse = second.waitForResponse(response => response.headers()['x-ss-test-response'] === 'held-execute');
+  releaseExecution(); await (await executionResponse).finished();
+  await second.waitForFunction(() => { const button = document.querySelector('[data-action="queue"]'); return button && !button.disabled; }, null, { timeout: 15000 });
+  syntheticTerminal = null;
   rejectSession = true; await second.reload();
   await second.getByText(/session has expired/i).waitFor();
   assert.doesNotMatch(await second.locator('#content').innerText(), /cancelled/i);
