@@ -17,6 +17,63 @@ metadata observations, not proof of the policies' correctness, tenant isolation,
 available quota, a usable backup or a tested restore. Recheck them immediately
 before any approved change.
 
+## Stage 1 decision — NO-GO for live migrations
+
+The November 1 read-only review found RLS enabled on all twelve `ss` tables but
+not forced, with no `ss` policies. `anon` and `authenticated` have no `ss`
+schema usage or table SELECT/INSERT; the existing `service_role` has BYPASSRLS
+and access, so server-side authorization and secret isolation remain essential.
+The private Storage bucket exists, but no `storage.objects` policies were listed;
+owner-scoped Storage behavior has not been proved. The proposed runtime RLS
+policies trust one server role across owners and do **not** enforce tenant-level
+separation independently of backend predicates.
+
+No project-specific backup or restore drill has been verified. Supabase's
+[Free-plan guidance](https://supabase.com/kb/faqs/platform/free-plan-backups)
+says automatic daily backups are not provided on Free. Database backups also
+do not preserve Storage object bytes or custom-role passwords. Do not export live
+data, create a paid backup, add credentials or perform a restore without their
+own explicit approval. A synthetic-only local PostgreSQL restore drill, if
+available, demonstrates a technique but cannot establish recoverability of this
+specific live project.
+
+Two further conditions block DDL: the first proposed filename has an eight-digit
+version (`20261029`), while the CLI convention uses fourteen digits and an
+[upstream issue](https://github.com/supabase/cli/issues/4758) reports problems
+displaying short migration versions; verify the exact ordering and history in a
+disposable environment. Each migration has its own transaction: if the first
+commits and the second fails, the first remains applied. Stop and inspect that
+intermediate state; do not blindly retry or drop it. The second migration also
+adds a unique constraint to existing `ss.runs`, an additive **schema change**
+that must be specifically reviewed even though it does not intentionally alter
+rows. Recheck live history, role grants and existing data before any approved DDL.
+
+## Stable staging origin and CI limits
+
+The existing separate preview project has the branch alias
+`https://second-source-v08-product-previe-git-fef0b7-ankit6149s-projects.vercel.app`.
+Read-only inspection on November 1 found it mapped to frontend commit `ab90636`
+and protected by Vercel authentication (an unauthenticated request redirects to
+Vercel SSO). It is a candidate stable hostname, **not yet an approved or
+configured OAuth origin**. A branch alias follows deployments, so pin and verify
+the exact reviewed deployment before hosted acceptance. Authorized test owners
+must be able to pass the existing Vercel protection; a temporary share token is
+not an OAuth origin. No protection, domain, OAuth or production setting has been
+changed. See [Vercel preview environments](https://vercel.com/docs/deployments/environments).
+
+The prepared `product/ci/frontend.yml` limits automatic quick checks to relevant
+paths on one standard Linux runner. Full browser/worker acceptance is manually
+dispatched; Windows and screenshot upload are opt-in, and explicit synthetic-only
+PNG artifacts expire after two days. GitHub documents standard hosted runners as
+free for public repositories; larger runners and artifact storage have separate
+terms. At the listed standard rates, a 10-minute Linux quick-job ceiling would be
+at most $0.06 of metered compute if this repository became private and its
+included usage were exhausted; a manual 20-minute Linux job would be at most
+$0.12, plus $0.20 for an opted-in 20-minute Windows job. These are ceilings,
+not measured usage or a current bill. No workflow is installed or dispatched by
+this proposal. See [GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)
+and [runner prices](https://docs.github.com/en/billing/reference/actions-runner-pricing).
+
 ## Proposed operations, each requiring explicit approval
 
 1. **Preflight and recovery:** inspect the existing Supabase project
@@ -66,8 +123,8 @@ workspace with a payment method can incur bandwidth or build-minute overages;
 without a payment method it suspends services or builds on exhaustion. Confirm
 account status and included usage before provisioning, without disclosing private
 balances. [Supabase Free pricing](https://supabase.com/pricing) lists 500 MB
-database, 1 GB storage and 5 GB egress; its actual organization, current usage,
-backup and project state are unverified. No plan upgrade, payment method, paid
+database, 1 GB storage and 5 GB egress; the organization is confirmed Free, but
+its current usage, backup and restore readiness are unverified. No plan upgrade, payment method, paid
 worker, inference, sandbox or promotional credit use is included.
 
 ## Stop and rollback

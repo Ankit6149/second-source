@@ -7,7 +7,7 @@ import { auth, observeSession, signIn, signOut } from './auth';
 import { Api, ApiError, validatedOrigin, type Target, type Investigation, type Run, type RunEvent, type Verification } from './api';
 import { detectReference } from './reference';
 import { clearOwnerNotes, loadNotes, saveNotes } from './notes';
-import { outcomeConfirmed, pollFailureMessage, pollRetryDelay } from './polling';
+import { acceptsRunRevision, executionDefinitelyRefused, outcomeConfirmed, pollFailureMessage, pollRetryDelay } from './polling';
 
 const icons = { PanelLeft, PanelLeftClose, SquarePen, FolderOpen, SwatchBook, ChevronUp, ArrowUp, ShieldCheck, FileText, ListChecks, Download, CircleHelp, X, Play, Square, RefreshCw, Clock, Check, AlertTriangle, LogIn, LogOut, Link, FlaskConical, MessageSquare, ExternalLink };
 const icon = (name: string) => `<i data-lucide="${name}" aria-hidden="true"></i>`;
@@ -217,8 +217,10 @@ async function refresh(showErrors = true) {
   const runId = state.run.run_id;
   try {
     const [run, events] = await Promise.all([api.run(runId), allEvents(runId)]);
-    if (generation !== state.epoch || state.run?.run_id !== runId) return;
-    state.run = run; state.events = events; state.pollError = '';
+    if (generation !== state.epoch || !state.run || !acceptsRunRevision(state.run, run)) return;
+    state.run = run;
+    if ((events.at(-1)?.event_id ?? 0) >= (state.events.at(-1)?.event_id ?? 0)) state.events = events;
+    state.pollError = '';
     if (state.executionError?.runId === runId && outcomeConfirmed(run.status)) {
       if (state.error === state.executionError.message) state.error = '';
       state.executionError = null;
@@ -228,7 +230,7 @@ async function refresh(showErrors = true) {
     }
     if (run.status === 'completed') {
       const verification = await api.verification(runId);
-      if (generation !== state.epoch || state.run?.run_id !== runId) return;
+      if (generation !== state.epoch || state.run?.run_id !== runId || state.run.status !== 'completed') return;
       state.verification = verification;
       sessionStorage.removeItem(`ss-execution-uncertain:${runId}`); state.uncertain = false;
     } else if (run.status !== 'queued' && run.status !== 'running') {
@@ -279,7 +281,9 @@ async function mutate(action: string) {
       sessionStorage.removeItem('ss-create-pending'); sessionStorage.setItem('ss-selected-investigation', state.selected.investigation_id);
       state.view = 'conversation'; closeDialog();
       if (created.scope_digest !== state.target.scope_digest) throw new Error('The stored scope differs from the reviewed scope. Do not authorize it; contact an operator.');
-      state.investigations = (await allPages(after => api.investigations(after))).sort((a, b) => b.created_at.localeCompare(a.created_at)); toast('Investigation created. Confirm its scope to continue.');
+      const items = await allPages(after => api.investigations(after));
+      if (generation !== state.epoch) return;
+      state.investigations = items.sort((a, b) => b.created_at.localeCompare(a.created_at)); toast('Investigation created. Confirm its scope to continue.');
     } else if (action === 'confirm-authorization') {
       const checkbox = document.getElementById('scopeConsent') as HTMLInputElement | null;
       if (!checkbox?.checked) { checkbox?.focus(); return; }
@@ -296,12 +300,12 @@ async function mutate(action: string) {
       if (!state.run) return;
       const actionKey = `ss-action-uncertain:${state.run.run_id}`; sessionStorage.setItem(actionKey, 'cancel'); state.actionUncertain = 'cancel';
       const cancelled = await api.cancel(state.run); if (generation !== state.epoch) return;
-      sessionStorage.removeItem(actionKey); state.actionUncertain = null; state.run = cancelled; await refresh(false); toast('Cancellation requested.');
+      sessionStorage.removeItem(actionKey); state.actionUncertain = null; if (state.run && acceptsRunRevision(state.run, cancelled)) state.run = cancelled; await refresh(false); if (generation === state.epoch) toast('Cancellation requested.');
     } else if (action === 'reconcile') {
       if (!state.run) return;
       const actionKey = `ss-action-uncertain:${state.run.run_id}`; sessionStorage.setItem(actionKey, 'reconcile'); state.actionUncertain = 'reconcile';
       const reconciled = await api.reconcile(state.run); if (generation !== state.epoch) return;
-      sessionStorage.removeItem(actionKey); state.actionUncertain = null; state.run = reconciled; await refresh(false); toast('Run status checked.');
+      sessionStorage.removeItem(actionKey); state.actionUncertain = null; if (state.run && acceptsRunRevision(state.run, reconciled)) state.run = reconciled; await refresh(false); if (generation === state.epoch) toast('Run status checked.');
     }
   } catch (error) { if (generation === state.epoch) { state.error = describe(error); render(); } }
   finally { if (generation === state.epoch) { state.busy = false; render(); } }
@@ -313,11 +317,14 @@ async function execute() {
   pollTimer = window.setTimeout(() => { void refresh(false); }, 1000);
   try {
     const result = await api.execute(run);
-    if (generation !== state.epoch) return;
-    state.run = result;
-    if (result.status !== 'queued' && result.status !== 'running') { sessionStorage.removeItem(`ss-execution-uncertain:${run.run_id}`); state.uncertain = false; }
+    if (generation !== state.epoch || !state.run || state.run.run_id !== run.run_id) return;
+    if (acceptsRunRevision(state.run, result)) state.run = result;
+    if (state.run.status !== 'queued' && state.run.status !== 'running') { sessionStorage.removeItem(`ss-execution-uncertain:${run.run_id}`); state.uncertain = false; }
   } catch (error) {
     if (generation === state.epoch) {
+      if (error instanceof ApiError && executionDefinitelyRefused(error.status, error.code)) {
+        sessionStorage.removeItem(`ss-execution-uncertain:${run.run_id}`); state.uncertain = false;
+      }
       state.error = describe(error);
       if (error instanceof ApiError && error.uncertain) state.executionError = { runId: run.run_id, message: state.error };
       render();

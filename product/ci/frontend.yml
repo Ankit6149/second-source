@@ -1,20 +1,65 @@
-# Maintainer: review, then copy this file to .github/workflows/frontend.yml.
+# Maintainer: review, then copy to .github/workflows/frontend.yml.
 name: Frontend acceptance
 on:
   pull_request:
+    paths:
+      - 'product/**'
+      - 'src/second_source/backend/**'
+      - 'tests/test_backend_cloud_app.py'
+      - 'pyproject.toml'
+      - '.github/workflows/frontend.yml'
   push:
     branches: [main]
+    paths:
+      - 'product/**'
+      - 'src/second_source/backend/**'
+      - 'tests/test_backend_cloud_app.py'
+      - 'pyproject.toml'
+      - '.github/workflows/frontend.yml'
   workflow_dispatch:
+    inputs:
+      full_browser:
+        description: Run the bounded local browser and worker acceptance
+        type: boolean
+        default: false
+      include_windows:
+        description: Also run the manual acceptance on Windows
+        type: boolean
+        default: false
+      upload_screenshots:
+        description: Upload synthetic-only screenshots for two days
+        type: boolean
+        default: false
 permissions:
   contents: read
+concurrency:
+  group: frontend-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  frontend:
+  quick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: product/package-lock.json
+      - run: npm ci
+        working-directory: product
+      - run: npm test
+        working-directory: product
+      - run: npm run test:dom
+        working-directory: product
+  browser:
+    if: github.event_name == 'workflow_dispatch' && inputs.full_browser
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: ${{ fromJSON(inputs.include_windows && '["ubuntu-latest", "windows-latest"]' || '["ubuntu-latest"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -36,17 +81,21 @@ jobs:
         if: runner.os == 'Windows'
         run: npx playwright install chromium
         working-directory: product
-      - run: npm test
-        working-directory: product
-      - run: npm run test:dom
-        working-directory: product
       - run: npm run test:dom-integration
         working-directory: product
       - run: npm run test:browser
         working-directory: product
+      # Only the explicit screenshots generated using synthetic sessions; no ZIP,
+      # browser profile, storage, trace, cookies or credentials are uploaded.
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && inputs.upload_screenshots
         with:
-          name: browser-evidence-${{ matrix.os }}
-          path: .runs/browser-acceptance
-          if-no-files-found: ignore
+          name: synthetic-browser-screenshots-${{ matrix.os }}
+          path: |
+            .runs/browser-acceptance/desktop-home.png
+            .runs/browser-acceptance/desktop-recovery.png
+            .runs/browser-acceptance/desktop-verification.png
+            .runs/browser-acceptance/mobile-home.png
+            .runs/browser-acceptance/mobile-queued.png
+          if-no-files-found: error
+          retention-days: 2

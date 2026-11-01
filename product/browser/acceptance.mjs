@@ -40,6 +40,13 @@ try {
   let dispatches = 0;
   let firstRunId = '';
   let failNextRunRead = false;
+  let refuseNextExecution = true, refusedExecutions = 0, queuedSnapshot;
+  let holdOldPoll = false, oldPollSeen, releaseOldPoll;
+  const oldPollRequested = new Promise(resolve => { oldPollSeen = resolve; });
+  const oldPollMayFinish = new Promise(resolve => { releaseOldPoll = resolve; });
+  let holdList = false, listSeen, releaseList;
+  const listRequested = new Promise(resolve => { listSeen = resolve; });
+  const listMayFinish = new Promise(resolve => { releaseList = resolve; });
   let rejectSession = false;
   let loseExecutionAck = true, lostAcknowledgements = 0;
   let holdReport = false, reportSeen, releaseReport;
@@ -51,6 +58,9 @@ try {
     await ctx.route('**/*', async route => {
       const req = route.request(); const url = new URL(req.url());
       if (url.origin === origin) return route.continue();
+      if (url.origin === 'https://jpqcqqbzriizxhigvjki.supabase.co' && url.pathname === '/auth/v1/logout') {
+        return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': origin, 'access-control-allow-headers': '*' } });
+      }
       if (url.origin !== 'https://backend.test') return route.abort('blockedbyclient');
       console.log('Local API:', req.method(), url.pathname);
       if (holdReport && req.method() === 'GET' && url.pathname.endsWith('/report')) {
@@ -59,7 +69,17 @@ try {
       const cors = { 'access-control-allow-origin': origin, 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'authorization,content-type,idempotency-key' };
       if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
       if (rejectSession && url.pathname === '/v1/session') return route.fulfill({ status: 401, headers: cors, body: '{}' });
-      if (req.method() === 'POST' && url.pathname.endsWith('/execute')) { dispatches++; firstRunId ||= url.pathname.split('/')[3]; }
+      if (holdList && req.method() === 'GET' && url.pathname === '/v1/investigations') {
+        holdList = false; listSeen(); await listMayFinish;
+      }
+      if (holdOldPoll && req.method() === 'GET' && /^\/v1\/runs\/[^/]+$/.test(url.pathname)) {
+        holdOldPoll = false; oldPollSeen(); await oldPollMayFinish;
+        return route.fulfill({ status: 200, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify(queuedSnapshot) });
+      }
+      if (req.method() === 'POST' && url.pathname.endsWith('/execute')) {
+        if (refuseNextExecution) { refuseNextExecution = false; refusedExecutions++; return route.fulfill({ status: 429, headers: cors, body: '{"code":"RATE_LIMITED"}' }); }
+        dispatches++; firstRunId ||= url.pathname.split('/')[3];
+      }
       if (failNextRunRead && req.method() === 'GET' && /^\/v1\/runs\/[^/]+$/.test(url.pathname)) {
         failNextRunRead = false; return route.fulfill({ status: 429, headers: cors, body: '{}' });
       }
@@ -72,7 +92,9 @@ try {
       }
       const responseHeaders = Object.fromEntries(response.headers); delete responseHeaders['content-encoding'];
       console.log('Local API status:', response.status);
-      return route.fulfill({ status: response.status, headers: { ...responseHeaders, ...cors }, body: Buffer.from(await response.arrayBuffer()) });
+      const body = Buffer.from(await response.arrayBuffer());
+      if (!queuedSnapshot && req.method() === 'POST' && /^\/v1\/investigations\/[^/]+\/runs$/.test(url.pathname) && response.status === 201) queuedSnapshot = JSON.parse(body.toString());
+      return route.fulfill({ status: response.status, headers: { ...responseHeaders, ...cors }, body });
     });
     if (identity) await ctx.addInitScript(({ key, userId, accessToken }) => {
       sessionStorage.setItem(key, JSON.stringify({ access_token: accessToken, refresh_token: 'synthetic-refresh',
@@ -132,11 +154,23 @@ try {
   await app.getByRole('button', { name: 'Confirm scope' }).click(); await app.locator('#scopeConsent').check();
   await app.getByRole('button', { name: 'Authorize scope' }).click(); await app.getByRole('button', { name: 'Queue mock run' }).click();
   await app.getByRole('button', { name: 'Start NON_AI run' }).waitFor({ state: 'visible' });
+  await app.getByRole('button', { name: 'Start NON_AI run' }).click();
+  await app.getByText(/too many requests/i).waitFor();
+  await app.waitForFunction(() => { const button = document.querySelector('[data-action="execute"]'); return button && !button.disabled; }, null, { timeout: 15000 });
+  assert.equal(await app.getByRole('button', { name: 'Start NON_AI run' }).isEnabled(), true, 'definitive refusal permits a later manual start');
+  assert.equal(refusedExecutions, 1); assert.equal(dispatches, 0, 'pre-dispatch refusal does not automatically retry');
   failNextRunRead = true;
   await app.getByRole('button', { name: 'Start NON_AI run' }).click();
   await app.getByText(/displayed status may be out of date/i).waitFor({ timeout: 20000 });
   await app.screenshot({ path: path.join(output, 'desktop-recovery.png') });
   await app.locator('.inline-note').filter({ hasText: /status may be out of date/i }).getByRole('button', { name: 'Check status' }).click();
+  await app.getByText('running', { exact: true }).waitFor({ timeout: 20000 });
+  holdOldPoll = true;
+  await app.getByRole('button', { name: 'Check status' }).last().click();
+  await Promise.race([oldPollRequested, new Promise((_, reject) => setTimeout(() => reject(new Error('Old poll was not requested')), 15000))]);
+  await app.getByRole('button', { name: 'Check status' }).last().click();
+  await app.waitForTimeout(500); releaseOldPoll(); await app.waitForTimeout(500);
+  assert.equal(await app.getByRole('button', { name: 'Start NON_AI run' }).count(), 0, 'an older queued poll cannot regress a running run');
   await app.getByRole('button', { name: 'View verification' }).waitFor({ timeout: 200000 });
   assert.equal(dispatches, 1, 'browser must not retry a dispatched execution');
   assert.equal(lostAcknowledgements, 1, 'the execution acknowledgement was deliberately lost');
@@ -190,6 +224,18 @@ try {
   await second.getByText(/session has expired/i).waitFor();
   assert.doesNotMatch(await second.locator('#content').innerText(), /cancelled/i);
   await other.close(); await user.close();
+  rejectSession = false;
+  const switching = await context({ viewport: { width: 1280, height: 800 } }, { userId: owner, accessToken: token });
+  const switchPage = await switching.newPage(); await switchPage.goto(origin);
+  await switchPage.getByText('Available here: the owned ledger NON_AI fixture.', { exact: false }).waitFor();
+  await switchPage.locator('#promptInput').fill('Private stale list marker'); await switchPage.locator('#promptInput').press('Enter');
+  await switchPage.getByRole('button', { name: 'Choose a supported target' }).click(); await switchPage.locator('#scopeConsent').check();
+  holdList = true; await switchPage.getByRole('button', { name: 'Create investigation' }).click();
+  await Promise.race([listRequested, new Promise((_, reject) => setTimeout(() => reject(new Error('Delayed investigation list was not requested')), 15000))]);
+  await switchPage.locator('[data-action="account"]').click(); await switchPage.getByRole('button', { name: 'Sign out' }).click();
+  await switchPage.getByText('Not signed in', { exact: true }).waitFor(); releaseList(); await switchPage.waitForTimeout(500);
+  assert.doesNotMatch(await switchPage.locator('#history').innerText(), /Private stale list marker/, 'a previous owner list must not reappear after sign-out');
+  await switching.close();
   await writeFile(path.join(output, 'README.txt'), 'Real headless Chromium; synthetic local identities, local NON_AI worker, fake storage. No live Auth or cloud acceptance. Mobile uses device emulation.\n');
   console.log(`PASS: real Chromium desktop, mobile emulation, keyboard, local NON_AI worker, report/export, reload and two synthetic owners. Evidence: ${output}`);
 } finally {

@@ -332,3 +332,123 @@ def test_native_role_drift_fails_closed(native):
         db.execute('ALTER ROLE second_source_backend BYPASSRLS')
     assert native.service.readiness() is False
     failure('STORAGE_ROLE', native.service.list_investigations, OWNER)
+
+
+def test_synthetic_socket_only_dump_restores_data_and_privileges(native):
+    """A disposable synthetic drill, not a backup or restore of hosted Supabase.
+
+    The archive includes only the fixture's synthetic auth, ss, and ss_runtime
+    schemas. Roles are recreated from known test definitions in a second private
+    cluster; Storage object bytes, platform configuration, role credentials,
+    provider backups and a live-project restore are intentionally not covered.
+    """
+    tools = _tools()
+    from psycopg.rows import dict_row
+    for name in ('pg_dump', 'pg_restore'):
+        if not (tools / name).is_file():
+            if os.getenv('GITHUB_ACTIONS') == 'true' and os.getenv('RUNNER_OS') == 'Linux':
+                pytest.fail(f'{name} is required for the synthetic restore drill in Linux CI')
+            pytest.skip(f'{name} is required for the synthetic restore drill')
+
+    service, store = native.service, native.store
+    item = investigation(service, key='synthetic-restore-owner')
+    run = queued(service, item, key='synthetic-restore-run')
+    evidence = seed_evidence(native, OWNER, item.scope_digest)
+    store.bind_investigation(OWNER, item.investigation_id, evidence[0])
+    store.bind_run(OWNER, run.run_id, evidence[1])
+    store.bind_artifact(OWNER, run.run_id, evidence[2])
+    lease = service.claim('synthetic_restore_worker', run_id=run.run_id)
+    ref = ArtifactReference(artifact_id='private:candidate.r1.json', sha256='a' * 64,
+                            size_bytes=17, media_type='application/json')
+    store.record_artifact_ref(OWNER, run.run_id, ref, lease_token=lease.token)
+    stopped_run = service.finish(run.run_id, lease.token, None,
+                                 error_code='ARTIFACT_PUBLICATION_UNCERTAIN')
+    other_item = investigation(service, key='synthetic-restore-other', principal=OTHER)
+    other_run = queued(service, other_item, key='synthetic-restore-other-run', principal=OTHER)
+    cancelled = service.cancel_run(OTHER, other_run.run_id, other_run.revision)
+    original_events = service.events(OWNER, item.investigation_id)
+    original_bindings = store.evidence_bindings(OWNER, item.investigation_id)
+
+    # Reject any source other than the socket directory made by this module's
+    # native fixture: the dump command must never receive a hostname or live DSN.
+    with native.admin() as db:
+        source_socket = Path(db.info.host).resolve(strict=True)
+        source_port = db.info.port
+    temp_root = Path(tempfile.gettempdir()).resolve(strict=True)
+    assert source_socket.parent == temp_root
+    assert source_socket.name.startswith('ss-native-private-')
+    assert source_port == 5432
+
+    environment = {'PATH': os.defpath, 'LC_ALL': 'C', 'PGCONNECT_TIMEOUT': '5',
+                   'PGPASSFILE': os.devnull}
+    with tempfile.TemporaryDirectory(prefix='ss-restore-private-') as temporary:
+        root = Path(temporary).resolve(strict=True)
+        assert root.parent == temp_root and root.name.startswith('ss-restore-private-')
+        archive, cluster = root / 'synthetic.dump', root / 'db'
+        def command(name, *args):
+            result = subprocess.run([str(tools / name), *map(str, args)],
+                env=environment, capture_output=True, text=True, timeout=60)
+            assert result.returncode == 0, result.stdout + result.stderr
+            return result
+        command('pg_dump', '--format=custom', '--no-password', '--host', source_socket,
+                '--port', source_port, '--username', 'postgres', '--dbname', 'postgres',
+                '--schema=auth', '--schema=ss', '--schema=ss_runtime', '--file', archive)
+        assert archive.is_file() and archive.stat().st_size > 0
+        command('initdb', '-D', cluster, '-U', 'postgres', '--no-locale',
+                '--encoding=UTF8', '--auth-local=trust', '--auth-host=reject')
+        escaped = str(root).replace("'", "''")
+        with (cluster / 'postgresql.conf').open('a', encoding='utf-8') as config:
+            config.write("\nlisten_addresses=''\nport=5432\nmax_connections=15\n"
+                         "shared_buffers='16MB'\n"
+                         f"unix_socket_directories='{escaped}'\n")
+        try:
+            command('pg_ctl', '-D', cluster, '-l', root / 'postgres.log', '-w', '-t', '20', 'start')
+            def connect(user):
+                return native.psycopg.connect(host=str(root), port=5432, dbname='postgres',
+                    user=user, passfile=os.devnull, row_factory=dict_row,
+                    autocommit=False, prepare_threshold=None, connect_timeout=5)
+            with connect('postgres') as db:
+                db.execute('CREATE ROLE anon NOLOGIN')
+                db.execute('CREATE ROLE authenticated NOLOGIN')
+                db.execute('CREATE ROLE service_role NOLOGIN BYPASSRLS')
+                db.execute('CREATE ROLE second_source_backend LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD NULL')
+            command('pg_restore', '--exit-on-error', '--no-password', '--host', root,
+                    '--port', '5432', '--username', 'postgres', '--dbname', 'postgres', archive)
+
+            class RestoredStore(PostgresStore):
+                def _open_connection(self):
+                    return connect(RUNTIME_ROLE)
+            restored = RestoredStore(f'host=db.{PROJECT}.supabase.co dbname=postgres '
+                                     f'user={RUNTIME_ROLE} password=NON_SECRET_TEST_ONLY sslmode=verify-full',
+                                     project_ref=PROJECT)
+            restored_service = BackendService(store=restored)
+            assert restored_service.readiness()
+            assert restored_service.get_investigation(OWNER, item.investigation_id) == item
+            assert restored_service.get_run(OWNER, run.run_id) == stopped_run
+            assert restored_service.get_run(OTHER, other_run.run_id) == cancelled
+            assert restored_service.events(OWNER, item.investigation_id) == original_events
+            assert restored.evidence_bindings(OWNER, item.investigation_id) == original_bindings
+            assert restored.artifact_refs(OWNER, run.run_id) == [ref]
+            failure('NOT_FOUND', restored_service.get_run, OTHER, run.run_id)
+            assert restored_service.claim('no_blind_replay', run_id=run.run_id) is None
+            new_run = queued(restored_service, item, key='synthetic-post-restore')
+            assert new_run.status == 'queued'
+            for sql in ('SELECT * FROM ss.runs', 'SELECT * FROM auth.users',
+                        'DELETE FROM investigations', 'CREATE TABLE ss_runtime.forbidden(id integer)'):
+                with pytest.raises(BackendError):
+                    with restored.transaction() as db:
+                        db.execute(sql)
+            with connect('postgres') as db:
+                assert db.execute('SELECT count(*) AS n FROM ss.runs').fetchone()['n'] == 1
+                rls = db.execute("SELECT count(*) AS n FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN ('ss','ss_runtime') AND c.relkind='r' AND NOT c.relrowsecurity").fetchone()['n']
+                assert rls == 0
+                policies = db.execute("SELECT count(*) AS n FROM pg_policies WHERE schemaname='ss_runtime' AND roles=ARRAY['second_source_backend'::name]").fetchone()['n']
+                assert policies > 0
+                for role in ('anon', 'authenticated', 'service_role'):
+                    assert not db.execute("SELECT has_schema_privilege(%s,'ss_runtime','USAGE') AS allowed", (role,)).fetchone()['allowed']
+        finally:
+            stopped = subprocess.run([str(tools / 'pg_ctl'), '-D', str(cluster),
+                '-m', 'immediate', '-w', '-t', '20', 'stop'], env=environment,
+                capture_output=True, text=True, timeout=30)
+            if (cluster / 'postmaster.pid').exists():
+                pytest.fail('Synthetic restore PostgreSQL did not stop: ' + stopped.stderr)
