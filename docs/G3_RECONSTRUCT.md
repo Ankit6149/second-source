@@ -1,17 +1,12 @@
-# G3 Reconstruct — verified zero-cost engineering / real inference NO-GO
+# G3 reconstruction operator guide — versioned CLI and research status
 
-**Status pointer - 29 October 2026 IST.** Use the [single current delivery board](G3_DELIVERY_BOARD.md) for exact published SHA/CI, both consumed real G3 attempts, evidence and backend acceptance. This document does not authorize inference, credentials or deployment.
+**CURRENT STATUS — 1 November 2026 IST.** A genuine Meta-generated G3 candidate **was admitted and independently scored 14/25** on [unmerged PR #23](https://github.com/Ankit6149/second-source/pull/23), head `d7508ce33e67b414370b29cc0db713800d72fb59`, with [Linux/Windows CI green](https://github.com/Ankit6149/second-source/actions/runs/41237650430). The private run/replay receipts require independent artifact-level review; **no genuine feedback-repaired score** has been established. The public hosted application cannot currently initiate genuine inference. See the [current board](G3_DELIVERY_BOARD.md) and [acceptance](G3_ACCEPTANCE.md).
 
-**Current delivery and exact CI:** [authoritative board](G3_DELIVERY_BOARD.md).
-This runbook documents supported commands; it does not grant input, spending
-or merge approval. Preflight inspects a proposed budget, not owner consent.
+**Critical operator-version warning:** The original CLI examples, old `800`-token guided limit, and historical input/approval pins *below* describe the previous October 29 baseline and must **not** be reused to trigger the PR #23 scientific engine. On PR #23, guided synthesis uses a distinct approved request protocol and a `4096`-token cap; rev-6 authorization was **consumed**, not renewed. Before any future real call, independently inspect the exact executable checkout, current packet, context/request/source/suite hashes, budget, provider credentials and a **new owner-signed exact-input authorization**. This document never grants inference, paid retries, access to secrets, or deployment.
 
-Single reproducible command owning the full G3 path: approved scope, G2
-evidence/hypotheses, pinned generation broker, CandidateSpec loader, trusted
-interpreter (evaluator-owned worker), independent sealed evaluator, sanitized
-run report.
+## Historical operator guide (October 29 snapshot; archive, not current authorization)
 
-## Guided synthesis binding
+### Guided synthesis binding — historical baseline
 
 Published reproduction baseline is main `2dd919bf54cbc77318be20ba1468698d7a49fbfb`; [post-merge CI 40845419026](https://github.com/Ankit6149/second-source/actions/runs/40845419026) passed Linux 504/0/3, Windows 505/0/2 and bootstrap 505/0/2 BOOTSTRAP_OK. Guided binding is implemented in source `3c77390f94c839364b83025918d7109c0e2bea3a`, [PR #11](https://github.com/Ankit6149/second-source/pull/11). Its exact-head CI and review are recorded on that PR; the baseline CI above does not certify this newer interface. Local independent checks passed all 17 new cases, including explicitly NON_AI controls.
 
