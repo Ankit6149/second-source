@@ -55,6 +55,19 @@ try {
   let holdReport = false, reportSeen, releaseReport;
   const reportRequested = new Promise(resolve => { reportSeen = resolve; });
   const reportMayFinish = new Promise(resolve => { releaseReport = resolve; });
+  const protectedRequests = [];
+  async function waitForTestRateHeadroom() {
+    // The synthetic users share the real pre-authentication rate bucket.
+    // Pace the test before its next burst, without changing production limits
+    // or retrying an execution after an ambiguous outcome.
+    for (;;) {
+      const now = Date.now();
+      while (protectedRequests.length && protectedRequests[0] <= now - 60000) protectedRequests.shift();
+      if (protectedRequests.length <= 40) return;
+      const delay = Math.min(30000, Math.max(1, protectedRequests[0] + 60010 - now));
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
   // A failed assertion must not leave intercepted requests blocking shutdown.
   releaseHeldRequests = () => { releaseExecution(); releaseOldPoll(); releaseList(); releaseReport(); };
   async function context(options = {}, identity = null) {
@@ -68,6 +81,7 @@ try {
         return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': origin, 'access-control-allow-headers': '*' } });
       }
       if (url.origin !== 'https://backend.test') return route.abort('blockedbyclient');
+      if (req.method() !== 'OPTIONS' && url.pathname.startsWith('/v1')) protectedRequests.push(Date.now());
       console.log('Local API:', req.method(), url.pathname);
       if (holdReport && req.method() === 'GET' && url.pathname.endsWith('/report')) {
         reportSeen(); await reportMayFinish; testResponse = 'delayed-report';
@@ -311,6 +325,7 @@ try {
   releaseExecution(); await (await executionResponse).finished();
   await second.waitForFunction(() => { const button = document.querySelector('[data-action="queue"]'); return button && !button.disabled; }, null, { timeout: 15000 });
   syntheticTerminal = null;
+  await waitForTestRateHeadroom();
   await second.locator('.topbar [data-action="new"]').click();
   await second.locator('#promptInput').fill('Mobile HTTP fixture'); await second.locator('#promptInput').press('Enter');
   await second.getByRole('button', { name: 'Choose a supported target' }).click();
