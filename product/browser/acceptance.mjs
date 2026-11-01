@@ -17,7 +17,7 @@ await mkdir(output, { recursive: true });
 const backend = spawn(process.env.PYTHON || 'python', ['integration/local_backend.py'], { stdio: ['ignore', 'pipe', 'pipe'] });
 let backendErrors = '';
 backend.stderr.on('data', chunk => { backendErrors += String(chunk).slice(0, 4000); });
-let server, browser;
+let server, browser, releaseHeldRequests = () => {};
 try {
   const [chunk] = await Promise.race([
     once(backend.stdout, 'data'),
@@ -55,6 +55,8 @@ try {
   let holdReport = false, reportSeen, releaseReport;
   const reportRequested = new Promise(resolve => { reportSeen = resolve; });
   const reportMayFinish = new Promise(resolve => { releaseReport = resolve; });
+  // A failed assertion must not leave intercepted requests blocking shutdown.
+  releaseHeldRequests = () => { releaseExecution(); releaseOldPoll(); releaseList(); releaseReport(); };
   async function context(options = {}, identity = null) {
     const ctx = await browser.newContext({ ...options, acceptDownloads: true, reducedMotion: 'reduce' });
     // Block every external request. Route the synthetic API origin only to the local test server.
@@ -162,10 +164,12 @@ try {
   await switchPage.getByRole('button', { name: 'Choose a supported target' }).click(); await switchPage.locator('[data-target-id="owned-ledger-v1"]').click(); await switchPage.locator('#scopeConsent').check();
   holdList = true; await switchPage.getByRole('button', { name: 'Create investigation' }).click();
   await Promise.race([listRequested, new Promise((_, reject) => setTimeout(() => reject(new Error('Delayed investigation list was not requested')), 15000))]);
+  console.log('Testing session switch with a delayed investigation list.');
   await switchPage.locator('[data-action="account"]').click(); await switchPage.getByRole('button', { name: 'Sign out' }).click();
   await switchPage.getByText('Not signed in', { exact: true }).waitFor();
   const listResponse = switchPage.waitForResponse(response => response.headers()['x-ss-test-response'] === 'delayed-list');
   releaseList(); await (await listResponse).finished(); await switchPage.evaluate(() => new Promise(resolve => setTimeout(resolve, 0)));
+  console.log('Delayed investigation list released after sign-out.');
   await switchPage.locator('.topbar [data-action="new"]').click();
   assert.doesNotMatch(await switchPage.locator('#history').innerText(), /Private stale list marker/, 'a previous owner list must not reappear after sign-out and subsequent rendering');
   await switching.close();
@@ -360,5 +364,6 @@ try {
   await writeFile(path.join(output, 'README.txt'), 'Real headless Chromium; synthetic local identities, local NON_AI worker, fake storage. No live Auth or cloud acceptance. Mobile uses device emulation.\n');
   console.log(`PASS: real Chromium desktop, mobile emulation, keyboard, local NON_AI worker, report/export, reload and two synthetic owners. Evidence: ${output}`);
 } finally {
+  releaseHeldRequests();
   await browser?.close(); await server?.close(); backend.kill();
 }
