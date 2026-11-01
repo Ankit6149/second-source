@@ -1,20 +1,24 @@
-# Second Source - current coordination charter
+# Second Source — coordination charter
 
-**Status pointer - 29 October 2026 IST.** Use the [single current delivery board](G3_DELIVERY_BOARD.md) for exact published SHA/CI, both consumed real G3 attempts, evidence and backend acceptance. This document does not authorize inference, credentials or deployment.
+**CURRENT — 1 November 2026 IST.** The [delivery board](G3_DELIVERY_BOARD.md) is the sole owner of live status; the [master PRD](MASTER_PRD.md) owns product requirements. Dates, previous branch rules and merge statements under **Historical coordination** are archived snapshots, not current standing permissions. [Issue #25](https://github.com/Ankit6149/second-source/issues/25) tracks integration, blockers and evidence.
 
-**CURRENT - 29 October 2026 IST.** [Delivery board](G3_DELIVERY_BOARD.md) owns status. [Owner backend directive](https://github.com/Ankit6149/second-source/issues/2#issuecomment-6477673246) and subsequent parallel instruction supersede single shared-branch restriction. [Master PRD](MASTER_PRD.md) remains product contract.
+## Active ownership and shared interfaces
 
-| Owner | Files/modules | Boundary |
-|---|---|---|
-| Muse - intelligence | Existing candidate generation/model gateway/synthesis/admission/hypothesis/experiment reasoning and tests | Strict provenance-bearing requests/results; preserve independent evaluator/negative gates |
-| Codex - infrastructure | New `src/second_source/backend/`, backend tests/API docs, control plane/DB/migrations/service/API/workers/artifacts/observability, independent verifier integration and status docs | Reuse existing G2/G3 engine/receipts; no duplicate generation/runtime/scoring |
-| Shared contracts | Versioned IDs/lifecycle/evidence refs, generation requests/results, approvals/budgets/evaluations/errors | One announced writer per shared file; smallest committed compatible interface; independent security review |
+| Workstream | Primary owner | Scope and integration contract |
+|:--|:--|:--|
+| **Scientific reconstruction** | Muse, [PR #23](https://github.com/Ankit6149/second-source/pull/23) (`eng/g3-readiness`) | Observations, hypotheses, model gateway, candidate generation and admission, sealed differential evaluator, evidence-conditioned repair, provenance, science-facing adapters. Do not modify Codex cloud/frontend or Argon's independent reference without coordination. |
+| **Product and hosted release** | Codex, [PR #24](https://github.com/Ankit6149/second-source/pull/24) | v0.8 frontend, backend/Auth/PostgreSQL/Storage/worker, browser QA, hosted acceptance, G3/G4 product integration and submission assets. Keep existing production landing stable. |
+| **Independent G4 reference / benchmark** | Argon (proposed; branch and artifact **not yet verified**) | New *owned* stateful HTTP reference fixture, deterministic reset and independent tests; coordinate the typed target contract before editing shared scientific or backend code. A second ledger parameter variant is not a distinct protocol. |
+| **Independent verification and documentation integration** | Separate reviewer, docs-only integration PR | Check exact SHAs/CI, scientific and security claims, links and acceptance boundaries. Review comments are not merge or production authorization. |
 
-Codex backend baseline continuation uses `feat/postgres-baseline` in the separate verifier checkout, based on verified main `1ba8905`. Preserve the operator checkout, frozen guided packet and raw-byte code pins pending exact owner authorization. PRs #9–#11 are merged; do not revive their old branches. Separate short-lived branches/PRs permitted for independent modules. No force pushes, abandoned branches or concurrent shared-file writes. Serialize integration; synchronize main before subsequent merge.
+## Integration and approval rules
 
-Routine engineering merges have standing owner authorization only after exact-head Linux/Windows CI, independent review and protections. Paid inference/retries, credentials, live deployment and material scope changes need separate authorization. Both existing G3 grants consumed.
-
-Use mocks/contract tests so unrelated work proceeds concurrently. Preserve independent regressions and NON_AI 25/25 positive/2/2/1 negative controls. New blockers need reproduced failure, severity and acceptance condition. Full CI at meaningful milestones; one implementation and one board.
+1. **One canonical current status:** [G3 delivery board](G3_DELIVERY_BOARD.md). Each claim records date, exact branch/SHA, test provenance, and whether the feature is merged, local-only, preview-only or hosted-accepted. Historical failures remain accessible but labeled.
+2. **One writer per shared file at a time.** Coordinate changes to source-level interfaces in issue #25. Use a small contract patch, regression tests and explicit handoff; avoid duplicated scientific engines, concurrent migrations or broad unrelated reformatting.
+3. **Exact-head acceptance:** independently reviewed relevant source plus Linux/Windows CI where required; local fake-provider and simulated-DOM results are distinct from real-model, real-browser and hosted acceptance. Python CI does not prove frontend tests passed in CI.
+4. **No implied side-effect authorization:** paid inference/retry, live backups or sensitive-data exports, migrations, credentials, new cloud resources, worker enablement, production promotion and protected merges each require explicitly scoped approval. Never reveal owner billing/account balances in issues, PRs or logs.
+5. **No misleading scientific claims:** preserved real Meta candidate **14/25** on unmerged PR #23, deterministic NON_AI control **22/25**, scientific repair engineering without a verified genuine repaired score, and G4 ledger-variant scaffolding without a distinct HTTP/browser reconstruction.
+6. **Release discipline:** keep current `main` and active PR branches distinguishable; request independent review, respect Vercel auto-deploy risk on main, and never treat merging code as authorization to activate paid infrastructure.
 
 ## Historical coordination
 
