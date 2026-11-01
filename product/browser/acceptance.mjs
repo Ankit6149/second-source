@@ -237,8 +237,11 @@ try {
   assert.match(await app.locator('dialog').innerText(), /loopback/);
   await app.locator('#scopeConsent').check(); await app.getByRole('button', { name: 'Create investigation' }).click();
   await app.getByRole('button', { name: 'Confirm scope' }).click(); await app.locator('#scopeConsent').check();
-  await app.getByRole('button', { name: 'Authorize scope' }).click(); await app.getByRole('button', { name: 'Queue mock run' }).click();
-  const g4RunId = latestQueuedSnapshot.run_id;
+  await app.getByRole('button', { name: 'Authorize scope' }).click();
+  const g4QueuedResponse = app.waitForResponse(response => response.request().method() === 'POST' && /\/investigations\/[^/]+\/runs$/.test(new URL(response.url()).pathname) && response.status() === 201);
+  await app.getByRole('button', { name: 'Queue mock run' }).click();
+  const g4RunId = (await (await g4QueuedResponse).json()).run_id;
+  assert.notEqual(g4RunId, firstRunId, 'HTTP isolation must use the actual HTTP run identity');
   await app.getByRole('button', { name: 'Start NON_AI run' }).click();
   await app.getByRole('button', { name: 'View verification' }).waitFor({ timeout: 200000 });
   await app.getByRole('button', { name: 'View verification' }).click();
@@ -310,8 +313,11 @@ try {
   await second.locator('[data-target-id="owned-http-task-workflow-v1"]').click();
   await second.locator('#scopeConsent').check(); await second.getByRole('button', { name: 'Create investigation' }).click();
   await second.getByRole('button', { name: 'Confirm scope' }).click(); await second.locator('#scopeConsent').check();
-  await second.getByRole('button', { name: 'Authorize scope' }).click(); await second.getByRole('button', { name: 'Queue mock run' }).click();
-  const mobileG4RunId = latestQueuedSnapshot.run_id;
+  await second.getByRole('button', { name: 'Authorize scope' }).click();
+  const mobileG4QueuedResponse = second.waitForResponse(response => response.request().method() === 'POST' && /\/investigations\/[^/]+\/runs$/.test(new URL(response.url()).pathname) && response.status() === 201);
+  await second.getByRole('button', { name: 'Queue mock run' }).click();
+  const mobileG4RunId = (await (await mobileG4QueuedResponse).json()).run_id;
+  assert.notEqual(mobileG4RunId, g4RunId, 'mobile isolation must use the second HTTP run identity');
   await second.getByRole('button', { name: 'Start NON_AI run' }).click();
   await second.getByRole('button', { name: 'View verification' }).waitFor({ timeout: 200000 });
   await second.getByRole('button', { name: 'View verification' }).click();

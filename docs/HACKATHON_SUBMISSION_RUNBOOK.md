@@ -18,6 +18,42 @@ Keep submission checklist boxes unverified until direct evidence exists. Plans/e
 
 The product **does not** recover source code, bypass access controls, clone unspecified features, or promise equivalence on every possible input.
 
+## Submission copy and local recording outline
+
+**Problem.** Teams replacing an undocumented system often know its inputs and
+outputs but not the rules behind them. Plausible generated code can miss the
+state transitions and errors that users rely on.
+
+**Approach.** Within an explicitly authorized scope, Second Source captures
+observations, records evidence and hypotheses, admits a constrained candidate,
+and compares candidate behavior against a separately managed evaluation suite.
+The workspace exposes supported fixture targets, run state, verification and a
+sanitized integrity export. See `product/README.md` for the local commands.
+
+**Evidence.** The historical genuine Meta `muse-spark-1.3` candidate is reported
+at 14/25 (9 schema and 2 error mismatches); original private receipts still need
+independent artifact-level review. Separately, the local ledger and owned HTTP
+fixtures are deterministic NON_AI controls. The HTTP 25/30 to 30/30 repair uses
+previously collected active evidence; it is not a genuine Meta run or proof of
+AI independently discovering a fix. Scores from different suites are not a
+head-to-head comparison.
+
+**Recording sequence.** Show the authorized target and its scope, start the
+local NON_AI run, show real persisted stage events, verification and candidate
+lineage, then download and verify the export. Switch to the separately labeled
+historical Meta record and explain its failures. State that test identities and
+Storage are synthetic, hosted authentication is unverified, and no genuine repair
+improvement is claimed. Inspect the recording and exported material for private
+data before sharing. Do not represent a browser automation run as a live Google
+login, or a checksum as provider attestation.
+
+**Before submission.** Confirm the exact video and portal requirements in the
+organizer's participant interface; the three-minute storyboard below is an
+internal target. Open all final links in a private browser, preserve the tested
+commit and artifact digests, and retain an actual portal confirmation. The
+official event page lists the November 4, 9 p.m. Eastern deadline, subject to
+change: <https://dev.meta.ai/events/global-hackathon>.
+
 ## What the demo must prove (in order)
 
 1. **Owner-specified scope:** observation commands, requested implementation modules and exclusions are visibly distinct.
