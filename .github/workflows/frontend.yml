@@ -2,6 +2,7 @@
 name: Frontend acceptance
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - 'product/**'
       - 'src/second_source/backend/**'
@@ -63,13 +64,13 @@ jobs:
       - run: npm run test:dom
         working-directory: product
   browser:
-    if: github.event_name == 'workflow_dispatch' && inputs.full_browser
+    if: (github.event_name == 'workflow_dispatch' && inputs.full_browser) || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'browser-acceptance'))
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ fromJSON(inputs.include_windows && '["ubuntu-latest", "windows-latest"]' || '["ubuntu-latest"]') }}
+        os: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.include_windows && '["ubuntu-latest", "windows-latest"]' || '["ubuntu-latest"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -112,4 +113,5 @@ jobs:
             .runs/browser-acceptance/ledger-mobile-verification.png
           if-no-files-found: error
           retention-days: 2
+
 
