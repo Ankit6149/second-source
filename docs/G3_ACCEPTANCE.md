@@ -1,18 +1,16 @@
-# G3 acceptance - current verdict and historical evidence
+# G3 acceptance — genuine result and historical evidence
 
-**Status pointer - 29 October 2026 IST.** Use the [single current delivery board](G3_DELIVERY_BOARD.md) for exact published SHA/CI, both consumed real G3 attempts, evidence and backend acceptance. This document does not authorize inference, credentials or deployment.
+**CURRENT — 1 November 2026 IST.** Read the [authoritative delivery board](G3_DELIVERY_BOARD.md) for active SHAs, independent checks and G4–G6 release status. Earlier verdicts and source-specific counts below are archived; their statements that no genuine candidate was admitted apply **only to the October 29 checkpoint**, not to the latest unmerged science PR. This guide does not authorize spending, merges, credentials or deployment.
 
-## CURRENT - 29 October 2026 IST
+## Current G3 verdict — partial scientific success, not product acceptance
 
-GO for source-specific tested nonbillable CLI engineering baseline; NO-GO for full backend/product acceptance or genuine reconstruction success. The [single delivery board](G3_DELIVERY_BOARD.md) holds exact source/CI/evidence and remaining gates.
+- [Muse PR #23](https://github.com/Ankit6149/second-source/pull/23) head `d7508ce33e67b414370b29cc0db713800d72fb59`: [exact-head Linux/Windows CI passed](https://github.com/Ankit6149/second-source/actions/runs/41237650430). Scientific source, tests, sanitized evidence exporter and the second ledger-variant fixture remain **unmerged**.
+- The consumed rev-6 Meta `muse-spark-1.3` research attempt produced an **admitted, executed candidate scored 14 passed / 11 failed / 0 indeterminate / 25**. The operator reports independent zero-call replay; original private receipts are **not independently audited in this public repository**. This is a real model-generation result, **not** a hosted app invocation.
+- The separate local deterministic **NON_AI** demonstration returned **22/25**. Hand-written positive **25/25** and deliberately defective controls calibrate the evaluator; none are model-quality scores.
+- The 11 genuine mismatches were classified as nine schema-category and two error-category differences. Evidence-conditioned repair machinery is implemented and tested, but **no improved genuine candidate score** has been independently established. No new real repair is authorized by these documents.
+- **G3 feasibility demonstrated on PR #23; behavioral equivalence remains incomplete.** Full production integration and G4 cross-protocol generality are **not accepted**. The sealed test bundle, raw model response, and proof-sensitive artifacts must stay private.
 
-PRs #5-#10 are merged; current main `2dd919bf54cbc77318be20ba1468698d7a49fbfb`. PR #10 backend merge `a2a82fae085540a7719646074b8cbe33a7ef0e7c` passed [CI 40759124434](https://github.com/Ankit6149/second-source/actions/runs/40759124434): Linux 490 passed/0 failed/3 skipped, Windows 491/0/2, Windows bootstrap passed. PR #9 guided-synthesis reviewed head `9dd028e9c143e911e94dd85f75dec017d00f685b` passed [CI 40759540461](https://github.com/Ankit6149/second-source/actions/runs/40759540461): Linux 504/0/3, Windows 505/0/2, Windows bootstrap passed; subsequently merged as current main. Current merge `2dd919bf54cbc77318be20ba1468698d7a49fbfb` independently passed [post-merge CI 40845419026](https://github.com/Ankit6149/second-source/actions/runs/40845419026): Linux 504/0/3, Windows 505/0/2, bootstrap 505/0/2 BOOTSTRAP_OK.
-
-The durable local SQLite/single-host NON_AI control plane and existing-G3 mock/export/restart journey are implemented and reviewed. Cloud databases/authentication, production readiness and genuine paid-engine integration are not established. Guided verifier binding is implemented in source `3c77390f94c839364b83025918d7109c0e2bea3a`, [PR #11](https://github.com/Ankit6149/second-source/pull/11), based on current main: full synthesis remains default; explicit guided mode is bound with a version-2 domain-separated approval and immutable dispatch/result private receipts through the existing gateway. Local independent gates: 17 new cases passed/0 remaining failures across targeted runs; existing workflow/reconstruct39 passed; targeted preflight/receipt/API/worker66 passed/1 Windows privilege skip. Exact-head CI and independent review are recorded on PR #11; the baseline CI above does not certify this newer source. Explicit `--synthesis guided` caps output at 800 tokens; default full caps at 2000. Protocol-separated inputs require fresh preflight. Immutable private dispatch/result archives preserve successful response content before semantic admission, without supplying credentials/signing authority to the hook or exporting originals. Provider-invalid raw response bodies may still be unavailable.
-
-New genuine G2 has complete original hypotheses/citations/two receipts; missing 27 October history remains unrecovered. Both real G3 grants consumed: no admitted candidate/evaluation/score. Exact old field rejection causes unknown. PR #8 cannot recover them. No inference/retry/repair/credentials authorized.
-
-Trusted 25/25, negative 2/2/1 and mock 22/25 are NON_AI. Local backend NON_AI acceptance is recorded above; guided verifier binding and genuine reconstruction acceptance remain pending. Routine merges follow updated [charter](COORDINATION_CHARTER.md): exact-head CI, independent review/protections. No frontend expansion/production-readiness claim.
+---
 
 ## ARCHIVED SNAPSHOTS — G3-A / early G3-B
 
