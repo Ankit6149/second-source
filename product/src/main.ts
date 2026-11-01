@@ -6,6 +6,7 @@ import type { Session } from '@supabase/supabase-js';
 import { auth, observeSession, signIn, signOut } from './auth';
 import { Api, ApiError, validatedOrigin, type Target, type Investigation, type Run, type RunEvent, type Verification } from './api';
 import { detectReference } from './reference';
+import { supportedTarget } from './targets';
 import { clearOwnerNotes, loadNotes, saveNotes } from './notes';
 import { acceptsRunRevision, executionDefinitelyRefused, outcomeConfirmed, pollFailureMessage, pollRetryDelay } from './polling';
 
@@ -182,7 +183,7 @@ async function hydrate(session: Session | null) {
     sessionStorage.setItem('ss-session-owner', identity.owner_id);
     const [targets, items] = await Promise.all([api.targets(), allPages(after => api.investigations(after))]);
     if (generation !== state.epoch) return;
-    state.target = targets.find(target => target.target_id === 'owned-ledger-v1' && target.origin === 'mock' && target.real === false) || null;
+    state.target = supportedTarget(targets);
     state.investigations = items.sort((a, b) => b.created_at.localeCompare(a.created_at));
     const saved = sessionStorage.getItem('ss-selected-investigation');
     if (saved && items.some(item => item.investigation_id === saved)) await openInvestigation(saved);

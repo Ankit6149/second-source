@@ -2,8 +2,18 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Api, ApiError, validatedOrigin, type Run } from '../src/api.ts';
 import { detectReference } from '../src/reference.ts';
+import { supportedTarget } from '../src/targets.ts';
 
 const run: Run = { run_id: '12345678-1234-1234-1234-123456789abc', investigation_id: '12345678-1234-1234-1234-123456789abc', status: 'queued', stage: null, revision: 1, created_at: '2026-01-01T00:00:00Z', cancel_requested: false, error_code: null, result: null };
+
+test('target discovery fails closed for unknown, malformed and ambiguous capabilities', () => {
+  const scope = { scope_version: '1', target: { kind: 'cli', permission_ref: 'owned-fixture', reference_url: null, reference_command_id: 'owned-ledger-v1' }, goal: 'Reconstruct only the synthetic ledger CLI behaviors', mode: 'selected_flows', observation: { allowed_url_patterns: [], allowed_roles: ['guest'], permitted_actions: ['cli'], allowed_commands: ['list', 'total', 'remove', 'add'], authenticated_access: 'not_required' }, implementation: { route_patterns: [], required_flows: [], requirements: ['REQ-LEDGER'], allowed_subsystems: ['cli_ledger'], fidelity: ['behavioral'] }, exclusions: { url_patterns: [], subsystems: [], external_side_effects: [] }, budgets: { max_reference_experiments: 40, max_model_calls: 5, max_repair_rounds: 3, max_wall_seconds: 600, max_estimated_model_spend_usd: 0 } };
+  const valid = { target_id: 'owned-ledger-v1', label: 'Owned ledger fixture', run_kind: 'g3_mock', origin: 'mock', real: false, execution_enabled: false, scope, scope_digest: 'dbf5a0d74502ed6662f551e57ad25ecb902c8c15439186fa5173a54ad9c25c53' };
+  assert.deepEqual(supportedTarget([valid]), valid);
+  assert.equal(supportedTarget([valid, valid]), null);
+  for (const input of [null, {}, [null], [valid, { ...valid, run_kind: 'g3_real' }], [{ ...valid, target_id: 'future-http' }], [{ ...valid, run_kind: 'g3_real' }], [{ ...valid, execution_enabled: 'true' }], [{ ...valid, scope_digest: 'bad' }], [{ ...valid, scope: [] }], [{ ...valid, scope: {} }], [{ ...valid, scope: { ...scope, budgets: { ...scope.budgets, max_estimated_model_spend_usd: 1 } } }]])
+    assert.equal(supportedTarget(input), null);
+});
 
 test('origins are fixed HTTPS origins, with localhost only in development', () => {
   assert.equal(validatedOrigin('https://api.example'), 'https://api.example');
