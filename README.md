@@ -14,7 +14,8 @@
 </div>
 
 > [!IMPORTANT]
-> **Engineering prototype, not a universal cloning service.** The repository has a reproducible **NON_AI** reconstruction/evaluation workflow and recorded **genuine Meta G2 reasoning**. A **successfully admitted and independently scored Meta-generated G3 reconstruction has not yet been demonstrated**. The public frontend is a static research preview; cloud authentication, storage, deployment, real-model repair, and arbitrary-target reconstruction are **not accepted as live production capabilities**. See [current evidence and release gates](#what-works-today).
+> **Engineering research and controlled demonstrations, not a universal cloning service.** A genuine Meta-generated G3 candidate was admitted and scored **14/25** on the scientific PR, with local replay reported; it is **not merged or hosted as a live model feature**, and original private receipts still require independent audit. The separate **NON_AI** control scored **22/25**. Cloud authentication, private Storage and hosted worker acceptance are not yet complete. See the [verified current delivery board](docs/G3_DELIVERY_BOARD.md).
+
 
 ## The idea
 
@@ -127,22 +128,22 @@ Its first candidate format is a **restricted, declarative specification**, not a
 
 ## What works today
 
-<sub>Engineering status checked 30 October 2026. Current GitHub state can change; the [delivery board](docs/G3_DELIVERY_BOARD.md) and linked PRs provide the detailed evidence trail. Some dated board entries are historical checkpoints, not the latest merged SHA.</sub>
+<sub>Status checked 1 November 2026 against current GitHub heads and their exact-head Linux/Windows CI. **The branch of a feature matters:** scientific and v0.8 app features listed below are not part of merged `main`. See the [delivery board](docs/G3_DELIVERY_BOARD.md).</sub>
 
 | Area | Status | Evidence / limitation |
 |:--|:--|:--|
-| Owned-ledger observation, hypothesis and experiment flow | **Implemented for the approved fixture** | Genuine Meta-driven G2 reasoning recorded; **3 hypotheses, 5 observations, 2 real provider receipts** |
-| Candidate admission and independent sealed evaluator | **Implemented and tested** | Reproducible controls: hand-authored positive **25/25**; deliberately defective controls trigger **2 / 2 / 1** failures |
-| Scripted end-to-end reconstruction | **Demonstrated — NON_AI** | Mock candidate scores **22 passed / 3 failed / 0 indeterminate / 25** |
-| Genuine Meta-generated G3 candidate | **Not yet demonstrated successfully** | Two real attempts consumed, neither produced an admitted, independently scored candidate |
-| Bounded mock candidate repair | **Implemented on [PR #18](https://github.com/Ankit6149/second-source/pull/18); pending integration** | Frozen-context retries and versioned evidence; **not** real feedback-conditioned synthesis or real-model repair |
-| Durable local API and worker | **Implemented** | Owner-scoped local SQLite lifecycle, cancellation/fencing, mock execution, sanitized export |
-| Cloud backend and storage | **Source integrated, not live accepted** | Auth/PostgreSQL/Storage/Render/Railway preparation on [merged PR #19](https://github.com/Ankit6149/second-source/pull/19); live migrations, credentials, and hosted acceptance pending |
-| Public website and evidence viewer | **Static preview implementation** | [Merged PR #20](https://github.com/Ankit6149/second-source/pull/20); browser-local viewer, not authenticated cloud investigation UI |
-| E2B / Daytona sandbox | **Gated integration work** | Interface and fake tests exist; production sandbox execution is not enabled |
+| Authorized owned-ledger observation, hypotheses and experiments | **Implemented for limited fixture** | Recorded genuine Meta G2 receipts, 3 hypotheses and 5 observations |
+| Candidate admission and independent evaluator | **Implemented** | Positive hand-authored control **25/25**; deliberate negative controls retained |
+| Genuine Meta-generated G3 reconstruction | **Admitted and evaluated on unmerged scientific PR #23** | **14 passed / 11 failed / 0 indeterminate / 25**; local offline replay reported; private receipt audit outstanding; no live application inference |
+| Scientific repair | **Bounded engineering on PR #23** | Controlled model-facing aggregate-feedback path has deterministic tests; **no genuine repaired candidate scored** and no standing paid approval |
+| Second target / G4 | **Partial fixture only on PR #23** | Variant ledger changes hidden rules but retains the same command protocol; **distinct HTTP/browser reconstruction not demonstrated** |
+| Durable backend | **Merged backend code, not hosted-accepted** | [PR #21](https://github.com/Ankit6149/second-source/pull/21) merged into `main`; local worker, scope, persistence, refusal, reports and exports |
+| v0.8 investigation workspace | **Unmerged PR #24** | Local real-Chromium synthetic journey and 14 frontend unit / 6 DOM checks reported; [Linux/Windows Python CI](https://github.com/Ankit6149/second-source/actions/runs/41279523175) passed; hosted preview has no approved live Auth/backend |
+| Supabase/Render live product | **Not yet accepted** | Backup/restore of existing project and private Storage unverified; runtime migrations, OAuth, Render activation and two-owner hosted tests not approved |
+| Public landing / research console | **Deployed static preview** | Not an accepted authenticated live reconstruction application |
 
 > [!NOTE]
-> **25/25 is a trusted control, and 22/25 is a scripted mock result. Neither is a genuine model-reconstruction accuracy score.** Two genuine G3 attempts were consumed without an admitted candidate, and no additional paid inference is authorized by this project documentation.
+> **Scores must retain their origins.** The **14/25** is a previously recorded genuine Meta-generated research candidate on PR #23. **22/25** is a different deterministic NON_AI control. Never market either as arbitrary-application fidelity, or the historical research view as a live paid inference run.
 
 ## Try it locally
 
@@ -240,6 +241,7 @@ The research questions are measurable: does active experimentation reveal behavi
 
 | Start here | What it contains |
 |:--|:--|
+| [Documentation index](docs/README.md) | Current navigation, ownership, active contracts and archived research records |
 | [Master PRD](docs/MASTER_PRD.md) | Product goals, scientific method, architecture, constraints, roadmap |
 | [Delivery board](docs/G3_DELIVERY_BOARD.md) | Historical evidence checkpoints and release gates |
 | [Reconstruction operator guide](docs/G3_RECONSTRUCT.md) | Mock, preflight and gated real-mode CLI contracts |
