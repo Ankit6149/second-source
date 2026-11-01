@@ -3,8 +3,10 @@ import io
 import json
 import hashlib
 import subprocess
+import sys
 import uuid
 import zipfile
+from pathlib import Path
 
 import pytest
 
@@ -123,6 +125,17 @@ def test_sanitized_report_and_bundle_reject_corruption_and_path_members(tmp_path
             usage=report()["usage"], evaluation=report()["evaluation"]))
     bundle = artifacts.export_bundle(item, finished, service.events(OWNER, item.investigation_id))
     assert verify_bundle(bundle)["valid"]
+    bundle_path = tmp_path / "proof.zip"
+    bundle_path.write_bytes(bundle)
+    command = [sys.executable, str(Path(__file__).resolve().parents[1] / "scripts" / "verify_proof_bundle.py"), str(bundle_path)]
+    verified = subprocess.run(command, capture_output=True, text=True, check=False)
+    assert verified.returncode == 0 and json.loads(verified.stdout)["attests_provider"] is False
+    mismatch = subprocess.run(command + ["--sha256", "0" * 64], capture_output=True, text=True, check=False)
+    assert mismatch.returncode == 1 and json.loads(mismatch.stdout)["valid"] is False
+    broken_path = tmp_path / "broken.zip"
+    broken_path.write_bytes(bundle[:32])
+    broken = subprocess.run(command[:-1] + [str(broken_path)], capture_output=True, text=True, check=False)
+    assert broken.returncode == 1 and json.loads(broken.stdout)["valid"] is False
     output = io.BytesIO()
     with zipfile.ZipFile(io.BytesIO(bundle)) as source, zipfile.ZipFile(output, "w") as changed:
         for name in source.namelist():
