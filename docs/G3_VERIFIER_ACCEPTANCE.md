@@ -1,5 +1,7 @@
 # Independent G3 verification - current verdict and historical evidence
 
+> **CURRENT STATUS NOTE — 1 November 2026.** A real Meta-generated G3 candidate is now **reported admitted and independently scored 14/25** on unmerged [scientific PR #23](https://github.com/Ankit6149/second-source/pull/23), head `d7508ce`, [exact-head CI passed](https://github.com/Ankit6149/second-source/actions/runs/41237650430). Public source and CI are verifiable; private run receipts/replay remain to be independently inspected. Earlier “no genuine candidate” verdicts and date-stamped test counts below are historical. The [delivery board](G3_DELIVERY_BOARD.md) owns current status. No authorization for new paid calls, merges or hosting is implied.
+
 **Status pointer - 29 October 2026 IST.** Use the [single current delivery board](G3_DELIVERY_BOARD.md) for exact published SHA/CI, both consumed real G3 attempts, evidence and backend acceptance. This document does not authorize inference, credentials or deployment.
 
 ## CURRENT - 29 October 2026 IST
