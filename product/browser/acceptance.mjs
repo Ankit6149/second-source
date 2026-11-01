@@ -118,7 +118,7 @@ try {
   }
   const desktop = await context({ viewport: { width: 1440, height: 900 } });
   const page = await desktop.newPage();
-  await page.goto(origin); await page.getByRole('heading', { name: /software, understood/i }).waitFor();
+  await page.goto(origin); await page.getByRole('heading', { name: /understand how software really works/i }).waitFor();
   await page.screenshot({ path: path.join(output, 'desktop-home.png') });
   assert.equal(await page.locator('#scrollArea').evaluate((el) => el.contains(document.querySelector('#composer'))), false);
   await page.keyboard.press('Tab'); assert.equal(await page.evaluate(() => document.activeElement?.className), 'skip-link');
@@ -137,7 +137,7 @@ try {
 
   const mobile = await context({ ...devices['iPhone 13'], defaultBrowserType: undefined });
   const phone = await mobile.newPage(); await phone.goto(origin);
-  await phone.getByRole('heading', { name: /software, understood/i }).waitFor();
+  await phone.getByRole('heading', { name: /understand how software really works/i }).waitFor();
   await phone.screenshot({ path: path.join(output, 'mobile-home.png') });
   assert.equal(await phone.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'no horizontal page overflow');
   assert.equal(await phone.locator('#sidebar').evaluate(el => el.inert), true, 'closed mobile navigation cannot receive focus');

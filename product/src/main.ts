@@ -1,7 +1,7 @@
 import './fonts.css';
 import './design.css';
 import './product.css';
-import { createIcons, PanelLeft, PanelLeftClose, SquarePen, FolderOpen, SwatchBook, ChevronUp, ArrowUp, ShieldCheck, FileText, ListChecks, Download, CircleHelp, X, Play, Square, RefreshCw, Clock, Check, AlertTriangle, LogIn, LogOut, Link, FlaskConical, MessageSquare, ExternalLink } from 'lucide';
+import { createIcons, PanelLeft, PanelLeftClose, SquarePen, FolderOpen, SwatchBook, ChevronUp, ArrowUp, ShieldCheck, FileText, ListChecks, Download, CircleHelp, X, Play, Square, RefreshCw, Clock, Check, AlertTriangle, LogIn, LogOut, Link, FlaskConical, MessageSquare, ExternalLink, Search, GitBranch, Puzzle, Plus } from 'lucide';
 import type { Session } from '@supabase/supabase-js';
 import { auth, observeSession, signIn, signOut } from './auth';
 import { Api, ApiError, validatedOrigin, type Target, type Investigation, type Run, type RunEvent, type Verification } from './api';
@@ -10,7 +10,7 @@ import { supportedTarget } from './targets';
 import { clearOwnerNotes, loadNotes, saveNotes } from './notes';
 import { acceptsRunRevision, executionDefinitelyRefused, outcomeConfirmed, pollFailureMessage, pollRetryDelay } from './polling';
 
-const icons = { PanelLeft, PanelLeftClose, SquarePen, FolderOpen, SwatchBook, ChevronUp, ArrowUp, ShieldCheck, FileText, ListChecks, Download, CircleHelp, X, Play, Square, RefreshCw, Clock, Check, AlertTriangle, LogIn, LogOut, Link, FlaskConical, MessageSquare, ExternalLink };
+const icons = { PanelLeft, PanelLeftClose, SquarePen, FolderOpen, SwatchBook, ChevronUp, ArrowUp, ShieldCheck, FileText, ListChecks, Download, CircleHelp, X, Play, Square, RefreshCw, Clock, Check, AlertTriangle, LogIn, LogOut, Link, FlaskConical, MessageSquare, ExternalLink, Search, GitBranch, Puzzle, Plus };
 const icon = (name: string) => `<i data-lucide="${name}" aria-hidden="true"></i>`;
 const esc = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c] || c));
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -88,11 +88,11 @@ function account() {
 
 function composer() {
   const hint = detectReference(state.draft);
-  return `<form class="composer" id="composer"><div id="draftContext"><div class="detection" id="detection" ${hint ? '' : 'hidden'}>${hint ? `${icon('link')} <span><strong>${esc(hint.label)}</strong><br><small>${esc(hint.description)}</small></span>` : ''}</div></div><label class="sr-only" for="promptInput">Describe the software behavior you want to investigate</label><textarea rows="2" id="promptInput" maxlength="4000" placeholder="Ask about a workflow, software, or a reference…">${esc(state.draft)}</textarea><div class="composer-lower"><div class="tool-row"><button class="small-tool" type="button" data-action="select-target">${icon('flask-conical')} Choose a supported target</button><button class="tool-icon" type="button" disabled title="Attachments are not supported yet" aria-label="Attachments unavailable">+</button></div><div class="send-area"><span class="kbd-help">Shift + Enter for new line</span><button class="send-btn" type="submit" aria-label="Send message">${icon('arrow-up')}</button></div></div></form>`;
+  return `<form class="composer" id="composer"><div id="draftContext"><div class="detection" id="detection" ${hint ? '' : 'hidden'}>${hint ? `${icon('link')} <span><strong>${esc(hint.label)}</strong><br><small>${esc(hint.description)}</small></span>` : ''}</div></div><label class="sr-only" for="promptInput">Describe the software behavior you want to investigate</label><textarea rows="2" id="promptInput" maxlength="4000" placeholder="Ask about a workflow, software, or a reference…">${esc(state.draft)}</textarea><div class="composer-lower"><div class="tool-row"><button class="tool-icon" type="button" disabled title="Attachments are not supported yet" aria-label="Attachments unavailable">${icon('plus')}</button><button class="small-tool" type="button" data-action="select-target">${icon('flask-conical')} Choose a supported target</button></div><div class="send-area"><span class="kbd-help">Shift + Enter for new line</span><button class="send-btn" type="submit" aria-label="Send message">${icon('arrow-up')}</button></div></div></form>`;
 }
 
 function renderHome() {
-  return `<section class="empty-home"><h1>Software, <em>understood.</em></h1><p>Investigate how authorized software behaves, then examine the evidence and an independent comparison.</p><div class="suggestion-row"><button class="suggestion" data-suggestion="Understand how the owned ledger handles repeated inputs.">${icon('circle-help')} Understand behavior</button><button class="suggestion" data-suggestion="Compare the owned ledger with a scoped candidate.">${icon('list-checks')} Compare behavior</button></div><p class="home-note">${state.session ? state.target ? 'Available here: the owned ledger NON_AI fixture.' : 'No supported target is currently available.' : 'Sign in to see the targets available from the connected service.'} Websites and genuine AI reconstruction are not yet available here.</p></section>`;
+  return `<section class="empty-home"><h1>Understand how software <em>really works.</em></h1><p>Explore behavior and independent verification. Start with a question or a reference.</p><div class="suggestion-row"><button class="suggestion" data-suggestion="Understand how the owned ledger handles repeated inputs.">${icon('search')} Understand behavior</button><button class="suggestion" data-suggestion="Compare the owned ledger with a scoped candidate.">${icon('git-branch')} Compare versions</button><button class="suggestion" data-suggestion="Explore how the owned ledger workflow could be reconstructed.">${icon('puzzle')} Reconstruct a workflow</button></div><p class="home-note">${state.session ? state.target ? 'Available here: the owned ledger NON_AI fixture.' : 'No supported target is currently available.' : 'Sign in to see the targets available from the connected service.'} Websites and genuine AI reconstruction are not yet available here.</p></section>`;
 }
 function controls() {
   if (!state.session) return `<button class="pill-btn primary" data-action="account">${icon('log-in')} Sign in to start</button>`;

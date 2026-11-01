@@ -55,6 +55,9 @@ test('suggestion populates the composer and keyboard submission preserves it', (
   const window = workspace();
   try {
     const doc = window.document;
+    assert.match(doc.querySelector('h1').textContent, /Understand how software really works/);
+    assert.deepEqual([...doc.querySelectorAll('[data-suggestion]')].map(button => button.textContent.trim()),
+      ['Understand behavior', 'Compare versions', 'Reconstruct a workflow']);
     doc.querySelector('[data-suggestion]').click();
     const input = doc.querySelector('#promptInput');
     assert.match(input.value, /owned ledger/);
