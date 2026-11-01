@@ -36,6 +36,8 @@ def canonical(doc: Any) -> bytes:
             return sorted(normalize(v) for v in value)
         if isinstance(value, (list, tuple)):
             return [normalize(v) for v in value]
+        if hasattr(value, "unicode_string") and callable(value.unicode_string):
+            return str(value)
         return value
     return json.dumps(normalize(doc), sort_keys=True, separators=(",", ":"),
                       ensure_ascii=False, allow_nan=False).encode("utf-8")

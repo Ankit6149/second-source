@@ -78,8 +78,8 @@ class SessionIdentity(StrictModel):
 
 
 class SupportedTarget(StrictModel):
-    target_id: Literal["owned-ledger-v1"] = "owned-ledger-v1"
-    label: Literal["Owned ledger fixture"] = "Owned ledger fixture"
+    target_id: Literal["owned-ledger-v1", "owned-http-task-workflow-v1"] = "owned-ledger-v1"
+    label: Literal["Owned ledger fixture", "Owned HTTP task-workflow fixture"] = "Owned ledger fixture"
     run_kind: Literal["g3_mock"] = "g3_mock"
     origin: Literal["mock"] = "mock"
     real: Literal[False] = False
@@ -383,14 +383,42 @@ def create_app(service: BackendService, token_hashes: Mapping[str, str] | None =
         return SessionIdentity(owner_id=principal.owner_id)
 
     @app.get("/v1/targets", response_model=list[SupportedTarget], tags=["capabilities"])
-    def supported_targets(principal: Principal = Depends(owner)) -> list[SupportedTarget]:
-        """Return the exact zero-spend owned-fixture scope, not an authorization."""
+    def supported_targets(
+        principal: Principal = Depends(owner),
+        include_g4: Annotated[bool, Query()] = False,
+        target_id: Annotated[str | None, Query(pattern=_IDENTIFIER)] = None,
+    ) -> list[SupportedTarget]:
+        """Return the exact zero-spend owned-fixture scope(s), not an authorization."""
         from second_source.g2_persistence import scope_digest_of
+        from second_source.g4_http_reconstruct import create_g4_http_scope
         from second_source.reconstruct import create_scope
 
-        scope = create_scope(0)
-        return [SupportedTarget(execution_enabled=run_executor is not None,
-                                scope=scope, scope_digest=scope_digest_of(scope).removeprefix("sha256:"))]
+        enabled = run_executor is not None
+        ledger_scope = create_scope(0)
+        ledger_target = SupportedTarget(
+            target_id="owned-ledger-v1",
+            label="Owned ledger fixture",
+            execution_enabled=enabled,
+            scope=ledger_scope,
+            scope_digest=scope_digest_of(ledger_scope).removeprefix("sha256:"),
+        )
+        http_scope = create_g4_http_scope(0)
+        http_target = SupportedTarget(
+            target_id="owned-http-task-workflow-v1",
+            label="Owned HTTP task-workflow fixture",
+            execution_enabled=enabled,
+            scope=http_scope,
+            scope_digest=scope_digest_of(http_scope).removeprefix("sha256:"),
+        )
+        if target_id is not None:
+            if target_id == "owned-ledger-v1":
+                return [ledger_target]
+            if target_id == "owned-http-task-workflow-v1":
+                return [http_target]
+            raise BackendError("UNSUPPORTED_TARGET", "Requested target is not supported", 422)
+        if include_g4:
+            return [ledger_target, http_target]
+        return [ledger_target]
 
     @app.post("/v1/runs/{run_id}/execute", response_model=Run, tags=["runs"])
     def execute_run(run_id: Annotated[str, Path(pattern=_IDENTIFIER)], body: ExecuteRun,

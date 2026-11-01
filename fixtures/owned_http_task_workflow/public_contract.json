@@ -1,0 +1,110 @@
+{
+  "version": "1",
+  "target_id": "owned-http-task-workflow-v1",
+  "subsystem": "http_task_workflow",
+  "requirement_id": "REQ-HTTP-TASKS",
+  "description": "Operator-authored public HTTP endpoint signatures, synthetic actor roles, and side-effect classifications only. Hidden validation bounds, state transition rules, ownership lock semantics, and error codes are deliberately omitted.",
+  "transport": "http_json",
+  "reset_boundary": "http_reset_per_sequence",
+  "auth_header": "X-Synthetic-Actor",
+  "synthetic_actors": {
+    "alice": {
+      "role": "member",
+      "description": "Authenticated workspace member"
+    },
+    "bob": {
+      "role": "member",
+      "description": "Authenticated workspace member"
+    },
+    "viewer": {
+      "role": "viewer",
+      "description": "Read-only authenticated observer"
+    },
+    "admin": {
+      "role": "admin",
+      "description": "Privileged workspace administrator"
+    }
+  },
+  "observable_headers": [
+    "content-type",
+    "location",
+    "x-task-revision",
+    "allow",
+    "www-authenticate"
+  ],
+  "task_statuses": [
+    "todo",
+    "in_progress",
+    "blocked",
+    "done",
+    "cancelled"
+  ],
+  "operations": {
+    "create_task": {
+      "method": "POST",
+      "path": "/v1/tasks",
+      "path_params": {},
+      "query_params": {},
+      "body_params": {
+        "title": "string",
+        "priority": "integer"
+      },
+      "purpose": "create a stateful workflow task owned by the calling actor",
+      "side_effect": "owned_mutation"
+    },
+    "list_tasks": {
+      "method": "GET",
+      "path": "/v1/tasks",
+      "path_params": {},
+      "query_params": {
+        "status": "string?",
+        "owner": "string?",
+        "min_priority": "integer?",
+        "max_priority": "integer?",
+        "order_by": "string?",
+        "limit": "integer?",
+        "offset": "integer?"
+      },
+      "body_params": {},
+      "purpose": "list tasks with optional filtering, ordering, and pagination",
+      "side_effect": "read_only"
+    },
+    "get_task": {
+      "method": "GET",
+      "path": "/v1/tasks/{task_id}",
+      "path_params": {
+        "task_id": "string"
+      },
+      "query_params": {},
+      "body_params": {},
+      "purpose": "retrieve a single task by identifier",
+      "side_effect": "read_only"
+    },
+    "update_task": {
+      "method": "PATCH",
+      "path": "/v1/tasks/{task_id}",
+      "path_params": {
+        "task_id": "string"
+      },
+      "query_params": {},
+      "body_params": {
+        "title": "string?",
+        "priority": "integer?",
+        "status": "string?"
+      },
+      "purpose": "update task attributes or transition task workflow status",
+      "side_effect": "owned_mutation"
+    },
+    "delete_task": {
+      "method": "DELETE",
+      "path": "/v1/tasks/{task_id}",
+      "path_params": {
+        "task_id": "string"
+      },
+      "query_params": {},
+      "body_params": {},
+      "purpose": "delete a task by identifier when permitted by ownership and state",
+      "side_effect": "owned_mutation"
+    }
+  }
+}
