@@ -64,8 +64,13 @@ class CoverageReport:
         return [c for c in self.claims if c.state in (UNKNOWN, ASSUMED)]
 
     def verified_equivalence_blocked(self) -> bool:
-        """Verified-equivalence language is blocked by any contradiction."""
-        return bool(self.contradicted())
+        """Verified-equivalence claims require every claim to be earned.
+
+        Blocked by any CONTRADICTED, UNKNOWN, or ASSUMED claim: an
+        unexamined dimension is not verified equivalence, it is an
+        untested one. Only OBSERVED/DERIVED claims may pass the gate.
+        """
+        return any(c.state != OBSERVED and c.state != DERIVED for c in self.claims)
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -189,34 +194,66 @@ def analyze_cli_candidate(
         for param, pcfg in params.items():
             if not isinstance(pcfg, Mapping):
                 continue
-            actions = [
-                obs.get("input_action", {})
-                for seq in sequences for obs in seq
-                if obs.get("input_action", {}).get("command") == name
+            # Keep sequence grouping: stateful rules (uniqueness) make a
+            # rejection ambiguous unless the sequence context is known.
+            seq_pairs = [
+                [(obs.get("input_action", {}), obs.get("output", {})) for obs in seq
+                 if obs.get("input_action", {}).get("command") == name]
+                for seq in sequences
             ]
-            outs = [
-                obs.get("output", {})
-                for seq in sequences for obs in seq
-                if obs.get("input_action", {}).get("command") == name
-            ]
-            pairs = list(zip(actions, outs))
+            pairs = [pair for seq in seq_pairs for pair in seq]
+
+            def rejection_isolated(action, seq):
+                """True when no other claimed rule plausibly caused this
+                rejection: other params in-bounds, unique value not seen."""
+                for other, ocfg in params.items():
+                    if other == param or not isinstance(ocfg, Mapping):
+                        continue
+                    v = action.get(other)
+                    if isinstance(v, str) and ("max_length" in ocfg or "min_length" in ocfg):
+                        lv = len(v.strip()) if ocfg.get("trim") else len(v)
+                        if "max_length" in ocfg and lv > ocfg["max_length"]:
+                            return False
+                        if "min_length" in ocfg and lv < ocfg["min_length"]:
+                            return False
+                    if isinstance(v, (int, float)) and not isinstance(v, bool):
+                        if "maximum" in ocfg and v > ocfg["maximum"]:
+                            return False
+                        if "minimum" in ocfg and v < ocfg["minimum"]:
+                            return False
+                uf = cfg.get("unique_field") if isinstance(cfg, Mapping) else None
+                if uf and isinstance(action.get(uf), str):
+                    folded = str(action[uf]).strip().casefold()
+                    for prev_action, prev_out in seq:
+                        if prev_action is action:
+                            break
+                        if (isinstance(prev_out, dict) and prev_out.get("ok") is True
+                                and isinstance(prev_action.get(uf), str)
+                                and str(prev_action[uf]).strip().casefold() == folded):
+                            return False
+                return True
             for bound_key, kind in (("minimum", "min"), ("maximum", "max"),
                                     ("min_length", "minlen"), ("max_length", "maxlen")):
                 if bound_key not in pcfg:
                     continue
                 bound = pcfg[bound_key]
                 values = []
-                for action, output in pairs:
-                    value = action.get(param)
-                    if kind.endswith("len"):
-                        if not isinstance(value, str):
+                for seq in seq_pairs:
+                    for action, output in seq:
+                        value = action.get(param)
+                        if kind.endswith("len"):
+                            if not isinstance(value, str):
+                                continue
+                            value = len(value.strip()) if pcfg.get("trim") else len(value)
+                        if isinstance(value, bool) or not isinstance(value, (int, float)):
                             continue
-                        value = len(value.strip()) if pcfg.get("trim") else len(value)
-                    if isinstance(value, bool) or not isinstance(value, (int, float)):
-                        continue
-                    values.append((value, isinstance(output, dict) and output.get("ok") is True))
-                accepted = [v for v, ok in values if ok]
-                rejected = [v for v, ok in values if not ok]
+                        ok = isinstance(output, dict) and output.get("ok") is True
+                        values.append((value, ok, ok or rejection_isolated(action, seq)))
+                accepted = [v for v, ok, _ in values if ok]
+                # Only isolated rejections may evidence a boundary; a
+                # rejection another rule could have caused proves nothing
+                # about this bound.
+                rejected = [v for v, ok, iso in values if not ok and iso]
                 # Only an ACCEPTED value on the wrong side proves a bound
                 # wrong: a rejection may be caused by a different rule in a
                 # stateful sequence, so rejections never contradict alone.

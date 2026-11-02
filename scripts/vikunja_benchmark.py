@@ -85,22 +85,15 @@ PUBLIC_PROBES = [
     ("GET", "/projects/999999/tasks", None, "alice"),
     ("GET", "/projects/{pid}/tasks", None, "bob"),
     ("GET", "/user", None, None),
+    ("PUT", "/projects/{pid}/users", {"username": "bench_bob", "permission": 0}, "alice"),
+    ("GET", "/projects/{pid}/tasks", None, "bob"),
+    ("POST", "/tasks/{tid}", {"done": True}, "bob"),
+    ("PUT", "/projects", {"title": ""}, "alice"),
+    ("POST", "/login", {"username": "bench_alice", "password": "wrong"}, "anon"),
 ]
 
-HELD_OUT = [
-    [("PUT", "/projects", {"title": "Held A"}, "alice"),
-     ("PUT", "/projects/{pid}/tasks", {"title": "Write report", "priority": 5}, "alice"),
-     ("PUT", "/projects/{pid}/tasks", {"title": "Review report"}, "alice"),
-     ("GET", "/projects/{pid}/tasks", None, "alice")],
-    [("PUT", "/projects", {"title": ""}, "alice")],
-    [("PUT", "/projects", {"title": "Held B"}, "alice"),
-     ("PUT", "/projects/{pid}/tasks", {"title": "Toggle me"}, "alice"),
-     ("POST", "/tasks/{tid}", {"done": True}, "alice"),
-     ("POST", "/tasks/{tid}", {"done": False}, "alice"),
-     ("GET", "/tasks/{tid}", None, "alice")],
-    [("POST", "/login", {"username": "bench_alice", "password": "wrong"}, "anon")],
-    [("GET", "/projects", None, "bob_fresh")],
-]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from vikunja_held_out import HELD_OUT  # evaluator-only; see that module
 
 
 def run_actions(actions, tokens, base=BASE):
@@ -111,7 +104,7 @@ def run_actions(actions, tokens, base=BASE):
         p = path.format(pid=ids.get("pid", 0), tid=ids.get("tid", 0))
         status, out = call(method, p, body, token, base)
         if isinstance(out, dict):
-            if "id" in out and "/projects" in p and method in ("POST", "PUT") and p.count("/") == 2:
+            if "id" in out and method in ("POST", "PUT") and len([s for s in p.split("/") if s]) == 1:
                 ids["pid"] = out["id"]
             if "id" in out and "/tasks" in p and method in ("POST", "PUT"):
                 ids["tid"] = out["id"]
@@ -119,14 +112,24 @@ def run_actions(actions, tokens, base=BASE):
     return results
 
 
-def canonical(value, id_map, counter):
+def canonical(value, id_map, counter, ranked=False, view_ns=None):
+    if view_ns is None:
+        view_ns = ({}, [0])
     if isinstance(value, dict):
         out = {}
         for key in sorted(value):
+            if key == "views" and isinstance(value[key], list):
+                # Default view sub-ids live in their own namespace so
+                # server-generated view counters cannot shift the main
+                # entity-id placeholders.
+                out[key] = canonical(value[key], view_ns[0], view_ns[1],
+                                     ranked=ranked, view_ns=view_ns)
+                continue
             if key in VOLATILE_KEYS:
                 out[key] = "<ts>" if value[key] else value[key]
             elif key in POSITIONAL_KEYS:
-                out[key] = "<pos>"
+                # Ranked by the enclosing list, or erased as server state.
+                out[key] = value[key] if ranked else "<pos>"
             elif (key == "id" or key.endswith("_id")) and isinstance(value[key], int):
                 if value[key] not in id_map:
                     counter[0] += 1
@@ -135,16 +138,32 @@ def canonical(value, id_map, counter):
             elif key == "token":
                 out[key] = "<token>"
             else:
-                out[key] = canonical(value[key], id_map, counter)
+                out[key] = canonical(value[key], id_map, counter, view_ns=view_ns)
         return out
     if isinstance(value, list):
-        return [canonical(v, id_map, counter) for v in value]
+        items = list(value)
+        # Ordering behavior matters, counter magnitude does not: rank
+        # positions within a list instead of erasing them.
+        ranked_items = False
+        if items and all(isinstance(v, dict) and isinstance(v.get("position"), (int, float))
+                         for v in items):
+            order = sorted({v["position"] for v in items})
+            rank = {p: i for i, p in enumerate(order)}
+            items = [{**v, "position": rank[v["position"]]} for v in items]
+            ranked_items = True
+        return [canonical(v, id_map, counter, ranked=ranked_items, view_ns=view_ns)
+                for v in items]
     return value
 
 
-def canonical_result(result):
-    return {"status": result["status"],
-            "body": canonical(result["body"], {}, [0])}
+def canonical_sequence(results):
+    """Canonicalize a whole sequence with ONE id map: the same server id
+    must map to the same placeholder at every step, or cross-response
+    identity relationships are silently lost."""
+    id_map, counter, view_ns = {}, [0], ({}, [0])
+    return [{"status": r["status"],
+             "body": canonical(r["body"], id_map, counter, view_ns=view_ns)}
+            for r in results]
 
 
 _TOKEN_CACHE: dict[str, dict] = {}
@@ -190,13 +209,11 @@ def mode_evaluate(candidate_url=None):
     cand_base = candidate_url.rstrip("/") + "/api/v1" if candidate_url else None
     passed = total = 0
     for i, seq in enumerate(HELD_OUT):
-        ref = [canonical_result(r) for r in run_actions(seq, fresh_tokens())]
+        ref = canonical_sequence(run_actions(seq, fresh_tokens()))
         if cand_base:
-            got = [canonical_result(r) for r in run_actions(seq, fresh_tokens(cand_base), cand_base)]
+            got = canonical_sequence(run_actions(seq, fresh_tokens(cand_base), cand_base))
         else:
-            got = ref  # self-check placeholder replaced below
-        if not cand_base:
-            got = [canonical_result(r) for r in run_actions(seq, fresh_tokens())]
+            got = canonical_sequence(run_actions(seq, fresh_tokens()))
         ok = ref == got
         total += 1
         passed += ok

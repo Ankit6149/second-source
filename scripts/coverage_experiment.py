@@ -8,6 +8,12 @@ NOT a model result: both synthesizers are deterministic engineering
 controls. The genuine Meta baseline is the historical candidate spec
 itself (14/25 sealed, reproduced here only on public held-out cases).
 Held-out cases are disjoint from probe sequences. No sealed material.
+
+Limitation (verified in independent review): the grounded synthesizer
+below is ledger-shaped — it knows the fixture's field names. It bounds
+the mechanism (dimension-probe ladder + evidence-only synthesis), and
+must not be cited as a general-purpose synthesizer. The general
+question is tested on the Vikunja benchmark instead.
 """
 from __future__ import annotations
 

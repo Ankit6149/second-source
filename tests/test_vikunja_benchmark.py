@@ -10,7 +10,7 @@ _spec.loader.exec_module(vb)
 
 
 def canon(body, status=200):
-    return vb.canonical_result({"status": status, "body": body})
+    return vb.canonical_sequence([{"status": status, "body": body}])
 
 
 def test_server_ids_and_timestamps_normalized():
@@ -19,17 +19,36 @@ def test_server_ids_and_timestamps_normalized():
     assert a == b
 
 
-def test_position_counter_ignored_but_presence_kept():
-    a = canon({"id": 1, "position": 655360})
-    b = canon({"id": 2, "position": 720896})
+def test_cross_step_id_relationship_preserved():
+    # Same server entity across steps must keep ONE placeholder, even
+    # when raw ids differ between two independent runs.
+    run_a = vb.canonical_sequence([
+        {"status": 201, "body": {"id": 41, "title": "P"}},
+        {"status": 200, "body": [{"id": 9, "project_id": 41}, {"id": 10, "project_id": 41}]},
+    ])
+    run_b = vb.canonical_sequence([
+        {"status": 201, "body": {"id": 3, "title": "P"}},
+        {"status": 200, "body": [{"id": 100, "project_id": 3}, {"id": 101, "project_id": 3}]},
+    ])
+    assert run_a == run_b
+    # A candidate pointing step 2 at a DIFFERENT project must not match.
+    wrong = vb.canonical_sequence([
+        {"status": 201, "body": {"id": 3, "title": "P"}},
+        {"status": 200, "body": [{"id": 100, "project_id": 999}, {"id": 101, "project_id": 999}]},
+    ])
+    assert run_b != wrong
+
+
+def test_position_rank_preserves_order_not_magnitude():
+    a = canon([{"id": 1, "position": 655360}, {"id": 2, "position": 720896}])
+    b = canon([{"id": 5, "position": 100}, {"id": 6, "position": 200}])
     assert a == b
-    assert a["body"]["position"] == "<pos>"
+    swapped = canon([{"id": 5, "position": 200}, {"id": 6, "position": 100}])
+    assert a != swapped
 
 
 def test_real_behavior_difference_still_detected():
-    a = canon({"id": 1, "done": True})
-    b = canon({"id": 9, "done": False})
-    assert a != b
+    assert canon({"id": 1, "done": True}) != canon({"id": 9, "done": False})
 
 
 def test_status_difference_detected():

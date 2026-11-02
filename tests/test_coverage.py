@@ -80,9 +80,30 @@ def test_casefold_claim_contradicted_by_case_variant_acceptance():
     assert s["uniqueness.add.label"] == CONTRADICTED
 
 
-def test_verified_equivalence_blocked_only_by_contradiction():
-    clean = analyze_cli_candidate(spec(), boundary_evidence())
-    assert clean.verified_equivalence_blocked() is False
-    dirty = analyze_cli_candidate(spec(), boundary_evidence() + [
-        obs("s8", 0, {"command": "add", "label": "z" * 40, "amount": 5}, {"ok": True, "id": "3"})])
-    assert dirty.verified_equivalence_blocked() is True
+def test_verified_equivalence_blocked_by_unknown_or_assumed():
+    # Boundary evidence leaves error codes assumed and uniqueness
+    # unprobed: that must block verified-equivalence language.
+    report = analyze_cli_candidate(spec(), boundary_evidence())
+    assert report.verified_equivalence_blocked() is True
+
+
+def test_verified_equivalence_allowed_only_when_all_claims_observed():
+    ev = boundary_evidence() + [
+        obs("s9", 0, {"command": "add", "label": "Milk", "amount": 1}, {"ok": True, "id": "5"}),
+        obs("s9", 1, {"command": "add", "label": "MILK", "amount": 1},
+            {"ok": False, "error": "duplicate_label"}),
+    ]
+    report = analyze_cli_candidate(spec(), ev)
+    assert report.verified_equivalence_blocked() is False
+
+
+def test_confounded_rejection_does_not_prove_boundary():
+    # amount=500 rejected, but its label duplicates an accepted one in
+    # the same sequence: the rejection cannot evidence the amount bound.
+    ev = [
+        obs("s1", 0, {"command": "add", "label": "Dup", "amount": 100}, {"ok": True, "id": "1"}),
+        obs("s1", 1, {"command": "add", "label": "Dup", "amount": 500},
+            {"ok": False, "error": "duplicate_label"}),
+    ]
+    s = states(analyze_cli_candidate(spec(), ev))
+    assert s["validation.add.amount.maximum"] == UNKNOWN

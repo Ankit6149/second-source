@@ -1,0 +1,285 @@
+{
+  "comment": "NON_AI oracle control v2: hand-written from PUBLIC probe observations only (.runs/vikunja-benchmark/public_observations.json). Validates candidate interpreter + evaluator plumbing. Never a model result.",
+  "users": {
+    "alice": "bench_alice",
+    "bob": "bench_bob"
+  },
+  "auth": {
+    "login_error_status": 403,
+    "login_error_body": {
+      "code": 1011,
+      "message": "Wrong username or password."
+    },
+    "unauthenticated_status": 401,
+    "unauthenticated_body": {
+      "code": 11,
+      "message": "missing, malformed, expired or otherwise invalid token provided"
+    },
+    "forbidden_body": {
+      "code": 0,
+      "message": "Forbidden"
+    },
+    "not_found_body": {
+      "code": 3001,
+      "message": "This project does not exist."
+    }
+  },
+  "routes": [
+    {
+      "method": "PUT",
+      "path": "/projects",
+      "kind": "create_project",
+      "auth": true,
+      "status": 201,
+      "validate": [
+        {
+          "field": "title",
+          "rule": "nonempty",
+          "status": 412,
+          "error_body": {
+            "code": 2002,
+            "message": "Invalid Data",
+            "invalid_fields": [
+              "title: non zero value required"
+            ]
+          }
+        }
+      ],
+      "fields": {
+        "description": "",
+        "identifier": "",
+        "hex_color": "",
+        "parent_project_id": 0,
+        "owner": "<creator>",
+        "is_archived": false,
+        "background_information": null,
+        "background_blur_hash": "",
+        "is_favorite": false,
+        "views": [
+          {
+            "id": "<auto_id>",
+            "title": "List",
+            "project_id": "<entity_id>",
+            "view_kind": "list",
+            "filter": {
+              "s": "",
+              "sort_by": null,
+              "order_by": null,
+              "filter": "done = false",
+              "filter_include_nulls": false
+            },
+            "position": 100,
+            "bucket_configuration_mode": "none",
+            "bucket_configuration": null,
+            "default_bucket_id": 0,
+            "done_bucket_id": 0,
+            "updated": "2026-01-01T00:00:00Z",
+            "created": "2026-01-01T00:00:00Z"
+          },
+          {
+            "id": "<auto_id>",
+            "title": "Gantt",
+            "project_id": "<entity_id>",
+            "view_kind": "gantt",
+            "filter": null,
+            "position": 200,
+            "bucket_configuration_mode": "none",
+            "bucket_configuration": null,
+            "default_bucket_id": 0,
+            "done_bucket_id": 0,
+            "updated": "2026-01-01T00:00:00Z",
+            "created": "2026-01-01T00:00:00Z"
+          },
+          {
+            "id": "<auto_id>",
+            "title": "Table",
+            "project_id": "<entity_id>",
+            "view_kind": "table",
+            "filter": null,
+            "position": 300,
+            "bucket_configuration_mode": "none",
+            "bucket_configuration": null,
+            "default_bucket_id": 0,
+            "done_bucket_id": 0,
+            "updated": "2026-01-01T00:00:00Z",
+            "created": "2026-01-01T00:00:00Z"
+          },
+          {
+            "id": "<auto_id>",
+            "title": "Kanban",
+            "project_id": "<entity_id>",
+            "view_kind": "kanban",
+            "filter": null,
+            "position": 400,
+            "bucket_configuration_mode": "manual",
+            "bucket_configuration": null,
+            "default_bucket_id": "<auto_id>",
+            "done_bucket_id": "<auto_id>",
+            "updated": "2026-01-01T00:00:00Z",
+            "created": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "max_permission": 0
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/projects",
+      "kind": "list_projects",
+      "auth": true,
+      "status": 200,
+      "fields": {}
+    },
+    {
+      "method": "PUT",
+      "path": "/projects/{pid}/tasks",
+      "kind": "create_task",
+      "auth": true,
+      "permission": "owner_or_write",
+      "status": 201,
+      "validate": [
+        {
+          "field": "title",
+          "rule": "nonempty",
+          "status": 400,
+          "error_body": {
+            "code": 4001,
+            "message": "You must provide at least a task title."
+          }
+        }
+      ],
+      "fields": {
+        "due_date": "0001-01-01T00:00:00Z",
+        "reminders": null,
+        "repeat_after": 0,
+        "repeat_mode": 0,
+        "assignees": [],
+        "labels": null,
+        "hex_color": "",
+        "percent_done": 0,
+        "identifier": "<identifier>",
+        "index": "<index>",
+        "related_tasks": null,
+        "attachments": null,
+        "cover_image_attachment_id": 0,
+        "is_favorite": false,
+        "bucket_id": 0,
+        "reactions": null,
+        "created_by": "<creator>",
+        "done_at": "0001-01-01T00:00:00Z",
+        "start_date": "0001-01-01T00:00:00Z",
+        "end_date": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/projects/{pid}/tasks",
+      "kind": "list_tasks",
+      "auth": true,
+      "permission": "owner_or_read",
+      "status": 200,
+      "fields": {
+        "due_date": "0001-01-01T00:00:00Z",
+        "reminders": null,
+        "repeat_after": 0,
+        "repeat_mode": 0,
+        "assignees": null,
+        "labels": null,
+        "hex_color": "",
+        "percent_done": 0,
+        "related_tasks": {},
+        "attachments": null,
+        "cover_image_attachment_id": 0,
+        "is_favorite": false,
+        "bucket_id": 0,
+        "reactions": null,
+        "created_by": "<creator>",
+        "start_date": "0001-01-01T00:00:00Z",
+        "end_date": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/tasks/{tid}",
+      "kind": "update_task",
+      "auth": true,
+      "permission": "owner_or_write",
+      "status": 200,
+      "fields": {
+        "due_date": "0001-01-01T00:00:00Z",
+        "reminders": null,
+        "repeat_after": 0,
+        "repeat_mode": 0,
+        "assignees": [],
+        "labels": null,
+        "hex_color": "",
+        "percent_done": 0,
+        "related_tasks": null,
+        "attachments": null,
+        "cover_image_attachment_id": 0,
+        "is_favorite": false,
+        "bucket_id": 0,
+        "reactions": null,
+        "created_by": null,
+        "start_date": "0001-01-01T00:00:00Z",
+        "end_date": "0001-01-01T00:00:00Z",
+        "identifier": "",
+        "done_at": "0001-01-01T00:00:00Z"
+      },
+      "fields_override": true
+    },
+    {
+      "method": "GET",
+      "path": "/tasks/{tid}",
+      "kind": "get_task",
+      "auth": true,
+      "permission": "owner_or_read",
+      "status": 200,
+      "fields": {
+        "due_date": "0001-01-01T00:00:00Z",
+        "reminders": null,
+        "repeat_after": 0,
+        "repeat_mode": 0,
+        "assignees": null,
+        "labels": null,
+        "hex_color": "",
+        "percent_done": 0,
+        "related_tasks": {},
+        "attachments": null,
+        "cover_image_attachment_id": 0,
+        "is_favorite": false,
+        "bucket_id": 0,
+        "reactions": null,
+        "created_by": "<creator>",
+        "start_date": "0001-01-01T00:00:00Z",
+        "end_date": "0001-01-01T00:00:00Z"
+      },
+      "forbidden_body": {
+        "code": 0,
+        "message": "You don't have the permission to see this"
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/projects/{pid}/users",
+      "kind": "share_project",
+      "auth": true,
+      "permission": "owner",
+      "status": 201,
+      "fields": {
+        "username": "<target>",
+        "permission": "<permission>",
+        "created": "2026-01-01T00:00:00Z",
+        "updated": "2026-01-01T00:00:00Z"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/user",
+      "kind": "get_user",
+      "auth": true,
+      "status": 200,
+      "fields": {}
+    }
+  ]
+}
