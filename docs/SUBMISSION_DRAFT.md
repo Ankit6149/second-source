@@ -36,7 +36,7 @@ regression testing: observe → hypothesize → run distinguishing experiments
 
 ## Demo (25%)
 
-- 2:59 video (local draft, SHA-256 `069D7DB4…`): scope → observation →
+- 2:59 video (v2, 179.78s, SHA-256 `069D7DB4…`): scope → observation →
   genuine Meta 14/25 → NON_AI HTTP control 25→30/30 → honest limits.
   **Owner must upload publicly and verify signed-out before submitting.**
 - Interactive Reconstruction Lab (/lab/): two targets, recorded public probes with per-step diff highlighting, versions and uncertainty - REAL_MODEL vs NON_AI always labeled (PR #34).
