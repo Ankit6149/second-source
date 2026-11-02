@@ -248,24 +248,26 @@ def preflight() -> int:
 def call_gemma(prompt: str, api_key: str) -> str:
     body = {"contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"responseMimeType": "application/json",
-                                 "maxOutputTokens": 8000,
+                                 "maxOutputTokens": 16000,
                                  "temperature": 0.2}}
     req = urllib.request.Request(
         API.format(m=MODEL), data=json.dumps(body).encode(), method="POST")
     req.add_header("Content-Type", "application/json")
     req.add_header("x-goog-api-key", api_key)
-    with urllib.request.urlopen(req, timeout=180) as resp:
+    with urllib.request.urlopen(req, timeout=300) as resp:
         data = json.loads(resp.read().decode())
     parts = data["candidates"][0]["content"]["parts"]
     return "".join(p.get("text", "") for p in parts)
 
 
 def parse_model_json(text: str):
-    """Strict parse first; then one standard fence-strip extraction.
+    """Strict parse, then fence-strip, then embedded-object extraction.
 
-    Extraction never invents fields: a spec that needs repair beyond
-    fence stripping is a recorded MODEL_OUTPUT_NOT_JSON failure, with
-    the raw text preserved for diagnosis.
+    Extraction never invents fields: it only locates a COMPLETE JSON
+    object the model emitted (Gemma characteristically analyses in
+    prose first). The parse mode is recorded with every result, so an
+    embedded_json admission is never disguised as strict compliance.
+    Anything else is MODEL_OUTPUT_NOT_JSON, raw text preserved.
     """
     try:
         return json.loads(text), "strict"
@@ -280,6 +282,19 @@ def parse_model_json(text: str):
             return json.loads(stripped), "fence_stripped"
         except json.JSONDecodeError:
             pass
+    decoder = json.JSONDecoder()
+    best = None
+    for i, ch in enumerate(text):
+        if ch != "{":
+            continue
+        try:
+            obj, _ = decoder.raw_decode(text[i:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict) and isinstance(obj.get("routes"), list):
+            best = obj  # keep the LAST complete spec-shaped object
+    if best is not None:
+        return best, "embedded_json"
     return None, "unparseable"
 
 
