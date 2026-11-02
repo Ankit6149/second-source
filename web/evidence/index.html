@@ -81,6 +81,20 @@ footer a{color:#c9f2d6}
 </div></div>
 </div></section>
 <section><div class="wrap">
+<h2>How the discovery actually went</h2>
+<p class="sub">Every step below is recorded in the genuine G2/G3 run artifacts (run <span class="hash">real-g2-20261028T163538Z-fd60310f</span>, receipt <span class="hash">sha256:947910b0&hellip;</span>). Nothing here is reconstructed narration.</p>
+<table>
+<thead><tr><th>Stage</th><th>What is recorded</th><th>Outcome</th></tr></thead>
+<tbody>
+<tr><td><b>1. Observed</b><br>(reference, black-box)</td><td><code>add {label:"Alpha", amount:3}</code> &rarr; <code>{"ok":true,"id":"1"}</code>; <code>add {label:"Beta", amount:5}</code> &rarr; <code>{"id":"2"}</code>; <code>total</code> &rarr; <code>{"count":2,"amount":8}</code> (5 hashed evidence artifacts)</td><td>Behavior captured without seeing reference source</td></tr>
+<tr><td><b>2. Hypothesized</b><br>(Muse, hypothesize-v1)</td><td>Three competing hypotheses: <code>H-add-create</code> (add persists a record), <code>H-total-aggregate</code> (total = count + sum), <code>H-sequence-state</code> (mutations persist within a sequence) &mdash; each with named alternatives. Unresolved questions recorded verbatim, including: <i>&ldquo;What validation exists for amount and label?&rdquo;</i></td><td>Claims tied to evidence IDs, alternatives kept alive</td></tr>
+<tr><td><b>3. Predicted &amp; tested</b><br>(Muse, propose-v1)</td><td>Model proposed experiment <code>P-aggregate-2adds</code> (3 actions) to separate the aggregate/state hypotheses from their alternatives</td><td><code>H-total-aggregate</code>: <b>supported</b> &middot; <code>H-sequence-state</code>: <b>supported</b> &middot; <code>H-add-create</code>: still hypothesized</td></tr>
+<tr><td><b>4. Synthesized</b><br>(Muse, guided v2)</td><td>Independent declarative candidate built from this evidence (response <span class="hash">chatcmpl-01a19314&hellip;</span>), executed by a trusted interpreter &mdash; never arbitrary model code</td><td>Scored <b>14/25</b> by the sealed evaluator (above)</td></tr>
+<tr><td><b>5. Where it diverged</b></td><td>The validation question from stage 2 was never probed, so the candidate <i>guessed</i> the boundaries (label max 100 vs true 24; amount max 1,000,000 vs true 100; case-sensitive duplicates vs true case-insensitive) and unobserved response shapes</td><td>9 schema + 2 error mismatches &mdash; each one traceable to a question the evidence never answered</td></tr>
+</tbody></table>
+<p style="font-size:13.5px;color:var(--muted)">That last row is the product thesis in one line: the failures are not random &mdash; they map exactly to the hypotheses that were never turned into experiments. Second Source makes that gap visible instead of averaging it away.</p>
+</div></section>
+<section><div class="wrap">
 <h2>What the model inferred — rule by rule</h2>
 <p class="sub">The candidate is a declarative spec, executed by a trusted interpreter — the model wrote no code. Each inferred rule below is checked against the observed reference behavior. This is the scientific core of Second Source: a screenshot cannot answer any row; a black-box experiment can.</p>
 <table>
