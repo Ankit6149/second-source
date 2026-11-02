@@ -1339,6 +1339,13 @@ def run_discover_real(args: argparse.Namespace) -> int:
         return 1
 
     digests = loop.digests
+    if not hypotheses.all():
+        failed = _write_failure_report(
+            run_dir=run_dir, mode=args.mode, real=args.mode == "discover-real",
+            stage="discovery", budget=budget,
+        )
+        print(json.dumps(_summarize(failed), indent=2))
+        return 1
     batch = {
         "schema_version": "1.0",
         "hypotheses": [h.model_dump(mode="json") for h in hypotheses.all()],
@@ -1476,6 +1483,13 @@ def run_discover_gemma_test(args: argparse.Namespace) -> int:
         return 1
 
     digests = loop.digests
+    if not hypotheses.all():
+        failed = _write_failure_report(
+            run_dir=run_dir, mode=args.mode, real=args.mode == "discover-real",
+            stage="discovery", budget=budget,
+        )
+        print(json.dumps(_summarize(failed), indent=2))
+        return 1
     batch = {
         "schema_version": "1.0",
         "hypotheses": [h.model_dump(mode="json") for h in hypotheses.all()],
