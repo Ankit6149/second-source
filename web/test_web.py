@@ -1,6 +1,7 @@
 """Public preview route and packaging boundaries; no provider or credentials."""
 from html.parser import HTMLParser
 import json
+import re
 from pathlib import Path
 import threading
 import unittest
@@ -81,6 +82,21 @@ class PublicPreview(unittest.TestCase):
         actual = {path.relative_to(output).as_posix() for path in output.rglob("*") if path.is_file()}
         self.assertEqual(actual, expected)
         self.assertEqual((output / "console/index.html").read_bytes(), (ROOT.parent / "demo/index.html").read_bytes())
+
+    def test_evidence_replay_questions_are_precise_and_answerable(self):
+        html = (ROOT / "evidence/index.html").read_text(encoding="utf-8")
+        questions = re.findall(
+            r'<article class="probe" data-probe data-answer="([^"]+)">(.*?)</article>',
+            html, flags=re.DOTALL,
+        )
+        self.assertEqual(len(questions), 3)
+        self.assertEqual({answer for answer, _ in questions}, {"duplicate", "invalid", "removed"})
+        self.assertNotIn("rejects-or-differs", html)
+        for correct, markup in questions:
+            choices = re.findall(r'data-pick="([^"]+)"', markup)
+            self.assertEqual(len(choices), 2)
+            self.assertIn(correct, choices)
+            self.assertEqual(len(set(choices)), 2)
 
     def test_vercel_publishes_only_built_site(self):
         config = json.loads((ROOT.parent / "vercel.json").read_text(encoding="utf-8"))
