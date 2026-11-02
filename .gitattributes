@@ -1,2 +1,5 @@
 # The recovered, already-applied migration is an exact UTF-8 byte witness.
 supabase/migrations/20261028193413_initial_second_source_private_schema.sql -text
+
+# Digest-bound redacted evidence is a byte witness across Windows and Linux.
+docs/evidence/g3-rev6-sanitized/* -text
