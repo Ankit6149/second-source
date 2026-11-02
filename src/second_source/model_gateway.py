@@ -38,7 +38,7 @@ DEFAULT_BASE_URL = "https://api.meta.ai/v1"
 ALLOWED_HOSTS = ("api.meta.ai",)
 GEMMA_TEST_HOSTS = ("generativelanguage.googleapis.com",)
 GEMMA_DEFAULT_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai"
-GEMMA_DEFAULT_MODEL = "gemma-3-27b-it"
+GEMMA_DEFAULT_MODEL = "gemma-4-26b-a4b-it"
 LOOPBACK_HOSTS = ("127.0.0.1", "localhost", "::1")
 PROMPT_VERSION_HYPOTHESIZE = "hypothesize-v1"
 PROMPT_VERSION_PROPOSE = "propose-v1"
@@ -401,17 +401,16 @@ class MockProvider:
 
 
 class GemmaTestProvider(MetaProvider):
-    """Google Gemma via the OpenAI-compatible endpoint. TEST ONLY.
+    """Google Gemma via the native Gemini API. TEST ONLY.
 
     Pipeline smoke testing with a non-Meta model. Receipts carry
     provider "gemma-test" and must never be presented as Meta evidence.
-    Metering uses conservative declared rates; actual Google billing is
-    separate and not read by this code.
+    Uses the native :generateContent transport because Gemma models are
+    not served on Google's OpenAI-compatible surface. Metering uses
+    conservative declared rates; actual Google billing is separate.
     """
 
     provider_name = "gemma-test"
-    _omit_reasoning_effort = True
-    _json_mode_only = True
 
     def __init__(
         self,
@@ -426,6 +425,100 @@ class GemmaTestProvider(MetaProvider):
             model=model,
             rates=rates,
             gemma_test=True,
+        )
+
+    def complete(self, request: "ModelRequest") -> "ModelResponse":
+        import urllib.error as _ue
+        import urllib.request as _ur
+
+        system = "\n".join(
+            str(m.get("content", "")) for m in request.messages if m.get("role") == "system"
+        )
+        contents = []
+        for m in request.messages:
+            if m.get("role") == "system":
+                continue
+            role = "model" if m.get("role") == "assistant" else "user"
+            contents.append({"role": role, "parts": [{"text": str(m.get("content", ""))}]})
+        payload: dict[str, Any] = {
+            "contents": contents,
+            "generationConfig": {
+                "maxOutputTokens": request.max_output_tokens,
+                "responseMimeType": "application/json",
+            },
+        }
+        if system:
+            payload["systemInstruction"] = {"parts": [{"text": system}]}
+        if isinstance(getattr(request, "temperature", None), (int, float)):
+            payload["generationConfig"]["temperature"] = request.temperature
+        started = time.monotonic()
+        url = (
+            "https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{self._model}:generateContent"
+        )
+        req = _ur.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "x-goog-api-key": self._api_key,
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with _ur.urlopen(req, timeout=300) as resp:
+                doc = json.loads(resp.read().decode("utf-8"))
+        except _ue.HTTPError as exc:
+            detail = exc.read().decode("utf-8", "replace")[:300]
+            raise GatewayError(f"Gemma test API HTTP {exc.code}: {detail}") from exc
+        except (_ue.URLError, TimeoutError, OSError) as exc:
+            raise GatewayError(f"Gemma test API transport failure: {exc}") from exc
+        latency_ms = int((time.monotonic() - started) * 1000)
+        try:
+            candidate = doc["candidates"][0]
+            text = "".join(
+                part.get("text", "")
+                for part in candidate.get("content", {}).get("parts", [])
+            )
+            finish = str(candidate.get("finishReason", ""))
+        except (KeyError, IndexError, TypeError) as exc:
+            raise GatewayError("Gemma test API returned no candidates") from exc
+        usage = doc.get("usageMetadata", {}) if isinstance(doc, dict) else {}
+        stripped = text.strip()
+        if stripped.startswith("```"):
+            stripped = stripped.strip("`").strip()
+            if stripped.lower().startswith("json"):
+                stripped = stripped[4:].strip()
+        parsed = None
+        parse_note = ""
+        if stripped:
+            try:
+                parsed = json.loads(stripped)
+            except json.JSONDecodeError:
+                start = stripped.find("{")
+                end = stripped.rfind("}")
+                if start >= 0 and end > start:
+                    try:
+                        parsed = json.loads(stripped[start : end + 1])
+                    except json.JSONDecodeError:
+                        parse_note = "gemma output was not valid JSON"
+                else:
+                    parse_note = "gemma output was not valid JSON"
+        return ModelResponse(
+            provider="gemma-test",
+            model=self._model,
+            real=True,
+            response_id=str(doc.get("responseId", "")) if isinstance(doc, dict) else "",
+            content_text=text,
+            parsed=parsed,
+            input_tokens=int(usage.get("promptTokenCount", 0) or 0),
+            output_tokens=int(usage.get("candidatesTokenCount", 0) or 0),
+            latency_ms=latency_ms,
+            estimated_cost_usd=estimate_cost_usd(
+                int(usage.get("promptTokenCount", 0) or 0),
+                int(usage.get("candidatesTokenCount", 0) or 0),
+                self._rates,
+            ),
         )
 
 
