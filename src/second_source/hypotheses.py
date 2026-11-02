@@ -6,6 +6,7 @@ claims.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any, Literal
 
 from pydantic import Field, ValidationError
@@ -52,6 +53,104 @@ def validate_batch(doc: dict[str, Any], known_evidence_ids: frozenset[str]) -> H
         if unknown:
             raise HypothesisError(f"hypothesis {hyp.id}: unknown evidence_ids {unknown}")
     return batch
+
+
+# Admission failure taxonomy (hypothesize stage only):
+# - transport: provider call failed before any content (handled in gateway)
+# - generation: content returned but empty / not a JSON object
+# - schema: JSON object violates the closed hypothesize contract
+# - scientific: schema-shaped batch citing evidence outside the ledger
+FAILURE_CLASS_GENERATION = "generation"
+FAILURE_CLASS_SCHEMA = "schema"
+FAILURE_CLASS_SCIENTIFIC = "scientific"
+
+
+@dataclass(frozen=True)
+class AdmissionRejection:
+    """Private record of a rejected hypothesize batch. Never public.
+
+    Carries no raw model text: only the failure class/code, per-hypothesis
+    valid/rejected counts, and the SHA-256 of the raw model content so the
+    record can be joined to the gateway call receipt (same hash) offline.
+    """
+
+    stage: str
+    failure_class: str
+    failure_code: str
+    valid_count: int
+    rejected_count: int
+    total_count: int
+    content_sha256: str
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "stage": self.stage,
+            "failure_class": self.failure_class,
+            "failure_code": self.failure_code,
+            "valid_count": self.valid_count,
+            "rejected_count": self.rejected_count,
+            "total_count": self.total_count,
+            "content_sha256": self.content_sha256,
+        }
+
+
+def per_hypothesis_counts(
+    doc: Any, known_evidence_ids: frozenset[str]
+) -> tuple[int, int, int]:
+    """Return (valid, rejected, total) per-hypothesis counts without raising."""
+    if not isinstance(doc, dict):
+        return (0, 0, 0)
+    items = doc.get("hypotheses")
+    if not isinstance(items, list):
+        return (0, 0, 0)
+    valid = 0
+    seen: set[str] = set()
+    for item in items:
+        try:
+            hyp = Hypothesis.model_validate(item)
+        except ValidationError:
+            continue
+        if hyp.id in seen:
+            continue
+        seen.add(hyp.id)
+        if set(hyp.evidence_ids) - set(known_evidence_ids):
+            continue
+        valid += 1
+    total = len(items)
+    return (valid, total - valid, total)
+
+
+def build_admission_rejection(
+    doc: Any,
+    known_evidence_ids: frozenset[str],
+    exc: BaseException,
+    *,
+    content_sha256: str,
+    stage: str = "hypothesize",
+) -> AdmissionRejection:
+    """Classify a validate_batch rejection. Classification never admits."""
+    valid, rejected, total = per_hypothesis_counts(doc, known_evidence_ids)
+    message = str(exc)
+    if isinstance(doc, dict) and doc.get("hypotheses") == []:
+        failure_class, failure_code = FAILURE_CLASS_SCHEMA, "EMPTY_BATCH"
+    elif "unknown evidence_ids" in message:
+        failure_class, failure_code = (
+            FAILURE_CLASS_SCIENTIFIC,
+            "UNKNOWN_EVIDENCE_ID",
+        )
+    elif "duplicate hypothesis id" in message:
+        failure_class, failure_code = FAILURE_CLASS_SCHEMA, "DUPLICATE_HYPOTHESIS_ID"
+    else:
+        failure_class, failure_code = FAILURE_CLASS_SCHEMA, "SCHEMA_VIOLATION"
+    return AdmissionRejection(
+        stage=stage,
+        failure_class=failure_class,
+        failure_code=failure_code,
+        valid_count=valid,
+        rejected_count=rejected,
+        total_count=total,
+        content_sha256=content_sha256,
+    )
 
 
 class HypothesisStore:

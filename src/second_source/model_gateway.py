@@ -36,6 +36,9 @@ from .schema_validate import validate_json_schema
 DEFAULT_MODEL = "muse-spark-1.3"
 DEFAULT_BASE_URL = "https://api.meta.ai/v1"
 ALLOWED_HOSTS = ("api.meta.ai",)
+GEMMA_TEST_HOSTS = ("generativelanguage.googleapis.com",)
+GEMMA_DEFAULT_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai"
+GEMMA_DEFAULT_MODEL = "gemma-4-26b-a4b-it"
 LOOPBACK_HOSTS = ("127.0.0.1", "localhost", "::1")
 PROMPT_VERSION_HYPOTHESIZE = "hypothesize-v1"
 PROMPT_VERSION_PROPOSE = "propose-v1"
@@ -45,6 +48,7 @@ PROMPT_VERSION_PROPOSE = "propose-v1"
 # contain them; refusal is fail-closed against prompt-construction bugs.
 DEFAULT_FORBIDDEN_MARKERS = (
     "MODEL_API_KEY",
+    "GEMMA_API_KEY",
     "META_API_KEY",
     "SECOND_SOURCE_MAX_RUN_USD",
 )
@@ -125,7 +129,7 @@ def _estimate_tokens(text: str) -> int:
     return max(1, len(text) // 4)
 
 
-def _check_base_url(base_url: str, *, test_mode: bool) -> str:
+def _check_base_url(base_url: str, *, test_mode: bool, gemma_test: bool = False) -> str:
     """Fail closed on non-HTTPS or unexpected hosts (key-exfiltration guard).
 
     The ONLY exception is an explicitly selected test injection path:
@@ -134,7 +138,7 @@ def _check_base_url(base_url: str, *, test_mode: bool) -> str:
     """
     parts = urllib.parse.urlsplit(base_url.rstrip("/"))
     host = (parts.hostname or "").lower()
-    if host in ALLOWED_HOSTS:
+    if host in ALLOWED_HOSTS or (gemma_test and host in GEMMA_TEST_HOSTS):
         if parts.scheme != "https":
             raise GatewayError(
                 f"refusing non-HTTPS model endpoint {base_url!r}: credentials travel only over TLS"
@@ -189,13 +193,14 @@ class MetaProvider:
         timeout_s: float = 60.0,
         test_mode: bool = False,
         rates: tuple[float, float] | None = None,
+        gemma_test: bool = False,
     ) -> None:
         if not api_key:
             raise GatewayError(
                 "MetaProvider requires a server-side MODEL_API_KEY; refusing mock-as-real"
             )
         self._api_key = api_key
-        self._base_url = _check_base_url(base_url, test_mode=test_mode)
+        self._base_url = _check_base_url(base_url, test_mode=test_mode, gemma_test=gemma_test)
         self._test_mode = test_mode
         self._model = model
         self._timeout_s = timeout_s
@@ -226,7 +231,11 @@ class MetaProvider:
             "max_completion_tokens": request.max_output_tokens,
             "reasoning_effort": request.reasoning_effort,
         }
-        if request.json_schema is not None:
+        if getattr(self, "_omit_reasoning_effort", False):
+            payload.pop("reasoning_effort", None)
+        if request.json_schema is not None and getattr(self, "_json_mode_only", False):
+            payload["response_format"] = {"type": "json_object"}
+        elif request.json_schema is not None:
             payload["response_format"] = {
                 "type": "json_schema",
                 "json_schema": {
@@ -391,6 +400,170 @@ class MockProvider:
         )
 
 
+def _to_google_schema(node: Any) -> Any:
+    """Convert the closed JSON schemas used by this gateway to the Google
+    structured-output dialect (uppercase types). Unsupported keywords are
+    dropped; local strict validation remains authoritative."""
+    if not isinstance(node, dict):
+        return node
+    out: dict[str, Any] = {}
+    type_map = {
+        "object": "OBJECT", "array": "ARRAY", "string": "STRING",
+        "integer": "INTEGER", "number": "NUMBER", "boolean": "BOOLEAN",
+    }
+    for key, value in node.items():
+        if key == "type" and isinstance(value, str) and value in type_map:
+            out["type"] = type_map[value]
+        elif key == "properties" and isinstance(value, dict):
+            out["properties"] = {k: _to_google_schema(v) for k, v in value.items()}
+        elif key == "items":
+            out["items"] = _to_google_schema(value)
+        elif key in ("required", "enum", "minItems", "maxItems", "minLength", "maxLength"):
+            out[key] = value
+        elif key in ("additionalProperties", "$schema", "title", "description"):
+            continue
+    return out
+
+
+
+class GemmaTestProvider(MetaProvider):
+    """Google Gemma via the native Gemini API. TEST ONLY.
+
+    Pipeline smoke testing with a non-Meta model. Receipts carry
+    provider "gemma-test" and must never be presented as Meta evidence.
+    Uses the native :generateContent transport because Gemma models are
+    not served on Google's OpenAI-compatible surface. Metering uses
+    conservative declared rates; actual Google billing is separate.
+    """
+
+    provider_name = "gemma-test"
+
+    def __init__(
+        self,
+        api_key: str,
+        *,
+        model: str = GEMMA_DEFAULT_MODEL,
+        rates: tuple[float, float] = (1.25, 4.25),
+    ) -> None:
+        super().__init__(
+            api_key,
+            base_url=GEMMA_DEFAULT_BASE_URL,
+            model=model,
+            rates=rates,
+            gemma_test=True,
+        )
+
+    def complete(self, request: "ModelRequest") -> "ModelResponse":
+        import urllib.error as _ue
+        import urllib.request as _ur
+
+        system = "\n".join(
+            str(m.get("content", "")) for m in request.messages if m.get("role") == "system"
+        )
+        contents = []
+        for m in request.messages:
+            if m.get("role") == "system":
+                continue
+            role = "model" if m.get("role") == "assistant" else "user"
+            contents.append({"role": role, "parts": [{"text": str(m.get("content", ""))}]})
+        payload: dict[str, Any] = {
+            "contents": contents,
+            "generationConfig": {
+                # Gemma 4 spends output budget on hidden thoughts first
+                # (observed: 237 thoughts tokens on a 28-token prompt, and
+                # 0 candidate tokens at tight budgets). Disable thinking
+                # and floor the budget so candidate text can exist.
+                "maxOutputTokens": max(request.max_output_tokens, 8000),
+                "responseMimeType": "application/json",
+            },
+        }
+        if system:
+            # Gemma 4 ignores mime/schema hints and free-forms analysis
+            # until the token cap (observed live). A provider-level terse
+            # directive is required for any JSON to exist; strict local
+            # validation still decides admission.
+            directive = (
+                "Output ONLY one JSON object matching the requested schema. "
+                "No analysis, no markdown, no explanation. "
+            )
+            payload["systemInstruction"] = {"parts": [{"text": directive + system}]}
+        if request.json_schema is not None:
+            payload["generationConfig"]["responseSchema"] = _to_google_schema(
+                request.json_schema
+            )
+        if isinstance(getattr(request, "temperature", None), (int, float)):
+            payload["generationConfig"]["temperature"] = request.temperature
+        started = time.monotonic()
+        url = (
+            "https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{self._model}:generateContent"
+        )
+        req = _ur.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "x-goog-api-key": self._api_key,
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with _ur.urlopen(req, timeout=300) as resp:
+                doc = json.loads(resp.read().decode("utf-8"))
+        except _ue.HTTPError as exc:
+            detail = exc.read().decode("utf-8", "replace")[:300]
+            raise GatewayError(f"Gemma test API HTTP {exc.code}: {detail}") from exc
+        except (_ue.URLError, TimeoutError, OSError) as exc:
+            raise GatewayError(f"Gemma test API transport failure: {exc}") from exc
+        latency_ms = int((time.monotonic() - started) * 1000)
+        try:
+            candidate = doc["candidates"][0]
+            text = "".join(
+                part.get("text", "")
+                for part in candidate.get("content", {}).get("parts", [])
+            )
+            finish = str(candidate.get("finishReason", ""))
+        except (KeyError, IndexError, TypeError) as exc:
+            raise GatewayError("Gemma test API returned no candidates") from exc
+        usage = doc.get("usageMetadata", {}) if isinstance(doc, dict) else {}
+        stripped = text.strip()
+        if stripped.startswith("```"):
+            stripped = stripped.strip("`").strip()
+            if stripped.lower().startswith("json"):
+                stripped = stripped[4:].strip()
+        parsed = None
+        parse_note = ""
+        if stripped:
+            try:
+                parsed = json.loads(stripped)
+            except json.JSONDecodeError:
+                start = stripped.find("{")
+                end = stripped.rfind("}")
+                if start >= 0 and end > start:
+                    try:
+                        parsed = json.loads(stripped[start : end + 1])
+                    except json.JSONDecodeError:
+                        parse_note = "gemma output was not valid JSON"
+                else:
+                    parse_note = "gemma output was not valid JSON"
+        return ModelResponse(
+            provider="gemma-test",
+            model=self._model,
+            real=True,
+            response_id=str(doc.get("responseId", "")) if isinstance(doc, dict) else "",
+            content_text=text,
+            parsed=parsed,
+            input_tokens=int(usage.get("promptTokenCount", 0) or 0),
+            output_tokens=int(usage.get("candidatesTokenCount", 0) or 0),
+            latency_ms=latency_ms,
+            estimated_cost_usd=estimate_cost_usd(
+                int(usage.get("promptTokenCount", 0) or 0),
+                int(usage.get("candidatesTokenCount", 0) or 0),
+                self._rates,
+            ),
+        )
+
+
 class ModelGateway:
     """Single choke point for all product inference."""
 
@@ -428,6 +601,13 @@ class ModelGateway:
     @property
     def receipts(self) -> tuple[CallReceipt, ...]:
         return tuple(self._receipts)
+
+    def record_admission_rejection(self, rejection: dict[str, Any]) -> None:
+        """Forward a private admission record to the audit sink, if any."""
+        if self._audit is not None:
+            self._audit(
+                "hypothesis_admission_rejection", {"rejection": dict(rejection)}
+            )
 
     def _rates(self) -> tuple[float, float]:
         if isinstance(self._provider, MetaProvider):

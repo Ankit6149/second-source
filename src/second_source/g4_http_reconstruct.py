@@ -71,7 +71,9 @@ from .contracts import Observation, ProposedAction, ScopeContract, SideEffect
 from .evidence import EvidenceLedger, publish_once as _write_once
 from .hypotheses import HypothesisStore, validate_batch
 from .loop import DiscoveryLoop, LoopReport
-from .model_gateway import GatewayError, MetaProvider, MockProvider, ModelGateway
+from .model_gateway import (GEMMA_DEFAULT_MODEL, GatewayError,
+                            GemmaTestProvider, MetaProvider,
+                            MockProvider, ModelGateway)
 from .planner import RESET_BOUNDARY, ExperimentPlanner
 from .repair_loop import (
     SELECTION_POLICY,
@@ -83,7 +85,7 @@ from .repair_loop import (
 from .scope_guard import ScopeGuard
 
 MAX_REAL_RUN_USD = 0.50
-REAL_MODES = ("mock", "preflight", "real", "journey")
+REAL_MODES = ("mock", "preflight", "real", "journey", "discover-real", "discover-gemma-test")
 SUPPORTED_FIXTURES = (TARGET_ID, "owned-http-task-workflow")
 
 
@@ -590,6 +592,23 @@ def _generation_audit(run_dir: Path) -> Any:
     counts = {"model_dispatch": 0, "model_result": 0}
 
     def record(event: str, payload: dict[str, Any]) -> None:
+        if event == "hypothesis_admission_rejection":
+            idx = counts.get("admission", 0) + 1
+            counts["admission"] = idx
+            tag = "v1" if idx == 1 else f"r{idx - 1}"
+            raw = json.dumps(
+                {
+                    "kind": "G4_PRIVATE_HYPOTHESIS_ADMISSION_V1",
+                    "run_id": run_dir.name,
+                    "event": event,
+                    "version_tag": tag,
+                    **payload,
+                },
+                sort_keys=True,
+                indent=2,
+            ).encode("utf-8")
+            _write_once(run_dir / f"hypothesis-admission.{tag}.private.json", raw)
+            return
         if event not in {"model_dispatch", "model_result"}:
             raise RuntimeError("Unexpected generation audit event")
         counts[event] += 1
@@ -615,6 +634,29 @@ def _generation_audit(run_dir: Path) -> Any:
         path = _write_once(run_dir / name, raw)
         if path.read_bytes() != raw:
             raise RuntimeError("Generation archive read-back mismatch")
+
+    return record
+
+
+def _admission_audit(run_dir: Path) -> Any:
+    """Write create-once private hypothesize-rejection records (never public)."""
+    counts = {"count": 0}
+
+    def record(rejection: Any) -> None:
+        counts["count"] += 1
+        idx = counts["count"]
+        tag = "v1" if idx == 1 else f"r{idx - 1}"
+        doc = {
+            "kind": "G4_PRIVATE_HYPOTHESIS_ADMISSION_V1",
+            "run_id": run_dir.name,
+            "event": "hypothesis_admission_rejection",
+            "version_tag": tag,
+            "rejection": rejection.as_dict(),
+        }
+        raw = json.dumps(doc, sort_keys=True, indent=2).encode("utf-8")
+        path = _write_once(run_dir / f"hypothesis-admission.{tag}.private.json", raw)
+        if path.read_bytes() != raw:
+            raise RuntimeError("Admission archive read-back mismatch")
 
     return record
 
@@ -1256,6 +1298,294 @@ def run_preflight(args: argparse.Namespace) -> int:
     return 0
 
 
+def run_discover_real(args: argparse.Namespace) -> int:
+    """Genuine Meta discovery over the owned HTTP reference (spend-gated).
+
+    Runs the same discovery loop as mock mode but with the real Meta
+    planner: the model hypothesizes from authorized observations and
+    proposes discriminating experiments, which the scope guard admits or
+    rejects. Persists the evidence ledger, the original hypothesis batch,
+    and a receipt-bearing summary so the existing zero-call preflight and
+    gated `--mode real` synthesis can bind to genuine inputs. Makes no
+    synthesis call. Fails closed with zero calls when authorization,
+    budget, or credentials are missing.
+    """
+    env_limit = _spend_ceiling(os.environ.get("SECOND_SOURCE_MAX_RUN_USD", "0"))
+    run_limit = _spend_ceiling(args.max_usd)
+    if env_limit is None:
+        return _blocked(
+            "configure MODEL_API_KEY and SECOND_SOURCE_MAX_RUN_USD securely."
+        )
+    if run_limit is None or run_limit > min(MAX_REAL_RUN_USD, env_limit):
+        return _blocked(
+            f"--max-usd must be finite, positive, and <= ${MAX_REAL_RUN_USD:.2f} "
+            "and <= SECOND_SOURCE_MAX_RUN_USD."
+        )
+    if not args.confirm_real_run:
+        return _blocked("pass --confirm-real-run to authorize spend on this run.")
+    key = os.environ.get("MODEL_API_KEY", "")
+    if not key:
+        return _blocked(
+            "configure MODEL_API_KEY securely after exact input approval."
+        )
+
+    public = load_public_contract()
+    run_dir = _run_directory(args.run_dir)
+    ledger = EvidenceLedger(run_dir / "evidence")
+    scope = create_g4_http_scope(run_limit)
+    budget = RunBudget(scope.budgets)
+    try:
+        with start_reference_server() as srv:
+            reference = HTTPReferenceAdapter(srv)
+            runner = SafeHTTPExperimentRunner(scope, reference, ledger)
+            hypotheses = HypothesisStore()
+            gateway = ModelGateway(
+                MetaProvider(key), budget, audit=_generation_audit(run_dir)
+            )
+            planner = ExperimentPlanner(
+                gateway=gateway,
+                guard=ScopeGuard(scope),
+                hypotheses=hypotheses,
+                budget=budget,
+                contract=scope,
+                public_contract=public,
+            )
+            loop = HTTPDiscoveryLoop(
+                run_id=run_dir.name,
+                requirement_id="REQ-HTTP-TASKS",
+                contract=scope,
+                runner=runner,
+                ledger=ledger,
+                hypotheses=hypotheses,
+                planner=planner,
+                budget=budget,
+                max_rounds=4,
+            )
+            loop_report = loop.run(passive_matched_probe_sequences())
+    except KeyboardInterrupt:
+        stopped = _write_failure_report(
+            run_dir=run_dir, mode="discover-real", real=True,
+            stage="discovery", budget=budget, interrupted=True,
+        )
+        print(json.dumps(_summarize(stopped), indent=2))
+        return 130
+    except (GatewayError, RuntimeError, ValueError) as exc:
+        failed = _write_failure_report(
+            run_dir=run_dir, mode="discover-real", real=True,
+            stage="discovery", budget=budget,
+            broker_diagnostic=getattr(exc, "broker_diagnostic", None),
+        )
+        print(json.dumps(_summarize(failed), indent=2))
+        return 1
+
+    digests = loop.digests
+    if not hypotheses.all():
+        failed = _write_failure_report(
+            run_dir=run_dir, mode=args.mode, real=args.mode == "discover-real",
+            stage="discovery", budget=budget,
+        )
+        print(json.dumps(_summarize(failed), indent=2))
+        return 1
+    batch = {
+        "schema_version": "1.0",
+        "hypotheses": [h.model_dump(mode="json") for h in hypotheses.all()],
+    }
+    try:
+        validate_batch(batch, frozenset(digests))
+    except ValueError as exc:
+        failed = _write_failure_report(
+            run_dir=run_dir, mode=args.mode, real=args.mode == "discover-real",
+            stage="persistence", budget=budget,
+        )
+        print(json.dumps(_summarize(failed), indent=2))
+        return 1
+    hyp_path = _write_once(
+        run_dir / "hypotheses.original.json",
+        json.dumps(batch, indent=2, sort_keys=True).encode("utf-8"),
+    )
+    summary = {
+        "kind": "G4_HTTP_DISCOVERY_SUMMARY_V1",
+        "run_id": run_dir.name,
+        "target_id": TARGET_ID,
+        "origin": "real",
+        "real": True,
+        "provider": "meta-direct",
+        "model": "muse-spark-1.3",
+        "total_observations_recorded": len(digests),
+        "observation_digests": list(digests),
+        "hypotheses_file": hyp_path.name,
+        "hypothesis_resolution_counts": dict(loop_report.resolution_counts),
+        "rounds": [
+            {
+                "round_no": r.round_no,
+                "hypothesis_ids": list(r.hypothesis_ids),
+                "proposal_id": r.proposal_id,
+                "actions_executed": r.actions_executed,
+                "observation_ids": list(r.observation_ids),
+                "reset_boundary": r.reset_boundary,
+                "resolution": dict(r.resolution),
+                "note": r.note,
+            }
+            for r in loop_report.rounds
+        ],
+        "model_receipts": [r.model_dump(mode="json") for r in gateway.receipts],
+        "usage": _budget_usage(budget),
+        "max_authorized_usd": run_limit,
+        "stop_reason": "discovery_complete",
+        "note": (
+            "Genuine Meta discovery only; no candidate was synthesized. "
+            "Bind these inputs through --mode preflight, obtain separate "
+            "owner approval of the context digest, then invoke --mode real."
+        ),
+    }
+    _write_once(
+        run_dir / "G4_discovery_summary.json",
+        json.dumps(summary, indent=2, sort_keys=True).encode("utf-8"),
+    )
+    _progress(
+        "evidence_ready", run_dir.name,
+        f"{len(digests)} HTTP observations from genuine Meta discovery",
+    )
+    print(
+        json.dumps(
+            {
+                "result": "discovery_complete",
+                "run_id": run_dir.name,
+                "target_id": TARGET_ID,
+                "observation_digests": list(digests),
+                "hypotheses": len(batch["hypotheses"]),
+                "usage": summary["usage"],
+                "next_action": (
+                    "run --mode preflight with this ledger/hypotheses, approve "
+                    "the context digest out of band, then --mode real"
+                ),
+            },
+            indent=2,
+        )
+    )
+    return 0
+
+
+def run_discover_gemma_test(args: argparse.Namespace) -> int:
+    """Gemma pipeline smoke discovery (TEST ONLY, never Meta evidence).
+
+    Same discovery loop, scope guard, budget, and persistence as the
+    genuine Meta path, but with a Google Gemma test provider under a
+    separate credential (GEMMA_API_KEY, never sent to a Meta endpoint).
+    Every artifact is labeled origin="gemma-test", real=False. Makes no
+    synthesis call and cannot feed --mode real (which constructs the
+    Meta provider itself).
+    """
+    env_limit = _spend_ceiling(os.environ.get("SECOND_SOURCE_MAX_RUN_USD", "0.50"))
+    run_limit = _spend_ceiling(args.max_usd)
+    if env_limit is None or run_limit is None or run_limit > min(MAX_REAL_RUN_USD, env_limit):
+        return _blocked(
+            "--max-usd must be finite, positive, and <= $0.50 and <= SECOND_SOURCE_MAX_RUN_USD."
+        )
+    if not args.confirm_real_run:
+        return _blocked("pass --confirm-real-run to authorize spend on this test run.")
+    key = os.environ.get("GEMMA_API_KEY", "")
+    if not key:
+        return _blocked("configure GEMMA_API_KEY securely for the Gemma test run.")
+
+    model = os.environ.get("GEMMA_MODEL", GEMMA_DEFAULT_MODEL)
+    public = load_public_contract()
+    run_dir = _run_directory(args.run_dir)
+    ledger = EvidenceLedger(run_dir / "evidence")
+    scope = create_g4_http_scope(run_limit)
+    budget = RunBudget(scope.budgets)
+    try:
+        with start_reference_server() as srv:
+            reference = HTTPReferenceAdapter(srv)
+            runner = SafeHTTPExperimentRunner(scope, reference, ledger)
+            hypotheses = HypothesisStore()
+            gateway = ModelGateway(
+                GemmaTestProvider(key, model=model), budget,
+                audit=_generation_audit(run_dir),
+            )
+            planner = ExperimentPlanner(
+                gateway=gateway, guard=ScopeGuard(scope), hypotheses=hypotheses,
+                admission_audit=_admission_audit(run_dir),
+                budget=budget, contract=scope, public_contract=public,
+            )
+            loop = HTTPDiscoveryLoop(
+                run_id=run_dir.name, requirement_id="REQ-HTTP-TASKS",
+                contract=scope, runner=runner, ledger=ledger,
+                hypotheses=hypotheses, planner=planner, budget=budget, max_rounds=4,
+            )
+            loop_report = loop.run(passive_matched_probe_sequences())
+    except (GatewayError, RuntimeError, ValueError) as exc:
+        failed = _write_failure_report(
+            run_dir=run_dir, mode="discover-gemma-test", real=False,
+            stage="discovery", budget=budget,
+            broker_diagnostic=getattr(exc, "broker_diagnostic", None),
+        )
+        print(json.dumps(_summarize(failed), indent=2))
+        return 1
+
+    digests = loop.digests
+    if not hypotheses.all():
+        failed = _write_failure_report(
+            run_dir=run_dir, mode=args.mode, real=args.mode == "discover-real",
+            stage="discovery", budget=budget,
+        )
+        print(json.dumps(_summarize(failed), indent=2))
+        return 1
+    batch = {
+        "schema_version": "1.0",
+        "hypotheses": [h.model_dump(mode="json") for h in hypotheses.all()],
+    }
+    try:
+        validate_batch(batch, frozenset(digests))
+    except ValueError as exc:
+        failed = _write_failure_report(
+            run_dir=run_dir, mode=args.mode, real=args.mode == "discover-real",
+            stage="persistence", budget=budget,
+        )
+        print(json.dumps(_summarize(failed), indent=2))
+        return 1
+    hyp_path = _write_once(
+        run_dir / "hypotheses.original.json",
+        json.dumps(batch, indent=2, sort_keys=True).encode("utf-8"),
+    )
+    summary = {
+        "kind": "G4_GEMMA_TEST_DISCOVERY_SUMMARY_V1",
+        "run_id": run_dir.name,
+        "target_id": TARGET_ID,
+        "origin": "gemma-test",
+        "real": False,
+        "claim_classification": "PIPELINE_SMOKE_NOT_META",
+        "provider": "gemma-test",
+        "model": model,
+        "total_observations_recorded": len(digests),
+        "observation_digests": list(digests),
+        "hypotheses_file": hyp_path.name,
+        "hypothesis_resolution_counts": dict(loop_report.resolution_counts),
+        "model_receipts": [r.model_dump(mode="json") for r in gateway.receipts],
+        "usage": _budget_usage(budget),
+        "max_authorized_usd": run_limit,
+        "stop_reason": "discovery_complete",
+        "note": (
+            "Gemma TEST discovery only; not Meta evidence, no candidate "
+            "synthesized. Genuine claims require --mode discover-real/real "
+            "with the Meta provider."
+        ),
+    }
+    _write_once(
+        run_dir / "G4_discovery_summary.json",
+        json.dumps(summary, indent=2, sort_keys=True).encode("utf-8"),
+    )
+    print(json.dumps({
+        "result": "gemma_test_discovery_complete",
+        "run_id": run_dir.name,
+        "model": model,
+        "observation_digests": list(digests),
+        "hypotheses": len(batch["hypotheses"]),
+        "usage": summary["usage"],
+    }, indent=2))
+    return 0
+
+
 def run_real(args: argparse.Namespace) -> int:
     """Owner-authorized real generation; fails closed on any missing approval."""
     if getattr(args, "repair_rounds", 0):
@@ -1614,6 +1944,7 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "mock: nonbillable NON_AI end-to-end HTTP demonstration; "
             "preflight: zero-call inspection of operator HTTP inputs; "
+            "discover-real: gated genuine Meta discovery (no synthesis); "
             "real: gated Meta run (fail-closed without owner authorization)"
         ),
     )
@@ -1707,6 +2038,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             return 2
         return run_mock(args)
+    if args.mode == "discover-gemma-test":
+        if args.repair_rounds:
+            print("BLOCKED_SCOPE: discover-gemma-test takes no repair rounds", file=sys.stderr)
+            return 2
+        return run_discover_gemma_test(args)
+    if args.mode == "discover-real":
+        if args.repair_rounds:
+            print(
+                "BLOCKED_SCOPE: discover-real takes no repair rounds",
+                file=sys.stderr,
+            )
+            return 2
+        return run_discover_real(args)
     if args.mode == "preflight":
         if args.confirm_real_run:
             print(

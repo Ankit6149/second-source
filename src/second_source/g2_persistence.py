@@ -290,6 +290,31 @@ def _inspect_run(run_dir: Path, expected_receipt_sha256: str | None = None) -> d
                           for s in ("hypothesized", "supported", "contradicted", "unresolved")}
             if payload["resolution"] != resolution:
                 raise PersistenceError("Round verdicts differ from archived observations")
+        elif kind == "hypothesis_admission_rejection":
+            # Private planner record (class/counts/content-hash only).
+            # Validated strictly; never registers hypotheses or verdicts.
+            if pending is not None or not receipts:
+                raise PersistenceError("Admission rejection without a model result")
+            if set(payload) != {"rejection"} or not isinstance(payload["rejection"], dict):
+                raise PersistenceError("Malformed admission rejection event")
+            rejection = payload["rejection"]
+            if set(rejection) != {
+                "stage", "failure_class", "failure_code",
+                "valid_count", "rejected_count", "total_count", "content_sha256",
+            }:
+                raise PersistenceError("Malformed admission rejection event")
+            if rejection["stage"] != "hypothesize" or rejection["failure_class"] not in (
+                "generation", "schema", "scientific",
+            ) or not isinstance(rejection["failure_code"], str) or not rejection["failure_code"]:
+                raise PersistenceError("Malformed admission rejection event")
+            counts = (rejection["valid_count"], rejection["rejected_count"], rejection["total_count"])
+            if any(type(c) is not int or c < 0 for c in counts) or counts[0] + counts[1] != counts[2]:
+                raise PersistenceError("Malformed admission rejection counts")
+            sha = rejection["content_sha256"]
+            if not isinstance(sha, str) or (sha and (
+                len(sha) != 64 or any(c not in "0123456789abcdef" for c in sha)
+            )):
+                raise PersistenceError("Malformed admission rejection hash")
         elif kind == "terminal":
             terminal = payload
         else:
