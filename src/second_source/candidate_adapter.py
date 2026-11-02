@@ -444,8 +444,29 @@ def _worker_main():
                 synthesis = data.get("synthesis", "full")
                 if synthesis not in ("full", "guided"):
                     raise GatewayError("Unsupported synthesis protocol")
-                generate = request_guided_spec if synthesis == "guided" else request_candidate_spec
-                generate(data["context"], gateway)
+                repair = data.get("repair")
+                if repair is None:
+                    generate = request_guided_spec if synthesis == "guided" else request_candidate_spec
+                    generate(data["context"], gateway)
+                else:
+                    # Feedback-conditioned repair: guided only, aggregate
+                    # counts only. Anything else fails closed here, before
+                    # any request bytes are built.
+                    from .candidate_generation import (
+                        build_guided_repair_request, build_spec_skeleton,
+                        sanitize_repair_feedback,
+                    )
+                    if synthesis != "guided":
+                        raise GatewayError("Unsupported repair protocol")
+                    guidance = sanitize_repair_feedback(
+                        repair.get("feedback") if isinstance(repair, dict) else None)
+                    repair_round = repair.get("round")
+                    if type(repair_round) is not int or repair_round < 1:
+                        raise GatewayError("Repair round rejected")
+                    skeleton = build_spec_skeleton(data["context"]["public_commands"])
+                    gateway.generate(build_guided_repair_request(
+                        data["context"], skeleton, guidance,
+                        repair_round=repair_round))
             except GatewayError:
                 pass
             response = {"request": captured[0].model_dump(mode="json")} if len(captured) == 1 else {"failure": "generation_rejected"}

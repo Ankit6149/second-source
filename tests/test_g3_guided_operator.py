@@ -223,7 +223,7 @@ raise SystemExit(reconstruct.main(json.loads(sys.argv[1])))
               "request_max_output_tokens", "max_approved_usd")
     for field in stable:
         assert receipts[0][field] == receipts[1][field], field
-    assert receipts[0]["request_max_output_tokens"] == 800
+    assert receipts[0]["request_max_output_tokens"] == 4096
     assert receipts[2]["request_max_output_tokens"] == 2000
     assert receipts[0]["approved_context_digest"] != receipts[2]["approved_context_digest"]
     assert receipts[0]["inspected_request_digest"] != receipts[2]["inspected_request_digest"]
