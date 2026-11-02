@@ -1342,7 +1342,15 @@ def run_discover_real(args: argparse.Namespace) -> int:
         "schema_version": "1.0",
         "hypotheses": [h.model_dump(mode="json") for h in hypotheses.all()],
     }
-    validate_batch(batch, frozenset(digests))
+    try:
+        validate_batch(batch, frozenset(digests))
+    except ValueError as exc:
+        failed = _write_failure_report(
+            run_dir=run_dir, mode=args.mode, real=args.mode == "discover-real",
+            stage="persistence", budget=budget,
+        )
+        print(json.dumps(_summarize(failed), indent=2))
+        return 1
     hyp_path = _write_once(
         run_dir / "hypotheses.original.json",
         json.dumps(batch, indent=2, sort_keys=True).encode("utf-8"),
@@ -1471,7 +1479,15 @@ def run_discover_gemma_test(args: argparse.Namespace) -> int:
         "schema_version": "1.0",
         "hypotheses": [h.model_dump(mode="json") for h in hypotheses.all()],
     }
-    validate_batch(batch, frozenset(digests))
+    try:
+        validate_batch(batch, frozenset(digests))
+    except ValueError as exc:
+        failed = _write_failure_report(
+            run_dir=run_dir, mode=args.mode, real=args.mode == "discover-real",
+            stage="persistence", budget=budget,
+        )
+        print(json.dumps(_summarize(failed), indent=2))
+        return 1
     hyp_path = _write_once(
         run_dir / "hypotheses.original.json",
         json.dumps(batch, indent=2, sort_keys=True).encode("utf-8"),
