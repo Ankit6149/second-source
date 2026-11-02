@@ -189,6 +189,23 @@ python web/preview.py
 
 This web preview **does not** authenticate users, launch model inference, or execute backend jobs. See [web/README.md](web/README.md) for the allowlisted Vercel build instructions.
 
+### MCP evidence instrument (optional, local)
+
+An opt-in **MCP server** exposes the public historical Muse Spark 14/25 report,
+its declarative candidate, and tightly bounded *live local comparisons* against
+the owned ledger fixture to agents such as Muse Code. The comparison is
+**NON_AI replay of a previously recorded Meta candidate**, not a new model call,
+new sealed score, cloud service, or general target access. This feature is under
+release review until its optional SDK handshake and exact-head tests pass.
+
+~~~bash
+python -m pip install -e ".[dev,mcp]"
+python -m pytest tests/test_mcp_evidence.py -q
+python -m second_source.mcp_server
+~~~
+
+See [MCP setup, Muse Code configuration and boundaries](docs/MCP_INTEGRATION.md).
+
 ## System architecture
 
 Second Source separates the **scientific engine**, **trusted control plane**, **model boundary**, and **independent verifier**. The modularity is intentional: learning a new target class should require a reviewed adapter and test contract, not a new hard-coded reconstruction engine.
