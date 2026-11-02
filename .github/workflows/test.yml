@@ -44,3 +44,20 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap-windows.ps1
+
+  mcp-protocol:
+    name: MCP v2 in-memory protocol
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install project and official MCP SDK
+        run: python -m pip install -e ".[dev,mcp]"
+      - name: Run MCP evidence and client protocol tests
+        env:
+          SECOND_SOURCE_MAX_RUN_USD: '0'
+        run: python -m pytest tests/test_mcp_evidence.py -q
