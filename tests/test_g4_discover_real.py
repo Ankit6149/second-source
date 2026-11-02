@@ -13,7 +13,7 @@ import pytest
 
 from second_source import g4_http_reconstruct as g4
 from second_source.hypotheses import validate_batch
-from second_source.model_gateway import MetaProvider, MockProvider
+from second_source.model_gateway import GemmaTestProvider, MetaProvider, MockProvider
 
 
 class FakeMetaProvider(MetaProvider):
@@ -125,3 +125,65 @@ def test_fake_discovery_persists_inputs_that_preflight_accepts(
     assert receipt["provider_calls"] == 0
     assert receipt["stop_reason"] == "preflight_ready"
     assert receipt["approved_context_digest"].startswith("sha256:")
+
+
+class FakeGemmaProvider(GemmaTestProvider):
+    """Hermetic Gemma stand-in (test-only)."""
+
+    def __init__(self, api_key: str, model: str = "gemma-3-27b-it") -> None:
+        self._mock = MockProvider(responder=g4._build_mock_planner_responder())
+        self._model = model
+        self._rates = (1.25, 4.25)
+
+    def complete(self, request):
+        response = self._mock.complete(request)
+        return response.model_copy(
+            update={
+                "provider": "gemma-test",
+                "real": True,
+                "model": self._model,
+                "response_id": "fake-gemma-" + request.stage,
+            }
+        )
+
+
+def _gemma_args(run_dir: Path) -> list[str]:
+    return [
+        "--mode", "discover-gemma-test",
+        "--max-usd", "0.50",
+        "--confirm-real-run",
+        "--run-dir", str(run_dir),
+    ]
+
+
+def test_gemma_blocked_without_gemma_key_even_with_meta_key(monkeypatch, tmp_path):
+    monkeypatch.delenv("GEMMA_API_KEY", raising=False)
+    monkeypatch.setenv("MODEL_API_KEY", "test-key-not-real")
+    monkeypatch.setenv("SECOND_SOURCE_MAX_RUN_USD", "0.50")
+    run_dir = tmp_path / "gemma-blocked"
+    assert g4.main(_gemma_args(run_dir)) == 2
+    assert not run_dir.exists()
+
+
+def test_gemma_fake_discovery_is_labeled_not_meta(monkeypatch, tmp_path):
+    monkeypatch.setenv("GEMMA_API_KEY", "test-key-not-real")
+    monkeypatch.delenv("MODEL_API_KEY", raising=False)
+    monkeypatch.setenv("SECOND_SOURCE_MAX_RUN_USD", "0.50")
+    monkeypatch.setattr(g4, "GemmaTestProvider", FakeGemmaProvider)
+
+    run_dir = tmp_path / "gemma-discover"
+    assert g4.main(_gemma_args(run_dir)) == 0
+    summary = json.loads(
+        (run_dir / "G4_discovery_summary.json").read_text(encoding="utf-8")
+    )
+    assert summary["origin"] == "gemma-test"
+    assert summary["real"] is False
+    assert summary["claim_classification"] == "PIPELINE_SMOKE_NOT_META"
+    assert summary["provider"] == "gemma-test"
+    assert summary["model_receipts"]
+    assert all(r["provider"] == "gemma-test" for r in summary["model_receipts"])
+    digests = summary["observation_digests"]
+    batch = json.loads(
+        (run_dir / "hypotheses.original.json").read_text(encoding="utf-8")
+    )
+    validate_batch(batch, frozenset(digests))

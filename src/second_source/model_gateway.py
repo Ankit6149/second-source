@@ -36,6 +36,9 @@ from .schema_validate import validate_json_schema
 DEFAULT_MODEL = "muse-spark-1.3"
 DEFAULT_BASE_URL = "https://api.meta.ai/v1"
 ALLOWED_HOSTS = ("api.meta.ai",)
+GEMMA_TEST_HOSTS = ("generativelanguage.googleapis.com",)
+GEMMA_DEFAULT_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai"
+GEMMA_DEFAULT_MODEL = "gemma-3-27b-it"
 LOOPBACK_HOSTS = ("127.0.0.1", "localhost", "::1")
 PROMPT_VERSION_HYPOTHESIZE = "hypothesize-v1"
 PROMPT_VERSION_PROPOSE = "propose-v1"
@@ -45,6 +48,7 @@ PROMPT_VERSION_PROPOSE = "propose-v1"
 # contain them; refusal is fail-closed against prompt-construction bugs.
 DEFAULT_FORBIDDEN_MARKERS = (
     "MODEL_API_KEY",
+    "GEMMA_API_KEY",
     "META_API_KEY",
     "SECOND_SOURCE_MAX_RUN_USD",
 )
@@ -125,7 +129,7 @@ def _estimate_tokens(text: str) -> int:
     return max(1, len(text) // 4)
 
 
-def _check_base_url(base_url: str, *, test_mode: bool) -> str:
+def _check_base_url(base_url: str, *, test_mode: bool, gemma_test: bool = False) -> str:
     """Fail closed on non-HTTPS or unexpected hosts (key-exfiltration guard).
 
     The ONLY exception is an explicitly selected test injection path:
@@ -134,7 +138,7 @@ def _check_base_url(base_url: str, *, test_mode: bool) -> str:
     """
     parts = urllib.parse.urlsplit(base_url.rstrip("/"))
     host = (parts.hostname or "").lower()
-    if host in ALLOWED_HOSTS:
+    if host in ALLOWED_HOSTS or (gemma_test and host in GEMMA_TEST_HOSTS):
         if parts.scheme != "https":
             raise GatewayError(
                 f"refusing non-HTTPS model endpoint {base_url!r}: credentials travel only over TLS"
@@ -189,13 +193,14 @@ class MetaProvider:
         timeout_s: float = 60.0,
         test_mode: bool = False,
         rates: tuple[float, float] | None = None,
+        gemma_test: bool = False,
     ) -> None:
         if not api_key:
             raise GatewayError(
                 "MetaProvider requires a server-side MODEL_API_KEY; refusing mock-as-real"
             )
         self._api_key = api_key
-        self._base_url = _check_base_url(base_url, test_mode=test_mode)
+        self._base_url = _check_base_url(base_url, test_mode=test_mode, gemma_test=gemma_test)
         self._test_mode = test_mode
         self._model = model
         self._timeout_s = timeout_s
@@ -226,7 +231,11 @@ class MetaProvider:
             "max_completion_tokens": request.max_output_tokens,
             "reasoning_effort": request.reasoning_effort,
         }
-        if request.json_schema is not None:
+        if getattr(self, "_omit_reasoning_effort", False):
+            payload.pop("reasoning_effort", None)
+        if request.json_schema is not None and getattr(self, "_json_mode_only", False):
+            payload["response_format"] = {"type": "json_object"}
+        elif request.json_schema is not None:
             payload["response_format"] = {
                 "type": "json_schema",
                 "json_schema": {
@@ -388,6 +397,35 @@ class MockProvider:
             output_tokens=out_tok,
             estimated_cost_usd=0.0,
             prompt_version=request.prompt_version,
+        )
+
+
+class GemmaTestProvider(MetaProvider):
+    """Google Gemma via the OpenAI-compatible endpoint. TEST ONLY.
+
+    Pipeline smoke testing with a non-Meta model. Receipts carry
+    provider "gemma-test" and must never be presented as Meta evidence.
+    Metering uses conservative declared rates; actual Google billing is
+    separate and not read by this code.
+    """
+
+    provider_name = "gemma-test"
+    _omit_reasoning_effort = True
+    _json_mode_only = True
+
+    def __init__(
+        self,
+        api_key: str,
+        *,
+        model: str = GEMMA_DEFAULT_MODEL,
+        rates: tuple[float, float] = (1.25, 4.25),
+    ) -> None:
+        super().__init__(
+            api_key,
+            base_url=GEMMA_DEFAULT_BASE_URL,
+            model=model,
+            rates=rates,
+            gemma_test=True,
         )
 
 
