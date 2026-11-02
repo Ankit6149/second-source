@@ -57,6 +57,7 @@ code{font-family:var(--mono);font-size:12px}
 <p class="lede">Two authorized targets, one method: observe, hypothesize, experiment, synthesize, measure. Pick a target, then run the recorded public probes and see exactly where the candidate matches the reference — and where it diverges. Recorded replays are labeled; nothing here calls a model live.</p>
 </div></header>
 <main id="main">
+<noscript><section><div class="wrap"><div class="note"><b>Recorded summary (interactive explorer needs JavaScript).</b> Owned ledger CLI: REAL_MODEL genuine Meta candidate, sealed <b>14/25</b>. Owned HTTP tasks: NON_AI deterministic v1, sealed <b>25/30</b>, scripted repair 30/30 — not a model score; a genuine Meta HTTP reconstruction has not been run (authorization pending). Full narrative: <a href="../evidence/">Reconstruction Report</a>.</div></div></section></noscript>
 <section><div class="wrap">
 <h2>Choose a reconstruction</h2>
 <div class="tabs" role="group" aria-label="Choose target">
@@ -688,8 +689,8 @@ function showProbe(n){
  // mark differing blocks
  function mark(el,arr,other){var blocks=fmt(arr).split(/\n(?=\{)/); el.innerHTML=arr.map(function(o,i){var same=canon(o)===canon(other[i]);var cls=same?"matchline":"diffline";return '<span class="'+cls+'">'+(same?"= ":"≠ ")+fmt(o).replace(/</g,"&lt;")+"</span>";}).join("\n");}
  mark(refEl,p.reference,p.candidate); mark(candEl,p.candidate,p.reference);
- verdict.textContent=(p.reference.length===p.candidate.length&&p.reference.every(function(o,i){return canon(o)===canon(p.candidate[i]);}))?"SEQUENCE MATCH":"SEQUENCE DIFF";
- verdict.className="verdict "+(p.match?"v-match":"v-diff");
+ var seqMatch=p.reference.length===p.candidate.length&&p.reference.every(function(o,i){return canon(o)===canon(p.candidate[i]);}); verdict.textContent=seqMatch?"SEQUENCE MATCH":"SEQUENCE DIFF";
+ verdict.className="verdict "+(seqMatch?"v-match":"v-diff");
  document.getElementById("probe-note").textContent=META[target].note;
 }
 document.getElementById("tab-ledger").addEventListener("click",function(){showTarget("ledger");});
