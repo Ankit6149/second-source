@@ -1,7 +1,9 @@
 # Second Source public research preview
 
-A static landing page and an actual local evidence viewer. No account, model,
-backend, database, telemetry or external font request is made by these pages.
+A static landing page and an actual local evidence viewer. The landing and
+viewer make no account, model, backend, database, telemetry or external font
+request. The optional workspace can contact its configured identity and API
+services; it remains unconfigured by default.
 The landing experiment is illustrative; the console distinguishes historical
 operator-reported real attempts, NON_AI controls and unverified local imports.
 No control launches inference or authorizes spending.
@@ -23,8 +25,16 @@ python web/build.py
 python -m http.server 8766 --bind 127.0.0.1 --directory web/dist
 ```
 
+To include the product app at `/app/`, install Node.js and run:
+
+```console
+npm ci --prefix product
+python web/build.py --with-app
+```
+
+The app is a preview until its backend and identity provider are configured.
 The build copies an explicit list of public frontend files and the canonical
-console. `web/dist/` is generated and ignored. Publishing requires owner approval
+console, plus the bounded product build when requested. `web/dist/` is generated and ignored. Publishing requires owner approval
 and is not performed by either script. Existing production remains untouched.
 The self-hosted fonts and license files remain in the static artifact.
 

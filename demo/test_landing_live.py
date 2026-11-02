@@ -21,8 +21,8 @@ class LandingSmoke(unittest.TestCase):
             self.assertIn('id="%s"' % section, self.html)
 
     def test_honest_claims_present(self):
-        for phrase in ("22 / 25", "NOT YET MEASURED", "NOT DEMONSTRATED",
-                       "stopped before admission", "NON_AI", "Can't verify"):
+        for phrase in ("22 / 25", "14/25", "14 passed and 11 failed", "NOT DEMONSTRATED",
+                       "NON_AI", "never portable provider attestation"):
             self.assertIn(phrase, self.html)
 
     def test_accessibility_and_motion_guards(self):

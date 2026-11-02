@@ -1,0 +1,18 @@
+{
+  "excluded_private": [
+    "generation-dispatch.v1.private.json",
+    "generation-result.v1.private.json"
+  ],
+  "files": {
+    "G3_input_provenance.json": "edec85eb03b69ae3f4c0558f627c7d4a77b343ef594dda4b22bcde3358809097",
+    "G3_report.json": "e32a348c61415b954d9bc8b3a43688b05342ef94c8c30161ab731c9d17fd7ffb",
+    "broker-artifact.v1.json": "672556d0393f25500921d20020936f19a9759db8a43c99c65755353479ae103a",
+    "candidate.v1.json": "ee1f3f32e66050bbdf2dde86aaba09e56d17b25c21c35762eeea6208c2a146cd"
+  },
+  "kind": "G3_EVIDENCE_EXPORT_V1",
+  "origin": "real",
+  "run_id": "real-g3-guided-20261031T153000Z-rev6",
+  "spec_digest": "sha256:ee1f3f32e66050bbdf2dde86aaba09e56d17b25c21c35762eeea6208c2a146cd",
+  "suite_digest": "sha256:0423935021db574bb68f654c1c37896c6ad4f6e5c40707c1bbe38459178b015b",
+  "synthesis": "guided"
+}

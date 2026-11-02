@@ -13,8 +13,14 @@ begin
   assert table_names = array['approvals','artifacts','candidates','evaluations',
     'hypotheses','investigations','jobs','model_calls','observations','run_events',
     'runs','targets'], 'Unexpected baseline table set';
-  assert (select count(*) from pg_constraint where connamespace='ss'::regnamespace)=104,
+  -- PostgreSQL 18 adds table NOT NULL entries to pg_constraint; earlier
+  -- releases represent them in pg_attribute only. Verify both classes.
+  assert (select count(*) from pg_constraint where connamespace='ss'::regnamespace and contype <> 'n')=104,
     'Unexpected baseline constraints';
+  assert (select count(*) from pg_attribute a join pg_class c on c.oid=a.attrelid
+    where c.relnamespace='ss'::regnamespace and c.relkind='r'
+      and a.attnum>0 and not a.attisdropped and a.attnotnull)=103,
+    'Unexpected baseline NOT NULL columns';
   assert not exists(select 1 from pg_class where relnamespace='ss'::regnamespace
     and relkind='r' and not relrowsecurity), 'RLS disabled';
   assert not exists(select 1 from pg_policy where polrelid in

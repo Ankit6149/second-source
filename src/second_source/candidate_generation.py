@@ -23,7 +23,7 @@ import json
 import re
 from typing import Any, Literal, Mapping, Sequence
 
-from .candidate_spec import LoadedCandidate, load_candidate
+from .candidate_spec import LoadedCandidate, load_candidate, RESPOND_SOURCES
 from .contracts import Observation, ScopeContract, StrictModel
 from .evidence import redact
 from .model_gateway import GatewayError, ModelGateway, ModelRequest, ModelResponse
@@ -635,6 +635,7 @@ FILL_JSON_SCHEMA: dict[str, Any] = {
                     "minProperties": 1,
                     "maxProperties": 4,
                     "additionalProperties": {"type": "string"},
+                    "properties": {"ok": False, "error": False},
                 },
             },
         },
@@ -648,6 +649,7 @@ FILL_JSON_SCHEMA: dict[str, Any] = {
                     "minProperties": 1,
                     "maxProperties": 4,
                     "additionalProperties": {"type": "string"},
+                    "properties": {"ok": False, "error": False},
                 },
             },
         },
@@ -661,6 +663,7 @@ FILL_JSON_SCHEMA: dict[str, Any] = {
                     "minProperties": 1,
                     "maxProperties": 4,
                     "additionalProperties": {"type": "string"},
+                    "properties": {"ok": False, "error": False},
                 },
             },
         },
@@ -675,6 +678,7 @@ FILL_JSON_SCHEMA: dict[str, Any] = {
                     "minProperties": 1,
                     "maxProperties": 4,
                     "additionalProperties": {"type": "string"},
+                    "properties": {"ok": False, "error": False},
                 },
             },
         },
@@ -689,7 +693,7 @@ SYNTHESIZE_SYSTEM_V2 = (
     "case handling, and the exact error-code strings shown in the "
     "observations. Derive every value ONLY from the attached observations. "
     "Do not invent hidden internals, approvals, file paths, imports, shell, "
-    "network, or code of any kind. Output JSON only."
+    "network, or code of any kind. Output JSON only. Respond keys name inner payload fields only: 'ok' and 'error' are owned by the runtime envelope declared in this request and must never appear as respond keys. Each command lists its resolvable respond_sources in this request; bind every respond source from that command's own list."
 )
 
 _ERROR_CODE_LIMIT = 64
@@ -798,7 +802,7 @@ def _check_respond(command: str, respond: Any) -> dict[str, str]:
                 f"guided: fill {command!r} has bad respond key {key!r}")
         if key in _RESERVED_RESPOND_KEYS:
             raise GatewayError(
-                f"guided: fill {command!r} respond key {key!r} is reserved")
+                f"guided: fill {command!r} respond key {key!r} is reserved (runtime envelope key)")
         if not isinstance(source, str) or not source or len(source) > 32:
             raise GatewayError(
                 f"guided: fill {command!r} has bad respond source")
@@ -905,15 +909,31 @@ def merge_skeleton_fill(skeleton: dict[str, Any], fill: dict[str, Any]) -> dict[
 
 
 def build_guided_request(safe_context: dict[str, Any], skeleton: dict[str, Any],
-                         *, max_output_tokens: int = 800) -> ModelRequest:
+                         *, max_output_tokens: int = 4096) -> ModelRequest:
     """Provider-bound v2 request: skeleton plus admitted context, fill schema.
 
-    The model returns ONLY the small fill object. Default output cap is 800
-    tokens (a fill is an order of magnitude smaller than a full spec).
+    The model returns ONLY the small fill object. Default output cap is 4096
+    tokens: the measured 2026-10-31 genuine attempt spent 798 reasoning tokens before any content inside an 800-token cap and returned empty (finish_reason=length), so the cap must admit reasoning plus the ~150 tokens of fill content. Worst case at table rates stays under $0.022, far inside the $0.50 application ceiling. reasoning_effort stays low.
     """
     user_content = {
         "context": safe_context,
         "skeleton": skeleton,
+        # Trusted protocol note, fixed by code: the runtime wraps every
+        # success payload under "ok" and every failure under "error", so
+        # those keys are envelope-owned and never valid respond bindings.
+        "response_envelope": {
+            "success_key": "ok",
+            "failure_key": "error",
+            "owned_by": "runtime",
+            # Trusted source vocabulary, fixed by the strict loader's
+            # RESPOND_SOURCES: the payload field names each command can
+            # emit. Bind every respond source from the command's own list;
+            # anything else fails admission as unresolvable.
+            "respond_sources": {
+                name: sorted(RESPOND_SOURCES[name])
+                for name in ("add", "list", "total", "remove")
+            },
+        },
     }
     return ModelRequest(
         stage=SYNTHESIZE_STAGE,
@@ -931,7 +951,7 @@ def build_guided_request(safe_context: dict[str, Any], skeleton: dict[str, Any],
 
 
 def request_guided_spec(context: dict[str, Any], gateway: ModelGateway, *,
-                        max_output_tokens: int = 800,
+                        max_output_tokens: int = 4096,
                         contract: ScopeContract | None = None,
                         public_manifest_digest: str | None = None,
                         approved_evidence: Mapping[str, dict[str, Any]] | None = None,
@@ -985,3 +1005,108 @@ def request_guided_spec(context: dict[str, Any], gateway: ModelGateway, *,
         prompt_version=response.prompt_version,
     )
     return merged, receipt
+
+
+SYNTHESIZE_PROMPT_VERSION_V2_REPAIR = "synthesize-v2-repair1"
+# Aggregate-only mismatch vocabulary the repair request may carry. Mirrors
+# verifier._FAILURE_CATEGORIES without importing the evaluator side into the
+# isolated generation worker bundle (a test pins the equality).
+_REPAIR_FEEDBACK_CATEGORIES = frozenset({
+    "schema", "state", "error", "value", "candidate_timeout",
+    "candidate_protocol_error",
+})
+_REPAIR_COUNTS = ("passed", "failed", "indeterminate", "total")
+REPAIR_INSTRUCTION = (
+    "A previous candidate was independently evaluated: the counts and "
+    "mismatch categories above are the ONLY evaluation information "
+    "available. Re-derive every fill decision from the observations; "
+    "adjust the decisions plausibly implicated by the mismatch categories "
+    "(output-shape categories implicate respond bindings, error categories "
+    "implicate bounds, flags, and error codes) without inventing hidden "
+    "internals. Output JSON only."
+)
+
+
+def sanitize_repair_feedback(feedback: Any) -> dict[str, Any]:
+    """Admit ONLY aggregate evaluator counts into a repair request.
+
+    Exactly the keys ``passed/failed/indeterminate/total`` (genuine
+    nonnegative integers, shares summing to the denominator) plus
+    ``failure_categories`` (known category names to nonnegative integers).
+    Anything else — case ids, inputs, expected outputs, extra keys —
+    raises instead of being forwarded to the model.
+    """
+    if not isinstance(feedback, dict):
+        raise GatewayError("repair: feedback must be an object")
+    if set(feedback) != {*_REPAIR_COUNTS, "failure_categories"}:
+        raise GatewayError("repair: feedback carries unknown keys")
+    clean: dict[str, Any] = {}
+    for key in _REPAIR_COUNTS:
+        value = feedback[key]
+        if type(value) is not int or value < 0:
+            raise GatewayError(f"repair: feedback count {key!r} invalid")
+        clean[key] = value
+    if (clean["passed"] + clean["failed"] + clean["indeterminate"]
+            != clean["total"]):
+        raise GatewayError("repair: feedback counts do not sum")
+    categories = feedback["failure_categories"]
+    if not isinstance(categories, dict):
+        raise GatewayError("repair: failure_categories must be an object")
+    clean_categories: dict[str, int] = {}
+    for key, value in categories.items():
+        if (key not in _REPAIR_FEEDBACK_CATEGORIES
+                or type(value) is not int or value < 0):
+            raise GatewayError(f"repair: failure category {key!r} invalid")
+        if value:
+            clean_categories[key] = value
+    clean["failure_categories"] = clean_categories
+    return clean
+
+
+def build_guided_repair_request(safe_context: dict[str, Any],
+                                skeleton: dict[str, Any],
+                                feedback: dict[str, Any],
+                                *, repair_round: int,
+                                max_output_tokens: int = 4096) -> ModelRequest:
+    """Provider-bound v2 repair request: identical base plus aggregate guidance.
+
+    ``feedback`` must already be sanitized aggregate counts; this builder
+    re-sanitizes defensively. ``repair_round`` (>= 1) binds the guidance to one
+    repair attempt. Nothing but counts and category names reaches the model.
+    """
+    if type(repair_round) is not int or repair_round < 1:
+        raise GatewayError("repair: round must be a positive integer")
+    clean = sanitize_repair_feedback(feedback)
+    user_content = {
+        "context": safe_context,
+        "skeleton": skeleton,
+        "response_envelope": {
+            "success_key": "ok",
+            "failure_key": "error",
+            "owned_by": "runtime",
+            "respond_sources": {
+                name: sorted(RESPOND_SOURCES[name])
+                for name in ("add", "list", "total", "remove")
+            },
+        },
+        "repair_guidance": {
+            "round": repair_round,
+            "prior_evaluation": clean,
+            "instruction": REPAIR_INSTRUCTION,
+        },
+    }
+    return ModelRequest(
+        stage=SYNTHESIZE_STAGE,
+        messages=(
+            {"role": "system",
+             "content": SYNTHESIZE_SYSTEM_V2 + " " + REPAIR_INSTRUCTION},
+            {
+                "role": "user",
+                "content": json.dumps(user_content, sort_keys=True,
+                                      default=str),
+            },
+        ),
+        json_schema=FILL_JSON_SCHEMA,
+        max_output_tokens=max_output_tokens,
+        prompt_version=SYNTHESIZE_PROMPT_VERSION_V2_REPAIR,
+    )

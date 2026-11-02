@@ -1,7 +1,16 @@
 /* Repository adaptation of the first-party motion-refined study. */
 @font-face{font-family:'DM Sans';src:url('./assets/dm-sans.ttf') format('truetype');font-style:normal;font-weight:100 1000;font-display:swap}
 @font-face{font-family:Manrope;src:url('./assets/manrope.ttf') format('truetype');font-style:normal;font-weight:200 800;font-display:swap}
-:root{--surface-dark:#0d1512;--surface-light:#f5f5f0;--text-dark:#18211d;--text-light:#f4f6f0;--text-secondary:#b6c5b9;--text-secondary-light:#53665a;--accent:#afdba9;--border-dark:#48674f;--border-light:#c7d1c8;--focus:#78b986;--radius-control:5px;--space-section:clamp(80px,8vw,128px);--duration:220ms;--ease:cubic-bezier(.23,1,.32,1)}
+:root{--surface-dark:#0d1512;--surface-light:#f5f5f0;--text-dark:#18211d;--text-light:#f4f6f0;--text-secondary:#b6c5b9;--text-secondary-light:#53665a;--accent:#afdba9;--border-dark:#48674f;--border-light:#c7d1c8;--focus:#78b986;--radius-control:999px;--space-section:clamp(80px,8vw,128px);--duration:220ms;--ease:cubic-bezier(.23,1,.32,1)}
+/* The public site shares the workspace's quiet, rounded control language. */
+.pill-button,.motion-toggle{border-radius:999px}
+.pill-button{gap:18px;transition:transform 180ms ease,background-color 180ms ease,border-color 180ms ease}
+.pill-button.primary{background:#dbe8dd;color:#183326}
+.pill-button.primary:hover{background:#edf5ed;box-shadow:none}
+.pill-button:hover{box-shadow:none}
+.pill-button:active,.case-button:active,.motion-toggle:active{transform:scale(.98)}
+.case-button{border-radius:16px}
+.menu-toggle{border-radius:50%}
 ::selection{background:var(--accent);color:var(--surface-dark)}
 html{scrollbar-color:#7c9a83 var(--surface-dark)}
 button,a,summary{touch-action:manipulation}
@@ -12,7 +21,10 @@ a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var
 .site-grain{display:none}
 .progress-rail span{box-shadow:none}
 .hero-title,.statement,.process-title,.contrast-intro h2,.explore-head h2,.final-grid h2{letter-spacing:-.04em}
-.wordmark{letter-spacing:-.065em}
+.wordmark{letter-spacing:-.065em;font-weight:800;gap:11px}
+.word-light{font-weight:550}
+.wordmark-icon{width:22px;height:22px;display:grid;place-items:center;border:1.8px solid #b9dfb2;border-radius:7px 7px 8px 3px;transform:rotate(-7deg)}
+.wordmark-icon span{width:7px;height:7px;border-radius:50%;background:#b9dfb2}
 .hero-bottom{color:#b1c2b5}
 .hero-title{font-size:clamp(49px,4.45vw,68px)}
 .hero-bottom{margin-top:42px}

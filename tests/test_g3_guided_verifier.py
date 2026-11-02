@@ -105,13 +105,13 @@ def test_guided_inspected_wire_equals_exact_transport_and_excludes_private_suite
     budget = RunBudget(approved_inputs[0].budgets)
     artifact = run.generate(ticket, MockProvider(responder=respond), budget)
     assert seen == [expected]
-    assert expected["max_output_tokens"] == 800
+    assert expected["max_output_tokens"] == 4096
     assert expected["json_schema"] == candidate_generation.FILL_JSON_SCHEMA
     assert "skeleton" in json.loads(next(m["content"] for m in expected["messages"] if m["role"] == "user"))
     manifest = run.inspection_manifest()
     assert manifest["synthesis"] == "guided"
     assert manifest["inspected_request_digest"] == _digest(_encode(expected))
-    assert manifest["request_max_output_tokens"] == 800
+    assert manifest["request_max_output_tokens"] == 4096
     receipt = json.loads(artifact.payload)["receipt"]
     assert receipt["request_digest"] == manifest["inspected_request_digest"]
     assert receipt["synthesis"] == "guided" and receipt["origin"] == "mock" and receipt["real"] is False

@@ -178,6 +178,30 @@ def test_real_blocked_above_spend_cap(monkeypatch, tmp_path):
                  "--operator-context-pin", "sha256:" + "0" * 64,
                  "--run-dir", str(tmp_path / "x")]) == 2
 
+def test_real_repair_blocked_without_separate_confirmation(
+        monkeypatch, tmp_path, capsys):
+    _no_transport(monkeypatch)
+    monkeypatch.setenv("MODEL_API_KEY", "test-key-000")
+    monkeypatch.setenv("SECOND_SOURCE_MAX_RUN_USD", "0.5")
+    assert main(["--mode", "real", "--max-usd", "0.5", "--confirm-real-run",
+                 "--operator-context-pin", "sha256:" + "0" * 64,
+                 "--repair-rounds", "1",
+                 "--run-dir", str(tmp_path / "x")]) == 2
+    assert "separate owner authorization" in capsys.readouterr().err
+    assert not (tmp_path / "x").exists()
+
+
+def test_real_repair_rounds_range_rejected(monkeypatch, tmp_path, capsys):
+    _no_transport(monkeypatch)
+    monkeypatch.setenv("MODEL_API_KEY", "test-key-000")
+    monkeypatch.setenv("SECOND_SOURCE_MAX_RUN_USD", "0.5")
+    assert main(["--mode", "real", "--max-usd", "0.5", "--confirm-real-run",
+                 "--operator-context-pin", "sha256:" + "0" * 64,
+                 "--repair-rounds", "5", "--confirm-real-repair",
+                 "--run-dir", str(tmp_path / "x")]) == 2
+    assert "--repair-rounds must be 1, 2 or 3" in capsys.readouterr().err
+    assert not (tmp_path / "x").exists()
+
 
 def _operator_inputs(tmp_path):
     from second_source.evidence import EvidenceLedger

@@ -5,6 +5,7 @@ import argparse
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
+from build import app_asset
 
 ROOT = Path(__file__).resolve().parent
 CONSOLE = ROOT.parent / "demo" / "index.html"
@@ -17,6 +18,15 @@ class PreviewHandler(SimpleHTTPRequestHandler):
         path = unquote(urlsplit(self.path).path)
         if path in {"/console", "/console/", "/console/index.html"}:
             self.public_file = CONSOLE
+        elif path in {"/evidence", "/evidence/", "/evidence/index.html"}:
+            self.public_file = ROOT / "evidence" / "index.html"
+        elif path in {"/app", "/app/"} or app_asset(path.lstrip("/")):
+            name = "app/index.html" if path in {"/app", "/app/"} else path.lstrip("/")
+            candidate = (ROOT / "dist" / name).resolve()
+            if not candidate.is_relative_to((ROOT / "dist" / "app").resolve()) or not candidate.is_file():
+                self.send_error(503, "Build the workspace with python web/build.py --with-app first")
+                return
+            self.public_file = candidate
         elif path == "/":
             self.public_file = ROOT / "index.html"
         elif path.removeprefix("/") in PUBLIC:

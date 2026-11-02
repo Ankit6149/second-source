@@ -343,6 +343,7 @@ def prepare_generation_request(
     context: dict[str, Any], *, approved_evidence: Mapping[str, dict[str, Any]],
     forbidden_markers: tuple[str, ...] = (), limits: CandidateExecutionLimits | None = None,
     synthesis: Literal["full", "guided"] = "full",
+    repair: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Prepare exact ModelRequest in an isolated, nonbillable worker for the broker.
 
@@ -365,6 +366,10 @@ def prepare_generation_request(
     except Exception:
         raise EvaluationBlocked("Generation evidence is not approved observation evidence") from None
     payload = {"context": detached}
+    if repair is not None:
+        if not isinstance(repair, dict) or set(repair) != {"feedback", "round"}:
+            raise EvaluationBlocked("Repair payload rejected")
+        payload["repair"] = {"feedback": repair["feedback"], "round": repair["round"]}
     if synthesis == "guided":
         payload["synthesis"] = synthesis
     response = _run_worker("generation", payload, limits)
@@ -501,6 +506,7 @@ class PinnedEvaluatorRun:
         self._budget = None
         self._budget_limits: bytes | None = None
         self._generation_attempts = 0
+        self._repair_rounds_issued = 0
         self._real_attempt_failed = False
         self._generation_lock = threading.Lock()
 
@@ -586,6 +592,48 @@ class PinnedEvaluatorRun:
         self._inspected_max_output_tokens = wire["max_output_tokens"]
         return self._sign({"kind": "INSPECTED_REQUEST", "nonce": secrets.token_hex(16), "wire": wire})
 
+    def prepare_repair(self, artifact: BrokerArtifact) -> BrokerArtifact:
+        """Inspect a feedback-conditioned repair wire; aggregate counts only.
+
+        Guided synthesis only. The guidance is the run's own stored aggregate
+        evaluation for THIS artifact (counts plus mismatch-category names via
+        ``repair_feedback``), re-sanitized before it enters the worker
+        payload. No case ids, inputs, or expected outputs can pass: the
+        sanitizer rejects any other shape, and the final request boundary
+        re-checks forbidden markers. Each ticket binds one round number.
+        """
+        from .candidate_generation import (
+            pin_public_manifest, sanitize_repair_feedback,
+            validate_context_against_pins,
+        )
+        from .model_gateway import GatewayError
+        if self.synthesis != "guided":
+            raise EvaluationBlocked("Feedback-conditioned repair needs guided synthesis")
+        contract = self._check_frozen()
+        approved = json.loads(self._context_raw)
+        try:
+            value = self._verify(artifact, "CANDIDATE_ORIGIN")
+            feedback = sanitize_repair_feedback(self.repair_feedback(artifact))
+        except GatewayError:
+            raise EvaluationBlocked("Repair feedback failed validation") from None
+        self._repair_rounds_issued += 1
+        repair_round = self._repair_rounds_issued
+        registry = {view["digest"]: view["observation"] for view in approved["evidence"]}
+        try:
+            validate_context_against_pins(approved, contract=contract,
+                public_manifest_digest=pin_public_manifest(approved["public_commands"]), approved_evidence=registry)
+        except Exception:
+            raise EvaluationBlocked("Pinned generation context rejected") from None
+        wire = prepare_generation_request(approved, approved_evidence=registry, limits=self._limits,
+            synthesis=self.synthesis,
+            repair={"feedback": feedback, "round": repair_round})
+        self._check_frozen()
+        self._inspected_wire_digest = _digest(_encode(wire))
+        self._inspected_max_output_tokens = wire["max_output_tokens"]
+        return self._sign({"kind": "INSPECTED_REPAIR_REQUEST", "nonce": secrets.token_hex(16),
+            "wire": wire, "round": repair_round, "repair_of": value["receipt"]["candidate_digest"],
+            "feedback_digest": _digest(_encode(feedback)), "feedback": feedback})
+
     def generate(self, ticket: BrokerArtifact, provider, budget, *, spending_approved: bool = False,
                  audit: Callable[[str, dict[str, Any]], None] | None = None) -> BrokerArtifact:
         """Single-use inspected broker; real transport needs owner spend/input pins."""
@@ -610,7 +658,14 @@ class PinnedEvaluatorRun:
         contract = self._check_frozen()
         if audit is not None and not callable(audit):
             raise EvaluationBlocked("Trusted generation audit callback is invalid")
-        request = self._verify(ticket, "INSPECTED_REQUEST")
+        try:
+            request = self._verify(ticket, "INSPECTED_REQUEST")
+            repair = None
+        except EvaluationBlocked:
+            # A forged ticket still fails: the repair kind is re-verified
+            # against the run signature below before anything is trusted.
+            request = self._verify(ticket, "INSPECTED_REPAIR_REQUEST")
+            repair = request
         nonce = request["nonce"]
         if nonce in self._used_requests:
             raise EvaluationBlocked("Generation request replay rejected")
@@ -676,7 +731,14 @@ class PinnedEvaluatorRun:
         try:
             context = json.loads(self._context_raw)
             skeleton = build_spec_skeleton(context["public_commands"]) if self.synthesis == "guided" else None
-            logical_request = build_guided_request(context, skeleton) if skeleton is not None else build_synthesize_request(context)
+            if repair is None:
+                logical_request = build_guided_request(context, skeleton) if skeleton is not None else build_synthesize_request(context)
+            else:
+                from .candidate_generation import build_guided_repair_request, sanitize_repair_feedback
+                if skeleton is None or type(repair.get("round")) is not int or repair["round"] < 1:
+                    raise ValueError
+                guidance = sanitize_repair_feedback(repair.get("feedback"))
+                logical_request = build_guided_repair_request(context, skeleton, guidance, repair_round=repair["round"])
             response = gateway.generate(logical_request)
             phase = "candidate_admission"
             self._check_frozen()
@@ -695,6 +757,9 @@ class PinnedEvaluatorRun:
                 "uncertain_cost_usd": response.uncertain_cost_usd, "attempt": self._generation_attempts}
             if self.synthesis == "guided":
                 receipt.update(synthesis="guided", model_output_digest=_digest(_encode(response.parsed)))
+            if repair is not None:
+                receipt.update(repair_round=repair["round"], repair_of=repair["repair_of"],
+                    repair_feedback_digest=repair["feedback_digest"])
             return self._sign({"kind": "CANDIDATE_ORIGIN", "spec": spec_raw.decode("utf-8"), "receipt": receipt})
         except KeyboardInterrupt:
             # A transport can be interrupted after reserving possible charges

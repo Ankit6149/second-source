@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#fcfcfb">
+  <meta name="description" content="An evidence-first workspace for understanding authorized software behavior.">
+  <title>Second Source — Investigation workspace</title>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to conversation</a>
+  <div class="shell" id="shell">
+    <aside class="sidebar" id="sidebar" aria-label="Workspace navigation">
+      <div class="side-head">
+        <a class="brand" href="./" aria-label="Second Source home"><span class="brand-emblem"><span></span></span><span>second<span class="brand-thin">source</span><b>.</b></span></a>
+        <button class="icon-button close-side" id="closeSide" type="button" aria-label="Close navigation"><i data-lucide="panel-left-close"></i></button>
+      </div>
+      <button class="new-btn" data-action="new" type="button"><i data-lucide="square-pen"></i> New investigation</button>
+      <nav class="side-nav" aria-label="Workspace pages">
+        <button class="nav-item" data-action="library" type="button"><i data-lucide="folder-open"></i> Your work</button>
+        <button class="nav-item" data-action="research" type="button"><i data-lucide="flask-conical"></i> Research record</button>
+      </nav>
+      <p class="side-section-label">Recent</p>
+      <div class="history" id="history"></div>
+      <div class="side-bottom">
+        <a class="nav-item" href="?screen=system"><i data-lucide="swatch-book"></i> Component showroom</a>
+        <button class="profile" data-action="account" type="button"><span class="profile-avatar">S</span><span class="profile-detail"><strong id="accountName">Account</strong><small id="accountState">Not signed in</small></span><i data-lucide="chevron-up"></i></button>
+      </div>
+    </aside>
+    <div class="mobile-scrim" id="mobileScrim"></div>
+    <div class="main-area">
+      <header class="topbar"><div class="top-left"><button class="icon-button menu-btn" id="toggleSide" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="sidebar"><i data-lucide="panel-left"></i></button><span class="top-name" id="topName">Second Source</span></div><div class="top-right"><span class="preview-label" id="connectionLabel">Checking connection</span><button class="icon-button" type="button" title="New investigation" aria-label="New investigation" data-action="new"><i data-lucide="square-pen"></i></button></div></header>
+      <main class="main" id="main" tabindex="-1">
+        <div class="scroll-area" id="scrollArea"><div class="content" id="content"></div></div>
+        <div class="dock" id="dock"><div class="dock-inner" id="dockInner"></div><p class="dock-foot">Only investigate software you own or are authorized to study.</p></div>
+      </main>
+    </div>
+    <aside class="detail-panel" id="detailPanel" aria-label="Investigation details" aria-hidden="true"><div id="detailContent"></div></aside>
+    <div class="panel-scrim" id="panelScrim"></div>
+  </div>
+  <dialog id="dialog" aria-labelledby="dialogTitle"><div id="dialogContent"></div></dialog>
+  <div id="liveStatus" class="sr-only" role="status" aria-live="polite"></div>
+  <div class="toast-stack" id="toasts" role="status" aria-live="polite"></div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

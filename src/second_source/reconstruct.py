@@ -846,9 +846,15 @@ def _spend_ceiling(value: Any) -> float | None:
 
 def run_real(args: argparse.Namespace) -> int:
     """Owner-authorized real generation; fail closed on any missing approval."""
-    if getattr(args, "repair_rounds", 0):
+    if getattr(args, "repair_rounds", 0) and not getattr(args, "confirm_real_repair", False):
         return _blocked("real-mode repair needs a separate owner authorization; "
                         "re-run with --repair-rounds 0.")
+    if getattr(args, "repair_rounds", 0) and (
+            not isinstance(args.repair_rounds, int)
+            or not 1 <= args.repair_rounds <= 3):
+        print("BLOCKED_CONTRACT: --repair-rounds must be 1, 2 or 3",
+              file=sys.stderr)
+        return 2
     from .g3_verification import EvaluationBlocked, PinnedEvaluatorRun, load_sealed_suite
     from .model_gateway import GatewayError
 
@@ -956,6 +962,85 @@ def run_real(args: argparse.Namespace) -> int:
         print(json.dumps(_summarize(failed), indent=2))
         return 1
 
+    from .repair_loop import (
+        RepairAttempt, is_perfect, run_bounded_repair, select_best, SELECTION_POLICY,
+    )
+    receipt = result["origin"]
+    seed = RepairAttempt(
+        round=0,
+        candidate_digest=receipt["candidate_digest"],
+        response_id=receipt["response_id"],
+        origin=receipt["origin"],
+        evaluation=dict(result["evaluation"]),
+        feedback=dict(run.repair_feedback(artifact)),
+        artifact=artifact,
+    )
+    admitted["receipt"] = _persist_receipt(
+        run_dir, tag="v1", candidate_digest=seed.candidate_digest,
+        result=result, feedback=seed.feedback)
+    version_files = {0: dict(admitted)}
+    retry_artifacts = {}
+    repair_history = None
+    lineage = [seed]
+    if getattr(args, "repair_rounds", 0):
+        if not is_perfect(seed.evaluation):
+            _progress("repair", run_dir.name,
+                      f"bounded repair of up to {args.repair_rounds} round(s) after "
+                      f"initial {seed.evaluation['failed']} failed / "
+                      f"{seed.evaluation['indeterminate']} indeterminate")
+            def _keep(attempt, art):
+                if art is None:
+                    return
+                retry_artifacts[attempt.round] = art
+                tag = f"r{attempt.round}"
+                files = _persist_version(
+                    run_dir, art, attempt.candidate_digest, tag=tag,
+                    result={"evaluation": attempt.evaluation,
+                            "origin": {"candidate_digest": attempt.candidate_digest,
+                                       "response_id": attempt.response_id,
+                                       "origin": attempt.origin}},
+                    feedback=attempt.feedback)
+                version_files[attempt.round] = files
+            repair = run_bounded_repair(
+                run, provider=MetaProvider(key), budget=budget,
+                max_rounds=args.repair_rounds, seed=seed, claim="REAL_MODEL",
+                on_version=_keep)
+            lineage = repair.versions
+            repair_history = {
+                "verdict": repair.verdict,
+                "stop_reason": repair.stop_reason,
+                "rounds_used": repair.rounds_used,
+                "selection_policy": SELECTION_POLICY,
+                "versions": [
+                    {"round": attempt.round,
+                     "candidate_digest": attempt.candidate_digest,
+                     "response_id": attempt.response_id,
+                     "origin": attempt.origin,
+                     "evaluation": attempt.evaluation,
+                     "feedback": attempt.feedback,
+                     "files": version_files.get(attempt.round)}
+                    for attempt in lineage
+                ],
+                "broker_diagnostic": repair.broker_diagnostic,
+            }
+            _write_once(run_dir / "G3_repair_history.json",
+                        json.dumps(repair_history, sort_keys=True).encode("utf-8"))
+            _progress("repaired" if repair.verdict == "improved" else "repair_done",
+                      run_dir.name, f"verdict {repair.verdict}")
+    selected = lineage[select_best(lineage)]
+    selected_files = version_files[selected.round]
+    selected_label = "initial" if selected.round == 0 else f"repair-{selected.round}"
+    _write_once(run_dir / "evaluation-manifest.v1.json",
+                json.dumps(result, indent=2, sort_keys=True).encode("utf-8"))
+    if selected.round == 0:
+        selected_result = result
+    else:
+        selected_result = run.evaluate(retry_artifacts[selected.round],
+                                       claim="REAL_MODEL")
+        if selected_result.get("evaluation") != selected.evaluation:
+            raise RuntimeError("selected replay evaluation disagrees with repair history")
+        _write_once(run_dir / f"evaluation-manifest.r{selected.round}.json",
+                    json.dumps(selected_result, indent=2, sort_keys=True).encode("utf-8"))
     receipt = result["origin"]
     report = {
         "kind": "G3_RECONSTRUCT_RUN_REPORT",
@@ -967,18 +1052,18 @@ def run_real(args: argparse.Namespace) -> int:
         "real": receipt["real"],
         "provider": receipt["provider"],
         "model": receipt["model"],
-        "response_id": receipt["response_id"],
-        "spec_digest": result["candidate_digest"],
-        "candidate_artifact": admitted["candidate"],
-        "broker_artifact": admitted["envelope"],
+        "response_id": selected.response_id,
+        "spec_digest": selected.candidate_digest,
+        "candidate_artifact": selected_files["candidate"],
+        "broker_artifact": selected_files["envelope"],
         "scope_digest": result["scope_digest"],
         "suite_digest": result["suite_digest"],
         "approved_context_digest": result["approved_context_digest"],
         "plan_digest": result["plan_digest"],
         "reference_command_id": result["reference_identity"],
         "reference_source_digest": result["reference_source_digest"],
-        "evaluation": result["evaluation"],
-        "evaluation_receipt": result,
+        "evaluation": selected.evaluation,
+        "evaluation_receipt": selected_result,
         "usage": {
             "attempts": budget.attempts,
             "input_tokens": budget.input_tokens,
@@ -986,14 +1071,20 @@ def run_real(args: argparse.Namespace) -> int:
             "estimated_cost_usd": budget.estimated_cost_usd,
             "uncertain_cost_usd": budget.uncertain_cost_usd,
         },
-        "stop_reason": "completed_real_run",
+        "stop_reason": ("completed_real_run" if selected.round == 0 else "repair_complete"),
         "evidence_artifact_count": len(digests),
-        "evaluation_summary": _readable_summary(result["evaluation"], "real"),
+        "evaluation_summary": _readable_summary(selected.evaluation, "real"),
         "operator_input_pin_present": True,
         "g2_input_provenance": g2_provenance,
         "max_authorized_usd": args.max_usd,
         "report_path": str(run_dir / "G3_report.json"),
         "note": "Genuine Muse generation scored on the frozen sealed suite.",
+        "selected": {"label": selected_label,
+                     "round": selected.round,
+                     "candidate_digest": selected.candidate_digest},
+        "initial_evaluation": seed.evaluation,
+        "initial_response_id": seed.response_id,
+        "repair_history": repair_history,
     }
     _write_report(run_dir, report)
     _progress("evaluated", run_dir.name,
@@ -1143,6 +1234,8 @@ def build_parser() -> argparse.ArgumentParser:
                         help="explicit run directory (default .runs/<id>)")
     parser.add_argument("--seal-dir", default=None,
                         help="external directory for a fresh sealed suite (mock only)")
+    parser.add_argument("--confirm-real-repair", action="store_true",
+                        help="explicit authorization for real-mode repair rounds")
     parser.add_argument("--confirm-real-run", action="store_true",
                         help="explicit spend authorization for this real run")
     parser.add_argument("--operator-context-pin", default=None,
@@ -1176,7 +1269,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"BLOCKED_SCOPE: unknown fixture {args.fixture!r}", file=sys.stderr)
         return 2
     if args.mode == "mock":
-        if args.max_usd != 0.0 or args.confirm_real_run:
+        if args.max_usd != 0.0 or args.confirm_real_run or args.confirm_real_repair:
             print("BLOCKED_SCOPE: mock runs take no spend or confirmation flags",
                   file=sys.stderr)
             return 2

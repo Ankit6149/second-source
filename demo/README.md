@@ -15,7 +15,7 @@ Two companion pages ship alongside the console:
 
 Select built-in example records to inspect:
 - **Real G2 discovery** — summary numbers from an operator-reported genuine Meta run, not a signed or portable provider attestation.
-- **Real G3 failed synthesis** — a historical consumed attempt; both genuine attempts consumed, with no admitted candidate and **no sealed score**.
+- **Real G3 failed synthesis** — a historical consumed attempt; this earlier attempt has no admitted candidate and **no sealed score**. A later historical Meta-generated candidate was independently evaluated at 14/25; its private receipts await independent artifact audit.
 - **NON_AI scripted baseline** — 22/25 in an independent evaluator; it is *not* Meta-generated model performance.
 
 To inspect your own run, generate a nonbillable report using `python -m second_source.reconstruct --mode mock`. Click **Import report** and select the generated `.runs/<id>/G3_report.json` from your local filesystem. The viewer also accepts a summary-form G2 run report with its available counters. Imported values are labeled unverified locally; to authenticate them, use the existing CLI journal receipt and evaluator verification workflow.
