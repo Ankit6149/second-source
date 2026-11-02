@@ -77,7 +77,7 @@ class PublicPreview(unittest.TestCase):
 
     def test_static_package_reuses_canonical_console_and_only_public_files(self):
         output = build()
-        expected = {"index.html", "styles.css", "release.css", "script.js", "console/index.html", "evidence/index.html"}
+        expected = {"index.html", "styles.css", "release.css", "script.js", "console/index.html", "evidence/index.html", "lab/index.html"}
         expected.update("assets/" + name for name in ASSETS)
         actual = {path.relative_to(output).as_posix() for path in output.rglob("*") if path.is_file()}
         self.assertEqual(actual, expected)
@@ -97,6 +97,29 @@ class PublicPreview(unittest.TestCase):
             self.assertEqual(len(choices), 2)
             self.assertIn(correct, choices)
             self.assertEqual(len(set(choices)), 2)
+
+    def test_lab_no_js_fallback_states_recorded_scores_and_pending_genuine_http(self):
+        html = (ROOT / "lab/index.html").read_text(encoding="utf-8")
+        match = re.search(r"<noscript>(.*?)</noscript>", html, flags=re.DOTALL)
+        self.assertIsNotNone(match)
+        fallback = match.group(1)
+        self.assertIn("14/25", fallback)
+        self.assertIn("25/30", fallback)
+        self.assertIn("NON_AI", fallback)
+        self.assertIn("has not been run", fallback)
+
+    def test_lab_verdict_style_derives_from_canonical_sequence_match(self):
+        html = (ROOT / "lab/index.html").read_text(encoding="utf-8")
+        self.assertIn("var seqMatch=", html)
+        self.assertIn('seqMatch?"v-match":"v-diff"', html)
+        self.assertNotIn('p.match?"v-match"', html)
+        data = json.loads(re.search(r'id="lab-data">(.*?)</script>', html, flags=re.DOTALL).group(1))
+        canon = lambda v: json.dumps(v, sort_keys=True, separators=(",", ":"))
+        for probes in data.values():
+            for probe in probes.values():
+                computed = len(probe["reference"]) == len(probe["candidate"]) and all(
+                    canon(a) == canon(b) for a, b in zip(probe["reference"], probe["candidate"]))
+                self.assertEqual(probe["match"], computed)
 
     def test_vercel_publishes_only_built_site(self):
         config = json.loads((ROOT.parent / "vercel.json").read_text(encoding="utf-8"))

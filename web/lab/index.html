@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0c1110">
+<meta name="description" content="Second Source Reconstruction Lab: recorded observations, AI hypotheses, candidates, and side-by-side behavioral probes for two owned targets.">
+<title>Second Source — Reconstruction Lab</title>
+<style>
+@font-face{font-family:Manrope;src:url(../assets/manrope.ttf) format("truetype");font-display:swap}
+:root{--ink:#14201a;--body:#3d4f45;--muted:#68796e;--line:#dde5dc;--wash:#f3f6f2;--dark:#0c1110;
+--mint:#2f7d4f;--mint-soft:#e7f2e9;--bad:#a03d2d;--bad-soft:#faeeea;
+--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--sans:Manrope,system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box}body{margin:0;font-family:var(--sans);color:var(--body);background:#fff;line-height:1.6}
+a{color:var(--mint)}:focus-visible{outline:3px solid #9fd3ae;outline-offset:2px}
+.skip{position:absolute;left:-9999px}.skip:focus{left:12px;top:12px;background:#fff;padding:10px 14px;z-index:99;border:2px solid var(--mint)}
+.wrap{max-width:1080px;margin:0 auto;padding:0 28px}
+header.top{background:var(--dark);color:#cfe0d4;padding:56px 0 46px}
+.kicker{font-size:12px;font-weight:800;letter-spacing:.14em;color:#8fd0a4;margin:0 0 14px}
+h1{color:#fff;font-size:clamp(30px,4.2vw,48px);line-height:1.12;letter-spacing:-.02em;margin:0 0 14px}
+.lede{font-size:16.5px;max-width:64ch;margin:0;color:#a9bfae}
+section{padding:44px 0}section+section{border-top:1px solid var(--line)}
+h2{color:var(--ink);font-size:clamp(22px,2.8vw,30px);letter-spacing:-.02em;margin:0 0 10px}
+.sub{max-width:68ch;margin:0 0 22px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.tabs button{font:inherit;font-weight:700;font-size:14px;padding:9px 18px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--mint-soft);border-color:var(--mint)}
+.tag{font-size:11px;font-weight:800;letter-spacing:.05em;padding:4px 10px;border-radius:999px;white-space:nowrap}
+.t-real{background:#173d27;color:#c9f2d6}.t-nonai{background:var(--wash);color:var(--body);border:1px solid var(--line)}
+.timeline{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:0 0 24px}
+.stage{border:1px solid var(--line);border-radius:12px;padding:14px 15px;background:var(--wash)}
+.stage b{display:block;color:var(--ink);font-size:13px;margin-bottom:5px}
+.stage span{font-size:12.5px}
+.probes{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.probes button{font:inherit;font-size:13px;font-weight:650;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}
+.probes button[aria-pressed="true"]{background:var(--mint-soft);border-color:var(--mint)}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.col{border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.col h3{margin:0 0 10px;font-size:13px;color:var(--ink);letter-spacing:.04em}
+pre{font-family:var(--mono);font-size:11.5px;line-height:1.55;background:var(--wash);border:1px solid var(--line);border-radius:8px;padding:12px;overflow-x:auto;margin:0 0 10px;white-space:pre-wrap;word-break:break-word}
+.diffline{background:var(--bad-soft);color:var(--bad);font-weight:650}
+.matchline{color:var(--mint);font-weight:650}
+.verdict{font-size:12px;font-weight:800;letter-spacing:.05em;padding:5px 12px;border-radius:999px}
+.v-diff{background:var(--bad-soft);color:var(--bad)}.v-match{background:var(--mint-soft);color:var(--mint)}
+.note{border:1px solid var(--line);border-left:4px solid var(--mint);border-radius:10px;padding:16px 18px;font-size:14px;background:#fbfdfb}
+.note b{color:var(--ink)}
+footer{background:var(--dark);color:#93a89a;padding:40px 0;font-size:13.5px}footer a{color:#c9f2d6}
+code{font-family:var(--mono);font-size:12px}
+@media(max-width:860px){.timeline{grid-template-columns:1fr 1fr}.compare{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap">
+<p class="kicker">SECOND SOURCE / RECONSTRUCTION LAB</p>
+<h1>Watch a reconstruction<br>succeed — and fail.</h1>
+<p class="lede">Two authorized targets, one method: observe, hypothesize, experiment, synthesize, measure. Pick a target, then run the recorded public probes and see exactly where the candidate matches the reference — and where it diverges. Recorded replays are labeled; nothing here calls a model live.</p>
+</div></header>
+<main id="main">
+<noscript><section><div class="wrap"><div class="note"><b>Recorded summary (interactive explorer needs JavaScript).</b> Owned ledger CLI: REAL_MODEL genuine Meta candidate, sealed <b>14/25</b>. Owned HTTP tasks: NON_AI deterministic v1, sealed <b>25/30</b>, scripted repair 30/30 — not a model score; a genuine Meta HTTP reconstruction has not been run (authorization pending). Full narrative: <a href="../evidence/">Reconstruction Report</a>.</div></div></section></noscript>
+<section><div class="wrap">
+<h2>Choose a reconstruction</h2>
+<div class="tabs" role="group" aria-label="Choose target">
+<button type="button" id="tab-ledger" aria-pressed="true">Owned ledger CLI <span class="tag t-real">REAL_MODEL · 14/25</span></button>
+<button type="button" id="tab-http" aria-pressed="false">Owned HTTP tasks <span class="tag t-nonai">NON_AI v1 · sealed 25/30</span></button>
+</div>
+<div class="timeline" id="timeline"></div>
+<p style="font-size:14px">Full narrative, provenance hashes, and limits: <a href="../evidence/">Reconstruction Report</a> · <a href="../console/">Evidence console</a></p>
+</div></section>
+<section><div class="wrap">
+<h2>Probe explorer</h2>
+<p class="sub" id="probe-intro"></p>
+<div class="probes" role="group" aria-label="Choose a probe" id="probe-buttons"></div>
+<p>Input sequence: <code id="probe-input"></code> &nbsp; <span class="verdict" id="probe-verdict"></span></p>
+<div class="compare">
+<div class="col"><h3>REFERENCE (OBSERVED)</h3><pre id="ref-out"></pre></div>
+<div class="col"><h3 id="cand-title">CANDIDATE</h3><pre id="cand-out"></pre></div>
+</div>
+<p style="font-size:13px;color:var(--muted)" id="probe-note"></p>
+</div></section>
+<section><div class="wrap">
+<h2>Versions, scores, uncertainty</h2>
+<div class="note" id="versions"></div>
+</div></section>
+</main>
+<footer><div class="wrap"><a href="../">Second Source</a> · <a href="../evidence/">Reconstruction Report</a> · <a href="https://github.com/Ankit6149/second-source">Repository</a> — evidence over claims. Sealed cases are never shown here; public probes only.</div></footer>
+<script type="application/json" id="lab-data">{
+ "ledger": {
+  "add-basic": {
+   "actions": [
+    {
+     "command": "add",
+     "label": "Milk",
+     "amount": 2
+    }
+   ],
+   "reference": [
+    {
+     "ok": true,
+     "id": "1"
+    }
+   ],
+   "candidate": [
+    {
+     "ok": true,
+     "id": "1",
+     "label": "Milk",
+     "amount": 2
+    }
+   ],
+   "match": false
+  },
+  "casefold-duplicate": {
+   "actions": [
+    {
+     "command": "add",
+     "label": "Milk",
+     "amount": 2
+    },
+    {
+     "command": "add",
+     "label": "MILK",
+     "amount": 3
+    }
+   ],
+   "reference": [
+    {
+     "ok": true,
+     "id": "1"
+    },
+    {
+     "ok": false,
+     "error": "duplicate_label"
+    }
+   ],
+   "candidate": [
+    {
+     "ok": true,
+     "id": "1",
+     "label": "Milk",
+     "amount": 2
+    },
+    {
+     "ok": true,
+     "id": "2",
+     "label": "MILK",
+     "amount": 3
+    }
+   ],
+   "match": false
+  },
+  "amount-500": {
+   "actions": [
+    {
+     "command": "add",
+     "label": "Big",
+     "amount": 500
+    }
+   ],
+   "reference": [
+    {
+     "ok": false,
+     "error": "invalid_amount"
+    }
+   ],
+   "candidate": [
+    {
+     "ok": true,
+     "id": "1",
+     "label": "Big",
+     "amount": 500
+    }
+   ],
+   "match": false
+  },
+  "remove-shape": {
+   "actions": [
+    {
+     "command": "add",
+     "label": "Milk",
+     "amount": 2
+    },
+    {
+     "command": "remove",
+     "id": "1"
+    }
+   ],
+   "reference": [
+    {
+     "ok": true,
+     "id": "1"
+    },
+    {
+     "ok": true,
+     "removed": "1"
+    }
+   ],
+   "candidate": [
+    {
+     "ok": true,
+     "id": "1",
+     "label": "Milk",
+     "amount": 2
+    },
+    {
+     "ok": true,
+     "id": "1"
+    }
+   ],
+   "match": false
+  },
+  "list-total": {
+   "actions": [
+    {
+     "command": "add",
+     "label": "Milk",
+     "amount": 2
+    },
+    {
+     "command": "list"
+    },
+    {
+     "command": "total"
+    }
+   ],
+   "reference": [
+    {
+     "ok": true,
+     "id": "1"
+    },
+    {
+     "ok": true,
+     "items": [
+      {
+       "id": "1",
+       "label": "Milk",
+       "amount": 2
+      }
+     ]
+    },
+    {
+     "ok": true,
+     "count": 1,
+     "amount": 2
+    }
+   ],
+   "candidate": [
+    {
+     "ok": true,
+     "id": "1",
+     "label": "Milk",
+     "amount": 2
+    },
+    {
+     "ok": true,
+     "items": [
+      {
+       "id": "1",
+       "label": "Milk",
+       "amount": 2
+      }
+     ]
+    },
+    {
+     "ok": true,
+     "amount": 2,
+     "count": 1
+    }
+   ],
+   "match": false
+  }
+ },
+ "http": {
+  "create-and-get": {
+   "actions": [
+    {
+     "method": "POST",
+     "path": "/v1/tasks",
+     "actor": "alice",
+     "body": {
+      "title": "Write report",
+      "priority": 3
+     }
+    },
+    {
+     "method": "GET",
+     "path": "/v1/tasks/tsk-1",
+     "actor": "alice"
+    }
+   ],
+   "reference": [
+    {
+     "status": 201,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "owner": "alice",
+       "priority": 3,
+       "revision": 1,
+       "status": "todo",
+       "title": "Write report"
+      }
+     }
+    },
+    {
+     "status": 200,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "owner": "alice",
+       "priority": 3,
+       "revision": 1,
+       "status": "todo",
+       "title": "Write report"
+      }
+     }
+    }
+   ],
+   "candidate": [
+    {
+     "status": 201,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "title": "Write report",
+       "priority": 3,
+       "status": "todo",
+       "owner": "alice",
+       "revision": 1
+      }
+     }
+    },
+    {
+     "status": 200,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "title": "Write report",
+       "priority": 3,
+       "status": "todo",
+       "owner": "alice",
+       "revision": 1
+      }
+     }
+    }
+   ],
+   "match": true
+  },
+  "shortcut-transition": {
+   "actions": [
+    {
+     "method": "POST",
+     "path": "/v1/tasks",
+     "actor": "alice",
+     "body": {
+      "title": "Ship it",
+      "priority": 2
+     }
+    },
+    {
+     "method": "PATCH",
+     "path": "/v1/tasks/tsk-1",
+     "actor": "alice",
+     "body": {
+      "status": "done"
+     }
+    }
+   ],
+   "reference": [
+    {
+     "status": 201,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "owner": "alice",
+       "priority": 2,
+       "revision": 1,
+       "status": "todo",
+       "title": "Ship it"
+      }
+     }
+    },
+    {
+     "status": 409,
+     "body": {
+      "error": "invalid_transition",
+      "ok": false
+     }
+    }
+   ],
+   "candidate": [
+    {
+     "status": 201,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "title": "Ship it",
+       "priority": 2,
+       "status": "todo",
+       "owner": "alice",
+       "revision": 1
+      }
+     }
+    },
+    {
+     "status": 200,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "title": "Ship it",
+       "priority": 2,
+       "status": "done",
+       "owner": "alice",
+       "revision": 2
+      }
+     }
+    }
+   ],
+   "match": false
+  },
+  "delete-in-progress": {
+   "actions": [
+    {
+     "method": "POST",
+     "path": "/v1/tasks",
+     "actor": "alice",
+     "body": {
+      "title": "Ongoing",
+      "priority": 1
+     }
+    },
+    {
+     "method": "PATCH",
+     "path": "/v1/tasks/tsk-1",
+     "actor": "alice",
+     "body": {
+      "status": "in_progress"
+     }
+    },
+    {
+     "method": "DELETE",
+     "path": "/v1/tasks/tsk-1",
+     "actor": "alice"
+    }
+   ],
+   "reference": [
+    {
+     "status": 201,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "owner": "alice",
+       "priority": 1,
+       "revision": 1,
+       "status": "todo",
+       "title": "Ongoing"
+      }
+     }
+    },
+    {
+     "status": 200,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "owner": "alice",
+       "priority": 1,
+       "revision": 2,
+       "status": "in_progress",
+       "title": "Ongoing"
+      }
+     }
+    },
+    {
+     "status": 409,
+     "body": {
+      "error": "task_in_progress",
+      "ok": false
+     }
+    }
+   ],
+   "candidate": [
+    {
+     "status": 201,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "title": "Ongoing",
+       "priority": 1,
+       "status": "todo",
+       "owner": "alice",
+       "revision": 1
+      }
+     }
+    },
+    {
+     "status": 200,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "title": "Ongoing",
+       "priority": 1,
+       "status": "in_progress",
+       "owner": "alice",
+       "revision": 2
+      }
+     }
+    },
+    {
+     "status": 200,
+     "body": {
+      "ok": true,
+      "deleted": "tsk-1"
+     }
+    }
+   ],
+   "match": false
+  },
+  "cross-owner-read": {
+   "actions": [
+    {
+     "method": "POST",
+     "path": "/v1/tasks",
+     "actor": "alice",
+     "body": {
+      "title": "Private",
+      "priority": 4
+     }
+    },
+    {
+     "method": "GET",
+     "path": "/v1/tasks/tsk-1",
+     "actor": "bob"
+    }
+   ],
+   "reference": [
+    {
+     "status": 201,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "owner": "alice",
+       "priority": 4,
+       "revision": 1,
+       "status": "todo",
+       "title": "Private"
+      }
+     }
+    },
+    {
+     "status": 200,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "owner": "alice",
+       "priority": 4,
+       "revision": 1,
+       "status": "todo",
+       "title": "Private"
+      }
+     }
+    }
+   ],
+   "candidate": [
+    {
+     "status": 201,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "title": "Private",
+       "priority": 4,
+       "status": "todo",
+       "owner": "alice",
+       "revision": 1
+      }
+     }
+    },
+    {
+     "status": 200,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "title": "Private",
+       "priority": 4,
+       "status": "todo",
+       "owner": "alice",
+       "revision": 1
+      }
+     }
+    }
+   ],
+   "match": true
+  },
+  "long-title": {
+   "actions": [
+    {
+     "method": "POST",
+     "path": "/v1/tasks",
+     "actor": "alice",
+     "body": {
+      "title": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "priority": 3
+     }
+    }
+   ],
+   "reference": [
+    {
+     "status": 422,
+     "body": {
+      "error": "invalid_title",
+      "ok": false
+     }
+    }
+   ],
+   "candidate": [
+    {
+     "status": 422,
+     "body": {
+      "ok": false,
+      "error": "invalid_title"
+     }
+    }
+   ],
+   "match": true
+  }
+ }
+}</script>
+<script>
+(function(){
+"use strict";
+var DATA=JSON.parse(document.getElementById("lab-data").textContent);
+var META={
+ ledger:{title:"META CANDIDATE — Muse Spark 1.3 (genuine)",
+  intro:"Public probes replayed locally from the recorded genuine candidate (digest sha256:ee1f3f32…). Divergences below are the same behaviors the sealed evaluator counted as schema/error mismatches.",
+  note:"Sealed score: 14/25 (9 schema, 2 error, 0 indeterminate). Provider attestation incomplete — see report.",
+  timeline:[["1 · Observed","add Alpha/3 → {ok,id 1}; total → count+sum"],["2 · Hypothesized","3 Muse hypotheses, evidence-cited, with rivals"],["3 · Experiment","P-aggregate-2adds: 2 supported, 1 open"],["4 · Synthesized","Guided declarative candidate, trusted interpreter"],["5 · Evaluated","Sealed 25-case suite: 14 passed, 11 failed"]],
+  versions:"<b>Ledger versions.</b> v1 genuine Meta candidate: <b>14/25</b> (only genuine version; no genuine repair has been run — rev-7 proposed, not executed). NON_AI controls for calibration only: scripted 22/25, hand-authored trusted control 25/25. Uncertainty: one target, one synthesis, attestation incomplete."},
+ http:{title:"CANDIDATE — NON_AI deterministic v1 (not a model score)",
+  intro:"Recorded replay: public probes run against the live owned HTTP reference and the deterministic v1 candidate through the trusted interpreter. The v1 candidate was built by a blinded observation-to-spec extractor — engineering control, not AI.",
+  note:"Sealed scores (30-case suite): v1 25/30 → scripted repair 30/30 (NON_AI). A genuine Meta HTTP reconstruction is engineered and gated (PR #33) but has not been run.",
+  timeline:[["1 · Observed","26 HTTP observations across passive + active rounds"],["2 · Hypothesized","Boundary hypotheses: transitions, locks, title reuse"],["3 · Experiment","Matched-budget active probing: +5 cases vs passive"],["4 · Synthesized","Deterministic rule extractor (NON_AI), spec-only"],["5 · Evaluated","Sealed 30-case suite: 25/30, then repair 30/30"]],
+  versions:"<b>HTTP versions (all NON_AI).</b> Uninformed prior 19/30 · passive-observation v1 <b>25/30</b> · active-evidence repair <b>30/30</b>. The repair uses previously collected active evidence and target-specific priors — it is not AI-discovered repair. Genuine Meta HTTP: not yet run; authorization packet pending owner key."}
+};
+var target="ledger", probeName=null;
+function fmt(v){return JSON.stringify(v,null,1);}
+function canon(v){if(v===null||typeof v!=="object")return JSON.stringify(v);if(Array.isArray(v))return "["+v.map(canon).join(",")+"]";return "{"+Object.keys(v).sort().map(function(k){return JSON.stringify(k)+":"+canon(v[k]);}).join(",")+"}";}
+function showTarget(t){
+ target=t; probeName=null;
+ document.getElementById("tab-ledger").setAttribute("aria-pressed",String(t==="ledger"));
+ document.getElementById("tab-http").setAttribute("aria-pressed",String(t==="http"));
+ var m=META[t];
+ document.getElementById("timeline").innerHTML=m.timeline.map(function(s){return '<div class="stage"><b>'+s[0]+'</b><span>'+s[1]+'</span></div>';}).join("");
+ document.getElementById("probe-intro").textContent=m.intro;
+ document.getElementById("cand-title").textContent=m.title;
+ document.getElementById("versions").innerHTML=m.versions;
+ var names=Object.keys(DATA[t]);
+ document.getElementById("probe-buttons").innerHTML=names.map(function(n){return '<button type="button" data-probe="'+n+'" aria-pressed="false">'+n+"</button>";}).join("");
+ document.querySelectorAll("[data-probe]").forEach(function(b){b.addEventListener("click",function(){showProbe(b.getAttribute("data-probe"));});});
+ showProbe(names[0]);
+}
+function showProbe(n){
+ probeName=n; var p=DATA[target][n];
+ document.querySelectorAll("[data-probe]").forEach(function(b){b.setAttribute("aria-pressed",String(b.getAttribute("data-probe")===n));});
+ document.getElementById("probe-input").textContent=fmt(p.actions);
+ var verdict=document.getElementById("probe-verdict");
+ function lines(arr,other){
+   return arr.map(function(o,i){
+     var same=canon(o)===canon(other[i]);
+     return (same?"  ":"▸ ")+fmt(o).replace(/\n/g,"\n  ");
+   }).join("\n");
+ }
+ var refEl=document.getElementById("ref-out"), candEl=document.getElementById("cand-out");
+ refEl.textContent=lines(p.reference,p.candidate);
+ candEl.textContent=lines(p.candidate,p.reference);
+ // mark differing blocks
+ function mark(el,arr,other){var blocks=fmt(arr).split(/\n(?=\{)/); el.innerHTML=arr.map(function(o,i){var same=canon(o)===canon(other[i]);var cls=same?"matchline":"diffline";return '<span class="'+cls+'">'+(same?"= ":"≠ ")+fmt(o).replace(/</g,"&lt;")+"</span>";}).join("\n");}
+ mark(refEl,p.reference,p.candidate); mark(candEl,p.candidate,p.reference);
+ var seqMatch=p.reference.length===p.candidate.length&&p.reference.every(function(o,i){return canon(o)===canon(p.candidate[i]);}); verdict.textContent=seqMatch?"SEQUENCE MATCH":"SEQUENCE DIFF";
+ verdict.className="verdict "+(seqMatch?"v-match":"v-diff");
+ document.getElementById("probe-note").textContent=META[target].note;
+}
+document.getElementById("tab-ledger").addEventListener("click",function(){showTarget("ledger");});
+document.getElementById("tab-http").addEventListener("click",function(){showTarget("http");});
+showTarget("ledger");
+})();
+</script>
+</body>
+</html>
