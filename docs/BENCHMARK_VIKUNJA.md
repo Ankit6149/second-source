@@ -88,6 +88,34 @@ self-check still passed) — the strongest argument for mutation tests.
   separate owner authorization: the earlier $0.50 approval covered
   the G4 fixture only.
 
+## Who generates what (authorship delimiter)
+
+The model authors **only a declarative candidate spec**: routes,
+methods, success statuses, validation rules, permission levels,
+response fields, error bodies. The generic interpreter
+(`scripts/vikunja_candidate_server.py`, hash recorded in every result)
+supplies the state machine, in-memory storage, auth plumbing,
+permission enforcement, and HTTP serving. Results are therefore
+**spec-level reconstruction**, not autonomous full-software
+generation, and must be described that way. The oracle 6/6 shows the
+spec surface is expressive enough to reach full marks on the bounded
+scope; it does not show a model can author such a spec — that is what
+the A/B/C/D arms measure.
+
+## Arm semantics (do not conflate)
+
+- A/B/C: prompt-condition comparison over fixed observations
+  (prior-only vs observations vs coverage-grounded). One synthesis
+  call each. This is **not** active experimentation.
+- D: active experiment-selection — the model picks probes from a
+  menu (outcomes unseen), they are executed on a fresh reference,
+  then it synthesizes. Two calls. The budget difference vs A/B/C is
+  recorded in every result.
+- Every arm runs against a fresh Vikunja instance (new SQLite DB,
+  own port) and a fresh candidate process; scores are admitted only
+  when the spec validates and the evaluator exits 0 with a parseable
+  result. Failures are recorded by class, never silently scored.
+
 ## Bounded scope (v1)
 
 In scope, through `/api/v1` only:

@@ -21,22 +21,29 @@ def test_server_ids_and_timestamps_normalized():
 
 def test_cross_step_id_relationship_preserved():
     # Same server entity across steps must keep ONE placeholder, even
-    # when raw ids differ between two independent runs.
-    run_a = vb.canonical_sequence([
-        {"status": 201, "body": {"id": 41, "title": "P"}},
-        {"status": 200, "body": [{"id": 9, "project_id": 41}, {"id": 10, "project_id": 41}]},
-    ])
-    run_b = vb.canonical_sequence([
-        {"status": 201, "body": {"id": 3, "title": "P"}},
-        {"status": 200, "body": [{"id": 100, "project_id": 3}, {"id": 101, "project_id": 3}]},
-    ])
-    assert run_a == run_b
+    # when raw ids differ between two independent runs. Shapes mirror
+    # real responses (projects carry views, tasks carry done).
+    def run(pid, t1, t2, link=None):
+        return vb.canonical_sequence([
+            {"status": 201, "body": {"id": pid, "title": "P", "views": []}},
+            {"status": 200, "body": [
+                {"id": t1, "project_id": link or pid, "done": False},
+                {"id": t2, "project_id": link or pid, "done": True}]},
+        ])
+    assert run(41, 9, 10) == run(3, 100, 101)
     # A candidate pointing step 2 at a DIFFERENT project must not match.
-    wrong = vb.canonical_sequence([
-        {"status": 201, "body": {"id": 3, "title": "P"}},
-        {"status": 200, "body": [{"id": 100, "project_id": 999}, {"id": 101, "project_id": 999}]},
+    assert run(3, 100, 101) != run(3, 100, 101, link=999)
+
+
+def test_per_type_id_sequences_do_not_collide():
+    # Fresh databases reuse the same numeric id per entity type
+    # (project 1, task 1): placeholders must not merge them.
+    seq = vb.canonical_sequence([
+        {"status": 201, "body": {"id": 1, "title": "P", "views": []}},
+        {"status": 201, "body": {"id": 1, "project_id": 1, "done": False}},
     ])
-    assert run_b != wrong
+    assert seq[0]["body"]["id"] != seq[1]["body"]["id"]
+    assert seq[1]["body"]["project_id"] == seq[0]["body"]["id"]
 
 
 def test_position_rank_preserves_order_not_magnitude():

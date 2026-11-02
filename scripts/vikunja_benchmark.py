@@ -112,9 +112,31 @@ def run_actions(actions, tokens, base=BASE):
     return results
 
 
+def _id_namespace(key, parent):
+    """Server ids are per-entity-type sequences (project 1 and task 1
+    coexist), so placeholders are namespaced by entity, not global."""
+    if key == "id":
+        if "permission" in parent and "username" in parent:
+            return "share"
+        if "done" in parent:
+            return "task"
+        if "views" in parent or "owner" in parent or "max_permission" in parent:
+            return "project"
+        if "username" in parent:
+            return "user"
+        if "view_kind" in parent:
+            return "view"
+        return "entity"
+    base = key[:-3]
+    return {"project": "project", "parent_project": "project",
+            "user": "user", "bucket": "bucket", "default_bucket": "bucket",
+            "done_bucket": "bucket", "label": "label",
+            "task": "task"}.get(base, base)
+
+
 def canonical(value, id_map, counter, ranked=False, view_ns=None):
     if view_ns is None:
-        view_ns = ({}, [0])
+        view_ns = ({}, {})
     if isinstance(value, dict):
         out = {}
         for key in sorted(value):
@@ -131,10 +153,12 @@ def canonical(value, id_map, counter, ranked=False, view_ns=None):
                 # Ranked by the enclosing list, or erased as server state.
                 out[key] = value[key] if ranked else "<pos>"
             elif (key == "id" or key.endswith("_id")) and isinstance(value[key], int):
-                if value[key] not in id_map:
-                    counter[0] += 1
-                    id_map[value[key]] = f"<id{counter[0]}>"
-                out[key] = id_map[value[key]]
+                ns = _id_namespace(key, value)
+                map_key = (ns, value[key])
+                if map_key not in id_map:
+                    counter[ns] = counter.get(ns, 0) + 1
+                    id_map[map_key] = f"<{ns}-{counter[ns]}>"
+                out[key] = id_map[map_key]
             elif key == "token":
                 out[key] = "<token>"
             else:
@@ -160,7 +184,7 @@ def canonical_sequence(results):
     """Canonicalize a whole sequence with ONE id map: the same server id
     must map to the same placeholder at every step, or cross-response
     identity relationships are silently lost."""
-    id_map, counter, view_ns = {}, [0], ({}, [0])
+    id_map, counter, view_ns = {}, {}, ({}, {})
     return [{"status": r["status"],
              "body": canonical(r["body"], id_map, counter, view_ns=view_ns)}
             for r in results]
@@ -205,15 +229,18 @@ def mode_probe():
     return 0
 
 
-def mode_evaluate(candidate_url=None):
+def mode_evaluate(candidate_url=None, reference_url=None):
+    global BASE
+    if reference_url:
+        BASE = reference_url.rstrip("/") + "/api/v1"
     cand_base = candidate_url.rstrip("/") + "/api/v1" if candidate_url else None
     passed = total = 0
     for i, seq in enumerate(HELD_OUT):
-        ref = canonical_sequence(run_actions(seq, fresh_tokens()))
+        ref = canonical_sequence(run_actions(seq, fresh_tokens(BASE), BASE))
         if cand_base:
             got = canonical_sequence(run_actions(seq, fresh_tokens(cand_base), cand_base))
         else:
-            got = canonical_sequence(run_actions(seq, fresh_tokens()))
+            got = canonical_sequence(run_actions(seq, fresh_tokens(BASE), BASE))
         ok = ref == got
         total += 1
         passed += ok
@@ -231,10 +258,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", choices=["probe", "evaluate"], required=True)
     ap.add_argument("--candidate-url")
+    ap.add_argument("--reference-url")
     args = ap.parse_args()
     if args.mode == "probe":
         return mode_probe()
-    return mode_evaluate(args.candidate_url)
+    return mode_evaluate(args.candidate_url, args.reference_url)
 
 
 if __name__ == "__main__":
