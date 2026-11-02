@@ -152,6 +152,6 @@ published before the sole mock dispatch. This does not grant real approval.
 
 ## Status
 
-Published main/CI and local backend work are recorded on [delivery board](G3_DELIVERY_BOARD.md). G2/G3 CLI engineering implemented; new genuine G2 complete. Two genuine G3 attempts failed before admission; no candidate/score. Both grants consumed; no retry/repair/credential access/new inference authorized.
+Published main/CI and local backend work are recorded on [delivery board](G3_DELIVERY_BOARD.md). G2/G3 CLI engineering implemented; new genuine G2 complete. Historical note: two early genuine G3 attempts failed before admission. A later genuine guided attempt (rev-6, 2026-10-31) admitted a Muse Spark 1.3 candidate and was independently scored **14/25** (9 schema, 2 error, 0 indeterminate; provider attestation incomplete) — see [judge evidence](JUDGE_EVIDENCE_G3.md). Rev-7 repair is PROPOSED, not approved or executed; no retry/repair/credential access/new inference is authorized by this document.
 
 PR #8 adds complete authenticated observation auto-binding using literal `--observation-digests '@g2'` with genuine `--g2-receipt` and external `--g2-receipt-sha256`. Future admission codes improve diagnostics, not retrospective failure diagnosis or model quality. Resolve reproducible generation/admission issues nonbillably, then fresh exact-source preflight and separate spending decision. Controls remain NON_AI.

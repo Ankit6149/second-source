@@ -45,6 +45,17 @@ td code{background:none;border:0;padding:0}
 footer{background:var(--dark);color:#93a89a;padding:44px 0;font-size:13.5px}
 footer a{color:#c9f2d6}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.replay{display:grid;gap:14px;margin:0 0 28px}
+.probe{border:1px solid var(--line);border-radius:12px;padding:18px 20px;background:var(--wash)}
+.probe h3{color:var(--ink);font-size:16px;margin:0 0 8px}
+.probe p{margin:0 0 10px;font-size:14px}
+.probe-actions{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+.probe-actions button{font:inherit;font-size:13.5px;font-weight:700;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 16px;cursor:pointer}
+.probe-actions button:hover{border-color:var(--mint)}
+.probe-actions button[aria-pressed="true"]{background:var(--mint-soft);border-color:var(--mint)}
+.reveal{border-top:1px solid var(--line);padding-top:12px;margin-top:4px}
+.reveal[hidden]{display:none}
+.reveal .feedback{font-weight:700;color:var(--ink)}
 @media(max-width:820px){.score-grid,.grid2{grid-template-columns:1fr}table{font-size:12.5px}th,td{padding:10px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -91,6 +102,55 @@ footer a{color:#c9f2d6}
 <section><div class="wrap">
 <h2>See the divergence yourself</h2>
 <p class="sub">Identical public inputs run against the reference and the genuine candidate (replayed locally with the repo's trusted interpreter; sealed cases are never used here).</p>
+<p style="font-size:14px">Try it yourself: for each recorded probe below, predict what the Reference does, then reveal the recorded outputs. All data is verbatim from the divergence table that follows.</p>
+<noscript><p style="font-size:14px">The interactive replay needs JavaScript; the same recorded results are in the table below.</p></noscript>
+<div class="replay">
+<article class="probe" data-probe data-answer="rejects-or-differs">
+<h3>Probe 1 &mdash; case-fold duplicate</h3>
+<p>Input sequence: <code>add Milk &rarr; add MILK</code></p>
+<p>Predict: what does the Reference do?</p>
+<div class="probe-actions" role="group" aria-label="Probe 1 prediction">
+<button type="button" data-pick="accepts" aria-pressed="false">Reference accepts</button>
+<button type="button" data-pick="rejects-or-differs" aria-pressed="false">Reference rejects-or-differs</button>
+</div>
+<div class="reveal" data-reveal hidden aria-live="polite">
+<p class="feedback" data-feedback></p>
+<p><b style="color:var(--ink)">Reference:</b> <code>duplicate_label</code></p>
+<p><b style="color:var(--ink)">Meta candidate:</b> accepted as <code>id "2"</code></p>
+<p>Verdict: <span class="verdict v-bad">DIFF</span></p>
+</div>
+</article>
+<article class="probe" data-probe data-answer="rejects-or-differs">
+<h3>Probe 2 &mdash; amount 500</h3>
+<p>Input: <code>add {amount:500}</code></p>
+<p>Predict: what does the Reference do?</p>
+<div class="probe-actions" role="group" aria-label="Probe 2 prediction">
+<button type="button" data-pick="accepts" aria-pressed="false">Reference accepts</button>
+<button type="button" data-pick="rejects-or-differs" aria-pressed="false">Reference rejects-or-differs</button>
+</div>
+<div class="reveal" data-reveal hidden aria-live="polite">
+<p class="feedback" data-feedback></p>
+<p><b style="color:var(--ink)">Reference:</b> <code>invalid_amount</code></p>
+<p><b style="color:var(--ink)">Meta candidate:</b> accepted</p>
+<p>Verdict: <span class="verdict v-bad">DIFF</span></p>
+</div>
+</article>
+<article class="probe" data-probe data-answer="rejects-or-differs">
+<h3>Probe 3 &mdash; remove response shape</h3>
+<p>Input sequence: <code>add &rarr; remove {id:"1"}</code></p>
+<p>Predict: what does the Reference do?</p>
+<div class="probe-actions" role="group" aria-label="Probe 3 prediction">
+<button type="button" data-pick="accepts" aria-pressed="false">Reference accepts</button>
+<button type="button" data-pick="rejects-or-differs" aria-pressed="false">Reference rejects-or-differs</button>
+</div>
+<div class="reveal" data-reveal hidden aria-live="polite">
+<p class="feedback" data-feedback></p>
+<p><b style="color:var(--ink)">Reference:</b> <code>{"ok":true,"removed":"1"}</code></p>
+<p><b style="color:var(--ink)">Meta candidate:</b> <code>{"ok":true,"id":"1"}</code></p>
+<p>Verdict: <span class="verdict v-bad">DIFF</span> &mdash; the Reference does not reject the command; it succeeds, but its response shape differs from the candidate&rsquo;s, so &ldquo;rejects-or-differs&rdquo; is the matching prediction.</p>
+</div>
+</article>
+</div>
 <table>
 <thead><tr><th>Input sequence</th><th>Reference</th><th>Meta candidate</th><th></th></tr></thead>
 <tbody>
@@ -114,6 +174,22 @@ footer a{color:#c9f2d6}
 <p style="margin-top:22px"><a href="../console/">Open the read-only evidence console</a> &middot; <a href="../">Back to Second Source</a> &middot; <a href="https://github.com/Ankit6149/second-source">Repository</a></p>
 </div></section>
 </main>
+<script>
+document.querySelectorAll("[data-probe]").forEach(function (probe) {
+  var reveal = probe.querySelector("[data-reveal]");
+  var feedback = probe.querySelector("[data-feedback]");
+  var buttons = probe.querySelectorAll("[data-pick]");
+  buttons.forEach(function (button) {
+    button.addEventListener("click", function () {
+      buttons.forEach(function (other) { other.setAttribute("aria-pressed", other === button ? "true" : "false"); });
+      feedback.textContent = button.getAttribute("data-pick") === probe.getAttribute("data-answer")
+        ? "Correct prediction \u2014 here is the recorded evidence:"
+        : "Not quite \u2014 here is the recorded evidence:";
+      reveal.hidden = false;
+    });
+  });
+});
+</script>
 <footer><div class="wrap">Second Source — evidence over claims. Meta Global AI Developer Hackathon, Indie track. All scores on this page are recorded local evidence or labeled NON_AI controls — never portable provider attestation.</div></footer>
 </body>
 </html>

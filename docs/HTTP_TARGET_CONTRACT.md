@@ -51,6 +51,6 @@ Ledger contracts are unchanged; this is a parallel, file-disjoint surface.
 
 ## Provenance labels (mandatory in product surfaces)
 
-- Genuine Muse ledger reconstruction: 14/25, `PINNED_REAL_MODEL_EVALUATION`.
+- Genuine Muse ledger reconstruction: 14/25, `PINNED_REAL_MODEL_EVALUATION` (provider attestation incomplete; see JUDGE_EVIDENCE_G3.md).
 - Deterministic NON_AI ledger fixture: 22/25, `MOCK_` prefixed.
 - HTTP numbers in this branch are scaffolding checks, never sealed scores.
