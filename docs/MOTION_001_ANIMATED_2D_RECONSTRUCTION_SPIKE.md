@@ -6,6 +6,26 @@ Second Source currently demonstrates controlled **CLI and HTTP behavioral** reco
 
 **Do NOT market this as shipped.** Only attempt if final integrated release, original Meta evidence, and public 3-minute submission are already secured, with a strict stop gate.
 
+## Clarification: complete 2D experience reconstruction, not a physics-only demo
+
+**Owner's intended future capability:** faithfully reconstruct sophisticated, rights-cleared **2D web experiences**, including composition, typography, licensed visual assets, visual depth, masks, overlapping layers, section transitions, scroll-pinned video and image sequences, gesture and pointer effects, responsive layout, timing, interactive state and accessibility. “Physics” means *the observed behavior of elements* (including simulated physics), not an assumption that the website uses a literal gravity engine. Awwwards-grade visual choreography is the motivating class, **not** a claim we currently support.
+
+**Fundamental differentiation: measurements before generation.** Existing reconstruction workflows commonly synthesize plausible layouts from a prompt/screenshots. The proposed Second Source adapter should intervene systematically and measure reference responses, then reconstruct a version whose outputs are compared on unseen conditions. It must not treat confident model explanations as observations.
+
+For an explicitly authorized site, build a **measurement plane** with versioned target fingerprint and repeatable browser environment:
+- **Spatial/compositing:** at each controlled viewport and scroll coordinate record visible element bounding boxes, transforms, opacity, clipping, overlap/occlusion order, image/text masks, text layout, and raster frame; distinguish directly inspected DOM/computed styles from pixels inferred visually.
+- **Temporal:** record monotonic frame timestamp, frame duration, element trajectories, video `currentTime` where observable, animation milestones, pin/unpin thresholds and event-to-render latency. Identify requestAnimationFrame versus CSS/Web Animations versus media synchronization only when directly evidenced; otherwise keep them as competing hypotheses.
+- **Intervention:** step through controlled scroll offsets and direction reversals, wheel and touch velocities, pointer paths, click/hover/focus, reloads, back/forward navigation, reduced-motion preference and viewport changes. Reset reference state between sequences and verify repeatability.
+- **Assets/rights:** visually relevant images, fonts, video segments, SVGs and sprites require licensed or user-supplied access. Without them, report an asset-fidelity ceiling rather than quietly substituting imagery and claiming exact reconstruction.
+- **Multiresolution sampling:** use coarse observations to locate transitions and finer probes around suspected thresholds, discontinuities, easing changes and frame-boundaries. An active sampler should choose the next most discriminating safe probe, instead of blindly capturing thousands of adjacent frames.
+- **Separated evaluation:** withheld scroll positions, timestamps, input sequences and viewports measure trajectory/duration error, compositing/visual difference and functional-state conformance separately. A synchronized reference/candidate viewer must show measurable residuals and explain confidence and missing observability.
+
+**Exactness caveat:** Black-box observations can precisely characterize *sampled observable behavior* subject to browser/clock precision. They generally cannot uniquely recover an original site's internal source, exact rendering mechanism, hidden state or all continuous behavior. Two different implementations may be observationally equivalent on the sampled probes. Report uncertainty, untested states and fidelity tolerances; prefer “behaviorally faithful under these conditions” over “identical implementation.”
+
+**Access modes:** (1) pixels/video-only observation; (2) permitted browser-level DOM/computed-style/runtime inspection; (3) owner-provided source/assets. These provide different evidence and different levels of achievable fidelity. Never bypass controls to move from one access mode to another. Explicitly report which was used.
+
+**Hackathon priority:** this is a *future adapter*. Only a very small owned, rights-cleared, measured scroll-scene spike is optional **after** current working CLI/HTTP release, public video and submission are secured. Do not shift the core release schedule to build a general Awwwards-site copier.
+
 ## Reality check
 - “Gravity” is often a design illusion. Real browser effects also include CSS cubic-bezier transitions, keyframes, springs, scroll-based parallax, mouse-following, transforms, SVG paths, canvas, sprites and JS physics. **Identify the model class from evidence; do not presume physical gravity.**
 - 2D still hides font/rendering variation, asset rights, interaction state, browser timing and animations driven by network responses.
