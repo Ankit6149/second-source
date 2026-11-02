@@ -560,6 +560,13 @@ class ModelGateway:
     def receipts(self) -> tuple[CallReceipt, ...]:
         return tuple(self._receipts)
 
+    def record_admission_rejection(self, rejection: dict[str, Any]) -> None:
+        """Forward a private admission record to the audit sink, if any."""
+        if self._audit is not None:
+            self._audit(
+                "hypothesis_admission_rejection", {"rejection": dict(rejection)}
+            )
+
     def _rates(self) -> tuple[float, float]:
         if isinstance(self._provider, MetaProvider):
             return self._provider.rates

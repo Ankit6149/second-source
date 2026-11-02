@@ -18,14 +18,23 @@ sequences. The proposal must declare this reset boundary explicitly.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any, Callable, Sequence
 
 from .budgets import RunBudget
 from .contracts import ProposedAction, ScopeContract, SideEffect
 from .evidence import redact
-from .hypotheses import Hypothesis, HypothesisBatch, HypothesisStore, validate_batch
+from .hypotheses import (
+    AdmissionRejection,
+    Hypothesis,
+    HypothesisBatch,
+    HypothesisError,
+    HypothesisStore,
+    build_admission_rejection,
+    validate_batch,
+)
 from .model_gateway import (
     HYPOTHESIZE_SYSTEM,
     PROMPT_VERSION_HYPOTHESIZE,
@@ -232,6 +241,7 @@ class ExperimentPlanner:
         budget: RunBudget,
         contract: ScopeContract,
         public_contract: dict[str, Any] | None = None,
+        admission_audit: Callable[[AdmissionRejection], None] | None = None,
     ) -> None:
         self._gateway = gateway
         self._guard = guard
@@ -240,11 +250,29 @@ class ExperimentPlanner:
         self._contract = contract
         # Operator-authored public action signatures, NEVER reference source.
         self._public_contract = public_contract or {}
+        self._admission_audit = admission_audit
+        self._admission_rejections: list[AdmissionRejection] = []
         self._executed_signatures: set[str] = set()
 
     @property
     def receipts(self):  # type: ignore[no-untyped-def]
         return self._gateway.receipts
+
+    @property
+    def admission_rejections(self) -> tuple[AdmissionRejection, ...]:
+        """Private rejected-batch records (class/counts/hash only, no raw text)."""
+        return tuple(self._admission_rejections)
+
+    def _record_admission_rejection(self, record: AdmissionRejection) -> None:
+        self._admission_rejections.append(record)
+        if self._admission_audit is not None:
+            self._admission_audit(record)
+        else:
+            gateway_record = getattr(
+                self._gateway, "record_admission_rejection", None
+            )
+            if gateway_record is not None:
+                gateway_record(record.as_dict())
 
     def _model_context(self, evidence: Sequence[dict[str, Any]], extra: dict[str, Any] | None = None) -> str:
         payload: dict[str, Any] = {
@@ -282,8 +310,34 @@ class ExperimentPlanner:
             )
         )
         if response.parsed is None:
+            self._record_admission_rejection(
+                AdmissionRejection(
+                    stage="hypothesize",
+                    failure_class="generation",
+                    failure_code="NO_PARSED_OBJECT",
+                    valid_count=0,
+                    rejected_count=0,
+                    total_count=0,
+                    content_sha256=hashlib.sha256(
+                        response.content_text.encode("utf-8")
+                    ).hexdigest(),
+                )
+            )
             raise GatewayError("hypothesize: model returned no parsed object")
-        return validate_batch(response.parsed, known_ids)
+        try:
+            return validate_batch(response.parsed, known_ids)
+        except HypothesisError as exc:
+            self._record_admission_rejection(
+                build_admission_rejection(
+                    response.parsed,
+                    known_ids,
+                    exc,
+                    content_sha256=hashlib.sha256(
+                        response.content_text.encode("utf-8")
+                    ).hexdigest(),
+                )
+            )
+            raise
 
     def propose(
         self,

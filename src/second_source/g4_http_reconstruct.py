@@ -592,6 +592,23 @@ def _generation_audit(run_dir: Path) -> Any:
     counts = {"model_dispatch": 0, "model_result": 0}
 
     def record(event: str, payload: dict[str, Any]) -> None:
+        if event == "hypothesis_admission_rejection":
+            idx = counts.get("admission", 0) + 1
+            counts["admission"] = idx
+            tag = "v1" if idx == 1 else f"r{idx - 1}"
+            raw = json.dumps(
+                {
+                    "kind": "G4_PRIVATE_HYPOTHESIS_ADMISSION_V1",
+                    "run_id": run_dir.name,
+                    "event": event,
+                    "version_tag": tag,
+                    **payload,
+                },
+                sort_keys=True,
+                indent=2,
+            ).encode("utf-8")
+            _write_once(run_dir / f"hypothesis-admission.{tag}.private.json", raw)
+            return
         if event not in {"model_dispatch", "model_result"}:
             raise RuntimeError("Unexpected generation audit event")
         counts[event] += 1
@@ -617,6 +634,29 @@ def _generation_audit(run_dir: Path) -> Any:
         path = _write_once(run_dir / name, raw)
         if path.read_bytes() != raw:
             raise RuntimeError("Generation archive read-back mismatch")
+
+    return record
+
+
+def _admission_audit(run_dir: Path) -> Any:
+    """Write create-once private hypothesize-rejection records (never public)."""
+    counts = {"count": 0}
+
+    def record(rejection: Any) -> None:
+        counts["count"] += 1
+        idx = counts["count"]
+        tag = "v1" if idx == 1 else f"r{idx - 1}"
+        doc = {
+            "kind": "G4_PRIVATE_HYPOTHESIS_ADMISSION_V1",
+            "run_id": run_dir.name,
+            "event": "hypothesis_admission_rejection",
+            "version_tag": tag,
+            "rejection": rejection.as_dict(),
+        }
+        raw = json.dumps(doc, sort_keys=True, indent=2).encode("utf-8")
+        path = _write_once(run_dir / f"hypothesis-admission.{tag}.private.json", raw)
+        if path.read_bytes() != raw:
+            raise RuntimeError("Admission archive read-back mismatch")
 
     return record
 
@@ -1465,6 +1505,7 @@ def run_discover_gemma_test(args: argparse.Namespace) -> int:
             )
             planner = ExperimentPlanner(
                 gateway=gateway, guard=ScopeGuard(scope), hypotheses=hypotheses,
+                admission_audit=_admission_audit(run_dir),
                 budget=budget, contract=scope, public_contract=public,
             )
             loop = HTTPDiscoveryLoop(
