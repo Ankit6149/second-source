@@ -83,7 +83,7 @@ from .repair_loop import (
 from .scope_guard import ScopeGuard
 
 MAX_REAL_RUN_USD = 0.50
-REAL_MODES = ("mock", "preflight", "real", "journey")
+REAL_MODES = ("mock", "preflight", "real", "journey", "discover-real")
 SUPPORTED_FIXTURES = (TARGET_ID, "owned-http-task-workflow")
 
 
@@ -1256,6 +1256,159 @@ def run_preflight(args: argparse.Namespace) -> int:
     return 0
 
 
+def run_discover_real(args: argparse.Namespace) -> int:
+    """Genuine Meta discovery over the owned HTTP reference (spend-gated).
+
+    Runs the same discovery loop as mock mode but with the real Meta
+    planner: the model hypothesizes from authorized observations and
+    proposes discriminating experiments, which the scope guard admits or
+    rejects. Persists the evidence ledger, the original hypothesis batch,
+    and a receipt-bearing summary so the existing zero-call preflight and
+    gated `--mode real` synthesis can bind to genuine inputs. Makes no
+    synthesis call. Fails closed with zero calls when authorization,
+    budget, or credentials are missing.
+    """
+    env_limit = _spend_ceiling(os.environ.get("SECOND_SOURCE_MAX_RUN_USD", "0"))
+    run_limit = _spend_ceiling(args.max_usd)
+    if env_limit is None:
+        return _blocked(
+            "configure MODEL_API_KEY and SECOND_SOURCE_MAX_RUN_USD securely."
+        )
+    if run_limit is None or run_limit > min(MAX_REAL_RUN_USD, env_limit):
+        return _blocked(
+            f"--max-usd must be finite, positive, and <= ${MAX_REAL_RUN_USD:.2f} "
+            "and <= SECOND_SOURCE_MAX_RUN_USD."
+        )
+    if not args.confirm_real_run:
+        return _blocked("pass --confirm-real-run to authorize spend on this run.")
+    key = os.environ.get("MODEL_API_KEY", "")
+    if not key:
+        return _blocked(
+            "configure MODEL_API_KEY securely after exact input approval."
+        )
+
+    public = load_public_contract()
+    run_dir = _run_directory(args.run_dir)
+    ledger = EvidenceLedger(run_dir / "evidence")
+    scope = create_g4_http_scope(run_limit)
+    budget = RunBudget(scope.budgets)
+    try:
+        with start_reference_server() as srv:
+            reference = HTTPReferenceAdapter(srv)
+            runner = SafeHTTPExperimentRunner(scope, reference, ledger)
+            hypotheses = HypothesisStore()
+            gateway = ModelGateway(
+                MetaProvider(key), budget, audit=_generation_audit(run_dir)
+            )
+            planner = ExperimentPlanner(
+                gateway=gateway,
+                guard=ScopeGuard(scope),
+                hypotheses=hypotheses,
+                budget=budget,
+                contract=scope,
+                public_contract=public,
+            )
+            loop = HTTPDiscoveryLoop(
+                run_id=run_dir.name,
+                requirement_id="REQ-HTTP-TASKS",
+                contract=scope,
+                runner=runner,
+                ledger=ledger,
+                hypotheses=hypotheses,
+                planner=planner,
+                budget=budget,
+                max_rounds=4,
+            )
+            loop_report = loop.run(passive_matched_probe_sequences())
+    except KeyboardInterrupt:
+        stopped = _write_failure_report(
+            run_dir=run_dir, mode="discover-real", real=True,
+            stage="discovery", budget=budget, interrupted=True,
+        )
+        print(json.dumps(_summarize(stopped), indent=2))
+        return 130
+    except (GatewayError, RuntimeError, ValueError) as exc:
+        failed = _write_failure_report(
+            run_dir=run_dir, mode="discover-real", real=True,
+            stage="discovery", budget=budget,
+            broker_diagnostic=getattr(exc, "broker_diagnostic", None),
+        )
+        print(json.dumps(_summarize(failed), indent=2))
+        return 1
+
+    digests = loop.digests
+    batch = {
+        "schema_version": "1.0",
+        "hypotheses": [h.model_dump(mode="json") for h in hypotheses.all()],
+    }
+    validate_batch(batch, frozenset(digests))
+    hyp_path = _write_once(
+        run_dir / "hypotheses.original.json",
+        json.dumps(batch, indent=2, sort_keys=True).encode("utf-8"),
+    )
+    summary = {
+        "kind": "G4_HTTP_DISCOVERY_SUMMARY_V1",
+        "run_id": run_dir.name,
+        "target_id": TARGET_ID,
+        "origin": "real",
+        "real": True,
+        "provider": "meta-direct",
+        "model": "muse-spark-1.3",
+        "total_observations_recorded": len(digests),
+        "observation_digests": list(digests),
+        "hypotheses_file": hyp_path.name,
+        "hypothesis_resolution_counts": dict(loop_report.resolution_counts),
+        "rounds": [
+            {
+                "round_no": r.round_no,
+                "hypothesis_ids": list(r.hypothesis_ids),
+                "proposal_id": r.proposal_id,
+                "actions_executed": r.actions_executed,
+                "observation_ids": list(r.observation_ids),
+                "reset_boundary": r.reset_boundary,
+                "resolution": dict(r.resolution),
+                "note": r.note,
+            }
+            for r in loop_report.rounds
+        ],
+        "model_receipts": [r.model_dump(mode="json") for r in gateway.receipts],
+        "usage": _budget_usage(budget),
+        "max_authorized_usd": run_limit,
+        "stop_reason": "discovery_complete",
+        "note": (
+            "Genuine Meta discovery only; no candidate was synthesized. "
+            "Bind these inputs through --mode preflight, obtain separate "
+            "owner approval of the context digest, then invoke --mode real."
+        ),
+    }
+    _write_once(
+        run_dir / "G4_discovery_summary.json",
+        json.dumps(summary, indent=2, sort_keys=True).encode("utf-8"),
+    )
+    _progress(
+        "evidence_ready", run_dir.name,
+        f"{len(digests)} HTTP observations from genuine Meta discovery",
+    )
+    print(
+        json.dumps(
+            {
+                "result": "discovery_complete",
+                "run_id": run_dir.name,
+                "target_id": TARGET_ID,
+                "observation_digests": list(digests),
+                "hypotheses": len(batch["hypotheses"]),
+                "usage": summary["usage"],
+                "next_action": (
+                    "run --mode preflight with this ledger/hypotheses, approve "
+                    "the context digest out of band, then --mode real"
+                ),
+            },
+            indent=2,
+        )
+    )
+    return 0
+
+
 def run_real(args: argparse.Namespace) -> int:
     """Owner-authorized real generation; fails closed on any missing approval."""
     if getattr(args, "repair_rounds", 0):
@@ -1614,6 +1767,7 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "mock: nonbillable NON_AI end-to-end HTTP demonstration; "
             "preflight: zero-call inspection of operator HTTP inputs; "
+            "discover-real: gated genuine Meta discovery (no synthesis); "
             "real: gated Meta run (fail-closed without owner authorization)"
         ),
     )
@@ -1707,6 +1861,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             return 2
         return run_mock(args)
+    if args.mode == "discover-real":
+        if args.repair_rounds:
+            print(
+                "BLOCKED_SCOPE: discover-real takes no repair rounds",
+                file=sys.stderr,
+            )
+            return 2
+        return run_discover_real(args)
     if args.mode == "preflight":
         if args.confirm_real_run:
             print(
