@@ -101,9 +101,22 @@ def test_mcp_probes_reset_state_between_invocations():
 
 @pytest.mark.skipif(__import__("importlib").util.find_spec("mcp") is None,
                     reason="Optional MCP SDK not installed; pure and worker tests still run")
-def test_mcp_v2_protocol_tools_are_registered():
+def test_mcp_v2_protocol_roundtrip():
+    import asyncio
+    from mcp import Client
     from second_source.mcp_server import create_server
-    server = create_server()
-    assert server is not None
-    # SDK in-memory Client tool-level roundtrip is separately documented in
-    # docs/MCP_INTEGRATION.md for installs using the [mcp] optional extra.
+
+    async def verify():
+        async with Client(create_server()) as client:
+            result = await client.call_tool("second_source_compare_ledger", {
+                "actions": [
+                    {"command": "add", "label": "Milk", "amount": 2},
+                    {"command": "add", "label": "MILK", "amount": 3},
+                ],
+            })
+            body = result.structured_content
+            assert body["status"] == "completed_public_probe"
+            assert body["model_called"] is False
+            assert body["steps"][1]["equal"] is False
+
+    asyncio.run(verify())
