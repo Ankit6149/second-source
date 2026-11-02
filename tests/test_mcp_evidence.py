@@ -99,7 +99,48 @@ def test_mcp_probes_reset_state_between_invocations():
     assert first["steps"][0]["reference_output"] == second["steps"][0]["reference_output"]
 
 
-@pytest.mark.skipif(__import__("importlib").util.find_spec("mcp") is None,
+def _report(evaluation, origin):
+    return {"evaluation": evaluation,
+            "evaluation_receipt": {"origin": origin, "suite_digest": "sha256:" + "a" * 64,
+                                   "g3_accepted": False}}
+
+
+_BASE_EVAL = {"passed": 14, "failed": 11, "indeterminate": 0, "total": 25,
+              "failure_categories": {"schema": 9, "error": 2}}
+_BASE_ORIGIN = {"model": "muse-spark-1.3", "provider": "meta-direct",
+                "response_id": "resp-1", "candidate_digest": "sha256:" + "b" * 64}
+
+
+@pytest.mark.parametrize("evaluation,origin", [
+    ({k: v for k, v in _BASE_EVAL.items() if k != "failed"}, _BASE_ORIGIN),
+    ({**_BASE_EVAL, "passed": 30, "failed": -5}, _BASE_ORIGIN),
+    ({**_BASE_EVAL, "failure_categories": "schema"}, _BASE_ORIGIN),
+    (_BASE_EVAL, {**_BASE_ORIGIN, "model": 123}),
+    (_BASE_EVAL, {**_BASE_ORIGIN, "candidate_digest": "ee1f"}),
+])
+def test_mcp_report_rejects_malformed_public_evaluation(monkeypatch, evaluation, origin):
+    monkeypatch.setattr(mcp, "_load_artifact", lambda name: _report(evaluation, origin))
+    with pytest.raises(RuntimeError):
+        mcp.reconstruction_report()
+
+
+def test_mcp_candidate_rules_rejects_spec_without_validated_commands(monkeypatch):
+    monkeypatch.setattr(mcp, "_load_artifact_bytes",
+                        lambda name: b'{"spec_version":"1","subsystem":"cli_ledger"}')
+    with pytest.raises(RuntimeError, match="Unsupported public candidate"):
+        mcp.candidate_rules()
+
+
+def _mcp_v2_available():
+    try:
+        from mcp import Client  # noqa: F401
+        from mcp.server import MCPServer  # noqa: F401
+    except Exception:
+        return False
+    return True
+
+
+@pytest.mark.skipif(not _mcp_v2_available(),
                     reason="Optional MCP SDK not installed; pure and worker tests still run")
 def test_mcp_v2_protocol_roundtrip():
     import asyncio

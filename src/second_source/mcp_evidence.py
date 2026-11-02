@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from .candidate_adapter import CandidateExecutionLimits, CandidateReferenceAdapter
+from .candidate_spec import CandidateError, parse_spec
 from .contracts import ProposedAction, SideEffect
 from .g3_verification import OwnedLedgerReferenceAdapter
 from .reconstruct import create_scope
@@ -110,8 +111,24 @@ def reconstruction_report() -> dict[str, Any]:
     origin = receipt.get("origin")
     if type(origin) is not dict:
         raise RuntimeError("Public model identity is missing")
+    if not set(("passed", "failed", "indeterminate", "total", "failure_categories")) <= set(evaluation):
+        raise RuntimeError("Public evaluation fields are incomplete")
     result = {k: evaluation[k] for k in ("passed", "failed", "indeterminate", "total", "failure_categories")}
-    if any(type(result[k]) is not int for k in ("passed", "failed", "indeterminate", "total")):
+    categories = result["failure_categories"]
+    if type(categories) is not dict or any(
+            type(k) is not str or type(v) is not int or v < 0 for k, v in categories.items()):
+        raise RuntimeError("Public evaluation counters are malformed")
+    for field in ("model", "provider", "response_id", "candidate_digest"):
+        if type(origin.get(field)) is not str or not origin[field]:
+            raise RuntimeError("Public model identity is malformed")
+    if type(receipt.get("suite_digest")) is not str or not receipt["suite_digest"]:
+        raise RuntimeError("Public model identity is malformed")
+    for field in ("candidate_digest",):
+        digest = origin[field]
+        if not digest.startswith("sha256:") or len(digest) != 71 or any(
+                c not in "0123456789abcdef" for c in digest[7:]):
+            raise RuntimeError("Public model identity is malformed")
+    if any(type(result[k]) is not int or result[k] < 0 for k in ("passed", "failed", "indeterminate", "total")):
         raise RuntimeError("Public evaluation counters are malformed")
     if result["passed"] + result["failed"] + result["indeterminate"] != result["total"]:
         raise RuntimeError("Public evaluation totals are inconsistent")
@@ -135,7 +152,12 @@ def reconstruction_report() -> dict[str, Any]:
 
 def candidate_rules() -> dict[str, Any]:
     """Expose the already-public declarative candidate, never oracle source."""
-    spec = _load_artifact("candidate.v1.json")
+    raw_spec = _load_artifact_bytes("candidate.v1.json")
+    spec = _json_object(raw_spec)
+    try:
+        parse_spec(raw_spec)
+    except CandidateError:
+        raise RuntimeError("Unsupported public candidate") from None
     report = reconstruction_report()
     if spec.get("spec_version") != "1" or spec.get("subsystem") != "cli_ledger":
         raise RuntimeError("Unsupported public candidate")
