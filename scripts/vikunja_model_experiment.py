@@ -256,7 +256,31 @@ def call_gemma(prompt: str, api_key: str) -> str:
     req.add_header("x-goog-api-key", api_key)
     with urllib.request.urlopen(req, timeout=180) as resp:
         data = json.loads(resp.read().decode())
-    return data["candidates"][0]["content"]["parts"][0]["text"]
+    parts = data["candidates"][0]["content"]["parts"]
+    return "".join(p.get("text", "") for p in parts)
+
+
+def parse_model_json(text: str):
+    """Strict parse first; then one standard fence-strip extraction.
+
+    Extraction never invents fields: a spec that needs repair beyond
+    fence stripping is a recorded MODEL_OUTPUT_NOT_JSON failure, with
+    the raw text preserved for diagnosis.
+    """
+    try:
+        return json.loads(text), "strict"
+    except json.JSONDecodeError:
+        pass
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        stripped = stripped.strip("`")
+        if stripped.startswith("json"):
+            stripped = stripped[4:]
+        try:
+            return json.loads(stripped), "fence_stripped"
+        except json.JSONDecodeError:
+            pass
+    return None, "unparseable"
 
 
 def start_reference(port: int):
@@ -393,10 +417,11 @@ def run_arm(arm: str, observations: str, api_key: str,
             record["selection_digest"] = digest(sel_prompt)
             raw = call_gemma(sel_prompt, api_key)
             calls += 1
-            try:
-                selected = json.loads(raw).get("probes", [])[:6]
-            except Exception:
-                selected = []
+            OUT.mkdir(parents=True, exist_ok=True)
+            (OUT / "raw_D_selection.txt").write_text(raw, encoding="utf-8")
+            parsed, _ = parse_model_json(raw)
+            selected = (parsed.get("probes", [])[:6]
+                        if isinstance(parsed, dict) else [])
             record["selected_probes"] = selected
             found = execute_menu_probes(selected, ref_base)
             record["probe_observations"] = len(found)
@@ -409,9 +434,13 @@ def run_arm(arm: str, observations: str, api_key: str,
         text = call_gemma(prompt, api_key)
         calls += 1
         record["model_calls"] = calls
-        try:
-            spec = json.loads(text)
-        except json.JSONDecodeError:
+        OUT.mkdir(parents=True, exist_ok=True)
+        raw_path = OUT / f"raw_{arm}.txt"
+        raw_path.write_text(text, encoding="utf-8")
+        record["raw_output"] = str(raw_path)
+        spec, how = parse_model_json(text)
+        record["json_parse"] = how
+        if spec is None:
             record.update(admitted=False, failure_class="MODEL_OUTPUT_NOT_JSON")
             return record
         record.update(evaluate_spec(arm, spec, ref_base, cand_port))
