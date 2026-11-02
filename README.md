@@ -14,7 +14,7 @@
 </div>
 
 > [!IMPORTANT]
-> **Engineering prototype, not a universal cloning service.** The repository has a reproducible **NON_AI** reconstruction/evaluation workflow and recorded **genuine Meta G2 reasoning**. A **successfully admitted and independently scored Meta-generated G3 reconstruction has not yet been demonstrated**. The public frontend is a static research preview; cloud authentication, storage, deployment, real-model repair, and arbitrary-target reconstruction are **not accepted as live production capabilities**. See [current evidence and release gates](#what-works-today).
+> **Engineering prototype, not a universal cloning service.** The repository has a reproducible **NON_AI** reconstruction/evaluation workflow and recorded **genuine Meta G2 reasoning**. A **genuine Meta-generated G3 candidate was admitted and independently scored 14/25** (9 schema, 2 error mismatches; provider attestation incomplete) - see [judge evidence](docs/JUDGE_EVIDENCE_G3.md). Real-model repair is not yet demonstrated. The public frontend is a static research preview; cloud authentication, storage, deployment, real-model repair, and arbitrary-target reconstruction are **not accepted as live production capabilities**. See [current evidence and release gates](#what-works-today).
 
 ## The idea
 
@@ -127,14 +127,14 @@ Its first candidate format is a **restricted, declarative specification**, not a
 
 ## What works today
 
-<sub>Engineering status checked 30 October 2026. Current GitHub state can change; the [delivery board](docs/G3_DELIVERY_BOARD.md) and linked PRs provide the detailed evidence trail. Some dated board entries are historical checkpoints, not the latest merged SHA.</sub>
+<sub>Engineering status checked 2 November 2026 (release-review integration of PRs #23+#24+#27). Current GitHub state can change; the [delivery board](docs/G3_DELIVERY_BOARD.md) and linked PRs provide the detailed evidence trail. Some dated board entries are historical checkpoints, not the latest merged SHA.</sub>
 
 | Area | Status | Evidence / limitation |
 |:--|:--|:--|
 | Owned-ledger observation, hypothesis and experiment flow | **Implemented for the approved fixture** | Genuine Meta-driven G2 reasoning recorded; **3 hypotheses, 5 observations, 2 real provider receipts** |
 | Candidate admission and independent sealed evaluator | **Implemented and tested** | Reproducible controls: hand-authored positive **25/25**; deliberately defective controls trigger **2 / 2 / 1** failures |
 | Scripted end-to-end reconstruction | **Demonstrated — NON_AI** | Mock candidate scores **22 passed / 3 failed / 0 indeterminate / 25** |
-| Genuine Meta-generated G3 candidate | **Not yet demonstrated successfully** | Two real attempts consumed, neither produced an admitted, independently scored candidate |
+| Genuine Meta-generated G3 candidate | **Demonstrated: 14/25** | Muse Spark 1.3 candidate admitted and independently scored 14 passed / 11 failed / 0 indeterminate (9 schema, 2 error); provider attestation incomplete; see docs/JUDGE_EVIDENCE_G3.md |
 | Bounded mock candidate repair | **Implemented on [PR #18](https://github.com/Ankit6149/second-source/pull/18); pending integration** | Frozen-context retries and versioned evidence; **not** real feedback-conditioned synthesis or real-model repair |
 | Durable local API and worker | **Implemented** | Owner-scoped local SQLite lifecycle, cancellation/fencing, mock execution, sanitized export |
 | Cloud backend and storage | **Source integrated, not live accepted** | Auth/PostgreSQL/Storage/Render/Railway preparation on [merged PR #19](https://github.com/Ankit6149/second-source/pull/19); live migrations, credentials, and hosted acceptance pending |
@@ -142,7 +142,7 @@ Its first candidate format is a **restricted, declarative specification**, not a
 | E2B / Daytona sandbox | **Gated integration work** | Interface and fake tests exist; production sandbox execution is not enabled |
 
 > [!NOTE]
-> **25/25 is a trusted control, and 22/25 is a scripted mock result. Neither is a genuine model-reconstruction accuracy score.** Two genuine G3 attempts were consumed without an admitted candidate, and no additional paid inference is authorized by this project documentation.
+> **25/25 is a trusted control, and 22/25 is a scripted mock result. Neither is a genuine model-reconstruction accuracy score.** The genuine Meta score is **14/25** (see docs/JUDGE_EVIDENCE_G3.md). No additional paid inference is authorized by this project documentation (rev-7 proposed, not approved).
 
 ## Try it locally
 
