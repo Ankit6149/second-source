@@ -400,6 +400,32 @@ class MockProvider:
         )
 
 
+def _to_google_schema(node: Any) -> Any:
+    """Convert the closed JSON schemas used by this gateway to the Google
+    structured-output dialect (uppercase types). Unsupported keywords are
+    dropped; local strict validation remains authoritative."""
+    if not isinstance(node, dict):
+        return node
+    out: dict[str, Any] = {}
+    type_map = {
+        "object": "OBJECT", "array": "ARRAY", "string": "STRING",
+        "integer": "INTEGER", "number": "NUMBER", "boolean": "BOOLEAN",
+    }
+    for key, value in node.items():
+        if key == "type" and isinstance(value, str) and value in type_map:
+            out["type"] = type_map[value]
+        elif key == "properties" and isinstance(value, dict):
+            out["properties"] = {k: _to_google_schema(v) for k, v in value.items()}
+        elif key == "items":
+            out["items"] = _to_google_schema(value)
+        elif key in ("required", "enum", "minItems", "maxItems", "minLength", "maxLength"):
+            out[key] = value
+        elif key in ("additionalProperties", "$schema", "title", "description"):
+            continue
+    return out
+
+
+
 class GemmaTestProvider(MetaProvider):
     """Google Gemma via the native Gemini API. TEST ONLY.
 
@@ -443,12 +469,28 @@ class GemmaTestProvider(MetaProvider):
         payload: dict[str, Any] = {
             "contents": contents,
             "generationConfig": {
-                "maxOutputTokens": request.max_output_tokens,
+                # Gemma 4 spends output budget on hidden thoughts first
+                # (observed: 237 thoughts tokens on a 28-token prompt, and
+                # 0 candidate tokens at tight budgets). Disable thinking
+                # and floor the budget so candidate text can exist.
+                "maxOutputTokens": max(request.max_output_tokens, 8000),
                 "responseMimeType": "application/json",
             },
         }
         if system:
-            payload["systemInstruction"] = {"parts": [{"text": system}]}
+            # Gemma 4 ignores mime/schema hints and free-forms analysis
+            # until the token cap (observed live). A provider-level terse
+            # directive is required for any JSON to exist; strict local
+            # validation still decides admission.
+            directive = (
+                "Output ONLY one JSON object matching the requested schema. "
+                "No analysis, no markdown, no explanation. "
+            )
+            payload["systemInstruction"] = {"parts": [{"text": directive + system}]}
+        if request.json_schema is not None:
+            payload["generationConfig"]["responseSchema"] = _to_google_schema(
+                request.json_schema
+            )
         if isinstance(getattr(request, "temperature", None), (int, float)):
             payload["generationConfig"]["temperature"] = request.temperature
         started = time.monotonic()
