@@ -18,7 +18,7 @@ def build(include_app=False):
     destination = ROOT / "dist"
     if destination.is_symlink() or any((destination / name).is_symlink() for name in ("app", "app/assets", "app/fonts")):
         raise ValueError("Build output may not contain linked directories.")
-    allowed = {"index.html", "styles.css", "release.css", "script.js", "console/index.html"}
+    allowed = {"index.html", "styles.css", "release.css", "script.js", "console/index.html", "evidence/index.html"}
     allowed.update("assets/" + name for name in ASSETS)
     if destination.exists():
         existing = {path.relative_to(destination).as_posix() for path in destination.rglob("*") if path.is_file()}
@@ -35,6 +35,8 @@ def build(include_app=False):
         shutil.copyfile(ROOT / name, destination / name)
     (destination / "console").mkdir(exist_ok=True)
     shutil.copyfile(ROOT.parent / "demo" / "index.html", destination / "console" / "index.html")
+    (destination / "evidence").mkdir(exist_ok=True)
+    shutil.copyfile(ROOT / "evidence" / "index.html", destination / "evidence" / "index.html")
     (destination / "assets").mkdir(exist_ok=True)
     for name in ASSETS:
         shutil.copyfile(ROOT / "assets" / name, destination / "assets" / name)
