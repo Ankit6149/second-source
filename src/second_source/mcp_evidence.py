@@ -57,7 +57,7 @@ def _json_object(raw: bytes) -> dict[str, Any]:
     return data
 
 
-def _load_artifact(name: str) -> dict[str, Any]:
+def _load_artifact_bytes(name: str) -> bytes:
     if name not in _ALLOWED_ARTIFACTS:
         raise ValueError("Artifact is not on the public evidence allowlist")
     manifest = _json_object(_read_bounded_file(_MANIFEST, 10_000))
@@ -70,7 +70,11 @@ def _load_artifact(name: str) -> dict[str, Any]:
     raw = _read_bounded_file(_ARCHIVE / name, _MAX_ARTIFACT_BYTES)
     if hashlib.sha256(raw).hexdigest() != expected:
         raise RuntimeError("Public evidence integrity failure")
-    return _json_object(raw)
+    return raw
+
+
+def _load_artifact(name: str) -> dict[str, Any]:
+    return _json_object(_load_artifact_bytes(name))
 
 
 def capabilities() -> dict[str, Any]:
@@ -195,9 +199,8 @@ def compare_ledger(actions: list[dict[str, Any]]) -> dict[str, Any]:
                                       max_records=64,
                                       wall_seconds=4.0,
                                       cpu_seconds=3.0)
-    candidate_spec = _read_bounded_file(_ARCHIVE / "candidate.v1.json", _MAX_ARTIFACT_BYTES)
-    # Verify the bytes before handing them to the existing trusted interpreter.
-    _load_artifact("candidate.v1.json")
+    # Use the same digest-verified bytes for the trusted candidate interpreter.
+    candidate_spec = _load_artifact_bytes("candidate.v1.json")
     reference = OwnedLedgerReferenceAdapter(scope, limits=limits).execute_sequence(allowed)
     candidate = CandidateReferenceAdapter(candidate_spec, scope, limits=limits).execute_sequence(allowed)
     if reference.status != "ok" or candidate.status != "ok":
