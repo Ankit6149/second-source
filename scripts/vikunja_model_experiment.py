@@ -136,7 +136,7 @@ PROBE_MENU = {
                     ("PUT", "/projects/{pid}/tasks", {"title": "M task"}, "alice"),
                     ("PUT", "/projects/{pid}/users",
                      {"username": "bench_bob", "permission": 0}, "alice"),
-                    ("DELETE", "/projects/{pid}/users/{bob_id}", None, "alice"),
+                    ("DELETE", "/projects/{pid}/users/{bob_name}", None, "alice"),
                     ("GET", "/projects/{pid}/tasks", None, "bob")]),
 }
 
@@ -340,28 +340,42 @@ def evaluate_spec(arm: str, spec, ref_base: str, cand_port: int) -> dict:
 
 
 def execute_menu_probes(selected, ref_base):
+    """Execute model-selected probes step by step against the reference.
+
+    Ids resolve as each sequence unfolds ({pid}/{tid} from responses,
+    {bob_id}/{label_id} as typed ints) — including in paths (D7).
+    """
     import vikunja_benchmark as vb
-    tokens = vb.fresh_tokens(ref_base + "/api/v1")
-    _, bob_user = vb.call("GET", "/user", None, tokens["bob"],
-                          base=ref_base + "/api/v1")
-    bob_id = bob_user.get("id") if isinstance(bob_user, dict) else 0
+    base = ref_base + "/api/v1"
+    tokens = vb.fresh_tokens(base)
+    _, bob_user = vb.call("GET", "/user", None, tokens["bob"], base=base)
+    ids = {"bob_id": bob_user.get("id") if isinstance(bob_user, dict) else 0,
+           "label_id": 0, "pid": 0, "tid": 0}
     observations = []
-    label_id = 0
     for probe_id in selected:
         if probe_id not in PROBE_MENU:
             continue
-        actions = []
-        for method, path, body, who in PROBE_MENU[probe_id][1]:
-            body = json.loads(json.dumps(body).replace("{bob_id}", str(bob_id))
-                              .replace("{label_id}", str(label_id))) if body else None
-            actions.append((method, path, body, who))
-        results = vb.run_actions(actions, tokens, base=ref_base + "/api/v1")
-        for (method, path, _, who), result in zip(PROBE_MENU[probe_id][1], results):
-            if isinstance(result["body"], dict) and path == "/labels":
-                label_id = result["body"].get("id", label_id)
+        ids["pid"] = ids["tid"] = 0
+        for method, path_tpl, body, who in PROBE_MENU[probe_id][1]:
+            path = (path_tpl.replace("{bob_id}", str(ids["bob_id"]))
+                    .replace("{bob_name}", "bench_bob")
+                    .format(pid=ids["pid"], tid=ids["tid"]))
+            if body:
+                body = {k: (ids["bob_id"] if v == "{bob_id}"
+                            else ids["label_id"] if v == "{label_id}" else v)
+                        for k, v in body.items()}
+            status, out = vb.call(method, path, body, tokens.get(who), base=base)
+            if isinstance(out, dict) and "id" in out:
+                segments = [s for s in path_tpl.split("/") if s]
+                if segments == ["projects"]:
+                    ids["pid"] = out["id"]
+                elif "tasks" in segments and method in ("PUT", "POST"):
+                    ids["tid"] = out["id"]
+                elif segments == ["labels"]:
+                    ids["label_id"] = out["id"]
             observations.append({"probe": probe_id,
-                                 "action": f"{method} {path}", "as": who,
-                                 "status": result["status"], "body": result["body"]})
+                                 "action": f"{method} {path_tpl}", "as": who,
+                                 "status": status, "body": out})
     return observations
 
 

@@ -90,6 +90,10 @@ PUBLIC_PROBES = [
     ("POST", "/tasks/{tid}", {"done": True}, "bob"),
     ("PUT", "/projects", {"title": ""}, "alice"),
     ("POST", "/login", {"username": "bench_alice", "password": "wrong"}, "anon"),
+    ("GET", "/projects", None, "alice"),
+    ("GET", "/tasks/{tid}", None, "alice"),
+    ("GET", "/user", None, "alice"),
+    ("PUT", "/projects/{pid}/tasks", {"title": "Bob attempt"}, "bob"),
 ]
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -104,7 +108,9 @@ def run_actions(actions, tokens, base=BASE):
         p = path.format(pid=ids.get("pid", 0), tid=ids.get("tid", 0))
         status, out = call(method, p, body, token, base)
         if isinstance(out, dict):
-            if "id" in out and method in ("POST", "PUT") and len([s for s in p.split("/") if s]) == 1:
+            # Only a project creation binds {pid}: any other 1-segment
+            # create (e.g. PUT /labels) must not overwrite it.
+            if "id" in out and method in ("POST", "PUT") and p.rstrip("/") == "/projects":
                 ids["pid"] = out["id"]
             if "id" in out and "/tasks" in p and method in ("POST", "PUT"):
                 ids["tid"] = out["id"]
@@ -114,7 +120,9 @@ def run_actions(actions, tokens, base=BASE):
 
 def _id_namespace(key, parent):
     """Server ids are per-entity-type sequences (project 1 and task 1
-    coexist), so placeholders are namespaced by entity, not global."""
+    coexist), so placeholders are namespaced by entity, not global.
+    Unknown shapes fall back to a shape fingerprint — never a shared
+    bucket that would merge distinct entity types."""
     if key == "id":
         if "permission" in parent and "username" in parent:
             return "share"
@@ -126,7 +134,9 @@ def _id_namespace(key, parent):
             return "user"
         if "view_kind" in parent:
             return "view"
-        return "entity"
+        shape = "|".join(sorted(k for k in parent
+                                if k not in VOLATILE_KEYS and k != "id"))
+        return f"shape:{shape}"
     base = key[:-3]
     return {"project": "project", "parent_project": "project",
             "user": "user", "bucket": "bucket", "default_bucket": "bucket",
@@ -153,6 +163,14 @@ def canonical(value, id_map, counter, ranked=False, view_ns=None):
                 # Ranked by the enclosing list, or erased as server state.
                 out[key] = value[key] if ranked else "<pos>"
             elif (key == "id" or key.endswith("_id")) and isinstance(value[key], int):
+                if key == "id" and isinstance(value.get("username"), str):
+                    # User-shaped objects are identified by username so
+                    # the same user keeps one placeholder across shapes
+                    # (profile, created_by, share rows). Two shares for
+                    # one user in a sequence would merge; our bounded
+                    # scope has at most one.
+                    out[key] = f"<user:{value['username']}>"
+                    continue
                 ns = _id_namespace(key, value)
                 map_key = (ns, value[key])
                 if map_key not in id_map:

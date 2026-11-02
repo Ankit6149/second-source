@@ -22,15 +22,22 @@ and the run stops for that arm; nothing is re-sent.
 ## Exact inputs (frozen at preflight, 2026-11-02)
 
 - Model: `muse-spark-1.3` via the existing gateway (`MetaProvider`).
-- Arm C context digest: `sha256:1a04b39d3cc2c61a27bafeb9678940966059e6e8f88fdb8f32c0edbcc8d4eb4d`
-- Arm D selection digest: `sha256:cafbaf6a057d2bc38314ec6fb747f802796a96e2d622884b0900db582978d30d`
+- Arm C context digest: `sha256:8b88e0fd183314f9ca40233173804b088d62dbba58b1db57b42b1e0fd38eebc0`
+- Arm D selection digest: `sha256:23c3446d9d855ba5f69e5a08210416eb1316e95ead63622277b2a72d5e4ae39f`
 - Public observations: `.runs/vikunja-benchmark/public_observations.json`
-  (8,675 bytes; authorized probes only).
+  (16,969 bytes, 19 probes, regenerated on a fresh reference DB;
+  verified to contain no held-out titles or outcomes).
 - Held-out evaluator: `scripts/vikunja_held_out.py`
   sha256 `57d07a9224c09d82bfebfde76799751a9845247892ddfa44145fe18a0e80c1fa`
   — never included in any prompt.
 - Interpreter sha256: `40228af10333780e9d01b99e6872826de1b5277992b48369baa51f0c133ebfc0`
-- Evaluator sha256: `6b8c37bd8434ec8717354ad2426ce5fca2b20b44f495bcdb24d0347af2578ed1`
+- Evaluator sha256: `d94624265ce79f8cea4a1a5709b09d381e3e43405c8153ad42725e4af899a86a`
+
+Arm D's synthesis prompt cannot be frozen in advance (it contains
+the probe outcomes the model selects). Its digest is recorded in the
+run record before the synthesis call and reported with the result;
+the frozen part is the selection prompt above. If that is not
+acceptable, authorize Arm C only (1 call, fully frozen).
 
 If any prompt, held-out file, or interpreter changes, digests change
 and this packet is void — re-preflight before spending.

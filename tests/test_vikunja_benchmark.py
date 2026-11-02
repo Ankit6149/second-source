@@ -54,6 +54,26 @@ def test_position_rank_preserves_order_not_magnitude():
     assert a != swapped
 
 
+def test_distinct_entity_shapes_never_merge():
+    # Reviewer defect: label {id:1,title} and bucket {id:1,name} both
+    # fell back to one shared namespace and merged.
+    seq = vb.canonical_sequence([
+        {"status": 201, "body": {"id": 1, "title": "l", "hex_color": ""}},
+        {"status": 201, "body": {"id": 1, "name": "b"}},
+    ])
+    assert seq[0]["body"]["id"] != seq[1]["body"]["id"]
+
+
+def test_same_user_keeps_one_placeholder_across_shapes():
+    # Reviewer defect: {id, username} vs {id, username, permission}
+    # split one user into two placeholders.
+    seq = vb.canonical_sequence([
+        {"status": 200, "body": {"id": 2, "username": "bench_bob"}},
+        {"status": 201, "body": {"id": 2, "username": "bench_bob", "permission": 0}},
+    ])
+    assert seq[0]["body"]["id"] == seq[1]["body"]["id"]
+
+
 def test_real_behavior_difference_still_detected():
     assert canon({"id": 1, "done": True}) != canon({"id": 9, "done": False})
 

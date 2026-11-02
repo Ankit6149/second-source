@@ -49,3 +49,23 @@ def test_arms_are_prompt_conditions_not_active_except_d():
     # Guard the honesty delimiter: A/B/C prompts differ, D has a menu.
     assert "A_prior" in mx.ARMS and "D_active" not in mx.ARMS
     assert len(mx.PROBE_MENU) >= 5
+
+
+def test_menu_execution_against_live_reference():
+    # Arm D execution (D3 labels + D7 unshare exercise typed id
+    # substitution in bodies AND paths). Skips without a reference.
+    import urllib.request
+    try:
+        with urllib.request.urlopen(
+                "http://127.0.0.1:3456/api/v1/info", timeout=5) as resp:
+            assert resp.status == 200
+    except Exception:
+        import pytest
+        pytest.skip("no Vikunja reference on 127.0.0.1:3456")
+    obs = mx.execute_menu_probes(["D3_labels", "D7_unshare"],
+                                 "http://127.0.0.1:3456")
+    by_probe = {}
+    for o in obs:
+        by_probe.setdefault(o["probe"], []).append(o["status"])
+    assert by_probe["D3_labels"][0] == 201
+    assert by_probe["D7_unshare"][-1] == 403  # revoked: bob can no longer read
