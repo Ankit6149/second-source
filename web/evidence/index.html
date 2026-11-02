@@ -105,13 +105,13 @@ footer a{color:#c9f2d6}
 <p style="font-size:14px">Try it yourself: for each recorded probe below, predict what the Reference does, then reveal the recorded outputs. All data is verbatim from the divergence table that follows.</p>
 <noscript><p style="font-size:14px">The interactive replay needs JavaScript; the same recorded results are in the table below.</p></noscript>
 <div class="replay">
-<article class="probe" data-probe data-answer="rejects-or-differs">
+<article class="probe" data-probe data-answer="duplicate">
 <h3>Probe 1 &mdash; case-fold duplicate</h3>
 <p>Input sequence: <code>add Milk &rarr; add MILK</code></p>
 <p>Predict: what does the Reference do?</p>
 <div class="probe-actions" role="group" aria-label="Probe 1 prediction">
-<button type="button" data-pick="accepts" aria-pressed="false">Reference accepts</button>
-<button type="button" data-pick="rejects-or-differs" aria-pressed="false">Reference rejects-or-differs</button>
+<button type="button" data-pick="accepts" aria-pressed="false">Accepts both labels</button>
+<button type="button" data-pick="duplicate" aria-pressed="false">Returns <code>duplicate_label</code></button>
 </div>
 <div class="reveal" data-reveal hidden aria-live="polite">
 <p class="feedback" data-feedback></p>
@@ -120,13 +120,13 @@ footer a{color:#c9f2d6}
 <p>Verdict: <span class="verdict v-bad">DIFF</span></p>
 </div>
 </article>
-<article class="probe" data-probe data-answer="rejects-or-differs">
+<article class="probe" data-probe data-answer="invalid">
 <h3>Probe 2 &mdash; amount 500</h3>
 <p>Input: <code>add {amount:500}</code></p>
 <p>Predict: what does the Reference do?</p>
 <div class="probe-actions" role="group" aria-label="Probe 2 prediction">
-<button type="button" data-pick="accepts" aria-pressed="false">Reference accepts</button>
-<button type="button" data-pick="rejects-or-differs" aria-pressed="false">Reference rejects-or-differs</button>
+<button type="button" data-pick="invalid" aria-pressed="false">Returns <code>invalid_amount</code></button>
+<button type="button" data-pick="accepts" aria-pressed="false">Accepts amount 500</button>
 </div>
 <div class="reveal" data-reveal hidden aria-live="polite">
 <p class="feedback" data-feedback></p>
@@ -135,19 +135,19 @@ footer a{color:#c9f2d6}
 <p>Verdict: <span class="verdict v-bad">DIFF</span></p>
 </div>
 </article>
-<article class="probe" data-probe data-answer="rejects-or-differs">
+<article class="probe" data-probe data-answer="removed">
 <h3>Probe 3 &mdash; remove response shape</h3>
 <p>Input sequence: <code>add &rarr; remove {id:"1"}</code></p>
 <p>Predict: what does the Reference do?</p>
 <div class="probe-actions" role="group" aria-label="Probe 3 prediction">
-<button type="button" data-pick="accepts" aria-pressed="false">Reference accepts</button>
-<button type="button" data-pick="rejects-or-differs" aria-pressed="false">Reference rejects-or-differs</button>
+<button type="button" data-pick="id" aria-pressed="false">Returns <code>{"ok":true,"id":"1"}</code></button>
+<button type="button" data-pick="removed" aria-pressed="false">Returns <code>{"ok":true,"removed":"1"}</code></button>
 </div>
 <div class="reveal" data-reveal hidden aria-live="polite">
 <p class="feedback" data-feedback></p>
 <p><b style="color:var(--ink)">Reference:</b> <code>{"ok":true,"removed":"1"}</code></p>
 <p><b style="color:var(--ink)">Meta candidate:</b> <code>{"ok":true,"id":"1"}</code></p>
-<p>Verdict: <span class="verdict v-bad">DIFF</span> &mdash; the Reference does not reject the command; it succeeds, but its response shape differs from the candidate&rsquo;s, so &ldquo;rejects-or-differs&rdquo; is the matching prediction.</p>
+<p>Verdict: <span class="verdict v-bad">DIFF</span> &mdash; the Reference succeeds with a <code>removed</code> field, while the candidate responds with <code>id</code>. This is a response-schema mismatch, not a rejected command.</p>
 </div>
 </article>
 </div>
