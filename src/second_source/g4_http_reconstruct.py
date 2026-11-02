@@ -71,7 +71,8 @@ from .contracts import Observation, ProposedAction, ScopeContract, SideEffect
 from .evidence import EvidenceLedger, publish_once as _write_once
 from .hypotheses import HypothesisStore, validate_batch
 from .loop import DiscoveryLoop, LoopReport
-from .model_gateway import (GatewayError, GemmaTestProvider, MetaProvider,
+from .model_gateway import (GEMMA_DEFAULT_MODEL, GatewayError,
+                            GemmaTestProvider, MetaProvider,
                             MockProvider, ModelGateway)
 from .planner import RESET_BOUNDARY, ExperimentPlanner
 from .repair_loop import (
@@ -1440,7 +1441,7 @@ def run_discover_gemma_test(args: argparse.Namespace) -> int:
     if not key:
         return _blocked("configure GEMMA_API_KEY securely for the Gemma test run.")
 
-    model = os.environ.get("GEMMA_MODEL", "gemma-3-27b-it")
+    model = os.environ.get("GEMMA_MODEL", GEMMA_DEFAULT_MODEL)
     public = load_public_contract()
     run_dir = _run_directory(args.run_dir)
     ledger = EvidenceLedger(run_dir / "evidence")
