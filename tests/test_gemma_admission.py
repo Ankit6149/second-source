@@ -366,3 +366,41 @@ def test_g4_gemma_rejection_writes_private_record_only(monkeypatch, tmp_path):
     assert "UNKNOWN_EVIDENCE_ID" not in public_text
     assert "candidate rule" not in public_text
     assert "hypothesis-admission" not in public_text
+
+
+def test_unknown_citation_run_recovers_stopped_with_rejection_event(tmp_path, monkeypatch):
+    """Journal integration: a rejected batch must not corrupt recovery.
+
+    Mirrors tests/test_g2_persistence.py's unknown-citation scenario: the
+    stopped run must reload as incomplete/stopped (not crash on the new
+    hypothesis_admission_rejection journal kind), and the journal must
+    contain exactly that private event with consistent counts.
+    """
+    from second_source import live_experiment as live
+    from second_source.g2_persistence import inspect_run
+
+    monkeypatch.delenv("MODEL_API_KEY", raising=False)
+    monkeypatch.setenv("SECOND_SOURCE_MAX_RUN_USD", "0")
+    original = live._mock_response
+
+    def respond(request):
+        doc = original(request)
+        doc["content"]["hypotheses"][0]["evidence_ids"] = ["0" * 64]
+        return doc
+
+    monkeypatch.setattr(live, "_mock_response", respond)
+    run = tmp_path / "failed"
+    assert live.main(["--mode", "mock", "--run-dir", str(run)]) == 3
+    result = inspect_run(run)
+    assert not result["complete"] and result["state"] == "stopped"
+
+    events = [
+        json.loads(path.read_text(encoding="utf-8"))
+        for path in sorted((run / "discovery").glob("*.json"))
+    ]
+    rejections = [e for e in events if e.get("kind") == "hypothesis_admission_rejection"]
+    assert len(rejections) == 1
+    rejection = rejections[0]["payload"]["rejection"]
+    assert rejection["failure_class"] == "scientific"
+    assert rejection["failure_code"] == "UNKNOWN_EVIDENCE_ID"
+    assert rejection["valid_count"] + rejection["rejected_count"] == rejection["total_count"]
