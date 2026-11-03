@@ -102,7 +102,10 @@ test('browser/motion capability is driven by browser-slice observations presence
   assert.match(absent.detail, /browser-slice\/observations\.json not found/);
   assert.match(absent.detail, /adapter absent/i);
   const present = resolveBrowserMotionCapability(true);
-  assert.match(present.detail, /Observations present/);
+  assert.match(present.detail, /bounded browser slice is recorded/);
+  assert.match(present.detail, /execution remains unavailable/);
+  assert.equal(present.status, 'unavailable');
+  assert.equal(capabilityEnabled(present), false);
   assert.notEqual(present.detail, absent.detail);
   // Picker resolution keeps API/CLI untouched and never enables browser execution.
   const caps = targetCapabilities(false);

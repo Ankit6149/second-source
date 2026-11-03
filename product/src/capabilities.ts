@@ -37,25 +37,20 @@ export function resolveBrowserMotionCapability(observationsPresent: boolean): Ta
   }
   return {
     id: 'browser-motion', title: 'Browser / UI / motion', status: 'unavailable',
-    detail: `Observations present at ${BROWSER_SLICE_OBSERVATIONS_PATH}, but no CDP candidate or temporal evaluator adapter exists yet — browser / motion execution remains unavailable. Recorded observations can be reviewed as evidence only.`,
+    detail: `A bounded browser slice is recorded at ${BROWSER_SLICE_OBSERVATIONS_PATH} (spring-drag trajectory fit; held-out verdict in browser-slice/verdict.json), but it is not wired as a live in-app adapter — browser / motion execution remains unavailable here. Recorded observations can be reviewed as evidence only.`,
     action: null,
   };
 }
 
 /**
- * Build-time presence of browser-slice/observations.json. Vite resolves the
- * glob against the repository root; outside a Vite build (unit tests) the
- * glob is absent and presence honestly defaults to false.
+ * Presence of the committed browser-slice evidence. A static browser
+ * bundle cannot inspect the repository filesystem at runtime (and must
+ * not use import.meta, which the DOM test harness cannot eval), so this
+ * is a plain constant tied to the committed artifact: observations.json
+ * and verdict.json are in the repo under browser-slice/. If that slice
+ * is removed, set this back to false.
  */
-const browserSliceModules: Record<string, unknown> = (() => {
-  try {
-    const glob = (import.meta as unknown as { glob?: (pattern: string) => Record<string, unknown> }).glob;
-    return glob ? glob('../../browser-slice/observations.json') : {};
-  } catch {
-    return {};
-  }
-})();
-export const BROWSER_SLICE_OBSERVATIONS_PRESENT = Object.keys(browserSliceModules).length > 0;
+export const BROWSER_SLICE_OBSERVATIONS_PRESENT = true;
 
 /** Capabilities with the browser entry resolved from recorded observations. */
 export function targetCapabilities(observationsPresent: boolean = BROWSER_SLICE_OBSERVATIONS_PRESENT): TargetCapability[] {
