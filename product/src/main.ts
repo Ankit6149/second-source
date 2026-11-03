@@ -11,6 +11,7 @@ import { clearOwnerNotes, loadNotes, saveNotes } from './notes';
 import { acceptsRunRevision, executionDefinitelyRefused, outcomeConfirmed, pollFailureMessage, pollRetryDelay } from './polling';
 import { HISTORICAL_LEDGER, PROVENANCE_META, armScoreText, compiledScoreText, provenanceClass, vikunjaRecord, type EvidenceProvenance } from './evidence';
 import { capabilityEnabled, resolveBrowserMotionCapability, targetCapabilities, BROWSER_SLICE_OBSERVATIONS_PRESENT } from './capabilities';
+import { checkEngine, createEngineInvestigation, getEngineInvestigation, engineCandidateUrl, type EngineInvestigation } from './engine';
 
 const icons = { PanelLeft, PanelLeftClose, SquarePen, FolderOpen, SwatchBook, ChevronUp, ArrowUp, ShieldCheck, FileText, ListChecks, Download, CircleHelp, X, Play, Square, RefreshCw, Clock, Check, AlertTriangle, LogIn, LogOut, Link, FlaskConical, MessageSquare, ExternalLink, Search, GitBranch, Puzzle, Plus };
 const icon = (name: string) => `<i data-lucide="${name}" aria-hidden="true"></i>`;
@@ -28,6 +29,8 @@ const state: {
   uncertain: false, actionUncertain: null, executionError: null, busy: false, executing: false, epoch: 0 };
 const api = new Api(apiOrigin, () => state.session?.access_token || null);
 let pollTimer: number | undefined;
+const engineState: { status: 'unknown' | 'available' | 'unavailable'; record: EngineInvestigation | null; poll: number | undefined } =
+  { status: 'unknown', record: null, poll: undefined };
 let currentDialogReturn: HTMLElement | null = null;
 let renderedRunId: string | undefined;
 
@@ -93,8 +96,51 @@ function composer() {
   return `<form class="composer" id="composer"><div id="draftContext"><div class="detection" id="detection" ${hint ? '' : 'hidden'}>${hint ? `${icon('link')} <span><strong>${esc(hint.label)}</strong><br><small>${esc(hint.description)}</small></span>` : ''}</div></div><label class="sr-only" for="promptInput">Describe the software behavior you want to investigate</label><textarea rows="2" id="promptInput" maxlength="4000" placeholder="Ask about a workflow, software, or a reference…">${esc(state.draft)}</textarea><div class="composer-lower"><div class="tool-row"><button class="tool-icon" type="button" disabled title="Attachments are not supported yet" aria-label="Attachments unavailable">${icon('plus')}</button><button class="small-tool" type="button" data-action="select-target">${icon('flask-conical')} Choose a supported target</button></div><div class="send-area"><span class="kbd-help">Shift + Enter for new line</span><button class="send-btn" type="submit" aria-label="Send message">${icon('arrow-up')}</button></div></div></form>`;
 }
 
+function enginePanel() {
+  const rec = engineState.record;
+  let body = '';
+  if (engineState.status === 'unknown') {
+    body = `<p class="component-note">Checking for the local engine at 127.0.0.1:8765…</p>`;
+  } else if (engineState.status === 'unavailable') {
+    body = `<p class="component-note">Local engine not running. Start it with <code>python scripts/investigation_engine.py</code>, then check again. Nothing is faked while it is offline: no run can be started from here.</p><button class="pill-btn" data-action="engine-check">${icon('refresh-cw')} Check again</button>`;
+  } else if (!rec) {
+    body = `<p>Runs the real deterministic pipeline against a disposable local Vikunja reference: probe → compile → public conformance. No model is called.</p><button class="pill-btn primary" data-action="engine-run">${icon('play')} Run live investigation (NON_AI)</button>`;
+  } else if (rec.status === 'running') {
+    body = `<p>Running… stage: <strong>${esc(rec.stage)}</strong> (investigation ${esc(rec.id)}). This page refreshes itself; do not start another run meanwhile.</p>`;
+  } else if (rec.status === 'failed') {
+    body = `<p class="component-note">Investigation ${esc(rec.id)} failed: ${esc(rec.error || 'unknown error')}</p><button class="pill-btn" data-action="engine-run">${icon('play')} Run again</button>`;
+  } else {
+    body = `<p>Investigation <strong>${esc(rec.id)}</strong> completed against a fresh local reference.</p>
+      <div class="artifact"><div class="artifact-top"><div class="artifact-symbol">${icon('file-text')}</div><div><strong>Vikunja v2.4.0 · EVIDENCE_COMPILED (NON_AI)</strong><small>${rec.observations ? `${rec.observations.count} observations · ${esc(rec.observations.sha256.slice(0, 19))}…` : ''}</small></div><span class="artifact-tag">completed</span></div>
+      <div class="artifact-bottom">Compiled routes: ${rec.compiled ? rec.compiled.routes.map(esc).join(' · ') : '—'}<br>Public-ladder conformance: <strong>${rec.public_conformance ? `${rec.public_conformance.passed}/${rec.public_conformance.total}` : '—'}</strong> (stateful public probe sequence; not the held-out score). Held-out: not run by the engine — evaluator-side only.</div></div>
+      <div class="response-actions"><a class="pill-btn" href="${engineCandidateUrl(rec.id)}" download>${icon('download')} Download candidate spec</a><button class="pill-btn" data-action="engine-run">${icon('play')} Run again</button></div>`;
+  }
+  return `<section class="single-page engine-panel"><h2>Live local engine</h2><p class="component-note">Local operator service on this machine only (127.0.0.1:8765). It executes the deterministic NON_AI pipeline for real; model-authored GEMMA_TEST results stay recorded evidence in the Lab and are never generated here.</p>${body}</section>`;
+}
+async function refreshEngine() {
+  engineState.status = await checkEngine() ? 'available' : 'unavailable';
+  render();
+}
+async function runEngineInvestigation() {
+  try {
+    engineState.record = await createEngineInvestigation();
+    render();
+    window.clearInterval(engineState.poll);
+    engineState.poll = window.setInterval(async () => {
+      if (!engineState.record || engineState.record.status !== 'running') { window.clearInterval(engineState.poll); return; }
+      try {
+        engineState.record = await getEngineInvestigation(engineState.record.id);
+        if (engineState.record.status !== 'running') window.clearInterval(engineState.poll);
+        render();
+      } catch { window.clearInterval(engineState.poll); }
+    }, 2000);
+  } catch {
+    engineState.status = 'unavailable';
+    render();
+  }
+}
 function renderHome() {
-  return `<section class="empty-home"><h1>Understand how software <em>really works.</em></h1><p>Explore behavior and independent verification. Start with a question or a reference.</p><div class="suggestion-row"><button class="suggestion" data-suggestion="Understand how the owned ledger handles repeated inputs.">${icon('search')} Understand behavior</button><button class="suggestion" data-suggestion="Compare the owned ledger with a scoped candidate.">${icon('git-branch')} Compare versions</button><button class="suggestion" data-suggestion="Explore how the owned ledger workflow could be reconstructed.">${icon('puzzle')} Reconstruct a workflow</button></div><p class="home-note">${state.session ? state.target ? (state.targets.length > 1 ? 'Available here: owned ledger and HTTP task-workflow NON_AI fixtures.' : 'Available here: the owned ledger NON_AI fixture.') : 'No supported target is currently available.' : 'Sign in to see the targets available from the connected service.'} ${esc(resolveBrowserMotionCapability(BROWSER_SLICE_OBSERVATIONS_PRESENT).detail)} Genuine AI reconstruction is not run from this app; recorded REAL_MODEL, GEMMA_TEST and NON_AI evidence is under Research record.</p></section>`;
+  return `<section class="empty-home"><h1>Understand how software <em>really works.</em></h1><p>Explore behavior and independent verification. Start with a question or a reference.</p><div class="suggestion-row"><button class="suggestion" data-suggestion="Understand how the owned ledger handles repeated inputs.">${icon('search')} Understand behavior</button><button class="suggestion" data-suggestion="Compare the owned ledger with a scoped candidate.">${icon('git-branch')} Compare versions</button><button class="suggestion" data-suggestion="Explore how the owned ledger workflow could be reconstructed.">${icon('puzzle')} Reconstruct a workflow</button></div><p class="home-note">${state.session ? state.target ? (state.targets.length > 1 ? 'Available here: owned ledger and HTTP task-workflow NON_AI fixtures.' : 'Available here: the owned ledger NON_AI fixture.') : 'No supported target is currently available.' : 'Sign in to see the targets available from the connected service.'} ${esc(resolveBrowserMotionCapability(BROWSER_SLICE_OBSERVATIONS_PRESENT).detail)} Genuine AI reconstruction is not run from this app; recorded REAL_MODEL, GEMMA_TEST and NON_AI evidence is under Research record.</p></section>` + enginePanel();
 }
 function controls() {
   if (!state.session) return `<button class="pill-btn primary" data-action="account">${icon('log-in')} Sign in to start</button>`;
@@ -439,6 +485,8 @@ document.addEventListener('click', event => {
   else if (action === 'create' || action === 'confirm-authorization' || action === 'queue' || action === 'cancel' || action === 'reconcile') void mutate(action);
   else if (action === 'execute') void execute();
   else if (action === 'refresh') void refresh();
+  else if (action === 'engine-check') void refreshEngine();
+  else if (action === 'engine-run') void runEngineInvestigation();
   else if (action === 'verification') showVerification();
   else if (action === 'research') showResearch();
   else if (action === 'report') void showReport();
@@ -484,4 +532,4 @@ for (const id of ['closeSide', 'mobileScrim']) el(id).addEventListener('click', 
 sidebarMedia.addEventListener('change', syncSidebar); syncSidebar();
 el<HTMLDialogElement>('dialog').addEventListener('close', () => { if (currentDialogReturn?.isConnected) currentDialogReturn.focus(); else el('main').focus(); });
 state.view = new URLSearchParams(location.search).get('screen') === 'system' ? 'system' : 'home';
-render(); observeSession(session => { void hydrate(session); });
+render(); observeSession(session => { void hydrate(session); }); void refreshEngine();
