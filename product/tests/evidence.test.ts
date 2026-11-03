@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { HISTORICAL_LEDGER, PROVENANCE_META, armScoreText, compiledScoreText, parseCompiled, parseVikunjaSummary, provenanceClass, vikunjaRecord } from '../src/evidence.ts';
+import { HISTORICAL_LEDGER, PROVENANCE_META, armScoreText, compiledScoreText, gateAuditText, metaArmScoreText, parseCompiled, parseVikunjaSummary, provenanceClass, vikunjaRecord } from '../src/evidence.ts';
 import { BROWSER_SLICE_ABSENT_REASON, BROWSER_SLICE_OBSERVATIONS_PATH, TARGET_CAPABILITIES, capabilityEnabled, resolveBrowserMotionCapability, targetCapabilities } from '../src/capabilities.ts';
 import summary from '../src/evidence-summary.json' with { type: 'json' };
 
@@ -115,6 +115,54 @@ test('browser/motion capability is driven by browser-slice observations presence
   assert.equal(capabilityEnabled(caps.find(cap => cap.id === 'browser-motion')!), false);
 });
 
+test('Meta REAL_MODEL Vikunja arms: C 2/6 (1,3), D 1/6 (3), 3 calls, packet matched', () => {
+  const r = vikunjaRecord(); assert.ok(r); assert.ok(r.metaArms);
+  assert.equal(r.metaArms.label, 'REAL_MODEL'); assert.equal(r.metaArms.model, 'muse-spark-1.3');
+  assert.equal(r.metaArms.callsTotal, 3); assert.equal(r.metaArms.packetDigestsMatched, true);
+  assert.equal(r.metaArms.reservationCapUsd, 0.5); assert.equal(r.metaArms.artifact, '.runs/vikunja-model/meta_arms_result.json');
+  const by = new Map(r.metaArms.arms.map(a => [a.arm, a]));
+  assert.equal(metaArmScoreText(by.get('C_grounded')!), '2/6'); assert.deepEqual(by.get('C_grounded')!.passedCases, [1, 3]);
+  assert.equal(metaArmScoreText(by.get('D_active')!), '1/6'); assert.deepEqual(by.get('D_active')!.passedCases, [3]);
+  assert.deepEqual(by.get('D_active')!.selectedProbes, ['D1', 'D4', 'D5', 'D6', 'D7']); assert.equal(by.get('D_active')!.probeObservations, 22);
+  for (const a of r.metaArms.arms) { assert.equal(a.label, 'REAL_MODEL'); assert.equal(a.provenance, 'model-authored'); }
+  // Never conflated with Gemma arms or the 14/25 ledger.
+  for (const a of r.arms) assert.equal(a.label, 'GEMMA_TEST');
+  assert.equal(HISTORICAL_LEDGER.total, 25);
+});
+test('Gemma H re-measured 3/6 (0,2,3), repair regressed to 2/6, D selection verified but unscored', () => {
+  const r = vikunjaRecord(); assert.ok(r);
+  const by = new Map(r.arms.map(a => [a.arm, a]));
+  assert.deepEqual(by.get('H_hybrid')!.passedCases, [0, 2, 3]); assert.equal(armScoreText(by.get('H_hybrid')!), '3/6');
+  assert.ok(r.gemmaRepair); assert.equal(r.gemmaRepair.label, 'GEMMA_TEST'); assert.equal(r.gemmaRepair.passed, 2); assert.equal(r.gemmaRepair.total, 6);
+  assert.equal(r.gemmaRepair.outcome, 'admitted_but_regressed');
+  const d = by.get('D_active')!; assert.equal(d.selectionVerified, true); assert.equal(d.probeCount, 6); assert.equal(d.probeObservations, 27);
+  assert.equal(d.status, 'provider_failure'); assert.equal(d.passed, null); assert.equal(d.failureClass, 'INFRASTRUCTURE'); assert.match(armScoreText(d), /Not scored/);
+});
+test('gate audit is NON_AI damage-prevention, never a model score: 0/8 kept, 5 regressed, 3 tied', () => {
+  const r = vikunjaRecord(); assert.ok(r); assert.ok(r.gateAudit);
+  assert.equal(r.gateAudit.label, 'NON_AI'); assert.equal(r.gateAudit.isModelScore, false);
+  assert.equal(r.gateAudit.editsConsidered, 8); assert.equal(r.gateAudit.kept, 0); assert.equal(r.gateAudit.regressed, 5); assert.equal(r.gateAudit.tied, 3);
+  assert.equal(r.gateAudit.gatedCandidate.label, 'EVIDENCE_COMPILED'); assert.equal(r.gateAudit.gatedCandidate.parentLabel, 'NON_AI');
+  assert.equal(r.gateAudit.gatedCandidate.passed, 6); assert.equal(r.gateAudit.gatedCandidate.total, 6);
+  assert.match(gateAuditText(r.gateAudit), /not a model score/);
+});
+test('new sections fail closed when relabeled or distorted', () => {
+  const metaBad = structuredClone(summary) as Record<string, unknown>;
+  ((metaBad.metaArms as Record<string, unknown>).arms as Record<string, unknown>[])[0]!.label = 'GEMMA_TEST';
+  assert.equal(parseVikunjaSummary(metaBad), null);
+  const gateBad = structuredClone(summary) as Record<string, unknown>;
+  (gateBad.gateAudit as Record<string, unknown>).isModelScore = true;
+  assert.equal(parseVikunjaSummary(gateBad), null);
+  const gateSum = structuredClone(summary) as Record<string, unknown>;
+  (gateSum.gateAudit as Record<string, unknown>).kept = 1;
+  assert.equal(parseVikunjaSummary(gateSum), null);
+  const repairBad = structuredClone(summary) as Record<string, unknown>;
+  (repairBad.gemmaRepair as Record<string, unknown>).label = 'REAL_MODEL';
+  assert.equal(parseVikunjaSummary(repairBad), null);
+  const casesBad = structuredClone(summary) as Record<string, unknown>;
+  (((casesBad.metaArms as Record<string, unknown>).arms as Record<string, unknown>[])[0]).passedCases = [1];
+  assert.equal(parseVikunjaSummary(casesBad), null);
+});
 test('capability flags: API and CLI supported and bounded, browser/motion unavailable', () => {
   assert.equal(TARGET_CAPABILITIES.length, 3);
   const byId = new Map(TARGET_CAPABILITIES.map(cap => [cap.id, cap]));
