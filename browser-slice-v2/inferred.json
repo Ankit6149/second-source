@@ -1,0 +1,38 @@
+{
+  "spring": {
+    "stiffness": 164,
+    "damping": 14,
+    "fitRmsePx": 4.367,
+    "releaseX": 260,
+    "releaseV": 0
+  },
+  "parallax": {
+    "factor": 0.3,
+    "interceptRectY": -120,
+    "fromScrolls": [
+      0,
+      300
+    ]
+  },
+  "filterFit": {
+    "choice": "work",
+    "visible": [
+      "task-1",
+      "card",
+      "task-4"
+    ],
+    "activeButton": "filter-work",
+    "visibleAfterAll": [
+      "task-1",
+      "card",
+      "task-3",
+      "task-4",
+      "task-5",
+      "task-6"
+    ]
+  },
+  "headerHeightPx": 240,
+  "layerHeightPx": 480,
+  "cardBorderRadius": "14px",
+  "sourceNote": "All numbers above derive only from observations.json (capture of the reference). No reference source was read."
+}

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Flowboard — Task Board</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: Segoe UI, Arial, sans-serif; background: #f4f5fb; color: #1c2130; }
+  header { position: relative; height: 240px; overflow: hidden; background: #232946; color: #fff; }
+  #parallax-layer { position: absolute; left: 0; top: -120px; width: 100%; height: 480px;
+    background: linear-gradient(160deg, #6c63ff, #232946 70%); will-change: transform; }
+  header .inner { position: relative; padding: 64px 40px; }
+  header h1 { font-size: 34px; }
+  header p { opacity: .85; margin-top: 8px; }
+  main { padding: 28px 40px 40px; max-width: 1100px; margin: 0 auto; }
+  .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 18px; flex-wrap: wrap; }
+  .filter-btn { border: 1px solid #c9cde0; background: #fff; padding: 8px 16px; border-radius: 999px;
+    cursor: pointer; font-size: 14px; transition: background-color .25s ease, transform .25s ease; }
+  .filter-btn:hover { transform: translateY(-1px); }
+  .filter-btn.active { background: #6c63ff; color: #fff; border-color: #6c63ff; }
+  #status { margin-left: auto; font-size: 14px; color: #555b73; }
+  .board { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .task { background: #fff; border: 1px solid #e2e5f1; border-radius: 14px; padding: 18px; }
+  .task h2 { font-size: 17px; margin-bottom: 6px; }
+  .task p { font-size: 14px; color: #555b73; }
+  .tag { display: inline-block; margin-top: 10px; font-size: 12px; padding: 3px 10px; border-radius: 999px; background: #eceaff; color: #4a43b8; }
+  .tag.personal { background: #e6f7ee; color: #1d7a4c; }
+  #card { cursor: grab; touch-action: none; user-select: none; border: 2px solid #6c63ff; }
+  #card:active { cursor: grabbing; }
+  .spacer { height: 900px; }
+  footer { padding: 30px 40px; color: #555b73; font-size: 13px; }
+  #hover-chip { display: inline-block; margin-top: 14px; background: #ffb703; color: #3a2c00;
+    padding: 8px 14px; border-radius: 999px; font-size: 13px; cursor: pointer;
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1); }
+  #hover-chip:hover { transform: scale(1.12); }
+</style>
+</head>
+<body>
+<header>
+  <div id="parallax-layer" aria-hidden="true"></div>
+  <div class="inner">
+    <h1>Flowboard</h1>
+    <p>Your week at a glance. Drag the launch card — it springs home.</p>
+    <span id="hover-chip">Hover me</span>
+  </div>
+</header>
+<main>
+  <div class="toolbar" role="toolbar" aria-label="Filter tasks">
+    <button id="filter-all" class="filter-btn active" data-filter="all">All</button>
+    <button id="filter-work" class="filter-btn" data-filter="work">Work</button>
+    <button id="filter-personal" class="filter-btn" data-filter="personal">Personal</button>
+    <span id="status" role="status">At rest</span>
+  </div>
+  <section class="board" aria-label="Task board">
+    <article class="task" id="task-1" data-cat="work"><h2>Design review</h2><p>Task on the Flowboard.</p><span class="tag">work</span></article>
+    <article class="task" id="card" data-cat="work"><h2>Ship launch checklist</h2><p>Drag me sideways, then let go.</p><span class="tag">work</span></article>
+    <article class="task" id="task-3" data-cat="personal"><h2>Book flights</h2><p>Task on the Flowboard.</p><span class="tag personal">personal</span></article>
+    <article class="task" id="task-4" data-cat="work"><h2>Fix flaky test</h2><p>Task on the Flowboard.</p><span class="tag">work</span></article>
+    <article class="task" id="task-5" data-cat="personal"><h2>Gym session</h2><p>Task on the Flowboard.</p><span class="tag personal">personal</span></article>
+    <article class="task" id="task-6" data-cat="personal"><h2>Read chapter 4</h2><p>Task on the Flowboard.</p><span class="tag personal">personal</span></article>
+  </section>
+  <div class="spacer" aria-hidden="true"></div>
+</main>
+<footer>Flowboard demo — scroll to see the parallax header.</footer>
+<script>
+  var PARALLAX_FACTOR = 0.3000;
+  var layerEl = document.getElementById('parallax-layer');
+  function applyScroll() { layerEl.style.transform = 'translateY(' + (window.scrollY * PARALLAX_FACTOR) + 'px)'; }
+  window.addEventListener('scroll', applyScroll, { passive: true }); applyScroll();
+
+  document.querySelectorAll('.filter-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.filter-btn').forEach(function (b) { b.classList.toggle('active', b === btn); });
+      var f = btn.dataset.filter;
+      document.querySelectorAll('.task').forEach(function (t) {
+        t.style.display = (f === 'all' || t.dataset.cat === f) ? '' : 'none';
+      });
+    });
+  });
+
+  var SPRING_K = 120;
+  var SPRING_C = 42;
+  var cardEl = document.getElementById('card');
+  var statusEl = document.getElementById('status');
+  var px = 0, pv = 0, isDown = false, downX = 0, downCardX = 0, handle = null, prevT = 0;
+  function step(now) {
+    var dt = Math.min(0.032, (now - prevT) / 1000 || 0.016); prevT = now;
+    pv += (-SPRING_K * px - SPRING_C * pv) * dt; px += pv * dt;
+    cardEl.style.transform = 'translateX(' + px + 'px)';
+    if (Math.abs(px) < 0.05 && Math.abs(pv) < 1) {
+      px = 0; pv = 0; cardEl.style.transform = 'translateX(0px)';
+      statusEl.textContent = 'At rest'; handle = null; return;
+    }
+    handle = requestAnimationFrame(step);
+  }
+  cardEl.addEventListener('pointerdown', function (e) {
+    isDown = true; downX = e.clientX; downCardX = px;
+    if (handle) cancelAnimationFrame(handle); handle = null;
+    cardEl.setPointerCapture(e.pointerId); statusEl.textContent = 'Dragging\u2026';
+  });
+  cardEl.addEventListener('pointermove', function (e) {
+    if (!isDown) return;
+    px = downCardX + (e.clientX - downX); pv = 0;
+    cardEl.style.transform = 'translateX(' + px + 'px)';
+  });
+  cardEl.addEventListener('pointerup', function () {
+    if (!isDown) return; isDown = false;
+    statusEl.textContent = 'Settling\u2026'; prevT = performance.now();
+    handle = requestAnimationFrame(step);
+  });
+</script>
+</body>
+</html>
