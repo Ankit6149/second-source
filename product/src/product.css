@@ -31,6 +31,10 @@ dialog p,dialog li{color:var(--secondary);line-height:1.7}
 .capability-row{border-bottom:1px solid var(--border);padding-bottom:14px}
 .capability-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .capability-head strong{font-size:13px}
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:16px 0}
+.compare-grid section{border:1px solid var(--border);border-radius:14px;padding:16px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(max-width:760px){.compare-grid{grid-template-columns:1fr}}
 /* Keep all workspace scroll areas quiet and consistent with the v0.8 palette. */
 :root{--scroll-thumb:#a9b9ac;--scroll-thumb-hover:#748d7a}
 .shell[data-theme=dark]{--scroll-thumb:#718a76;--scroll-thumb-hover:#9cbba1}

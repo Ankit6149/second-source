@@ -64,6 +64,13 @@ class Candidate:
         auth = headers.get("Authorization", "")
         if auth.startswith("Bearer "):
             return self.tokens.get(auth[7:])
+        # Raw-header token kind (e.g. File Browser X-Auth raw string).
+        # Header name comes from spec.auth, never hardcoded per app.
+        raw_name = (self.spec.get("auth") or {}).get("raw_header_name")
+        if raw_name:
+            token = headers.get(raw_name, "")
+            if token:
+                return self.tokens.get(token)
         return None
 
     def _route(self, method, parts):
@@ -192,6 +199,11 @@ class Candidate:
                            "updated": "2026-01-01T00:00:00Z"},
                "request": body or {}, "params": params, "entity": {}}
         parent_raw = params.get("pid") or params.get("tid")
+        if parent_raw is None:
+            # Generic fallback: a single numeric path param (e.g. {id})
+            # identifies the item, whatever its placeholder name is.
+            numeric = [v for v in params.values() if str(v or "").isdigit()]
+            parent_raw = numeric[-1] if len(numeric) == 1 else None
         parent_id = int(parent_raw) if str(parent_raw or "").isdigit() else None
         kind = route["kind"]
         status = route.get("status", 200)
@@ -206,6 +218,15 @@ class Candidate:
                                 if e.get("_parent") == parent_id) + 1
             ctx["entity_id"] = self._id()
             entity = self._fill_template(route.get("template"), ctx)
+            if not isinstance(entity, dict):
+                # Non-JSON success body (e.g. "201 Created"): the
+                # created entity is described by the request payload,
+                # unwrapping a {"data": {...}} envelope when present.
+                payload = body or {}
+                if isinstance(payload.get("data"), dict):
+                    payload = payload["data"]
+                entity = dict(payload) if isinstance(payload, dict) else {}
+                entity.setdefault("id", ctx["entity_id"])
             if isinstance(entity, dict) and "id" in entity:
                 entity["id"] = ctx["entity_id"]  # bind same-entity refs
             if isinstance(entity, dict):
@@ -248,6 +269,11 @@ class Candidate:
             entity.get("_parent", entity.get("id")))
         if err:
             return err
+        if route["method"] == "DELETE":
+            # HTTP DELETE semantics on the resolved entity (generic,
+            # spec supplies only the success status/template).
+            store.pop(entity.get("id"), None)
+            return status, self._fill_template(route.get("template"), ctx)
         if kind == "compiled_get":
             out = {k: v for k, v in entity.items()
                    if not k.startswith("_")}
@@ -465,6 +491,7 @@ def serve(spec_path, port):
         def do_GET(self): self._go("GET")
         def do_PUT(self): self._go("PUT")
         def do_POST(self): self._go("POST")
+        def do_DELETE(self): self._go("DELETE")
         def log_message(self, *a): pass
 
     HTTPServer(("127.0.0.1", port), Handler).serve_forever()

@@ -89,6 +89,11 @@ export class Api {
     if (!Number.isSafeInteger(after) || after < 0) throw new Error('Invalid event cursor');
     return this.json<{ items: RunEvent[]; next_after: number }>(`/v1/runs/${identifier(id)}/events?after=${after}&limit=500`);
   }
+  orchCreate(title: string, instruction: string, targetId: string, scope: Scope, key: string) { return this.json<{ investigation_id: string; revision: number; scope_digest: string }>(`/v1/orchestration/investigations`, { method: 'POST', headers: { 'Idempotency-Key': key }, body: JSON.stringify({ title, instruction, target_id: targetId, scope }) }, true); }
+  orchAuthorize(id: string, revision: number, scopeDigest: string) { return this.json<{ investigation_id: string; revision: number; scope_digest: string }>(`/v1/orchestration/investigations/${identifier(id)}/authorize`, { method: 'POST', body: JSON.stringify({ expected_revision: revision, scope_digest: scopeDigest }) }, true); }
+  orchEnqueue(id: string, key: string) { return this.json<{ job_id: string; status: string; revision: number }>(`/v1/orchestration/investigations/${identifier(id)}/jobs`, { method: 'POST', headers: { 'Idempotency-Key': key }, body: JSON.stringify({}) }, true); }
+  orchExecute(jobId: string) { return this.json<{ job_id: string; status: string; stage: string | null }>(`/v1/orchestration/jobs/${identifier(jobId)}/execute`, { method: 'POST', body: JSON.stringify({}) }, true); }
+  orchEvents(id: string) { return this.json<{ items: { event_id: number; event_type: string; stage: string | null }[] }>(`/v1/orchestration/investigations/${identifier(id)}/events?limit=100`); }
   verification(id: string) { return this.json<Verification>(`/v1/runs/${identifier(id)}/verification`); }
   report(id: string) { return this.json<Record<string, unknown>>(`/v1/runs/${identifier(id)}/report`); }
   async export(id: string) { const bytes = await this.request(`/v1/runs/${identifier(id)}/export.zip`, {}, false, 8_000_000); return new Blob([bytes.buffer as ArrayBuffer], { type: 'application/zip' }); }
