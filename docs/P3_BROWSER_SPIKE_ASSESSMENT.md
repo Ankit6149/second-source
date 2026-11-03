@@ -1,5 +1,7 @@
 # P3 Advanced 2D Browser Reconstruction — GO/NO-GO Assessment (2026-11-02)
 
+> **Update (2026-11-03):** A bounded slice now exists in `browser-slice/` — Chromium capture of a spring-drag trajectory, physics fit from observations only, held-out 140px drag passed at **1.05px trajectory RMSE**, adversarial variants detected. That validates one owned fixture's motion fidelity; it does **not** overturn the verdict below for general closed-loop website reconstruction, which remains unimplemented. Product UI keeps browser/motion execution unavailable (evidence review only).
+
 **Verdict: NO-GO for the genuine closed loop in this submission window.**
 The submission is not disturbed; Priorities 1–2 carry the entry.
 

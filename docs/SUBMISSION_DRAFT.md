@@ -13,8 +13,8 @@ Final `main` SHA: `FINAL_MAIN_SHA_TO_FILL_AT_MERGE` — owner fills the exact me
 | Oracle control (Vikunja) | NON_AI / runtime-supplied | 6/6 | Hand-written oracle via generic interpreter. Never a model result. |
 | Historical ledger | REAL_MODEL / model-authored | 14/25 | Muse Spark 1.3, frozen 25-case suite. Not comparable to Vikunja. |
 | Muse packet (genuine HTTP) | — | Prepared, not run | No genuine HTTP score until its report exists. |
-| Compiled evidence | EVIDENCE_COMPILED (NON_AI) / evidence-compiled | Pending | No coordinator artifact yet; workbench shows pending, no score. |
-| Browser / motion | — | Unavailable | browser-slice/observations.json not found; adapter absent (P3 NO-GO). |
+| Compiled evidence | EVIDENCE_COMPILED (NON_AI) / evidence-compiled | 6/6 | Deterministic transcription of the 20 public observations (`scripts/evidence_compiler.py`); status-mutation control 2/6. Never a model result; Gemma C stays 2/6. |
+| Browser / motion | NON_AI slice / evidence-compiled | Bounded pass | `browser-slice/`: spring-drag fit from observations only, held-out 140px drag RMSE 1.05px, adversarial variants detected. In-app execution unavailable; one owned fixture only. |
 
 Gemma arms B and D were provider failures and stay unscored — never 0/6.
 
@@ -96,8 +96,8 @@ No agent submits. No receipt exists until step 8 completes.
 3. Open the repo signed-out: https://github.com/Ankit6149/second-source — confirm it loads, the README path works, and no private `.runs` material is public.
 4. Sign in **as the owner** to https://cerebralvalley.ai/e/meta-ai-developer-hackathon/hackathon/submit before **Nov 4, 9:00 PM ET**.
 5. Select the **Indie** track; paste Title, One-liner and section text from this draft verbatim. Enter the repo URL and the final `main` SHA from step 1.
-6. Paste the verified public video URL from step 2. State the Muse packet as prepared-not-run and browser/motion as unavailable; claim no genuine HTTP score and no submitted status.
-7. Re-read every number against the scorecard above (A 0/6, C 2/6 GEMMA_TEST; oracle NON_AI 6/6; ledger REAL_MODEL 14/25). Remove anything without a receipt, then preview the full entry.
+6. Paste the verified public video URL from step 2. State the Muse packet as prepared-not-run and browser/motion as a bounded recorded slice (in-app execution unavailable); claim no genuine HTTP score and no submitted status.
+7. Re-read every number against the scorecard above (A 0/6, C 2/6 GEMMA_TEST; oracle NON_AI 6/6; compiled NON_AI 6/6; ledger REAL_MODEL 14/25). Remove anything without a receipt, then preview the full entry.
 8. Click submit **once**. Save the portal confirmation receipt (screenshot + copied text/ID + timestamp) outside the repo. Only then may any document say "submitted", quoting that receipt.
 
 ## Owner checklist before clicking submit
