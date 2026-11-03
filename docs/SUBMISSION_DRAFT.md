@@ -10,6 +10,7 @@ Final `main` SHA: `FINAL_MAIN_SHA_TO_FILL_AT_MERGE` — owner fills the exact me
 |---|---|---|---|
 | Gemma arm A (prior only) | GEMMA_TEST / model-authored | 0/6 | Scored. Gemma dev test, not Meta, not REAL_MODEL. |
 | Gemma arm C (coverage-grounded) | GEMMA_TEST / model-authored | 2/6 | Scored. A vs C does not isolate the coverage-gate effect. |
+| Hybrid (compiler-assisted model synthesis) | GEMMA_TEST / model-authored | 3/6 | Model edits compiled NON_AI facts per route; beats model-only 2/6, below compiled NON_AI 6/6; public conformance 7/19; repair not admitted. |
 | Oracle control (Vikunja) | NON_AI / runtime-supplied | 6/6 | Hand-written oracle via generic interpreter. Never a model result. |
 | Historical ledger | REAL_MODEL / model-authored | 14/25 | Muse Spark 1.3, frozen 25-case suite. Not comparable to Vikunja. |
 | Muse packet (genuine HTTP) | — | Prepared, not run | No genuine HTTP score until its report exists. |
