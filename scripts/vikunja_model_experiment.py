@@ -198,10 +198,49 @@ def validate_spec(spec) -> list[str]:
     return errors
 
 
+DROP_KEYS = {"views", "background_information", "background_blur_hash"}
+
+
+def compact_observations(observations: str) -> str:
+    """Model-visible observations with UI-view payloads removed.
+
+    Views are default frontend configuration, not contract behavior
+    the bounded subsystem must reproduce field-for-field in prompts;
+    dropping them cut Arm B/C/D prompts from ~17KB of raw JSON to a
+    size the dev provider answers reliably. Statuses, error bodies,
+    permissions and all entity fields are preserved verbatim.
+    """
+    try:
+        data = json.loads(observations)
+    except json.JSONDecodeError:
+        return observations
+
+    def strip(value):
+        if isinstance(value, dict):
+            out = {}
+            for k, v in value.items():
+                if k == "views" and isinstance(v, list):
+                    # Summarized: kind/title/position survive; the
+                    # multi-KB default filter/bucket payload does not.
+                    out[k] = [{kk: vv for kk, vv in item.items()
+                               if kk in ("title", "view_kind", "position",
+                                         "bucket_configuration_mode")}
+                              for item in v if isinstance(item, dict)]
+                elif k not in DROP_KEYS:
+                    out[k] = strip(v)
+            return out
+        if isinstance(value, list):
+            return [strip(v) for v in value]
+        return value
+
+    return json.dumps(strip(data), indent=1)
+
+
 def build_prompt(arm: str, observations: str, extra_obs: str = "") -> str:
     parts = [INTERFACE, SPEC_SCHEMA, ARMS.get(arm, ARMS["C_grounded"])]
     if arm != "A_prior":
-        parts.append("OBSERVATIONS (public probes, authorized):\n" + observations)
+        parts.append("OBSERVATIONS (public probes, authorized):\n"
+                     + compact_observations(observations))
     if extra_obs:
         parts.append("ADDITIONAL OBSERVATIONS (probes you selected):\n" + extra_obs)
     return "\n\n".join(parts)
@@ -213,7 +252,7 @@ def build_selection_prompt(observations: str) -> str:
             "before reconstructing. You see descriptions only, not "
             "outcomes. Choose the probes that would most reduce your "
             "uncertainty about the contract.\n\nMENU:\n" + menu +
-            "\n\nOBSERVATIONS SO FAR:\n" + observations +
+            "\n\nOBSERVATIONS SO FAR:\n" + compact_observations(observations) +
             '\n\nReturn ONLY JSON: {"probes": ["D1_share_write", ...]}')
 
 
@@ -248,15 +287,54 @@ def preflight() -> int:
 def call_gemma(prompt: str, api_key: str) -> str:
     body = {"contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"responseMimeType": "application/json",
-                                 "maxOutputTokens": 8000,
+                                 "maxOutputTokens": 16000,
                                  "temperature": 0.2}}
     req = urllib.request.Request(
         API.format(m=MODEL), data=json.dumps(body).encode(), method="POST")
     req.add_header("Content-Type", "application/json")
     req.add_header("x-goog-api-key", api_key)
-    with urllib.request.urlopen(req, timeout=180) as resp:
+    with urllib.request.urlopen(req, timeout=300) as resp:
         data = json.loads(resp.read().decode())
-    return data["candidates"][0]["content"]["parts"][0]["text"]
+    parts = data["candidates"][0]["content"]["parts"]
+    return "".join(p.get("text", "") for p in parts)
+
+
+def parse_model_json(text: str):
+    """Strict parse, then fence-strip, then embedded-object extraction.
+
+    Extraction never invents fields: it only locates a COMPLETE JSON
+    object the model emitted (Gemma characteristically analyses in
+    prose first). The parse mode is recorded with every result, so an
+    embedded_json admission is never disguised as strict compliance.
+    Anything else is MODEL_OUTPUT_NOT_JSON, raw text preserved.
+    """
+    try:
+        return json.loads(text), "strict"
+    except json.JSONDecodeError:
+        pass
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        stripped = stripped.strip("`")
+        if stripped.startswith("json"):
+            stripped = stripped[4:]
+        try:
+            return json.loads(stripped), "fence_stripped"
+        except json.JSONDecodeError:
+            pass
+    decoder = json.JSONDecoder()
+    best = None
+    for i, ch in enumerate(text):
+        if ch != "{":
+            continue
+        try:
+            obj, _ = decoder.raw_decode(text[i:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict) and isinstance(obj.get("routes"), list):
+            best = obj  # keep the LAST complete spec-shaped object
+    if best is not None:
+        return best, "embedded_json"
+    return None, "unparseable"
 
 
 def start_reference(port: int):
@@ -393,10 +471,11 @@ def run_arm(arm: str, observations: str, api_key: str,
             record["selection_digest"] = digest(sel_prompt)
             raw = call_gemma(sel_prompt, api_key)
             calls += 1
-            try:
-                selected = json.loads(raw).get("probes", [])[:6]
-            except Exception:
-                selected = []
+            OUT.mkdir(parents=True, exist_ok=True)
+            (OUT / "raw_D_selection.txt").write_text(raw, encoding="utf-8")
+            parsed, _ = parse_model_json(raw)
+            selected = (parsed.get("probes", [])[:6]
+                        if isinstance(parsed, dict) else [])
             record["selected_probes"] = selected
             found = execute_menu_probes(selected, ref_base)
             record["probe_observations"] = len(found)
@@ -409,9 +488,13 @@ def run_arm(arm: str, observations: str, api_key: str,
         text = call_gemma(prompt, api_key)
         calls += 1
         record["model_calls"] = calls
-        try:
-            spec = json.loads(text)
-        except json.JSONDecodeError:
+        OUT.mkdir(parents=True, exist_ok=True)
+        raw_path = OUT / f"raw_{arm}.txt"
+        raw_path.write_text(text, encoding="utf-8")
+        record["raw_output"] = str(raw_path)
+        spec, how = parse_model_json(text)
+        record["json_parse"] = how
+        if spec is None:
             record.update(admitted=False, failure_class="MODEL_OUTPUT_NOT_JSON")
             return record
         record.update(evaluate_spec(arm, spec, ref_base, cand_port))
