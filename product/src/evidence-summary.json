@@ -1,0 +1,34 @@
+{
+  "kind": "VIKUNJA_GEMMA_SANITIZED_SUMMARY_V1",
+  "benchmark": "Vikunja v2.4.0 professional API benchmark (/api/v1, bounded scope)",
+  "sourceArtifacts": [
+    ".runs/vikunja-model/gemma_arms_result.json",
+    "scripts/vikunja_oracle_spec.json",
+    "docs/BENCHMARK_VIKUNJA.md",
+    "GitHub issue #25 comment 6594929761 (reported Gemma result, receipts not independently attested in this checkout)"
+  ],
+  "provider": "gemma-test",
+  "classification": "PIPELINE_SMOKE_NOT_META",
+  "model": "gemma-4-26b-a4b-it",
+  "modelAuthorship": "declarative candidate spec only",
+  "interpreterSupplies": "state machine, storage, auth plumbing, permission enforcement, HTTP serving",
+  "interpreterSha256": "sha256:40228af10333780e9d01b99e6872826de1b5277992b48369baa51f0c133ebfc0",
+  "evaluatorSha256": "sha256:d94624265ce79f8cea4a1a5709b09d381e3e43405c8153ad42725e4af899a86a",
+  "heldOutSha256": "sha256:57d07a9224c09d82bfebfde76799751a9845247892ddfa44145fe18a0e80c1fa",
+  "heldOutTotal": 6,
+  "arms": [
+    { "arm": "A_prior", "label": "GEMMA_TEST", "condition": "Prior only (no observations)", "status": "scored", "passed": 0, "total": 6, "failureClass": null },
+    { "arm": "B_observations", "label": "GEMMA_TEST", "condition": "Observations", "status": "provider_failure", "passed": null, "total": 6, "failureClass": "INFRASTRUCTURE" },
+    { "arm": "C_grounded", "label": "GEMMA_TEST", "condition": "Coverage-grounded synthesis", "status": "scored", "passed": 2, "total": 6, "failureClass": null },
+    { "arm": "D_active", "label": "GEMMA_TEST", "condition": "Active experiment selection", "status": "provider_failure", "passed": null, "total": 6, "failureClass": "INFRASTRUCTURE" }
+  ],
+  "oracle": { "label": "NON_AI", "description": "Hand-written oracle spec (public observations only), executed by the generic candidate interpreter. Plumbing control, never a model result.", "passed": 6, "total": 6 },
+  "limitations": [
+    "Gemma arms are GEMMA_TEST (gemma-4-26b-a4b-it via gemma-test provider), not Meta Muse and not REAL_MODEL.",
+    "Provider failures (B, D) are unscored; they are never reported as 0/6.",
+    "A (prior only) vs C (grounded) does not isolate the coverage-gate effect.",
+    "Scores on this benchmark are not comparable to the 14/25 ledger score: different target, suite and denominator.",
+    "Contamination caveat: Vikunja is popular open source; a good score may reflect reconstruction plus possible recall.",
+    "Reported Gemma scores come from issue #25 comment 6594929761; private receipts were not independently inspected in this review."
+  ]
+}

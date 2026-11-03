@@ -16,6 +16,14 @@ dialog p,dialog li{color:var(--secondary);line-height:1.7}
 .report-meta{display:grid;gap:4px;margin:12px 0 20px}.report-meta dt{font-weight:650;color:var(--ink)}.report-meta dd{margin:0 0 8px;color:var(--secondary);overflow-wrap:anywhere;font:12px/1.6 var(--mono)}
 .history-item,.list-row{cursor:pointer}.top-left{min-width:0;flex:1}.top-right{flex:none}.top-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:45vw}
 @media(max-width:760px){dialog{padding:20px;max-height:80dvh}.dock{padding-bottom:max(10px,env(safe-area-inset-bottom))}.composer textarea{font-size:16px}.top-name{max-width:42vw}.preview-label{display:block;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.toast-stack{top:60px;bottom:auto}}
+.evidence-label{font:700 11px var(--mono);letter-spacing:.02em;padding:2px 7px;border-radius:999px;background:var(--tint);color:var(--accent);white-space:nowrap}
+.evidence-table{width:100%;border-collapse:collapse;margin:14px 0;font-size:12.5px}
+.evidence-table th,.evidence-table td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--border);vertical-align:top}
+.evidence-table thead th{color:var(--secondary);font-weight:650}
+.capability-list{display:grid;gap:16px;margin:16px 0}
+.capability-row{border-bottom:1px solid var(--border);padding-bottom:14px}
+.capability-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.capability-head strong{font-size:13px}
 /* Keep all workspace scroll areas quiet and consistent with the v0.8 palette. */
 :root{--scroll-thumb:#a9b9ac;--scroll-thumb-hover:#748d7a}
 .shell[data-theme=dark]{--scroll-thumb:#718a76;--scroll-thumb-hover:#9cbba1}
