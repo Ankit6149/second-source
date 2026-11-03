@@ -236,13 +236,47 @@ def compact_observations(observations: str) -> str:
     return json.dumps(strip(data), indent=1)
 
 
+JSON_FIRST = (
+    "OUTPUT FORMAT (hard requirement): the FIRST character of your "
+    "response MUST be '{' and the entire response MUST be that single "
+    "JSON object. No analysis, no prose, no markdown fences, and no "
+    "explanation before or after the JSON.")
+
+
+def field_inventory_text(observations) -> str:
+    """Generic field inventory for the prompt (observed data only).
+
+    Delegates to scripts/field_inventory.py — the single generic
+    extractor for any HTTP target (per method+route+status class:
+    field names, value classes, one observed exemplar per field).
+    No target-specific field names live here; swapping the
+    observations for a different app's changes only the data.
+    """
+    if isinstance(observations, str):
+        try:
+            observations = json.loads(observations)
+        except json.JSONDecodeError:
+            return ""
+    if not isinstance(observations, list) or not observations:
+        return ""
+    import field_inventory
+    return field_inventory.inventory_prompt_block(observations)
+
+
 def build_prompt(arm: str, observations: str, extra_obs: str = "") -> str:
     parts = [INTERFACE, SPEC_SCHEMA, ARMS.get(arm, ARMS["C_grounded"])]
     if arm != "A_prior":
         parts.append("OBSERVATIONS (public probes, authorized):\n"
                      + compact_observations(observations))
+        inventory = field_inventory_text(observations)
+        if inventory:
+            parts.append(inventory)
     if extra_obs:
         parts.append("ADDITIONAL OBSERVATIONS (probes you selected):\n" + extra_obs)
+        extra_inventory = field_inventory_text(extra_obs)
+        if extra_inventory:
+            parts.append(extra_inventory)
+    parts.append(JSON_FIRST)
     return "\n\n".join(parts)
 
 
@@ -253,7 +287,8 @@ def build_selection_prompt(observations: str) -> str:
             "outcomes. Choose the probes that would most reduce your "
             "uncertainty about the contract.\n\nMENU:\n" + menu +
             "\n\nOBSERVATIONS SO FAR:\n" + compact_observations(observations) +
-            '\n\nReturn ONLY JSON: {"probes": ["D1_share_write", ...]}')
+            '\n\nReturn ONLY JSON: {"probes": ["D1_share_write", ...]}'
+            "\n\n" + JSON_FIRST)
 
 
 def preflight() -> int:
@@ -401,6 +436,10 @@ def evaluate_spec(arm: str, spec, ref_base: str, cand_port: int) -> dict:
              "--reference-url", ref_base,
              "--candidate-url", f"http://127.0.0.1:{cand_port}"],
             capture_output=True, text=True, timeout=900, cwd=ROOT)
+        record["cases"] = [
+            {"case": int(n), "passed": verdict == "PASS"}
+            for n, verdict in re.findall(
+                r"case (\d+): (PASS|FAIL)", result.stdout or "")]
         match = re.search(r"held-out: (\d+)/(\d+)", result.stdout or "")
         # Evaluator exit 1 = candidate failed cases (a valid measured
         # result); only an unparseable run or other exit is an error.
@@ -508,7 +547,10 @@ def run_arm(arm: str, observations: str, api_key: str,
             stop_reference(proc, workdir)
 
 
-def live() -> int:
+ALL_ARMS = ["A_prior", "B_observations", "C_grounded", "D_active"]
+
+
+def live(arms=None) -> int:
     api_key = os.environ.get("GEMMA_API_KEY")
     if not api_key:
         print("BLOCKED: GEMMA_API_KEY not set (rotated key required). "
@@ -518,14 +560,21 @@ def live() -> int:
         print(f"BLOCKED: Vikunja binary missing at {VIKUNJA_BIN}. "
               "Zero model calls made.")
         return 2
+    arms = list(arms) if arms else ALL_ARMS
+    unknown = [a for a in arms if a not in ALL_ARMS]
+    if unknown:
+        print(f"BLOCKED: unknown arms {unknown}. Zero model calls made.")
+        return 2
     observations = OBS.read_text(encoding="utf-8")
     results = {}
-    for i, arm in enumerate(["A_prior", "B_observations", "C_grounded", "D_active"]):
+    for i, arm in enumerate(arms):
         results[arm] = run_arm(arm, observations, api_key, 3460 + i, 3580 + i)
         print(json.dumps(results[arm]))
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "gemma_arms_result.json").write_text(
-        json.dumps(results, indent=1), encoding="utf-8")
+    # A subset rerun never overwrites the full-run record.
+    name = ("gemma_arms_result.json" if arms == ALL_ARMS
+            else "gemma_arms_result_rerun.json")
+    (OUT / name).write_text(json.dumps(results, indent=1), encoding="utf-8")
     return 0
 
 
@@ -533,12 +582,16 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", choices=["preflight", "live"], default="preflight")
     ap.add_argument("--confirm-live", action="store_true")
+    ap.add_argument("--arms", default="",
+                    help="comma-separated subset of arms to run live "
+                         "(default: all arms)")
     args = ap.parse_args()
     if args.mode == "live":
         if not args.confirm_live:
             print("Live mode requires --confirm-live. Zero calls made.")
             return 2
-        return live()
+        arms = [a.strip() for a in args.arms.split(",") if a.strip()] or None
+        return live(arms)
     return preflight()
 
 

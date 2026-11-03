@@ -79,6 +79,19 @@ code{font-family:var(--mono);font-size:12px}
 <p style="font-size:13px;color:var(--muted)" id="probe-note"></p>
 </div></section>
 <section><div class="wrap">
+</div></section>
+<section><div class="wrap">
+<h2>Professional benchmark — Vikunja v2.4.0</h2>
+<p class="sub">A real, self-hosted task-management application (not a fixture), investigated as a black box through its frozen <code>/api/v1</code>. A genuine external model authored a declarative candidate spec; a generic interpreter executed it; an independent held-out evaluator scored six multi-step workflows (projects, tasks, sharing, permissions, done transitions). Recorded results — no live model is called from this page. Full method: <code>docs/BENCHMARK_VIKUNJA.md</code> in the repository.</p>
+<div class="probes" role="group" aria-label="Choose model arm" id="vk-arms"></div>
+<p style="font-size:14px" id="vk-summary"></p>
+<div class="compare">
+<div class="col"><h3>HELD-OUT CASES (EVALUATOR-SIDE, NEVER SHOWN TO THE MODEL)</h3><pre id="vk-cases"></pre></div>
+<div class="col"><h3>CLAIM COVERAGE VS PUBLIC EVIDENCE</h3><pre id="vk-coverage"></pre></div>
+</div>
+<p style="font-size:13px;color:var(--muted)">Diagnosis so far: prior-only reasoning fails on real software conventions (PUT creates, POST updates, 412-vs-400 validation split). Coverage-grounded synthesis earned the two error-contract cases and now fails mainly on field-<i>value</i> fidelity (zero-time literals, per-route null-vs-empty fields, default view payloads) — the next measured improvement targets exactly that. The 6/6 NON_AI oracle only proves the evaluator and spec surface are sound; it is not an AI result. Genuine Meta (Muse) arms are prepared under a frozen authorization packet and have not been run.</p>
+</div></section>
+<section><div class="wrap">
 <h2>Versions, scores, uncertainty</h2>
 <div class="note" id="versions"></div>
 </div></section>
@@ -696,6 +709,46 @@ function showProbe(n){
 document.getElementById("tab-ledger").addEventListener("click",function(){showTarget("ledger");});
 document.getElementById("tab-http").addEventListener("click",function(){showTarget("http");});
 showTarget("ledger");
+})();
+</script>
+
+<script>
+(function(){
+var VK={
+ "A_prior":{label:"A · Prior-only",tag:"GEMMA_TEST",score:"0/6",parse:"embedded_json",
+  summary:"Engineering priors only, no observations. Admitted and measured: 0/6. Priors guessed conventional REST and missed Vikunja's PUT-create / 412-validation contract.",
+  cases:["FAIL","FAIL","FAIL","FAIL","FAIL","FAIL"],
+  coverage:"OBSERVED 5 · ASSUMED 2 · UNKNOWN 9 · CONTRADICTED 0"},
+ "C_grounded":{label:"C · Coverage-grounded",tag:"GEMMA_TEST",score:"2/6",parse:"embedded_json",
+  summary:"Public observations plus claim discipline (claim only what evidence shows). Admitted and measured: 2/6 — both passes are error-contract cases (412 project validation, 403 wrong-password login). Remaining failures are field-value fidelity, not route discovery.",
+  cases:["FAIL","PASS","FAIL","PASS","FAIL","FAIL"],
+  coverage:"OBSERVED 13 · ASSUMED 0 · UNKNOWN 2 · CONTRADICTED 0"},
+ "B_observations":{label:"B · Observations",tag:"GEMMA_TEST",score:"not measured",parse:"-",
+  summary:"Public observations without grounding discipline. Not measured: the development provider timed out on the synthesis call (recorded as INFRASTRUCTURE, no score inferred).",
+  cases:["-","-","-","-","-","-"],coverage:"no admitted spec"},
+ "D_active":{label:"D · Active probing",tag:"GEMMA_TEST",score:"not measured",parse:"-",
+  summary:"The model first chooses probes from a menu, sees their outcomes, then synthesizes. Not measured yet: selection output was unparseable and the synthesis call timed out (recorded, no score inferred). The menu executor itself is verified against the reference.",
+  cases:["-","-","-","-","-","-"],coverage:"no admitted spec"},
+ "oracle":{label:"Oracle control",tag:"NON_AI",score:"6/6",parse:"-",
+  summary:"Hand-written spec built only from public observations, executed by the same interpreter. Proves the spec surface and evaluator can reach full marks. This is an engineering control, NOT an AI result.",
+  cases:["PASS","PASS","PASS","PASS","PASS","PASS"],
+  coverage:"OBSERVED 13 · ASSUMED 0 · UNKNOWN 2 · CONTRADICTED 0"}
+};
+var NAMES=["Create project + two tasks, list","Empty project title rejected","Done/undone state transition","Wrong-password login rejected","Cross-user isolation on private task","Share read-only: read allowed, write denied"];
+var holder=document.getElementById("vk-arms");
+Object.keys(VK).forEach(function(key,i){
+ var b=document.createElement("button"); b.type="button"; b.textContent=VK[key].label+" · "+VK[key].score;
+ b.setAttribute("aria-pressed", i===1?"true":"false"); b.dataset.arm=key;
+ b.addEventListener("click",function(){show(key);}); holder.appendChild(b);
+});
+function show(key){
+ holder.querySelectorAll("button").forEach(function(b){b.setAttribute("aria-pressed",String(b.dataset.arm===key));});
+ var a=VK[key];
+ document.getElementById("vk-summary").innerHTML="<b>"+a.label+"</b> <span class='tag t-nonai'>"+a.tag+"</span> <b>"+a.score+"</b> held-out · parse: "+a.parse+"<br>"+a.summary;
+ document.getElementById("vk-cases").textContent=a.cases.map(function(c,i){return (c==="PASS"?"= ":c==="FAIL"?"!= ":"- ")+"case "+i+": "+NAMES[i]+"  ["+c+"]";}).join("\n");
+ document.getElementById("vk-coverage").textContent=a.coverage+"\n\nClaims are classified against PUBLIC probe evidence only. UNKNOWN claims block any verified-equivalence language.";
+}
+show("C_grounded");
 })();
 </script>
 </body>

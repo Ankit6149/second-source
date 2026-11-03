@@ -185,3 +185,103 @@ C:\tmp\vikunja-bench\bin\vikunja-v2.4.0-windows-4.0-amd64.exe
 python scripts/vikunja_benchmark.py --mode probe
 python scripts/vikunja_benchmark.py --mode evaluate   # reference self-check
 ```
+
+## Gemma C_grounded failure diagnosis (2026-11-03, deterministic, no model calls)
+
+Method: `spec_C_grounded.json` (genuine Gemma arm, 2/6 admitted held-out:
+passed case 1 = 412 project validation, case 3 = 403 wrong-login; failed
+cases 0, 2, 4, 5) was diffed field-by-field against the NON_AI oracle spec
+(`spec_oracle_fresh.json`, 6/6) and the public observations, and run
+through `scripts/vikunja_coverage.py`. No held-out material was read.
+
+Coverage result: C and the oracle are **identical** under
+`vikunja_coverage.py` — 13 OBSERVED, 0 ASSUMED, 0 CONTRADICTED, 2 UNKNOWN
+(`GET /tasks/{tid}` shared-read and `PUT /projects/{pid}/users` non-owner
+denial, unobserved for both), equivalence blocked for both. The coverage
+gate classifies route status, validation, and permission claims only; it
+does not inspect response-field values. That blind spot is exactly where
+C failed. C's `auth` block, every route status, both validation rules
+(412 project / 400 task, exact error bodies), and every permission level
+match the oracle — which is why the two passing cases are the
+validation/auth-only ones.
+
+Failure taxonomy (claim classes, in impact order):
+
+1. **Type-placeholder literals instead of concrete observed defaults**
+   (dominant class). C fills response fields with schema type names —
+   `"string"`, `"int"`, `"bool"`, `"array"`, `"object"`, `"null"`,
+   `"timestamp"` — which the candidate interpreter inserts verbatim.
+   Affected wherever the interpreter does not already supply the field:
+   `due_date`/`start_date`/`end_date` (`"timestamp"` vs observed
+   `0001-01-01T00:00:00Z`), `repeat_after`/`repeat_mode`/`percent_done`/
+   `bucket_id`/`cover_image_attachment_id` (`"int"` vs `0`), `hex_color`
+   (`"string"` vs `""`), `is_favorite` (`"bool"` vs `false`), and
+   `reminders`/`labels`/`attachments`/`reactions` (the string `"null"`
+   vs JSON `null`).
+2. **Views and compaction-dropped project fields.** C has
+   `views: "array"` vs the observed 4 view objects (List/Gantt/Table/
+   Kanban with nested `filter`, bucket ids, positions), and omits
+   `background_information`/`background_blur_hash` entirely. Contributing
+   cause is prompt-side, not only model-side: `compact_observations`
+   drops those keys and truncates view payloads in the model-visible
+   observations.
+3. **Context-dependent null-vs-`[]` and object shapes.** Observed:
+   `assignees` is `[]` on task create/update but `null` on list/get;
+   `related_tasks` is `null` on create/update but `{}` on list/get.
+   C uses one uniform `"array"`/`"object"` placeholder for all routes.
+4. **Identifier/index/created_by update semantics.** The tokens are
+   correct on create/list/get, but the observed update (`POST
+   /tasks/{tid}`) response resets `identifier` to `""` and `created_by`
+   to `null`; the oracle encodes this with `fields_override: true`.
+   C has no override, so the interpreter retains the created values.
+5. **Route-specific permission bodies.** C relies on the global
+   forbidden body (`{code: 0, message: "Forbidden"}`) everywhere and
+   sets no per-route `forbidden_body`; the oracle sets
+   `{code: 0, message: "You don't have the permission to see this"}` on
+   `get_task`. Permission *levels* themselves are all correct.
+6. **Share response target.** C has `username: "string"` vs the
+   interpreter's `<target>` token (observed `"bench_bob"`).
+
+Harmless-by-construction differences (not failure causes): field values
+for keys the interpreter already supplies (`id`, `title`, `done`,
+`priority`, `position`, `created`, `updated`) are ignored without
+`fields_override`, and `created`/`updated` literals canonicalize as
+volatile timestamps. `list_projects` and `get_user` route `fields` are
+not applied by the interpreter at all, for C and the oracle alike.
+
+Prompt improvement shipped with this diagnosis (general, no
+benchmark-specific answers, no hardcoded field names): synthesis and
+selection prompts now append the deterministic **FIELD INVENTORY** from
+the generic extractor `scripts/field_inventory.py` (imported, not
+duplicated — per method+route+status class: response field names,
+value classes such as zero-time/null/empty-list, and one observed
+exemplar per field, from whatever public observations exist for any
+HTTP target; this also re-surfaces field names that
+`compact_observations` drops), and end with a hard JSON-first
+instruction (first character must be `{`, no analysis prose). The
+prompt works unchanged if the observations file is swapped for a
+different app's. Call budgets are unchanged (A/B/C 1 call, D 2 calls).
+Per-case PASS/FAIL lines from the evaluator are now recorded in each
+arm record, and a subset rerun
+(`--arms B_observations,C_grounded,D_active`) writes
+`gemma_arms_result_rerun.json` instead of overwriting the full-run
+record. Unit tests: `tests/test_field_inventory.py` (extractor) and
+`tests/test_vikunja_field_inventory.py` (prompt wiring, invented
+non-Vikunja target).
+
+Rerun status (2026-11-03): **not executed — blocked, zero model calls.**
+`GEMMA_API_KEY` was not present in the rerun environment, and no key
+was written to any file. Command when a rotated key is available
+(process-local env var only):
+
+```powershell
+$env:GEMMA_API_KEY = "<rotated key>"
+python scripts/vikunja_model_experiment.py --mode live --confirm-live --arms B_observations,C_grounded,D_active
+```
+
+Until that runs, whether C improves over 2/6 is **unknown**. The
+inventory now supplies value classes and one observed exemplar per
+field, so it addresses classes 1–3 in principle and JSON-first
+addresses parse failures; class 4 (update-time override semantics)
+and class 5 (route-specific permission bodies) still require the
+model to choose the right spec mechanism, which no inventory supplies.
