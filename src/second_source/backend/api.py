@@ -304,7 +304,8 @@ def create_app(service: BackendService, token_hashes: Mapping[str, str] | None =
                max_concurrent_requests: int = 16, requests_per_minute: int = 120,
                body_timeout_seconds: float = 30,
                identity_resolver: Callable[[str], Principal | None] | None = None,
-               run_executor: Callable[[Principal, str, int], Run] | None = None) -> FastAPI:
+               run_executor: Callable[[Principal, str, int], Run] | None = None,
+               orchestration_service=None) -> FastAPI:
     """Construct a local HTTP adapter using injected service and hashed tokens.
 
     An optional shared artifact store enables verified report and bundle reads.
@@ -546,4 +547,7 @@ def create_app(service: BackendService, token_hashes: Mapping[str, str] | None =
             "Content-Disposition": f'attachment; filename="{run.run_id}.zip"',
         })
 
+    if orchestration_service is not None:
+        from second_source.orchestration.api import create_orchestration_router
+        app.include_router(create_orchestration_router(orchestration_service, owner))
     return app

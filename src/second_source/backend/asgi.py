@@ -1,4 +1,4 @@
-"""Cloud-only ASGI factory. No deployment, migrations or secret reads on import."""
+﻿"""Cloud-only ASGI factory. No deployment, migrations or secret reads on import."""
 from __future__ import annotations
 
 import os
@@ -14,6 +14,7 @@ from .cloud_artifacts import SupabaseArtifactStore, SupabaseHTTPTransport
 from .on_demand import OnDemandMockExecutor
 from .postgres import PostgresStore
 from .service import BackendService
+from second_source.orchestration.service import OrchestrationService
 from .settings import CloudSettings
 
 
@@ -47,7 +48,7 @@ class _SanitizedCloudErrors:
 
 
 def build_cloud_app(settings: CloudSettings, *, store=None, transport=None, identity=None,
-                    executor=None):
+                    executor=None, orchestration_service=None):
     """Inject fakes in tests; configured deployment uses durable PG+private Storage."""
     store = store if store is not None else PostgresStore(
         settings.database_url.get_secret_value(), project_ref=settings.project_ref)
@@ -64,7 +65,9 @@ def build_cloud_app(settings: CloudSettings, *, store=None, transport=None, iden
         executor = OnDemandMockExecutor(service, artifacts, record_artifact=record)
     if not settings.enable_mock_execution:
         executor = None
-    app = create_app(service, artifact_store=artifacts, identity_resolver=identity,
+    if orchestration_service is None:
+        orchestration_service = OrchestrationService(os.environ.get("SECOND_SOURCE_ORCHESTRATION_DB", "/tmp/second-source-orch.sqlite"))
+    app = create_app(service, artifact_store=artifacts, identity_resolver=identity, orchestration_service=orchestration_service,
         max_concurrent_requests=settings.max_concurrent_requests,
         requests_per_minute=settings.requests_per_minute, body_timeout_seconds=15,
         run_executor=executor)
@@ -84,3 +87,5 @@ def create_application():
         return build_cloud_app(CloudSettings.from_environment(os.environ))
     except Exception:
         raise RuntimeError("Cloud startup configuration is invalid or unavailable") from None
+
+

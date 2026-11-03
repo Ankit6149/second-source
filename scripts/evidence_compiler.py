@@ -153,7 +153,8 @@ def compile_spec(observations, source_hash=""):
                 and isinstance(first.get("body"), list) else
                 "compiled_single" if method == "GET" and not is_item else
                 "compiled_get" if method == "GET" else
-                "compiled_share" if segs and segs[-1] == "users" else
+                "compiled_share" if segs and segs[-1] == "users"
+                and len(segs) >= 3 and segs[-2].startswith("{") else
                 "compiled_create" if not is_item else "compiled_update")
         route = {"method": method, "path": path, "kind": kind,
                  "collection": collection, "auth": True,
