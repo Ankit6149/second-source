@@ -89,8 +89,8 @@ code{font-family:var(--mono);font-size:12px}
 </div></section>
 <section><div class="wrap">
 <h2>Professional benchmark — Vikunja v2.4.0</h2>
-<p class="sub">A real, self-hosted task-management application (not a fixture), investigated as a black box through its frozen <code>/api/v1</code>. A genuine external model authored a declarative candidate spec; a generic interpreter executed it; an independent held-out evaluator scored six multi-step workflows (projects, tasks, sharing, permissions, done transitions). Recorded results — no live model is called from this page. Full method: <code>docs/BENCHMARK_VIKUNJA.md</code> in the repository.</p>
-<div class="probes" role="group" aria-label="Choose model arm" id="vk-arms"></div>
+<p class="sub">A real, self-hosted task-management application (not a fixture), investigated as a black box through its frozen <code>/api/v1</code>. A Gemma model (GEMMA_TEST — not Meta, not REAL_MODEL) authored declarative candidate specs; a generic interpreter executed them; an independent held-out evaluator scored six multi-step workflows (projects, tasks, sharing, permissions, done transitions). Recorded results — no live model is called from this page. Full method: <code>docs/BENCHMARK_VIKUNJA.md</code> in the repository.</p>
+<div class="probes" role="group" aria-label="Choose Vikunja result (GEMMA_TEST arms and NON_AI controls are labeled per button)" id="vk-arms"></div>
 <p style="font-size:14px" id="vk-summary"></p>
 <div class="compare">
 <div class="col"><h3>HELD-OUT CASES (EVALUATOR-SIDE, NEVER SHOWN TO THE MODEL)</h3><pre id="vk-cases"></pre></div>
@@ -752,7 +752,7 @@ var VK={
 var NAMES=["Create project + two tasks, list","Empty project title rejected","Done/undone state transition","Wrong-password login rejected","Cross-user isolation on private task","Share read-only: read allowed, write denied"];
 var holder=document.getElementById("vk-arms");
 Object.keys(VK).forEach(function(key,i){
- var b=document.createElement("button"); b.type="button"; b.textContent=VK[key].label+" · "+VK[key].score;
+ var b=document.createElement("button"); b.type="button"; b.textContent=VK[key].label+" · "+VK[key].tag+" · "+VK[key].score;
  b.setAttribute("aria-pressed", i===1?"true":"false"); b.dataset.arm=key;
  b.addEventListener("click",function(){show(key);}); holder.appendChild(b);
 });
