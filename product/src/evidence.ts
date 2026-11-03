@@ -4,7 +4,7 @@
  * Labels are exact and never interchangeable:
  * - GEMMA_TEST: Gemma development arms (gemma-test provider). Not Meta, not REAL_MODEL.
  * - NON_AI: deterministic / hand-written controls. Never a model result.
- * - REAL_MODEL: historical genuine Meta ledger result (14/25). Separate target and suite.
+ * - REAL_MODEL: genuine Meta muse-spark-1.3 only (Vikunja arms in metaArms; historical 14/25 ledger separate target/suite).
  *
  * The Vikunja summary is a committed, sanitized build-time import. The app
  * never fetches `.runs/` at runtime; if the summary is missing or malformed,
@@ -30,6 +30,10 @@ export const PROVENANCE_META: Record<EvidenceProvenance, { label: string; descri
   'runtime-supplied': { label: 'Runtime-supplied', description: 'Behavior supplied by the trusted interpreter/runtime, not by a model.' },
 };
 
+export interface MetaArm { arm: string; label: 'REAL_MODEL'; provenance: 'model-authored'; model: 'muse-spark-1.3'; condition: string; status: 'scored'; passed: number; total: number; passedCases: number[]; selectedProbes?: string[]; probeObservations?: number; }
+export interface MetaArmsResult { label: 'REAL_MODEL'; provenance: 'model-authored'; model: 'muse-spark-1.3'; callsTotal: number; packetDigestsMatched: true; reservationCapUsd: number; artifact: string; arms: MetaArm[]; }
+export interface GemmaRepairResult { arm: string; label: 'GEMMA_TEST'; provenance: 'model-authored'; model: string; condition: string; status: 'scored'; passed: number; total: number; outcome: 'admitted_but_regressed'; note: string; }
+export interface GateAudit { label: 'NON_AI'; provenance: 'runtime-supplied'; kind: 'PUBLIC_VERIFICATION_GATE_AUDIT'; isModelScore: false; description: string; editsConsidered: number; kept: number; regressed: number; tied: number; gatedCandidate: { label: 'EVIDENCE_COMPILED'; parentLabel: 'NON_AI'; provenance: 'evidence-compiled'; passed: number; total: number }; }
 export interface GemmaArm {
   arm: string;
   label: 'GEMMA_TEST';
@@ -39,6 +43,10 @@ export interface GemmaArm {
   passed: number | null;
   total: number;
   failureClass: string | null;
+  passedCases?: number[];
+  selectionVerified?: boolean;
+  probeCount?: number;
+  probeObservations?: number;
 }
 
 export interface CompiledEvidence {
@@ -73,6 +81,9 @@ export interface VikunjaRecord {
   evaluatorSha256: string;
   heldOutSha256: string;
   arms: GemmaArm[];
+  metaArms: MetaArmsResult | null;
+  gemmaRepair: GemmaRepairResult | null;
+  gateAudit: GateAudit | null;
   oracle: { label: 'NON_AI'; provenance: 'runtime-supplied'; description: string; passed: number; total: number };
   compiled: CompiledEvidence;
   limitations: string[];
@@ -152,6 +163,11 @@ export function parseCompiled(value: unknown): CompiledEvidence | null {
  * Validate an untrusted summary value. Returns null on any defect so the UI
  * can show an unavailable state rather than partial fabricated evidence.
  */
+function validCases(v: unknown, passed: number, total: number): v is number[] { return Array.isArray(v) && v.length === passed && v.every(x => Number.isSafeInteger(x) && (x as number) >= 0 && (x as number) < total) && new Set(v).size === v.length; }
+type Opt<T> = { ok: true; value: T | null } | { ok: false };
+export function parseMetaArms(v: unknown): Opt<MetaArmsResult> { if (v === undefined || v === null) return { ok: true, value: null }; if (!isRecord(v) || v.label !== 'REAL_MODEL' || v.provenance !== 'model-authored' || v.model !== 'muse-spark-1.3') return { ok: false }; if (!Number.isSafeInteger(v.callsTotal) || (v.callsTotal as number) < 1 || v.packetDigestsMatched !== true || typeof v.reservationCapUsd !== 'number' || !Number.isFinite(v.reservationCapUsd) || (v.reservationCapUsd as number) <= 0 || typeof v.artifact !== 'string' || !v.artifact || !Array.isArray(v.arms) || v.arms.length < 1 || v.arms.length > 4) return { ok: false }; const arms: MetaArm[] = []; for (const r of v.arms) { if (!isRecord(r) || r.label !== 'REAL_MODEL' || r.provenance !== 'model-authored' || r.model !== 'muse-spark-1.3' || r.status !== 'scored' || typeof r.arm !== 'string' || typeof r.condition !== 'string' || !Number.isSafeInteger(r.passed) || !Number.isSafeInteger(r.total) || (r.total as number) <= 0 || (r.passed as number) < 0 || (r.passed as number) > (r.total as number) || !validCases(r.passedCases, r.passed as number, r.total as number)) return { ok: false }; if (r.selectedProbes !== undefined && (!Array.isArray(r.selectedProbes) || !r.selectedProbes.every(x => typeof x === 'string' && x))) return { ok: false }; if (r.probeObservations !== undefined && (!Number.isSafeInteger(r.probeObservations) || (r.probeObservations as number) < 0)) return { ok: false }; arms.push({ arm: r.arm, label: 'REAL_MODEL', provenance: 'model-authored', model: 'muse-spark-1.3', condition: r.condition, status: 'scored', passed: r.passed as number, total: r.total as number, passedCases: [...(r.passedCases as number[])], ...(r.selectedProbes !== undefined ? { selectedProbes: [...(r.selectedProbes as string[])] } : {}), ...(r.probeObservations !== undefined ? { probeObservations: r.probeObservations as number } : {}) }); } return { ok: true, value: { label: 'REAL_MODEL', provenance: 'model-authored', model: 'muse-spark-1.3', callsTotal: v.callsTotal as number, packetDigestsMatched: true, reservationCapUsd: v.reservationCapUsd as number, artifact: v.artifact, arms } }; }
+export function parseGemmaRepair(v: unknown): Opt<GemmaRepairResult> { if (v === undefined || v === null) return { ok: true, value: null }; if (!isRecord(v) || v.label !== 'GEMMA_TEST' || v.provenance !== 'model-authored' || v.status !== 'scored' || v.outcome !== 'admitted_but_regressed' || typeof v.arm !== 'string' || typeof v.condition !== 'string' || typeof v.model !== 'string' || !v.model || typeof v.note !== 'string' || !v.note || !Number.isSafeInteger(v.passed) || !Number.isSafeInteger(v.total) || (v.total as number) <= 0 || (v.passed as number) < 0 || (v.passed as number) > (v.total as number)) return { ok: false }; return { ok: true, value: { arm: v.arm, label: 'GEMMA_TEST', provenance: 'model-authored', model: v.model, condition: v.condition, status: 'scored', passed: v.passed as number, total: v.total as number, outcome: 'admitted_but_regressed', note: v.note } }; }
+export function parseGateAudit(v: unknown): Opt<GateAudit> { if (v === undefined || v === null) return { ok: true, value: null }; if (!isRecord(v) || v.label !== 'NON_AI' || v.provenance !== 'runtime-supplied' || v.kind !== 'PUBLIC_VERIFICATION_GATE_AUDIT' || v.isModelScore !== false || typeof v.description !== 'string' || !v.description) return { ok: false }; for (const k of ['editsConsidered', 'kept', 'regressed', 'tied'] as const) { if (!Number.isSafeInteger(v[k]) || (v[k] as number) < 0) return { ok: false }; } if ((v.kept as number) + (v.regressed as number) + (v.tied as number) !== v.editsConsidered) return { ok: false }; if (!isRecord(v.gatedCandidate) || v.gatedCandidate.label !== 'EVIDENCE_COMPILED' || v.gatedCandidate.parentLabel !== 'NON_AI' || v.gatedCandidate.provenance !== 'evidence-compiled' || !Number.isSafeInteger(v.gatedCandidate.passed) || !Number.isSafeInteger(v.gatedCandidate.total) || (v.gatedCandidate.total as number) <= 0 || (v.gatedCandidate.passed as number) < 0 || (v.gatedCandidate.passed as number) > (v.gatedCandidate.total as number)) return { ok: false }; return { ok: true, value: { label: 'NON_AI', provenance: 'runtime-supplied', kind: 'PUBLIC_VERIFICATION_GATE_AUDIT', isModelScore: false, description: v.description, editsConsidered: v.editsConsidered as number, kept: v.kept as number, regressed: v.regressed as number, tied: v.tied as number, gatedCandidate: { label: 'EVIDENCE_COMPILED', parentLabel: 'NON_AI', provenance: 'evidence-compiled', passed: v.gatedCandidate.passed as number, total: v.gatedCandidate.total as number } } }; }
 export function parseVikunjaSummary(value: unknown): VikunjaRecord | null {
   if (!isRecord(value)) return null;
   if (value.kind !== 'VIKUNJA_GEMMA_SANITIZED_SUMMARY_V1') return null;
@@ -178,15 +194,26 @@ export function parseVikunjaSummary(value: unknown): VikunjaRecord | null {
     // Provenance is part of the claim: a model arm relabeled as compiled or
     // runtime-supplied would misstate authorship, so reject it outright.
     if (raw.provenance !== undefined && raw.provenance !== 'model-authored') return null;
+    if (raw.passedCases !== undefined && !(raw.status === 'scored' && validCases(raw.passedCases, raw.passed as number, raw.total as number))) return null;
+    if (raw.selectionVerified !== undefined && typeof raw.selectionVerified !== 'boolean') return null;
+    if (raw.probeCount !== undefined && (!Number.isSafeInteger(raw.probeCount) || (raw.probeCount as number) < 0)) return null;
+    if (raw.probeObservations !== undefined && (!Number.isSafeInteger(raw.probeObservations) || (raw.probeObservations as number) < 0)) return null;
     arms.push({
       arm: raw.arm, label: 'GEMMA_TEST', provenance: 'model-authored', condition: raw.condition,
       status: raw.status, passed: raw.passed as number | null,
       total: raw.total as number,
       failureClass: typeof raw.failureClass === 'string' ? raw.failureClass : null,
+      ...(raw.passedCases !== undefined ? { passedCases: [...(raw.passedCases as number[])] } : {}),
+      ...(raw.selectionVerified !== undefined ? { selectionVerified: raw.selectionVerified as boolean } : {}),
+      ...(raw.probeCount !== undefined ? { probeCount: raw.probeCount as number } : {}),
+      ...(raw.probeObservations !== undefined ? { probeObservations: raw.probeObservations as number } : {}),
     });
   }
   if (!isRecord(value.oracle) || value.oracle.label !== 'NON_AI') return null;
   if (value.oracle.provenance !== undefined && value.oracle.provenance !== 'runtime-supplied') return null;
+  const metaArms = parseMetaArms(value.metaArms); if (!metaArms.ok) return null;
+  const gemmaRepair = parseGemmaRepair(value.gemmaRepair); if (!gemmaRepair.ok) return null;
+  const gateAudit = parseGateAudit(value.gateAudit); if (!gateAudit.ok) return null;
   const compiled = parseCompiled(value.compiled);
   if (compiled === null) return null;
   if (!Number.isSafeInteger(value.oracle.passed) || !Number.isSafeInteger(value.oracle.total)) return null;
@@ -204,6 +231,9 @@ export function parseVikunjaSummary(value: unknown): VikunjaRecord | null {
     evaluatorSha256: value.evaluatorSha256 as string,
     heldOutSha256: value.heldOutSha256 as string,
     arms,
+    metaArms: metaArms.value,
+    gemmaRepair: gemmaRepair.value,
+    gateAudit: gateAudit.value,
     oracle: {
       label: 'NON_AI',
       provenance: 'runtime-supplied',
@@ -227,6 +257,8 @@ export function vikunjaRecord(): VikunjaRecord | null {
 }
 
 /** One-line honest score text for an arm; provider failures are never 0/total. */
+export function metaArmScoreText(arm: MetaArm): string { return `${arm.passed}/${arm.total}`; }
+export function gateAuditText(audit: GateAudit): string { return `${audit.kept}/${audit.editsConsidered} kept, ${audit.regressed} regressed, ${audit.tied} tied (NON_AI audit, not a model score)`; }
 export function armScoreText(arm: GemmaArm): string {
   return arm.status === 'scored' ? `${arm.passed}/${arm.total}` : 'Not scored — provider failure';
 }

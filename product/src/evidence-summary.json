@@ -3,6 +3,7 @@
   "benchmark": "Vikunja v2.4.0 professional API benchmark (/api/v1, bounded scope)",
   "sourceArtifacts": [
     ".runs/vikunja-model/gemma_arms_result.json",
+    ".runs/vikunja-model/meta_arms_result.json",
     "scripts/vikunja_oracle_spec.json",
     "docs/BENCHMARK_VIKUNJA.md",
     "GitHub issue #25 comment 6594929761 (reported Gemma result, receipts not independently attested in this checkout)"
@@ -20,9 +21,12 @@
     { "arm": "A_prior", "label": "GEMMA_TEST", "provenance": "model-authored", "condition": "Prior only (no observations)", "status": "scored", "passed": 0, "total": 6, "failureClass": null },
     { "arm": "B_observations", "label": "GEMMA_TEST", "provenance": "model-authored", "condition": "Observations", "status": "provider_failure", "passed": null, "total": 6, "failureClass": "INFRASTRUCTURE" },
     { "arm": "C_grounded", "label": "GEMMA_TEST", "provenance": "model-authored", "condition": "Coverage-grounded synthesis", "status": "scored", "passed": 2, "total": 6, "failureClass": null },
-    { "arm": "D_active", "label": "GEMMA_TEST", "provenance": "model-authored", "condition": "Active experiment selection", "status": "provider_failure", "passed": null, "total": 6, "failureClass": "INFRASTRUCTURE" },
-    { "arm": "H_hybrid", "label": "GEMMA_TEST", "provenance": "model-authored", "condition": "Compiler-assisted per-route synthesis: model edits deterministic compiled facts (templates carried, contract fields model-decided)", "status": "scored", "passed": 3, "total": 6, "failureClass": null }
+    { "arm": "D_active", "label": "GEMMA_TEST", "provenance": "model-authored", "condition": "Active experiment selection (selection fixed and verified: strict parse, 6 probes, 27 observations; synthesis blocked by provider 429/500)", "status": "provider_failure", "passed": null, "total": 6, "failureClass": "INFRASTRUCTURE", "selectionVerified": true, "probeCount": 6, "probeObservations": 27 },
+    { "arm": "H_hybrid", "label": "GEMMA_TEST", "provenance": "model-authored", "condition": "Compiler-assisted per-route synthesis: model edits deterministic compiled facts (templates carried, contract fields model-decided)", "status": "scored", "passed": 3, "total": 6, "failureClass": null, "passedCases": [0, 2, 3] }
   ],
+  "metaArms": { "label": "REAL_MODEL", "provenance": "model-authored", "model": "muse-spark-1.3", "callsTotal": 3, "packetDigestsMatched": true, "reservationCapUsd": 0.5, "artifact": ".runs/vikunja-model/meta_arms_result.json", "arms": [{ "arm": "C_grounded", "label": "REAL_MODEL", "provenance": "model-authored", "model": "muse-spark-1.3", "condition": "Coverage-grounded synthesis", "status": "scored", "passed": 2, "total": 6, "passedCases": [1, 3] }, { "arm": "D_active", "label": "REAL_MODEL", "provenance": "model-authored", "model": "muse-spark-1.3", "condition": "Active experiment selection", "status": "scored", "passed": 1, "total": 6, "passedCases": [3], "selectedProbes": ["D1", "D4", "D5", "D6", "D7"], "probeObservations": 22 }] },
+  "gemmaRepair": { "arm": "H_repair_per_route", "label": "GEMMA_TEST", "provenance": "model-authored", "model": "gemma-4-26b-a4b-it", "condition": "Per-route repair (semantic admission)", "status": "scored", "passed": 2, "total": 6, "outcome": "admitted_but_regressed", "note": "Semantic admission admitted the repair but held-out regressed to 2/6 (from H_hybrid 3/6). Measured negative result, not an improvement." },
+  "gateAudit": { "label": "NON_AI", "provenance": "runtime-supplied", "kind": "PUBLIC_VERIFICATION_GATE_AUDIT", "isModelScore": false, "description": "Damage-prevention audit: NON_AI public-verification gate mechanism applied over GEMMA_TEST model route edits. Not a model score.", "editsConsidered": 8, "kept": 0, "regressed": 5, "tied": 3, "gatedCandidate": { "label": "EVIDENCE_COMPILED", "parentLabel": "NON_AI", "provenance": "evidence-compiled", "passed": 6, "total": 6 } },
   "oracle": { "label": "NON_AI", "provenance": "runtime-supplied", "description": "Hand-written oracle spec (public observations only), executed by the generic candidate interpreter. Plumbing control, never a model result.", "passed": 6, "total": 6 },
   "compiled": { "label": "EVIDENCE_COMPILED", "parentLabel": "NON_AI", "provenance": "evidence-compiled", "status": "available", "reason": null, "passed": 6, "total": 6, "artifact": ".runs/vikunja-model/spec_compiled.json", "artifactSha256": "sha256:a5c9104eebe74bf1f7620a7ca67d28535dbae87728ee4bcce246afe127ad4984" },
   "limitations": [
@@ -33,6 +37,10 @@
     "EVIDENCE_COMPILED 6/6 is deterministic transcription of the 20 public observations (spec sha256:a5c9104eebe74bf1f7620a7ca67d28535dbae87728ee4bcce246afe127ad4984; evidence sha256:40f23ce95eb9199a3c9cef33b8dd440f2f9afd0f0a298a9fdfb07342a5f66777), re-verified this session with a status-mutation control scoring 2/6. It is NON_AI — not a model result. The model-authored Gemma C remains 2/6.",
     "Scores on this benchmark are not comparable to the 14/25 ledger score: different target, suite and denominator.",
     "Contamination caveat: Vikunja is popular open source; a good score may reflect reconstruction plus possible recall.",
-    "Reported Gemma scores come from issue #25 comment 6594929761; private receipts were not independently inspected in this review."
+    "Reported Gemma scores come from issue #25 comment 6594929761; private receipts were not independently inspected in this review.",
+    "REAL_MODEL Vikunja arms are genuine Meta muse-spark-1.3 results only (3 calls total, packet digests matched, $0.50 reservation cap; record .runs/vikunja-model/meta_arms_result.json): C_grounded 2/6 held-out (cases 1,3), D_active 1/6 (case 3; selected probes D1,D4,D5,D6,D7; 22 probe observations). They are not GEMMA_TEST and not the historical 14/25 ledger.",
+    "GEMMA_TEST H_hybrid re-measured 3/6 held-out (cases 0,2,3). Gemma per-route repair (semantic admission) was admitted but regressed held-out to 2/6: a measured negative result.",
+    "Public-verification gate audit is a NON_AI damage-prevention mechanism over GEMMA_TEST edits, never a model score: 0/8 model route edits kept, 5 regressed public conformance, 3 tied; the gated candidate is the compiled NON_AI 6/6.",
+    "GEMMA_TEST D_active: selection fixed and verified (strict parse, 6 probes, 27 observations); synthesis blocked by provider 429/500 (INFRASTRUCTURE) and therefore unscored."
   ]
 }

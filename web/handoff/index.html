@@ -59,8 +59,8 @@ footer{background:var(--dark);color:#93a89a;padding:40px 0;font-size:13.5px}foot
 <p class="sub">Verified at handoff time. “Done” means tested and deployed, not merely written.</p>
 <div class="status">
 <div class="cell"><b>Product — live</b><span class="tag t-done">DONE</span><br><span>Production is public and signed-out accessible with zero console errors on /, /evidence/, /console/, /app/ and /lab/.</span></div>
-<div class="cell"><b>Genuine Meta Vikunja result</b><span class="tag t-not">NOT DONE</span><br><span>No genuine Meta-model reconstruction of the professional benchmark exists yet. The frozen packet is verified and owner-authorized; it has never been run. Step 1 unblocks it.</span></div>
-<div class="cell"><b>Best model evidence today</b><span class="tag t-owner">GEMMA_TEST</span><br><span>Gemma: A 0/6, C 2/6, hybrid 3/6. Deterministic compiler and oracle: 6/6 (NON_AI controls — never presented as AI). Historical Muse ledger: 14/25 (REAL_MODEL).</span></div>
+<div class="cell"><b>Genuine Meta Vikunja result</b><span class="tag t-done">DONE</span><br><span>muse-spark-1.3, 3 calls, packet digests matched, $0.50 cap: Arm C grounded 2/6 (cases 1,3), Arm D active 1/6 (case 3; model-selected probes, 22 observations). REAL_MODEL, independently scored.</span></div>
+<div class="cell"><b>Model evidence today</b><span class="tag t-done">MEASURED</span><br><span>Meta: C 2/6, D 1/6 (REAL_MODEL). Gemma: A 0/6, C 2/6, hybrid 3/6, repair regressed to 2/6 (GEMMA_TEST). Compiler/oracle 6/6 (NON_AI controls). Historical Muse ledger: 14/25.</span></div>
 <div class="cell"><b>Demo video</b><span class="tag t-owner">RENDERED, NOT HOSTED</span><br><span>Video v3 exists only on the build machine (170.02s). The portal needs a public URL. Step 3.</span></div>
 <div class="cell"><b>Portal submission</b><span class="tag t-not">NOT SUBMITTED</span><br><span>No receipt exists. Submission text is prepared. Step 4 is the submission itself.</span></div>
 <div class="cell"><b>Deadline</b><span class="tag t-owner">FIXED</span><br><span>November 4, 9:00 PM ET (November 5, 7:30 AM IST). Steps 1–4 are sequenced so the entry is submittable well before it.</span></div>
@@ -72,19 +72,15 @@ footer{background:var(--dark);color:#93a89a;padding:40px 0;font-size:13.5px}foot
 <p class="sub">Do them in order. Steps 1–2 take minutes on your side; my side then runs automatically.</p>
 
 <div class="step">
-<h3><span class="n">1</span>Set the Meta API key on this machine <span class="tag t-owner">OWNER · ~2 MIN</span></h3>
-<p>Open PowerShell and run:</p>
-<pre id="cmd1">setx MODEL_API_KEY "&lt;your Meta Model API key&gt;"
-setx SECOND_SOURCE_MAX_RUN_USD "0.50"</pre>
-<button class="copy" data-copy="cmd1" type="button">Copy commands</button>
-<p>Then open a <b>new</b> terminal (setx only affects new sessions) and reply in chat: <b>“Meta key is set for the Vikunja packet.”</b> Do not paste the key in chat.</p>
-<p class="why"><b>Why:</b> this fires the genuine Muse Spark Vikunja experiment — the one result that lets judges see Meta AI reconstruct professional software, instead of Gemma development evidence. The packet is already frozen and verified: model <code>muse-spark-1.3</code>, maximum 3 calls, $0.50 hard cap enforced in the gateway, input digests re-verified against the current code at zero cost. Without this key, that experiment cannot run at all, and the headline science stays a development-model result.</p>
+<h3><span class="n">1</span>Meta API key — provided <span class="tag t-done">DONE</span></h3>
+<p>You set the key locally; it was verified by presence only and never printed, committed, or sent anywhere except the Meta API over TLS.</p>
+<p class="why"><b>Result:</b> the genuine Muse Spark Vikunja experiment ran under the frozen packet (3 calls, digests matched, $0.50 reservation cap): Arm C grounded <b>2/6</b>, Arm D active <b>1/6</b> — REAL_MODEL, independently scored on a frozen held-out suite. Full record in the Lab and the repository.</p>
 </div>
 
 <div class="step">
-<h3><span class="n">2</span>Nothing — I run the experiment <span class="tag t-done">AUTOMATIC</span></h3>
-<p>On your confirmation I re-run the zero-call preflight, execute at most 3 capped calls (Arm C grounded synthesis; Arm D active selection + synthesis — no retries, no escalation), score the candidates against the frozen held-out suite on a fresh Vikunja instance, and publish the real result — success or failure — into the Lab and the submission text.</p>
-<p class="why"><b>Why you see this step:</b> so you know exactly what your key triggers, and that it stops on its own. A provider failure is recorded as a failure, never scored as a candidate and never retried with more money.</p>
+<h3><span class="n">2</span>Results published <span class="tag t-done">DONE</span></h3>
+<p>Meta C/D results, the Gemma repair negative result (3/6 to 2/6), and the public-verification gate audit (0/8 model edits kept — damage prevention, not a model score) are live in the Lab, the product evidence, and the submission text, each with its provenance label.</p>
+<p class="why"><b>Why it matters:</b> judges see exactly what Meta AI did, what the development model did, and what is deterministic — nothing blended, nothing upgraded.</p>
 </div>
 
 <div class="step">

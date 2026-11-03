@@ -1,19 +1,22 @@
 # Second Source — Hackathon Submission & Demo Runbook
 
-**Status pointer - 3 November 2026.** Use [issue #25](https://github.com/Ankit6149/second-source/issues/25) for current heads, scientific review and release gates. The older delivery-board and dated sections below are historical unless independently updated. This document does not authorize inference, credentials or deployment. Current verified scorecard is in "Final measured scorecard" below; production: https://second-source-alpha.vercel.app/ - routes /, /evidence/, /console/, /app/, /lab/ verified signed-out with 0 console errors; main c984dfc1793b9d0ff960a02b445914805889dde4 (c984dfc).
+**Status pointer - 3 November 2026.** Use [issue #25](https://github.com/Ankit6149/second-source/issues/25) for current heads, scientific review and release gates. The older delivery-board and dated sections below are historical unless independently updated. This document does not authorize inference, credentials or deployment. Current verified scorecard is in "Final measured scorecard" below; production: https://second-source-alpha.vercel.app/ - routes /, /evidence/, /console/, /app/, /lab/ verified signed-out with 0 console errors; main ce71f3cc1ea632a7678a679704852d5f526f2287 (ce71f3c).
 
-**CURRENT - 3 November 2026:** Portal submission is NOT done; no receipt exists. Video v3 is local only (.runs/submission-v3/second-source-v3.mp4, 170.02s, SHA-256 20E0079343E93B06C80361DCF7EFE3AD9850F07E9A808969C492FB25556F548A) and NOT yet publicly hosted. Production https://second-source-alpha.vercel.app/ routes /, /evidence/, /console/, /app/, /lab/ verified signed-out with 0 console errors. Historical REAL_MODEL Muse ledger 14/25; provider attestation incomplete. muse-spark-1.3 Vikunja packet owner-authorized but not yet run - no genuine Meta Vikunja result exists. Track Indie. Deadline: Nov 4, 9:00 PM ET (Nov 5, 7:30 AM IST) via Cerebral Valley portal. Judge-facing G3 evidence: [JUDGE_EVIDENCE_G3.md](JUDGE_EVIDENCE_G3.md).
+**CURRENT - 3 November 2026:** Portal submission is NOT done; no receipt exists. Video v3 is local only (.runs/submission-v3/second-source-v3.mp4, 170.02s, SHA-256 20E0079343E93B06C80361DCF7EFE3AD9850F07E9A808969C492FB25556F548A) and NOT yet publicly hosted. Production https://second-source-alpha.vercel.app/ routes /, /evidence/, /console/, /app/, /lab/ verified signed-out with 0 console errors. Historical REAL_MODEL Muse ledger 14/25; provider attestation incomplete. Meta Vikunja packet EXECUTED (REAL_MODEL): C 2/6, D 1/6, 3 calls, digests matched, $0.50 reservation cap, receipts lost to a driver crash. Track Indie. Deadline: Nov 4, 9:00 PM ET (Nov 5, 7:30 AM IST) via Cerebral Valley portal. Judge-facing G3 evidence: [JUDGE_EVIDENCE_G3.md](JUDGE_EVIDENCE_G3.md).
 
 ## Final measured scorecard — 3 November 2026 (release review)
 
-**Not submitted. No portal receipt exists.** Only the owner submits, using the exact steps in SUBMISSION_DRAFT.md (Owner-only portal steps). Final main SHA: c984dfc1793b9d0ff960a02b445914805889dde4 (main at c984dfc).
+**Not submitted. No portal receipt exists.** Only the owner submits, using the exact steps in SUBMISSION_DRAFT.md (Owner-only portal steps). Final main SHA: ce71f3cc1ea632a7678a679704852d5f526f2287 (main at ce71f3c).
 
 - Gemma arm A (prior only): **0/6** — `GEMMA_TEST`, model-authored, scored.
-- Gemma arm C (coverage-grounded): **2/6** — `GEMMA_TEST`, model-authored, scored. B and D: provider failures, unscored (never 0/6).
+- Gemma arm C (coverage-grounded): **2/6** - `GEMMA_TEST`, model-authored, scored. B: unmeasured. D: selection fixed/verified (strict parse, 6 probes, 27 observations), synthesis blocked by provider 429/500 (INFRASTRUCTURE), unscored (never 0/6).
 - Oracle control (Vikunja): **6/6** — `NON_AI`, runtime-supplied. Never a model result.
 - Historical ledger: **14/25** — `REAL_MODEL`, model-authored (Muse Spark 1.3, frozen 25-case suite; not comparable to Vikunja).
-- Hybrid H_hybrid: **3/6** - GEMMA_TEST, model-authored, scored (compiler-assisted model synthesis).
-- muse-spark-1.3 Vikunja packet: **owner-authorized but not yet run** - no genuine Meta Vikunja result exists; no score claimed.
+- Hybrid H_hybrid: **3/6 re-measured (cases 0, 2, 3)** - GEMMA_TEST, model-authored, scored (compiler-assisted model synthesis).
+- Gemma per-route repair (semantic admission): **2/6** - GEMMA_TEST; admitted but regressed held-out from 3/6 to 2/6. Measured negative result.
+- Public-verification gate audit: **0/8 model route edits kept, 5 regressed public conformance, 3 tied; gated candidate = compiled NON_AI 6/6** - NON_AI mechanism over GEMMA_TEST edits. Damage-prevention audit, NEVER a model score.
+- Meta Vikunja C_grounded: **2/6 (cases 1, 3)** - `REAL_MODEL` (muse-spark-1.3), EXECUTED, admitted.
+- Meta Vikunja D_active: **1/6 (case 3)** - `REAL_MODEL`, EXECUTED, admitted; selected probes D1, D4, D5, D6, D7; 22 probe observations. Packet total 3 calls, digests matched, $0.50 reservation cap; receipts lost to a driver crash. Record: `.runs/vikunja-model/meta_arms_result.json`.
 - Compiled evidence `EVIDENCE_COMPILED` (`NON_AI`, evidence-compiled): **6/6** — deterministic transcription of the 20 public observations (`scripts/evidence_compiler.py`, spec sha256 `a5c9104e…`); status-mutation control 2/6. Never a model result; Gemma C stays 2/6.
 - Browser / motion: **bounded recorded slice** - browser-slice/ held-out drag RMSE 1.054px and 1.741px, adversarial variants detected; in-app execution unavailable, one owned fixture only. NON_AI.
 

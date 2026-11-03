@@ -1,31 +1,31 @@
 # Authorization packet — genuine Muse Spark Vikunja experiment
 
-Status: PREPARED, zero calls made. This packet requires separate owner
-authorization. The earlier $0.50 approval covered the G4 HTTP fixture
-only and does **not** extend to this experiment.
+Status: **EXECUTED**. 3 calls made total (C synthesis, D selection, D synthesis). Packet digests matched the run record. Results (`REAL_MODEL`, genuine Meta `muse-spark-1.3` only): C_grounded **2/6** held-out (cases 1, 3); D_active **1/6** (case 3; model selected probes D1, D4, D5, D6, D7; 22 probe observations). Spend was reservation-capped at **$0.50**. Gateway receipts were lost to a driver crash after both arms completed - stated plainly: no receipts survive, so no billing figure beyond the $0.50 reservation cap is claimed. Run record: `.runs/vikunja-model/meta_arms_result.json`. This packet is consumed; it does not authorize further calls.
+Executed under separate owner authorization for this packet; the earlier $0.50 G4 approval did not extend to it.
 
-## What would run
+
+## What ran
 
 The same measured protocol as the Gemma development arms
 (`scripts/vikunja_model_experiment.py`), with the provider swapped to
 Meta. Only the two strongest arms, to protect the remaining balance:
 
-| Arm | Semantics | Model calls |
-|---|---|---|
-| C_grounded | coverage-grounded prompting over public observations | 1 synthesis |
-| D_active | model selects probes → executed on fresh reference → synthesis | 1 selection + 1 synthesis |
+| Arm | Semantics | Model calls | Result (REAL_MODEL) |
+|---|---|---|---|
+| C_grounded | coverage-grounded prompting over public observations | 1 synthesis | **2/6 held-out (cases 1, 3), admitted** |
+| D_active | model selects probes, executed on fresh reference, then synthesis | 1 selection + 1 synthesis | **1/6 held-out (case 3), admitted; selected D1, D4, D5, D6, D7; 22 probe observations** |
 
-Total: **3 calls maximum. No retries, no escalation, no fallback.**
-Any failure (non-JSON, schema rejection, evaluator error) is recorded
-and the run stops for that arm; nothing is re-sent.
+Total: **3 calls made. No retries, no escalation, no fallback were used.**
+Both candidates were admitted. The digests below matched `packet_digests` in the run record (`C_grounded` and `D_selection` as listed).
+
 
 ## Exact inputs (frozen at preflight, 2026-11-03 refresh)
 
 Refreshed because the interpreter gained `compiled_*` evidence-compiled
 kinds and observations were regenerated losslessly; the 2026-11-02
-digests below the line are void. Re-run `--mode preflight`
-(zero calls) and confirm every value again immediately before any
-authorized dispatch.
+digests below the line are void. Preflight was re-run
+(zero calls); those values matched the run record at dispatch.
+
 
 - Model: `muse-spark-1.3` via the existing gateway (`MetaProvider`).
 - Arm C context digest: `sha256:1a3702799d8d8f39b21e57de1c02749015ad697ced2cd1ff53939d545833db3c`
@@ -40,36 +40,36 @@ authorized dispatch.
 - Interpreter sha256: `5b869354d8652d06ef90acd9e07b0719701cc036999c68818476bdca6bf8d8dc`
 - Evaluator sha256: `8454aa93739c7dcf032ac91581abaf7ffb84edf4380f6d47e1a3323765081497`
 
-Arm D's synthesis prompt cannot be frozen in advance (it contains
+Arm D's synthesis prompt could not be frozen in advance (it contains
 the probe outcomes the model selects). Its digest is recorded in the
 run record before the synthesis call and reported with the result;
-the frozen part is the selection prompt above. If that is not
-acceptable, authorize Arm C only (1 call, fully frozen).
+the frozen part was the selection prompt above.
 
-If any prompt, held-out file, or interpreter changes, digests change
-and this packet is void — re-preflight before spending.
+
+Spec digests in the record: C `sha256:e0dd3fbe...`, D `sha256:39e3e2c4...` (full values in the run record).
+
 
 ## Budget
 
-- Hard ceiling: **$0.50 total** for this experiment, enforced at the
-  gateway layer (`SECOND_SOURCE_MAX_RUN_USD=0.50`) in addition to this
-  packet. The ~$15 reported balance is not authorization to spend $15.
-- Expected cost: prompts are 1.5K–11K chars with ≤8K output tokens per
-  call; expected well under the ceiling, but the run fails closed at
-  $0.50 regardless of expectations.
-- Muse Spark token pricing was not independently verified at packet
-  time; that is precisely why the hard cap, not an estimate, governs.
+- Hard ceiling applied: **$0.50 total**, reservation-capped during the run by `RunBudget` (record wording). No actual billing total is claimed because gateway receipts were lost to a driver crash.
+- Gateway layer cap was `SECOND_SOURCE_MAX_RUN_USD=0.50`.
 
-## Preconditions (owner, local — never paste keys in chat)
+- Prompts were 1.5K-11K chars with <=8K output tokens per call (packet estimate).
+
+
+- Muse Spark token pricing was not independently verified at packet
+  time; that is precisely why the hard cap, not an estimate, governed.
+
+## Preconditions as executed (historical; do not re-run from this packet)
 
 ```powershell
 setx MODEL_API_KEY "<Meta Model API key>"
 setx SECOND_SOURCE_MAX_RUN_USD "0.50"
 ```
 
-Then confirm in chat: "Meta key is set for the Vikunja packet."
-The agent verifies credential presence without printing it, re-runs
-zero-call preflight, and shows the digests again before the first call.
+Credentials were kept local (never pasted in chat).
+
+
 
 ## Evaluation and reporting
 
@@ -84,8 +84,8 @@ zero-call preflight, and shows the digests again before the first call.
   interpreter supplies state machine, storage, auth plumbing, and
   permission enforcement. Report as spec-level reconstruction.
 
-## Stop conditions
+## Stop conditions (as applied)
 
-Stop and report, spending nothing further, if: digests differ from
+Run stopped after the 3 planned calls. Further calls would have stopped if digests differed,
 this packet, the gateway cannot enforce the cap, the reference or
 evaluator fails its self-check (6/6), or the owner withdraws approval.
