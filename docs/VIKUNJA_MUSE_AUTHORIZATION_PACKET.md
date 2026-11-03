@@ -19,19 +19,26 @@ Total: **3 calls maximum. No retries, no escalation, no fallback.**
 Any failure (non-JSON, schema rejection, evaluator error) is recorded
 and the run stops for that arm; nothing is re-sent.
 
-## Exact inputs (frozen at preflight, 2026-11-02)
+## Exact inputs (frozen at preflight, 2026-11-03 refresh)
+
+Refreshed because the interpreter gained `compiled_*` evidence-compiled
+kinds and observations were regenerated losslessly; the 2026-11-02
+digests below the line are void. Re-run `--mode preflight`
+(zero calls) and confirm every value again immediately before any
+authorized dispatch.
 
 - Model: `muse-spark-1.3` via the existing gateway (`MetaProvider`).
-- Arm C context digest: `sha256:7ce0c2e0d65ac1ed339ef2db133af8be1e7b10fc46572e666ba8a78650426aee`
-- Arm D selection digest: `sha256:2901cac135fc629b239c5f54d20d765d156566821f03dd52f0416e90a4ee2474`
+- Arm C context digest: `sha256:1a3702799d8d8f39b21e57de1c02749015ad697ced2cd1ff53939d545833db3c`
+- Arm D selection digest: `sha256:01878a24b5d18fdabd85ae8aa14496de58050ad474b399320b6d6ac150829956`
 - Public observations: `.runs/vikunja-benchmark/public_observations.json`
-  (16,969 bytes, 19 probes, regenerated on a fresh reference DB;
+  (30,960 bytes, 20 probes with lossless request recording,
+  sha256 `40f23ce95eb9199a3c9cef33b8dd440f2f9afd0f0a298a9fdfb07342a5f66777`;
   verified to contain no held-out titles or outcomes).
 - Held-out evaluator: `scripts/vikunja_held_out.py`
   sha256 `57d07a9224c09d82bfebfde76799751a9845247892ddfa44145fe18a0e80c1fa`
   — never included in any prompt.
-- Interpreter sha256: `40228af10333780e9d01b99e6872826de1b5277992b48369baa51f0c133ebfc0`
-- Evaluator sha256: `d94624265ce79f8cea4a1a5709b09d381e3e43405c8153ad42725e4af899a86a`
+- Interpreter sha256: `5b869354d8652d06ef90acd9e07b0719701cc036999c68818476bdca6bf8d8dc`
+- Evaluator sha256: `8454aa93739c7dcf032ac91581abaf7ffb84edf4380f6d47e1a3323765081497`
 
 Arm D's synthesis prompt cannot be frozen in advance (it contains
 the probe outcomes the model selects). Its digest is recorded in the

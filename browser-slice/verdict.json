@@ -1,0 +1,83 @@
+{
+  "heldOutDragPx": 140,
+  "captureDragPx": 240,
+  "functional": {
+    "refFinalStatus": "At rest",
+    "candFinalStatus": "At rest",
+    "refFinalX": 0,
+    "candFinalX": 0,
+    "match": true
+  },
+  "layout": {
+    "maxCardBoxDiffPx": 0,
+    "tolerancePx": 4,
+    "pass": true
+  },
+  "trajectory": {
+    "rmseCandidatePx": 1.054,
+    "settlingRefS": 0.645800000011921,
+    "settlingCandS": 0.6364000000357628,
+    "settlingDiffS": 0.009
+  },
+  "overshoot": {
+    "refMinX": -33.47,
+    "candMinX": -32.6,
+    "refPresent": true,
+    "candPresent": true,
+    "match": true
+  },
+  "parallax": {
+    "maxLayerRectDiffPx": 0,
+    "refSeq": [
+      {
+        "scrollY": 0,
+        "layerRectY": -120
+      },
+      {
+        "scrollY": 200,
+        "layerRectY": -50
+      },
+      {
+        "scrollY": 400,
+        "layerRectY": 20
+      },
+      {
+        "scrollY": 600,
+        "layerRectY": 90
+      }
+    ],
+    "candSeq": [
+      {
+        "scrollY": 0,
+        "layerRectY": -120
+      },
+      {
+        "scrollY": 200,
+        "layerRectY": -50
+      },
+      {
+        "scrollY": 400,
+        "layerRectY": 20
+      },
+      {
+        "scrollY": 600,
+        "layerRectY": 90
+      }
+    ],
+    "pass": true
+  },
+  "adversarial": {
+    "thresholdRmsePx": 8,
+    "noOvershootVariant": {
+      "rmsePx": 38.543,
+      "overshootPresent": false,
+      "detectedDifferent": true
+    },
+    "wrongEasingVariant": {
+      "rmsePx": 35.809,
+      "overshootPresent": false,
+      "detectedDifferent": true
+    }
+  },
+  "pass": true
+}

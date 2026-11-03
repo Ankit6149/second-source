@@ -1,6 +1,6 @@
 # Second Source — authoritative delivery board
 
-**CURRENT — 29 October 2026 IST.** Single current status source. Dated audit records are historical. [Product PRD](MASTER_PRD.md); [owner backend directive](https://github.com/Ankit6149/second-source/issues/2#issuecomment-6477673246); [ownership/policy](COORDINATION_CHARTER.md).
+**SUPERSEDED as status source (3 November 2026).** This board is a historical record through 29 October 2026; it is no longer the current status source. Current verified status: [BENCHMARK_VIKUNJA.md](BENCHMARK_VIKUNJA.md), [HACKATHON_SUBMISSION_RUNBOOK.md](HACKATHON_SUBMISSION_RUNBOOK.md) (final scorecard), repository README "What works today", and [issue #25](https://github.com/Ankit6149/second-source/issues/25). Dated audit records are historical. [Product PRD](MASTER_PRD.md); [owner backend directive](https://github.com/Ankit6149/second-source/issues/2#issuecomment-6477673246); [ownership/policy](COORDINATION_CHARTER.md).
 
 ## Published baseline
 

@@ -141,7 +141,9 @@ PROBE_MENU = {
 }
 
 KINDS = {"create_project", "list_projects", "create_task", "list_tasks",
-         "update_task", "get_task", "share_project", "get_user"}
+         "update_task", "get_task", "share_project", "get_user",
+         "compiled_create", "compiled_list", "compiled_get",
+         "compiled_update", "compiled_share", "compiled_single"}
 PERMISSIONS = {"owner", "owner_or_read", "owner_or_write", "any_auth"}
 
 

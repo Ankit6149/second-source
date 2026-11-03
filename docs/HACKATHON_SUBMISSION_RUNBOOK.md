@@ -1,8 +1,20 @@
 # Second Source — Hackathon Submission & Demo Runbook
 
-**Status pointer - 1 November 2026 IST.** Use [issue #25](https://github.com/Ankit6149/second-source/issues/25) for current heads, scientific review and release gates. The older delivery-board and dated sections below are historical unless independently updated. This document does not authorize inference, credentials or deployment.
+**Status pointer - 3 November 2026.** Use [issue #25](https://github.com/Ankit6149/second-source/issues/25) for current heads, scientific review and release gates. The older delivery-board and dated sections below are historical unless independently updated. This document does not authorize inference, credentials or deployment. Current verified scorecard is in "Final measured scorecard" below; production: https://second-source-alpha.vercel.app/ (all routes verified 200 signed-out).
 
 **CURRENT - 1 November 2026 IST:** Submission completion, final video, organizer acceptance and hosted product acceptance remain unverified. A historical genuine Meta-generated candidate was reported as admitted and independently evaluated at 14 passed / 11 failed / 0 indeterminate out of 25; the original local receipts passed consistency checks and a pinned-source, pinned-suite offline replay; provider attestation and the ephemeral broker signature remain unverified. The separately measured NON_AI control scored 22/25. Neither is a new hosted-app inference, and no genuine repair improvement is established. Track Indie. **Deadline confirmed: Nov 4, 9:00 PM ET (Nov 5, 7:30 AM IST)** via the Cerebral Valley portal - submit early and save the confirmation. A ~3-minute demo video is a **mandatory** judging artifact; a 2:59 local draft (SHA-256 069D7DB4) exists but is not yet publicly hosted. Judge-facing G3 evidence: [JUDGE_EVIDENCE_G3.md](JUDGE_EVIDENCE_G3.md).
+
+## Final measured scorecard — 3 November 2026 (release review)
+
+**Not submitted. No portal receipt exists.** Only the owner submits, using the exact steps in `SUBMISSION_DRAFT.md` ("Owner-only portal steps"). Final `main` SHA stays `FINAL_MAIN_SHA_TO_FILL_AT_MERGE` until merge.
+
+- Gemma arm A (prior only): **0/6** — `GEMMA_TEST`, model-authored, scored.
+- Gemma arm C (coverage-grounded): **2/6** — `GEMMA_TEST`, model-authored, scored. B and D: provider failures, unscored (never 0/6).
+- Oracle control (Vikunja): **6/6** — `NON_AI`, runtime-supplied. Never a model result.
+- Historical ledger: **14/25** — `REAL_MODEL`, model-authored (Muse Spark 1.3, frozen 25-case suite; not comparable to Vikunja).
+- Muse packet (genuine HTTP): **prepared, not run** — no genuine HTTP score exists yet.
+- Compiled evidence `EVIDENCE_COMPILED` (`NON_AI`, evidence-compiled): **6/6** — deterministic transcription of the 20 public observations (`scripts/evidence_compiler.py`, spec sha256 `a5c9104e…`); status-mutation control 2/6. Never a model result; Gemma C stays 2/6.
+- Browser / motion: **bounded recorded slice** — `browser-slice/` held-out pass (140px drag RMSE 1.05px, adversarial variants detected); in-app execution unavailable, one owned fixture only.
 
 ## Current evidence and submission stop
 

@@ -84,6 +84,7 @@ PUBLIC_PROBES = [
     ("GET", "/projects/{pid}/tasks?filter=done%20%3D%20false", None, "alice"),
     ("GET", "/projects/999999/tasks", None, "alice"),
     ("GET", "/projects/{pid}/tasks", None, "bob"),
+    ("GET", "/tasks/{tid}", None, "bob"),
     ("GET", "/user", None, None),
     ("PUT", "/projects/{pid}/users", {"username": "bench_bob", "permission": 0}, "alice"),
     ("GET", "/projects/{pid}/tasks", None, "bob"),
@@ -236,11 +237,18 @@ def mode_probe():
                 ids["pid"] = out["id"]
             elif "/tasks" in p:
                 ids["tid"] = out["id"]
+        # Lossless evidence: request AND response, actor, and order.
         observations.append({"action": f"{method} {path}", "as": who,
-                             "status": status, "body": out})
+                             "request": body, "status": status, "body": out})
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "public_observations.json").write_text(
-        json.dumps(observations, indent=1), encoding="utf-8")
+    payload = json.dumps(observations, indent=1)
+    # Bytes, not text: text mode would translate newlines on Windows and
+    # the file would no longer match its own recorded hash.
+    (OUT / "public_observations.json").write_bytes(payload.encode("utf-8"))
+    # Original evidence is hashed; every derived summary references this.
+    import hashlib
+    (OUT / "public_observations.sha256").write_bytes(
+        ("sha256:" + hashlib.sha256(payload.encode()).hexdigest()).encode("utf-8"))
     print(f"probes: {len(observations)} observations -> {OUT / 'public_observations.json'}")
     for o in observations:
         print(" ", o["status"], o["action"])

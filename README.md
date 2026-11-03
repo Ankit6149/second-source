@@ -127,7 +127,7 @@ Its first candidate format is a **restricted, declarative specification**, not a
 
 ## What works today
 
-<sub>Engineering status checked 2 November 2026 (release-review integration of PRs #23+#24+#27). Current GitHub state can change; the [delivery board](docs/G3_DELIVERY_BOARD.md) and linked PRs provide the detailed evidence trail. Some dated board entries are historical checkpoints, not the latest merged SHA.</sub>
+<sub>Engineering status checked 3 November 2026. Current GitHub state can change; [docs/BENCHMARK_VIKUNJA.md](docs/BENCHMARK_VIKUNJA.md) and linked PRs provide the detailed evidence trail. Some dated board entries are historical checkpoints, not the latest merged SHA.</sub>
 
 | Area | Status | Evidence / limitation |
 |:--|:--|:--|
@@ -135,6 +135,9 @@ Its first candidate format is a **restricted, declarative specification**, not a
 | Candidate admission and independent sealed evaluator | **Implemented and tested** | Reproducible controls: hand-authored positive **25/25**; deliberately defective controls trigger **2 / 2 / 1** failures |
 | Scripted end-to-end reconstruction | **Demonstrated — NON_AI** | Mock candidate scores **22 passed / 3 failed / 0 indeterminate / 25** |
 | Genuine Meta-generated G3 candidate | **Demonstrated: 14/25** | Muse Spark 1.3 candidate admitted and independently scored 14 passed / 11 failed / 0 indeterminate (9 schema, 2 error); provider attestation incomplete; see docs/JUDGE_EVIDENCE_G3.md |
+| Professional benchmark: Vikunja v2.4.0 (`/api/v1`, bounded scope) | **Measured — GEMMA_TEST** | Genuine external-model arms (`gemma-4-26b-a4b-it`, dev provider, NOT Meta): A prior-only **0/6**, C coverage-grounded **2/6**, B/D provider-failure (unmeasured, never scored 0); see docs/BENCHMARK_VIKUNJA.md |
+| Evidence-compiled candidate | **Demonstrated: 6/6 — NON_AI** | Deterministic compiler (`scripts/evidence_compiler.py`) transcribes 20 lossless public observations into a candidate spec; 6/6 held-out vs fresh reference, status-mutation control 2/6. Proves the evidence→spec path; **not** a model result |
+| Browser / motion slice | **Bounded demonstration** | Chromium capture → spring-physics fit from observations only → candidate passes held-out 140px drag at 1.05px trajectory RMSE; adversarial variants detected (`browser-slice/`). One owned fixture; no general website reconstruction claimed |
 | Bounded mock candidate repair | **Implemented on [PR #18](https://github.com/Ankit6149/second-source/pull/18); pending integration** | Frozen-context retries and versioned evidence; **not** real feedback-conditioned synthesis or real-model repair |
 | Durable local API and worker | **Implemented** | Owner-scoped local SQLite lifecycle, cancellation/fencing, mock execution, sanitized export |
 | Cloud backend and storage | **Source integrated, not live accepted** | Auth/PostgreSQL/Storage/Render/Railway preparation on [merged PR #19](https://github.com/Ankit6149/second-source/pull/19); live migrations, credentials, and hosted acceptance pending |
