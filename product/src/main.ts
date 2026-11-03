@@ -29,7 +29,7 @@ const state: {
   uncertain: false, actionUncertain: null, executionError: null, busy: false, executing: false, epoch: 0 };
 const api = new Api(apiOrigin, () => state.session?.access_token || null);
 let pollTimer: number | undefined;
-const engineState: { status: 'unknown' | 'available' | 'unavailable'; record: EngineInvestigation | null; poll: number | undefined } =
+const engineState: { status: 'unknown' | 'available' | 'unavailable' | 'hosted'; record: EngineInvestigation | null; poll: number | undefined } =
   { status: 'unknown', record: null, poll: undefined };
 let currentDialogReturn: HTMLElement | null = null;
 let renderedRunId: string | undefined;
@@ -101,6 +101,8 @@ function enginePanel() {
   let body = '';
   if (engineState.status === 'unknown') {
     body = `<p class="component-note">Checking for the local engine at 127.0.0.1:8765…</p>`;
+  } else if (engineState.status === 'hosted') {
+    body = `<p class="component-note">The live engine runs on your own machine and is only probed when this page itself is served locally. This hosted page makes no request to your computer. To use it: clone the repo, run <code>python scripts/investigation_engine.py</code>, then open the local build (<code>npm run dev</code> in product/).</p>`;
   } else if (engineState.status === 'unavailable') {
     body = `<p class="component-note">Local engine not running. Start it with <code>python scripts/investigation_engine.py</code>, then check again. Nothing is faked while it is offline: no run can be started from here.</p><button class="pill-btn" data-action="engine-check">${icon('refresh-cw')} Check again</button>`;
   } else if (!rec) {
@@ -118,6 +120,15 @@ function enginePanel() {
   return `<section class="single-page engine-panel"><h2>Live local engine</h2><p class="component-note">Local operator service on this machine only (127.0.0.1:8765). It executes the deterministic NON_AI pipeline for real; model-authored GEMMA_TEST results stay recorded evidence in the Lab and are never generated here.</p>${body}</section>`;
 }
 async function refreshEngine() {
+  // Never probe a visitor's localhost from a hosted page: the engine
+  // is only reachable (and only meaningful) when this page is itself
+  // served locally. Hosted visitors get an explanatory state and the
+  // page makes zero network requests to their machine.
+  if (location.hostname !== '127.0.0.1' && location.hostname !== 'localhost') {
+    engineState.status = 'hosted';
+    render();
+    return;
+  }
   engineState.status = await checkEngine() ? 'available' : 'unavailable';
   render();
 }
