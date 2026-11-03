@@ -198,10 +198,49 @@ def validate_spec(spec) -> list[str]:
     return errors
 
 
+DROP_KEYS = {"views", "background_information", "background_blur_hash"}
+
+
+def compact_observations(observations: str) -> str:
+    """Model-visible observations with UI-view payloads removed.
+
+    Views are default frontend configuration, not contract behavior
+    the bounded subsystem must reproduce field-for-field in prompts;
+    dropping them cut Arm B/C/D prompts from ~17KB of raw JSON to a
+    size the dev provider answers reliably. Statuses, error bodies,
+    permissions and all entity fields are preserved verbatim.
+    """
+    try:
+        data = json.loads(observations)
+    except json.JSONDecodeError:
+        return observations
+
+    def strip(value):
+        if isinstance(value, dict):
+            out = {}
+            for k, v in value.items():
+                if k == "views" and isinstance(v, list):
+                    # Summarized: kind/title/position survive; the
+                    # multi-KB default filter/bucket payload does not.
+                    out[k] = [{kk: vv for kk, vv in item.items()
+                               if kk in ("title", "view_kind", "position",
+                                         "bucket_configuration_mode")}
+                              for item in v if isinstance(item, dict)]
+                elif k not in DROP_KEYS:
+                    out[k] = strip(v)
+            return out
+        if isinstance(value, list):
+            return [strip(v) for v in value]
+        return value
+
+    return json.dumps(strip(data), indent=1)
+
+
 def build_prompt(arm: str, observations: str, extra_obs: str = "") -> str:
     parts = [INTERFACE, SPEC_SCHEMA, ARMS.get(arm, ARMS["C_grounded"])]
     if arm != "A_prior":
-        parts.append("OBSERVATIONS (public probes, authorized):\n" + observations)
+        parts.append("OBSERVATIONS (public probes, authorized):\n"
+                     + compact_observations(observations))
     if extra_obs:
         parts.append("ADDITIONAL OBSERVATIONS (probes you selected):\n" + extra_obs)
     return "\n\n".join(parts)
@@ -213,7 +252,7 @@ def build_selection_prompt(observations: str) -> str:
             "before reconstructing. You see descriptions only, not "
             "outcomes. Choose the probes that would most reduce your "
             "uncertainty about the contract.\n\nMENU:\n" + menu +
-            "\n\nOBSERVATIONS SO FAR:\n" + observations +
+            "\n\nOBSERVATIONS SO FAR:\n" + compact_observations(observations) +
             '\n\nReturn ONLY JSON: {"probes": ["D1_share_write", ...]}')
 
 
