@@ -85,6 +85,24 @@ test('excessively long notes are rejected without losing the draft', () => {
   } finally { window.happyDOM.abort(); }
 });
 
+test('signed-out home shows what it does, the REAL_MODEL evidence, and one research action', () => {
+  const window = workspace();
+  try {
+    const doc = window.document;
+    const home = doc.querySelector('.empty-home');
+    assert.match(home.textContent, /observes software you own or are authorized to study/i);
+    assert.match(home.textContent, /REAL_MODEL/);
+    assert.match(home.textContent, /14\/25/);
+    assert.match(home.textContent, /never merged/i);
+    assert.match(home.textContent, /Signed out:/);
+    const cta = home.querySelector('[data-action="research"]');
+    assert.ok(cta, 'research record is the clear signed-out action');
+    cta.click();
+    assert.equal(doc.querySelector('dialog').open, true);
+    assert.match(doc.querySelector('dialog').textContent, /14 passed/);
+  } finally { window.happyDOM.abort(); }
+});
+
 test('showroom actions remain separate from investigation results', () => {
   const window = workspace('/?screen=system');
   try {

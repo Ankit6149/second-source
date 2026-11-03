@@ -1,4 +1,4 @@
-"""Public preview route and packaging boundaries; no provider or credentials."""
+﻿"""Public preview route and packaging boundaries; no provider or credentials."""
 from html.parser import HTMLParser
 import json
 import re
@@ -77,7 +77,7 @@ class PublicPreview(unittest.TestCase):
 
     def test_static_package_reuses_canonical_console_and_only_public_files(self):
         output = build()
-        expected = {"index.html", "styles.css", "release.css", "script.js", "console/index.html", "evidence/index.html", "lab/index.html"}
+        expected = {"index.html", "styles.css", "release.css", "script.js", "console/index.html", "evidence/index.html", "lab/index.html", "handoff/index.html"}
         expected.update("assets/" + name for name in ASSETS)
         actual = {path.relative_to(output).as_posix() for path in output.rglob("*") if path.is_file()}
         self.assertEqual(actual, expected)

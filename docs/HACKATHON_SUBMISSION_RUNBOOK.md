@@ -1,26 +1,27 @@
 # Second Source — Hackathon Submission & Demo Runbook
 
-**Status pointer - 3 November 2026.** Use [issue #25](https://github.com/Ankit6149/second-source/issues/25) for current heads, scientific review and release gates. The older delivery-board and dated sections below are historical unless independently updated. This document does not authorize inference, credentials or deployment. Current verified scorecard is in "Final measured scorecard" below; production: https://second-source-alpha.vercel.app/ (all routes verified 200 signed-out).
+**Status pointer - 3 November 2026.** Use [issue #25](https://github.com/Ankit6149/second-source/issues/25) for current heads, scientific review and release gates. The older delivery-board and dated sections below are historical unless independently updated. This document does not authorize inference, credentials or deployment. Current verified scorecard is in "Final measured scorecard" below; production: https://second-source-alpha.vercel.app/ - routes /, /evidence/, /console/, /app/, /lab/ verified signed-out with 0 console errors; main c984dfc1793b9d0ff960a02b445914805889dde4 (c984dfc).
 
-**CURRENT - 1 November 2026 IST:** Submission completion, final video, organizer acceptance and hosted product acceptance remain unverified. A historical genuine Meta-generated candidate was reported as admitted and independently evaluated at 14 passed / 11 failed / 0 indeterminate out of 25; the original local receipts passed consistency checks and a pinned-source, pinned-suite offline replay; provider attestation and the ephemeral broker signature remain unverified. The separately measured NON_AI control scored 22/25. Neither is a new hosted-app inference, and no genuine repair improvement is established. Track Indie. **Deadline confirmed: Nov 4, 9:00 PM ET (Nov 5, 7:30 AM IST)** via the Cerebral Valley portal - submit early and save the confirmation. A ~3-minute demo video is a **mandatory** judging artifact; a 2:59 local draft (SHA-256 069D7DB4) exists but is not yet publicly hosted. Judge-facing G3 evidence: [JUDGE_EVIDENCE_G3.md](JUDGE_EVIDENCE_G3.md).
+**CURRENT - 3 November 2026:** Portal submission is NOT done; no receipt exists. Video v3 is local only (.runs/submission-v3/second-source-v3.mp4, 170.02s, SHA-256 20E0079343E93B06C80361DCF7EFE3AD9850F07E9A808969C492FB25556F548A) and NOT yet publicly hosted. Production https://second-source-alpha.vercel.app/ routes /, /evidence/, /console/, /app/, /lab/ verified signed-out with 0 console errors. Historical REAL_MODEL Muse ledger 14/25; provider attestation incomplete. muse-spark-1.3 Vikunja packet owner-authorized but not yet run - no genuine Meta Vikunja result exists. Track Indie. Deadline: Nov 4, 9:00 PM ET (Nov 5, 7:30 AM IST) via Cerebral Valley portal. Judge-facing G3 evidence: [JUDGE_EVIDENCE_G3.md](JUDGE_EVIDENCE_G3.md).
 
 ## Final measured scorecard — 3 November 2026 (release review)
 
-**Not submitted. No portal receipt exists.** Only the owner submits, using the exact steps in `SUBMISSION_DRAFT.md` ("Owner-only portal steps"). Final `main` SHA stays `FINAL_MAIN_SHA_TO_FILL_AT_MERGE` until merge.
+**Not submitted. No portal receipt exists.** Only the owner submits, using the exact steps in SUBMISSION_DRAFT.md (Owner-only portal steps). Final main SHA: c984dfc1793b9d0ff960a02b445914805889dde4 (main at c984dfc).
 
 - Gemma arm A (prior only): **0/6** — `GEMMA_TEST`, model-authored, scored.
 - Gemma arm C (coverage-grounded): **2/6** — `GEMMA_TEST`, model-authored, scored. B and D: provider failures, unscored (never 0/6).
 - Oracle control (Vikunja): **6/6** — `NON_AI`, runtime-supplied. Never a model result.
 - Historical ledger: **14/25** — `REAL_MODEL`, model-authored (Muse Spark 1.3, frozen 25-case suite; not comparable to Vikunja).
-- Muse packet (genuine HTTP): **prepared, not run** — no genuine HTTP score exists yet.
+- Hybrid H_hybrid: **3/6** - GEMMA_TEST, model-authored, scored (compiler-assisted model synthesis).
+- muse-spark-1.3 Vikunja packet: **owner-authorized but not yet run** - no genuine Meta Vikunja result exists; no score claimed.
 - Compiled evidence `EVIDENCE_COMPILED` (`NON_AI`, evidence-compiled): **6/6** — deterministic transcription of the 20 public observations (`scripts/evidence_compiler.py`, spec sha256 `a5c9104e…`); status-mutation control 2/6. Never a model result; Gemma C stays 2/6.
-- Browser / motion: **bounded recorded slice** — `browser-slice/` held-out pass (140px drag RMSE 1.05px, adversarial variants detected); in-app execution unavailable, one owned fixture only.
+- Browser / motion: **bounded recorded slice** - browser-slice/ held-out drag RMSE 1.054px and 1.741px, adversarial variants detected; in-app execution unavailable, one owned fixture only. NON_AI.
 
 ## Current evidence and submission stop
 
 Use [single delivery board](G3_DELIVERY_BOARD.md) for exact source/CI and [approval package](G2_G3_APPROVAL_PACKAGE.md) for spent grants/evidence identities. PRs #5-#8 merged. G3-D exists and is engineering-tested. New genuine G2 has complete original hypotheses/receipts; older missing historical statements remain missing.
 
-The prior real-attempt summary is superseded by the recorded result above; consumed authorizations do not authorize another inference, retry or repair. NON_AI trusted 25/25, deliberate negatives 2/2/1 and scripted 22/25 never measure Meta quality. A local synthetic-identity fixture journey does not establish hosted product acceptance.
+The prior real-attempt summary is superseded by the recorded result above; consumed authorizations do not authorize another inference, retry or repair. NON_AI controls never measure Meta quality. A local synthetic-identity fixture journey does not establish hosted product acceptance.
 
 Keep submission checklist boxes unverified until direct evidence exists. Plans/example records/commits do not establish a submitted portal entry. Routine merges follow [charter](COORDINATION_CHARTER.md); paid/credential/deployment operations remain separately gated.
 
@@ -100,7 +101,7 @@ change: <https://dev.meta.ai/events/global-hackathon>.
 - [ ] Model-generated candidate **if claimed** with its manifest, bounded executor proof, reference separation
 - [ ] Independent withheld evaluation, reported denominator, concrete passed/failed/indeterminate counts
 - [ ] Controlled negative case: forbidden command/output file rejected, no secret or privileged action disclosed
-- [ ] Required three-minute demo video (at most 180 seconds), with audible narration, readable result labels and a public URL; confirm current upload details in the participant portal
+- [ ] Required demo video: v3 local file 170.02s (SHA-256 20E0079343E93B06C80361DCF7EFE3AD9850F07E9A808969C492FB25556F548A), NOT yet publicly hosted - owner must upload, verify signed-out, and paste public URL; confirm portal upload details
 - [ ] Live hosted demo URL **only if working and safe**; fallback local deterministic demo noted as such
 - [ ] Screenshot/thumbnail: scope > hypothesis > experiment > evidence > candidate > score
 - [ ] Description: problem, technical novelty, Meta API use, safeguards, target users, limitations, comparison against baseline
@@ -164,5 +165,5 @@ All timestamps, pass counts and costs in the final submission MUST come from act
 - Repository history dates the initial PRD and foundation to October 27, the reviewed backend integration to PR #21, and the integrated product and owned HTTP target to PRs #24 and #27 on November 1. Git records use one GitHub account under two display names. The owner must confirm real human collaborators, their actual work and ownership; Git authorship and AI agent labels alone do not establish those facts. Review `git log --reverse --date=iso --format="%ad %an %s"` before submission.
 - The public repository has no tracked root LICENSE or NOTICE; the owner must determine the intended source license and review dependency obligations before claiming it is open source. The npm lockfile lists MIT, MPL-2.0, Apache-2.0, ISC, BSD and 0BSD dependencies; this inventory is not a legal review.
 - A limited scan of the 226 tracked files found no GitHub-token, AWS-key, private-key-header or Slack-token pattern matches. This is not a complete secret scan and does not cover historical commits, alternate token formats, private artifacts or deployed environments. Do not publish local `.runs` wholesale.
-- The owner-provided guide requires a three-minute video. The local synthetic narrated draft and proof bundles need human visual/audio review, publication to a judge-accessible location, and an unauthenticated playback check; no public video link or portal confirmation exists yet. The [official event page](https://dev.meta.ai/events/global-hackathon) lists November 4 at 9 p.m. Eastern as the submission deadline.
+- The owner-provided guide requires a three-minute video. Video v3 (170.02s, SHA-256 20E0079343E93B06C80361DCF7EFE3AD9850F07E9A808969C492FB25556F548A) is local only and NOT yet publicly hosted; it needs human visual/audio review, publication to a judge-accessible location, and an unauthenticated playback check; no public video link or portal confirmation exists yet. The [official event page](https://dev.meta.ai/events/global-hackathon) lists November 4 at 9 p.m. Eastern as the submission deadline.
 - A future Gemma result must identify its own provider, model, authorization, usage and evaluator receipt. It must never use a Meta credential, be relabeled as Meta evidence, or run before its exact packet and budget are approved. No Gemma transport or paid call is enabled by this note.

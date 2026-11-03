@@ -22,6 +22,12 @@ reference per evaluation, evaluator untouched):
   ONE targeted repair. The held-out suite is never shown to the model
   and is run once, on the frozen repaired candidate.
 
+Offline repair machinery (check_public_conformance,
+diagnose_earliest_divergence, build_repair_spec, apply_repair_edits)
+is deterministic NON_AI, public-observations only, and makes no
+model call; a repair outcome is measured only if a future live
+repair call is admitted and scored separately.
+
 Call budget: at most 2 Gemma calls per run. No retries. Live mode
 requires GEMMA_API_KEY in the environment and --confirm-live.
 """
@@ -29,6 +35,7 @@ from __future__ import annotations
 
 import json
 import os
+import copy
 import subprocess
 import sys
 import time
@@ -443,6 +450,365 @@ def diff_text(divergences, limit=6) -> str:
     return "\n".join(out)
 
 
+# --- Offline public conformance, divergence diagnosis, bounded repair ---
+# Deterministic NON_AI machinery: no model call, no network, no live
+# reference, and no sealed evaluator material. Compiled facts stay
+# NON_AI, the hybrid candidate stays GEMMA_TEST, and a repair spec is
+# an instruction object -- never a measured repair result.
+
+DIVERGENCE_CLASSES = ("missing-observation", "bad-inference",
+                      "representation", "implementation")
+COMPILED_FROZEN_FIELDS = ("template", "method", "path")
+REPAIR_EDITABLE_FIELDS = frozenset(
+    {"kind", "status", "access", "collection", "auth", "validate",
+     "forbidden_body"})
+MAX_REPAIR_EDITS = 8
+
+
+def _route_key(route):
+    return (route.get("method"), route.get("path"))
+
+
+def _norm_action(action):
+    text = str(action or "").split("?")[0].strip()
+    if " " not in text:
+        return text, ""
+    method, path = text.split(" ", 1)
+    return method, path
+
+
+def _path_matches(route_path, obs_path):
+    want = [s for s in str(route_path).split("/") if s]
+    got = [s for s in str(obs_path).split("/") if s]
+    if len(want) != len(got):
+        return False
+    return all(w.startswith("{") or g.startswith("{") or w == g
+               for w, g in zip(want, got))
+
+
+def find_route(spec, method, path):
+    for route in (spec or {}).get("routes", []) or []:
+        if route.get("method") == method and _path_matches(
+                route.get("path", ""), path):
+            return route
+    return None
+
+
+def predict_public_status(spec, route, obs):
+    """Declarative status a candidate declares for one public probe."""
+    _method, path = _norm_action(obs.get("action"))
+    auth = (spec or {}).get("auth", {}) or {}
+    observed = obs.get("status")
+    if path == "/login":
+        if isinstance(observed, int) and observed >= 400:
+            return auth.get("login_error_status", 401)
+        return 200
+    if route is None:
+        return 404
+    if obs.get("as") in (None, "None") and route.get("auth", True):
+        return auth.get("unauthenticated_status", 401)
+    request = obs.get("request") or {}
+    if isinstance(request, dict):
+        for rule in route.get("validate", []) or []:
+            if rule.get("rule") == "nonempty":
+                value = request.get(rule.get("field"))
+                if value is None or (isinstance(value, str)
+                                     and value.strip() == ""):
+                    return rule.get("status", 400)
+    return route.get("status", 200)
+
+
+def _declared_error_body(spec, route, obs, predicted):
+    auth = (spec or {}).get("auth", {}) or {}
+    _method, path = _norm_action(obs.get("action"))
+    if path == "/login":
+        return auth.get("login_error_body")
+    if route is None:
+        return auth.get("not_found_body")
+    request = obs.get("request") or {}
+    if isinstance(request, dict):
+        for rule in route.get("validate", []) or []:
+            if rule.get("rule") == "nonempty":
+                value = request.get(rule.get("field"))
+                if value is None or (isinstance(value, str)
+                                     and value.strip() == ""):
+                    return rule.get("error_body")
+    if predicted == 403:
+        return route.get("forbidden_body", auth.get("forbidden_body"))
+    if predicted == 401:
+        return auth.get("unauthenticated_body")
+    return None
+
+
+def _shape_mismatch(template, body):
+    def keys(value):
+        if isinstance(value, dict):
+            return set(value)
+        if isinstance(value, list) and value and isinstance(value[0], dict):
+            return set(value[0])
+        return None
+    want, got = keys(template), keys(body)
+    if want is None or got is None or want == got:
+        return None
+    return (f"template_missing={sorted(got - want)} "
+            f"template_extra={sorted(want - got)}")
+
+
+def check_public_conformance(candidate_spec, public_observations,
+                             compiled_spec=None):
+    """Offline conformance of a candidate against public observations only.
+
+    Declarative (status, validation, declared error bodies, template
+    shape); it is NOT a live replay and makes no held-out claim.
+    Stateful access transitions are left to the live ladder.
+    """
+    divergences, skipped = [], []
+    checked = 0
+    for i, obs in enumerate(public_observations or []):
+        method, path = _norm_action(obs.get("action"))
+        if path == "/info":
+            skipped.append({"probe_index": i, "action": obs.get("action"),
+                            "reason": "info_only_not_a_candidate_route"})
+            continue
+        checked += 1
+        route = find_route(candidate_spec, method, path)
+        predicted = predict_public_status(candidate_spec, route, obs)
+        expected = obs.get("status")
+        div = None
+        if route is None and path != "/login":
+            div = {"kind": "missing_route", "expected_status": expected,
+                   "predicted_status": predicted}
+        elif predicted != expected:
+            div = {"kind": "status", "expected_status": expected,
+                   "predicted_status": predicted}
+        elif isinstance(expected, int) and expected < 300 and route is not None:
+            mismatch = _shape_mismatch(route.get("template"), obs.get("body"))
+            if mismatch:
+                div = {"kind": "template_shape", "detail": mismatch,
+                       "expected_status": expected,
+                       "predicted_status": predicted}
+        elif isinstance(expected, int) and expected >= 400:
+            declared = _declared_error_body(
+                candidate_spec, route, obs, predicted)
+            if declared is not None and declared != obs.get("body"):
+                div = {"kind": "error_body", "expected_status": expected,
+                       "predicted_status": predicted}
+        if div is not None:
+            div.update({"probe_index": i, "action": obs.get("action"),
+                        "actor": obs.get("as")})
+            divergences.append(div)
+    report = {"kind": "VIKUNJA_PUBLIC_CONFORMANCE_OFFLINE_V1",
+              "public_only": True, "live_replay": False,
+              "checked": checked, "passed": checked - len(divergences),
+              "total": checked, "skipped": skipped,
+              "divergences": divergences}
+    if compiled_spec is not None:
+        for div in divergences:
+            div["classification"] = diagnose_divergence(
+                div, candidate_spec, compiled_spec,
+                public_observations)["classification"]
+    return report
+
+
+public_conformance_offline = check_public_conformance
+
+
+def _declared_contract(route):
+    if route is None:
+        return None
+    return {"kind": route.get("kind"), "status": route.get("status"),
+            "access": route.get("access"),
+            "validate": [(r.get("field"), r.get("rule"), r.get("status"))
+                         for r in route.get("validate", []) or []]}
+
+
+def diagnose_divergence(divergence, candidate_spec, compiled_spec,
+                        public_observations):
+    """Classify one divergence; earliest-divergence diagnosis uses this.
+
+    missing-observation: no public probe covers the route/scenario.
+    bad-inference: candidate contradicts both the compiled NON_AI fact
+    and the covering observation. representation: candidate faithfully
+    carries a compiled fact that itself cannot represent the observed
+    body/status. implementation: every declared field agrees, so the
+    remaining gap is execution/state behaviour, not the spec text.
+    """
+    method, path = _norm_action(divergence.get("action"))
+    covering = []
+    for obs in public_observations or []:
+        o_method, o_path = _norm_action(obs.get("action"))
+        if o_method == method and _path_matches(path, o_path):
+            covering.append(obs)
+    if not covering:
+        return {"classification": "missing-observation",
+                "rationale": "no public observation covers this route"}
+    cand = find_route(candidate_spec, method, path)
+    comp = find_route(compiled_spec, method, path) if compiled_spec else None
+    if comp is None:
+        return {"classification": "bad-inference",
+                "rationale": "no compiled fact; candidate contradicts "
+                             "a covering public observation"}
+    expected = divergence.get("expected_status")
+    if expected is None and covering:
+        expected = covering[0].get("status")
+    comp_predicted = predict_public_status(compiled_spec, comp, covering[0])
+    cand_differs = _declared_contract(cand) != _declared_contract(comp)
+    if cand is not None and cand_differs and comp_predicted == expected:
+        return {"classification": "bad-inference",
+                "rationale": "candidate edits contradict the compiled "
+                             "fact and the covering observation"}
+    comp_mismatch = _shape_mismatch(comp.get("template"),
+                                    covering[0].get("body"))
+    if comp_predicted != expected or comp_mismatch:
+        return {"classification": "representation",
+                "rationale": "compiled fact itself diverges from the "
+                             "observation (transcription/spec-language gap)"}
+    if divergence.get("kind") == "template_shape" and cand is not None \
+            and cand.get("template") == comp.get("template"):
+        return {"classification": "representation",
+                "rationale": "candidate carries the compiled template "
+                             "verbatim; its shape cannot represent the body"}
+    return {"classification": "implementation",
+            "rationale": "declared contract agrees with compiled fact "
+                         "and observation; gap is execution/state behaviour"}
+
+
+def diagnose_earliest_divergence(divergences, candidate_spec, compiled_spec,
+                                 public_observations):
+    """Earliest (lowest probe index) divergence, classified."""
+    if not divergences:
+        return None
+    earliest = min(divergences, key=lambda d: d.get("probe_index", 0))
+    result = diagnose_divergence(earliest, candidate_spec, compiled_spec,
+                                 public_observations)
+    return {"probe_index": earliest.get("probe_index"),
+            "action": earliest.get("action"), **result,
+            "divergence": earliest}
+
+
+def route_provenance(candidate_spec, compiled_spec):
+    """Per-route origin: compiled NON_AI vs model-authored, honestly split."""
+    comp = {_route_key(r): r
+            for r in (compiled_spec or {}).get("routes", []) or []}
+    out = []
+    for route in (candidate_spec or {}).get("routes", []) or []:
+        key = _route_key(route)
+        base = comp.get(key)
+        if base is None:
+            origin = "model_authored"
+        elif route.get("template") == base.get("template") and all(
+                route.get(f) == base.get(f)
+                for f in REPAIR_EDITABLE_FIELDS
+                if f in route or f in base):
+            origin = "compiled_non_ai"
+        else:
+            origin = "model_modified_compiled"
+        out.append({"route": list(key), "origin": origin,
+                    "frozen_fields": list(COMPILED_FROZEN_FIELDS),
+                    "editable_fields": sorted(REPAIR_EDITABLE_FIELDS),
+                    "compiled_template_preserved": bool(
+                        base is None
+                        or route.get("template") == base.get("template"))})
+    return out
+
+
+def enforce_compiled_facts(spec, compiled_spec):
+    """New spec with every compiled template restored verbatim.
+
+    Inputs are never mutated; compiled facts cannot be edited here.
+    """
+    out = copy.deepcopy(spec)
+    if not compiled_spec:
+        return out
+    comp = {_route_key(r): r for r in compiled_spec.get("routes", []) or []}
+    for route in out.get("routes", []) or []:
+        base = comp.get(_route_key(route))
+        if base is not None and "template" in base:
+            route["template"] = copy.deepcopy(base["template"])
+    return out
+
+
+def build_repair_spec(candidate_spec, compiled_spec, conformance,
+                      public_observations=None, max_edits=MAX_REPAIR_EDITS):
+    """Bounded repair instruction object. Makes no model call.
+
+    Only divergent routes may be edited, only in editable fields;
+    compiled templates (NON_AI) stay verbatim. A future single repair
+    call consuming this spec would be GEMMA_TEST and must be measured
+    separately -- this builder records no repair score.
+    """
+    divergences = (conformance or {}).get("divergences", []) or []
+    earliest = diagnose_earliest_divergence(
+        divergences, candidate_spec, compiled_spec, public_observations)
+    editable_routes = []
+    for div in divergences:
+        method, path = _norm_action(div.get("action"))
+        route = find_route(candidate_spec, method, path)
+        if route is not None:
+            key = list(_route_key(route))
+            if key not in editable_routes:
+                editable_routes.append(key)
+    return {"kind": "VIKUNJA_PUBLIC_REPAIR_SPEC_V1",
+            "provenance": {
+                "compiled_facts": "NON_AI evidence-compiled",
+                "candidate": "GEMMA_TEST hybrid candidate",
+                "repair_spec": "NON_AI deterministic builder; "
+                               "no model call made",
+                "public_only": True, "held_out_used": False},
+            "bounded": {"max_edits": max_edits, "max_model_calls": 1,
+                        "editable_fields": sorted(REPAIR_EDITABLE_FIELDS),
+                        "frozen_fields": list(COMPILED_FROZEN_FIELDS)},
+            "earliest_divergence": earliest,
+            "divergences": divergences,
+            "editable_routes": editable_routes,
+            "route_provenance": route_provenance(candidate_spec,
+                                                 compiled_spec),
+            "instruction": "Edit only editable fields on divergent "
+                           "routes; compiled templates stay verbatim."}
+
+
+def apply_repair_edits(candidate_spec, compiled_spec, edits,
+                       max_edits=MAX_REPAIR_EDITS):
+    """Apply bounded route edits; compiled facts are immutable here.
+
+    Raises ValueError on bound overflow, frozen-field edits, unknown
+    fields, or unknown routes. Inputs are never mutated.
+    """
+    edits = edits or []
+    if len(edits) > max_edits:
+        raise ValueError(f"repair bound exceeded: {len(edits)} edits "
+                         f"> max {max_edits}")
+    repaired = enforce_compiled_facts(candidate_spec, compiled_spec)
+    by_key = {_route_key(r): r for r in repaired.get("routes", []) or []}
+    applied = []
+    for edit in edits:
+        key = (edit.get("method"), edit.get("path"))
+        changes = edit.get("changes") or {}
+        frozen = set(changes) & set(COMPILED_FROZEN_FIELDS)
+        if frozen:
+            raise ValueError(f"compiled facts are frozen; cannot edit "
+                             f"{sorted(frozen)} for {list(key)}")
+        unknown = set(changes) - REPAIR_EDITABLE_FIELDS
+        if unknown:
+            raise ValueError(f"repair edits limited to editable fields; "
+                             f"got {sorted(unknown)} for {list(key)}")
+        route = by_key.get(key)
+        if route is None:
+            raise ValueError(f"repair edit targets unknown route {list(key)}")
+        for field, value in changes.items():
+            route[field] = copy.deepcopy(value)
+        applied.append({"route": list(key),
+                        "edited_fields": sorted(changes),
+                        "origin": "repair_edited"})
+    repaired = enforce_compiled_facts(repaired, compiled_spec)
+    record = {"kind": "VIKUNJA_REPAIR_APPLICATION_V1",
+              "edits_applied": applied, "edit_count": len(applied),
+              "bounded_max_edits": max_edits,
+              "compiled_templates_preserved": True,
+              "route_provenance": route_provenance(repaired, compiled_spec)}
+    return repaired, record
+
+
 def run_live() -> int:
     api_key = os.environ.get("GEMMA_API_KEY")
     if not api_key:
@@ -658,6 +1024,14 @@ def run_live() -> int:
                 "\n\nReturn the complete corrected routes as ONLY JSON "
                 "{\"routes\": [...]}. Fix the divergences without "
                 "breaking conforming behavior.\n\n" + mx.JSON_FIRST)
+            _repair_spec = build_repair_spec(spec, compiled, conf, obs_list)
+            record["repair_spec"] = {
+                "earliest_divergence": _repair_spec["earliest_divergence"],
+                "bounded": _repair_spec["bounded"],
+                "editable_routes": _repair_spec["editable_routes"],
+                "provenance": _repair_spec["provenance"]}
+            record["repair_spec_digest"] = mx.digest(
+                json.dumps(_repair_spec, sort_keys=True, default=str))
             record["repair_context_digest"] = mx.digest(repair_prompt)
             try:
                 text2 = call_gemma_long(repair_prompt, api_key, schema=None)

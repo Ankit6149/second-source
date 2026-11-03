@@ -25,6 +25,9 @@ a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var
 .word-light{font-weight:550}
 .wordmark-icon{width:22px;height:22px;display:grid;place-items:center;border:1.8px solid #b9dfb2;border-radius:7px 7px 8px 3px;transform:rotate(-7deg)}
 .wordmark-icon span{width:7px;height:7px;border-radius:50%;background:#b9dfb2}
+.hero-evidence{margin:22px 0 0;max-width:560px;font-size:13.5px;line-height:1.7;color:#b1c2b5;overflow-wrap:anywhere}
+.hero-evidence strong{color:#eaf4e6}
+.hero-evidence-label{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.06em;padding:4px 10px;border-radius:999px;background:#173d27;color:#c9f2d6;border:1px solid #2f7d4f;margin-right:8px;white-space:nowrap}
 .hero-bottom{color:#b1c2b5}
 .hero-title{font-size:clamp(49px,4.45vw,68px)}
 .hero-bottom{margin-top:42px}
