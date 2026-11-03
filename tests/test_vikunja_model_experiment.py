@@ -69,3 +69,21 @@ def test_menu_execution_against_live_reference():
         by_probe.setdefault(o["probe"], []).append(o["status"])
     assert by_probe["D3_labels"][0] == 201
     assert by_probe["D7_unshare"][-1] == 403  # revoked: bob can no longer read
+
+
+def test_validate_rule_status_must_be_http_status():
+    spec = oracle()
+    spec["routes"][0]["validate"] = [{"field": "title", "rule": "nonempty", "status": 0, "error_body": {"code": 0, "message": "x"}}]
+    assert any("validate status" in e for e in mx.validate_spec(spec))
+
+
+def test_validate_rule_error_body_shape_checked():
+    spec = oracle()
+    spec["routes"][0]["validate"] = [{"field": "title", "rule": "nonempty", "status": 400, "error_body": {"code": "400", "message": "x"}}]
+    assert any("error_body" in e for e in mx.validate_spec(spec))
+
+
+def test_selection_schema_enumerates_exactly_the_menu():
+    enum = mx.SELECTION_SCHEMA["properties"]["probes"]["items"]["enum"]
+    assert set(enum) == set(mx.PROBE_MENU)
+    assert mx.SELECTION_SCHEMA["required"] == ["probes"]

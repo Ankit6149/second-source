@@ -197,6 +197,18 @@ def validate_spec(spec) -> list[str]:
         for rule in route.get("validate", []):
             if rule.get("rule") != "nonempty" or not rule.get("field"):
                 errors.append(f"route {i}: unsupported validate rule")
+                continue
+            rstatus = rule.get("status")
+            if not isinstance(rstatus, int) or not 100 <= rstatus <= 599:
+                errors.append(f"route {i}: validate status must be an "
+                              f"HTTP status, got {rstatus!r}")
+            ebody = rule.get("error_body")
+            if ebody is not None and (
+                    not isinstance(ebody, dict)
+                    or not isinstance(ebody.get("code"), int)
+                    or not isinstance(ebody.get("message"), str)):
+                errors.append(f"route {i}: validate error_body must be "
+                              f"{{int code, str message}}")
     return errors
 
 
@@ -282,6 +294,17 @@ def build_prompt(arm: str, observations: str, extra_obs: str = "") -> str:
     return "\n\n".join(parts)
 
 
+SELECTION_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "probes": {"type": "ARRAY", "items": {
+            "type": "STRING",
+            "enum": ["D1_share_write", "D2_assignees", "D3_labels",
+                     "D4_filter_done", "D5_update_fields",
+                     "D6_delete_task", "D7_unshare"]}}},
+    "required": ["probes"]}
+
+
 def build_selection_prompt(observations: str) -> str:
     menu = "\n".join(f"{k}: {v[0]}" for k, v in PROBE_MENU.items())
     return (INTERFACE + "\n\nYou may request up to 6 additional probes "
@@ -321,16 +344,19 @@ def preflight() -> int:
     return 0
 
 
-def call_gemma(prompt: str, api_key: str) -> str:
+def call_gemma(prompt: str, api_key: str, schema=None,
+               timeout: int = 300) -> str:
     body = {"contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"responseMimeType": "application/json",
                                  "maxOutputTokens": 16000,
-                                 "temperature": 0.2}}
+                                 "temperature": 0.2,
+                                 **({"responseSchema": schema}
+                                    if schema else {})}}
     req = urllib.request.Request(
         API.format(m=MODEL), data=json.dumps(body).encode(), method="POST")
     req.add_header("Content-Type", "application/json")
     req.add_header("x-goog-api-key", api_key)
-    with urllib.request.urlopen(req, timeout=300) as resp:
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
         data = json.loads(resp.read().decode())
     parts = data["candidates"][0]["content"]["parts"]
     return "".join(p.get("text", "") for p in parts)
@@ -510,11 +536,13 @@ def run_arm(arm: str, observations: str, api_key: str,
         if arm == "D_active":
             sel_prompt = build_selection_prompt(observations)
             record["selection_digest"] = digest(sel_prompt)
-            raw = call_gemma(sel_prompt, api_key)
+            raw = call_gemma(sel_prompt, api_key,
+                             schema=SELECTION_SCHEMA, timeout=600)
             calls += 1
             OUT.mkdir(parents=True, exist_ok=True)
             (OUT / "raw_D_selection.txt").write_text(raw, encoding="utf-8")
-            parsed, _ = parse_model_json(raw)
+            parsed, sel_how = parse_model_json(raw)
+            record["selection_json_parse"] = sel_how
             selected = (parsed.get("probes", [])[:6]
                         if isinstance(parsed, dict) else [])
             record["selected_probes"] = selected
@@ -526,7 +554,8 @@ def run_arm(arm: str, observations: str, api_key: str,
             prompt_arm = arm
         prompt = build_prompt(prompt_arm, observations, extra_obs)
         record["context_digest"] = digest(prompt)
-        text = call_gemma(prompt, api_key)
+        text = call_gemma(prompt, api_key,
+                          timeout=600 if arm == "D_active" else 300)
         calls += 1
         record["model_calls"] = calls
         OUT.mkdir(parents=True, exist_ok=True)
