@@ -1,23 +1,23 @@
-# Second Source — Hackathon Submission & Demo Runbook
+﻿# Second Source â€” Hackathon Submission & Demo Runbook
 
-**Status pointer - 3 November 2026.** Use [issue #25](https://github.com/Ankit6149/second-source/issues/25) for current heads, scientific review and release gates. The older delivery-board and dated sections below are historical unless independently updated. This document does not authorize inference, credentials or deployment. Current verified scorecard is in "Final measured scorecard" below; production: https://second-source-alpha.vercel.app/ - routes /, /evidence/, /console/, /app/, /lab/ verified signed-out with 0 console errors; main ce71f3cc1ea632a7678a679704852d5f526f2287 (ce71f3c).
+**Status pointer - 3 November 2026.** Use [issue #25](https://github.com/Ankit6149/second-source/issues/25) for current heads, scientific review and release gates. The older delivery-board and dated sections below are historical unless independently updated. This document does not authorize inference, credentials or deployment. Current verified scorecard is in "Final measured scorecard" below; production: https://second-source-alpha.vercel.app/ - routes /, /evidence/, /console/, /app/, /lab/ verified signed-out with 0 console errors; main 1e09d15 (1e09d15).
 
 **CURRENT - 3 November 2026:** Portal submission is NOT done; no receipt exists. Video v3 is local only (.runs/submission-v3/second-source-v3.mp4, 170.02s, SHA-256 20E0079343E93B06C80361DCF7EFE3AD9850F07E9A808969C492FB25556F548A) and NOT yet publicly hosted. Production https://second-source-alpha.vercel.app/ routes /, /evidence/, /console/, /app/, /lab/ verified signed-out with 0 console errors. Historical REAL_MODEL Muse ledger 14/25; provider attestation incomplete. Meta Vikunja packet EXECUTED (REAL_MODEL): C 2/6, D 1/6, 3 calls, digests matched, $0.50 reservation cap, receipts lost to a driver crash. Track Indie. Deadline: Nov 4, 9:00 PM ET (Nov 5, 7:30 AM IST) via Cerebral Valley portal. Judge-facing G3 evidence: [JUDGE_EVIDENCE_G3.md](JUDGE_EVIDENCE_G3.md).
 
-## Final measured scorecard — 3 November 2026 (release review)
+## Final measured scorecard â€” 3 November 2026 (release review)
 
-**Not submitted. No portal receipt exists.** Only the owner submits, using the exact steps in SUBMISSION_DRAFT.md (Owner-only portal steps). Final main SHA: ce71f3cc1ea632a7678a679704852d5f526f2287 (main at ce71f3c).
+**Not submitted. No portal receipt exists.** Only the owner submits, using the exact steps in SUBMISSION_DRAFT.md (Owner-only portal steps). Final main SHA: 1e09d15 (main at 1e09d15).
 
-- Gemma arm A (prior only): **0/6** — `GEMMA_TEST`, model-authored, scored.
+- Gemma arm A (prior only): **0/6** â€” `GEMMA_TEST`, model-authored, scored.
 - Gemma arm C (coverage-grounded): **2/6** - `GEMMA_TEST`, model-authored, scored. B: unmeasured. D: selection fixed/verified (strict parse, 6 probes, 27 observations), synthesis blocked by provider 429/500 (INFRASTRUCTURE), unscored (never 0/6).
-- Oracle control (Vikunja): **6/6** — `NON_AI`, runtime-supplied. Never a model result.
-- Historical ledger: **14/25** — `REAL_MODEL`, model-authored (Muse Spark 1.3, frozen 25-case suite; not comparable to Vikunja).
+- Oracle control (Vikunja): **6/6** â€” `NON_AI`, runtime-supplied. Never a model result.
+- Historical ledger: **14/25** â€” `REAL_MODEL`, model-authored (Muse Spark 1.3, frozen 25-case suite; not comparable to Vikunja).
 - Hybrid H_hybrid: **3/6 re-measured (cases 0, 2, 3)** - GEMMA_TEST, model-authored, scored (compiler-assisted model synthesis).
 - Gemma per-route repair (semantic admission): **2/6** - GEMMA_TEST; admitted but regressed held-out from 3/6 to 2/6. Measured negative result.
 - Public-verification gate audit: **0/8 model route edits kept, 5 regressed public conformance, 3 tied; gated candidate = compiled NON_AI 6/6** - NON_AI mechanism over GEMMA_TEST edits. Damage-prevention audit, NEVER a model score.
 - Meta Vikunja C_grounded: **2/6 (cases 1, 3)** - `REAL_MODEL` (muse-spark-1.3), EXECUTED, admitted.
 - Meta Vikunja D_active: **1/6 (case 3)** - `REAL_MODEL`, EXECUTED, admitted; selected probes D1, D4, D5, D6, D7; 22 probe observations. Packet total 3 calls, digests matched, $0.50 reservation cap; receipts lost to a driver crash. Record: `.runs/vikunja-model/meta_arms_result.json`.
-- Compiled evidence `EVIDENCE_COMPILED` (`NON_AI`, evidence-compiled): **6/6** — deterministic transcription of the 20 public observations (`scripts/evidence_compiler.py`, spec sha256 `a5c9104e…`); status-mutation control 2/6. Never a model result; Gemma C stays 2/6.
+- Compiled evidence `EVIDENCE_COMPILED` (`NON_AI`, evidence-compiled): **6/6** â€” deterministic transcription of the 20 public observations (`scripts/evidence_compiler.py`, spec sha256 `a5c9104eâ€¦`); status-mutation control 2/6. Never a model result; Gemma C stays 2/6.
 - Browser / motion: **bounded recorded slice** - browser-slice/ held-out drag RMSE 1.054px and 1.741px, adversarial variants detected; in-app execution unavailable, one owned fixture only. NON_AI.
 
 ## Current evidence and submission stop
@@ -85,13 +85,13 @@ change: <https://dev.meta.ai/events/global-hackathon>.
 
 | Elapsed | Visual / voiceover | Proof artifact |
 |---|---|---|
-| 0:00–0:20 | "Tell Second Source **exactly what to learn and rebuild**." Three scopes, forbidden operations | ScopeContract and ScopeGuard decision |
-| 0:20–0:55 | Observe owned stateful program. Show two competing evidence-cited hypotheses | Redacted ledger artifact IDs; real Meta receipt |
-| 0:55–1:25 | Muse selects a discriminating multi-action experiment. Guard checks each step. See result | Real model-selected proposal and runner observations |
-| 1:25–1:55 | Build only the requested behavior, no account system or unrelated feature | Candidate manifest, output tree |
-| 1:55–2:30 | Hidden differential tests score implementation. Fix failure only if verified | Evaluator result, bounded repair before/after |
-| 2:30–2:50 | Deliberately reject a forbidden action or extra subsystem | Machine-readable policy denial |
-| 2:50–3:00 | Show measured score, limitations and GitHub URL | Final honest evidence report |
+| 0:00â€“0:20 | "Tell Second Source **exactly what to learn and rebuild**." Three scopes, forbidden operations | ScopeContract and ScopeGuard decision |
+| 0:20â€“0:55 | Observe owned stateful program. Show two competing evidence-cited hypotheses | Redacted ledger artifact IDs; real Meta receipt |
+| 0:55â€“1:25 | Muse selects a discriminating multi-action experiment. Guard checks each step. See result | Real model-selected proposal and runner observations |
+| 1:25â€“1:55 | Build only the requested behavior, no account system or unrelated feature | Candidate manifest, output tree |
+| 1:55â€“2:30 | Hidden differential tests score implementation. Fix failure only if verified | Evaluator result, bounded repair before/after |
+| 2:30â€“2:50 | Deliberately reject a forbidden action or extra subsystem | Machine-readable policy denial |
+| 2:50â€“3:00 | Show measured score, limitations and GitHub URL | Final honest evidence report |
 
 **Recording requirement:** pre-seed a reproducible authorized run; do not impersonate a real Meta execution with mocks or display invented scores. If an acceptance predicate is missing, shorten/replace its demo segment and clearly disclose the limitation.
 
@@ -132,7 +132,7 @@ These were initial targets, not completion claims. Use the current delivery
 board for the active critical path and dated P0/P1/P2 decisions.
 
 - **Oct 28**: close G2 model-selection gate; record sanitized genuine Meta result; merge reviewed G2.
-- **Oct 29–30**: build EXEC-010 candidate manifest + limited generation; use a safe constrained candidate representation, not arbitrary model code executed on host.
+- **Oct 29â€“30**: build EXEC-010 candidate manifest + limited generation; use a safe constrained candidate representation, not arbitrary model code executed on host.
 - **Oct 31**: EXEC-011 independent candidate evaluation and bounded repair; baseline metrics.
 - **Nov 1**: compare active-vs-fixed probing on the same owned fixture and budget. Add second owned adapter only if core path is reliable.
 - **Nov 2**: implement minimal readable evidence/results presentation; fix top security defects; start screencast rehearsal.
@@ -149,7 +149,7 @@ board for the active critical path and dated P0/P1/P2 decisions.
 4. **Why explicit cost/security controls?** Real requests are opt-in, estimated spend and uncertain outcomes recorded, credentials kept local, external effects need trusted approval.
 5. **Where can it fail?** Partial observability, unstable reference behavior, model formatting errors, budget exhaustion, no verified sandbox, or uncovered edge cases. Show the failure categories and honest stop reasons.
 
-## ARCHIVED SNAPSHOT — first three owner attempts (27 Oct 2026)
+## ARCHIVED SNAPSHOT â€” first three owner attempts (27 Oct 2026)
 
 The following snapshot is superseded. A later local G2 run recorded an accepted
 experiment; G2 and G3 foundation PRs subsequently merged and G3-D is now coded.
@@ -162,7 +162,7 @@ See the board for current new G2 evidence, consumed G3 failures and backend gate
 
 All timestamps, pass counts and costs in the final submission MUST come from actual run receipts, not this planning runbook.
 
-## Evidence, contribution and submission checks — 1 November
+## Evidence, contribution and submission checks â€” 1 November
 
 - Historical G3: original local records bind candidate `ee1f3f32e66050bbdf2dde86aaba09e56d17b25c21c35762eeea6208c2a146cd` to suite `0423935021db574bb68f654c1c37896c6ad4f6e5c40707c1bbe38459178b015b`. An offline replay using source commit `54d5f7947d200479aac0f8bd5cced35b4f1084ed` reproduced 14/25, with 9 schema and 2 error failures. Run `scripts/audit_g3_receipt.py --help` for the local, hash-pinned receipt check. This does not verify a provider signature or the expired ephemeral broker HMAC. Original private material and sealed suite are not in the public bundle; an outside reviewer needs separately authorized access to reproduce that replay.
 - Repository history dates the initial PRD and foundation to October 27, the reviewed backend integration to PR #21, and the integrated product and owned HTTP target to PRs #24 and #27 on November 1. Git records use one GitHub account under two display names. The owner must confirm real human collaborators, their actual work and ownership; Git authorship and AI agent labels alone do not establish those facts. Review `git log --reverse --date=iso --format="%ad %an %s"` before submission.
