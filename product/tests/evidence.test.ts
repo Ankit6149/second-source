@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { HISTORICAL_LEDGER, armScoreText, parseVikunjaSummary, vikunjaRecord } from '../src/evidence.ts';
-import { TARGET_CAPABILITIES, capabilityEnabled } from '../src/capabilities.ts';
+import { HISTORICAL_LEDGER, PROVENANCE_META, armScoreText, compiledScoreText, parseCompiled, parseVikunjaSummary, provenanceClass, vikunjaRecord } from '../src/evidence.ts';
+import { BROWSER_SLICE_ABSENT_REASON, BROWSER_SLICE_OBSERVATIONS_PATH, TARGET_CAPABILITIES, capabilityEnabled, resolveBrowserMotionCapability, targetCapabilities } from '../src/capabilities.ts';
 import summary from '../src/evidence-summary.json' with { type: 'json' };
 
 test('committed Vikunja summary parses with exact GEMMA_TEST / NON_AI labels', () => {
@@ -52,6 +52,62 @@ test('malformed or relabeled summaries fail closed to unavailable', () => {
   const relabeledArm = structuredClone(summary) as Record<string, unknown>;
   ((relabeledArm.arms as Record<string, unknown>[])[0]).label = 'REAL_MODEL';
   assert.equal(parseVikunjaSummary(relabeledArm), null);
+});
+
+test('provenance renders distinctly: model-authored vs evidence-compiled vs runtime-supplied', () => {
+  const record = vikunjaRecord();
+  assert.ok(record);
+  for (const arm of record.arms) assert.equal(arm.provenance, 'model-authored');
+  assert.equal(record.oracle.provenance, 'runtime-supplied');
+  assert.equal(record.compiled.provenance, 'evidence-compiled');
+  assert.equal(HISTORICAL_LEDGER.provenance, 'model-authored');
+  assert.equal(provenanceClass('model-authored'), 'prov-model-authored');
+  assert.equal(provenanceClass('evidence-compiled'), 'prov-evidence-compiled');
+  assert.equal(provenanceClass('runtime-supplied'), 'prov-runtime-supplied');
+  assert.notEqual(PROVENANCE_META['model-authored'].label, PROVENANCE_META['evidence-compiled'].label);
+  assert.notEqual(PROVENANCE_META['evidence-compiled'].label, PROVENANCE_META['runtime-supplied'].label);
+});
+
+test('EVIDENCE_COMPILED (NON_AI) is measured 6/6 with digest and never a model score', () => {
+  const record = vikunjaRecord();
+  assert.ok(record);
+  assert.equal(record.compiled.label, 'EVIDENCE_COMPILED');
+  assert.equal(record.compiled.parentLabel, 'NON_AI');
+  assert.equal(record.compiled.status, 'available');
+  assert.equal(record.compiled.passed, 6);
+  assert.equal(record.compiled.total, 6);
+  assert.equal(record.compiled.reason, null);
+  assert.match(record.compiled.artifactSha256 || '', /^sha256:[0-9a-f]{64}$/);
+  assert.equal(compiledScoreText(record.compiled), '6/6');
+  // Absent block synthesizes the same honest pending state.
+  assert.equal(parseCompiled(undefined)?.status, 'pending');
+  // A pending block carrying a score, or a mislabeled block, fails closed.
+  assert.equal(parseCompiled({ label: 'EVIDENCE_COMPILED', parentLabel: 'NON_AI', provenance: 'evidence-compiled', status: 'pending', reason: 'waiting', passed: 6, total: 6 }), null);
+  assert.equal(parseCompiled({ label: 'REAL_MODEL', parentLabel: 'NON_AI', provenance: 'evidence-compiled', status: 'pending', reason: 'waiting', passed: null, total: null }), null);
+  assert.equal(parseCompiled({ label: 'EVIDENCE_COMPILED', parentLabel: 'NON_AI', provenance: 'model-authored', status: 'pending', reason: 'waiting', passed: null, total: null }), null);
+  // A genuine coordinator artifact validates only with bounded score + digest.
+  const sha = `sha256:${'a'.repeat(64)}`;
+  const available = parseCompiled({ label: 'EVIDENCE_COMPILED', parentLabel: 'NON_AI', provenance: 'evidence-compiled', status: 'available', reason: null, passed: 5, total: 6, artifact: 'browser-slice/compiled.json', artifactSha256: sha });
+  assert.equal(available?.status, 'available');
+  assert.equal(compiledScoreText(available!), '5/6');
+});
+
+test('browser/motion capability is driven by browser-slice observations presence', () => {
+  assert.equal(BROWSER_SLICE_OBSERVATIONS_PATH, 'browser-slice/observations.json');
+  const absent = resolveBrowserMotionCapability(false);
+  assert.equal(absent.status, 'unavailable');
+  assert.equal(absent.action, null);
+  assert.equal(capabilityEnabled(absent), false);
+  assert.equal(absent.detail, BROWSER_SLICE_ABSENT_REASON);
+  assert.match(absent.detail, /browser-slice\/observations\.json not found/);
+  assert.match(absent.detail, /adapter absent/i);
+  const present = resolveBrowserMotionCapability(true);
+  assert.match(present.detail, /Observations present/);
+  assert.notEqual(present.detail, absent.detail);
+  // Picker resolution keeps API/CLI untouched and never enables browser execution.
+  const caps = targetCapabilities(false);
+  assert.equal(caps.length, 3);
+  assert.equal(capabilityEnabled(caps.find(cap => cap.id === 'browser-motion')!), false);
 });
 
 test('capability flags: API and CLI supported and bounded, browser/motion unavailable', () => {

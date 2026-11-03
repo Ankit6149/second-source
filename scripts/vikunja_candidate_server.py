@@ -50,6 +50,11 @@ class Candidate:
         self.projects = {}    # id -> {"id","title","owner","shared":{user:perm}}
         self.tasks = {}       # id -> task dict
         self.next_id = 0
+        # Compiled routes (evidence_compiler.py): generic entity stores
+        # keyed by collection name, with owner/share bookkeeping.
+        self.stores: dict[str, dict[int, dict]] = {}
+        self.shares: dict[int, dict[str, int]] = {}  # parent id -> user -> perm
+        self._owners: dict[int, str] = {}            # top-level entity id -> alias
 
     def _id(self):
         self.next_id += 1
@@ -122,6 +127,183 @@ class Candidate:
         return 404, self.spec.get("auth", {}).get(
             "not_found_body", {"message": "Not Found"})
 
+    # --- Compiled routes: generic evidence-transcribed behavior ---
+    def _fill_template(self, value, ctx):
+        if isinstance(value, dict) and "$input" in value:
+            req = ctx.get("request") or {}
+            return req.get(value["$input"], value.get("default"))
+        if isinstance(value, str):
+            if value == "<entity:id>":
+                return ctx.get("entity_id")
+            if value == "<new_id>":
+                return self._id()
+            if value == "<ts>":
+                return "2026-01-01T00:00:00Z"
+            if value == "<creator>":
+                return ctx["creator"]
+            if value == "<index>":
+                return ctx.get("index", 1)
+            if value == "<identifier>":
+                return f"#{ctx.get('index', 1)}"
+            if value.startswith("<input:") and value.endswith(">"):
+                return (ctx.get("request") or {}).get(value[7:-1])
+            if value.startswith("<path:") and value.endswith(">"):
+                raw = ctx["params"].get(value[6:-1])
+                if raw is None:
+                    return value  # unresolved: merge rules prefer entity
+                return int(raw) if str(raw).isdigit() else raw
+            if value.startswith("<entity:") and value.endswith(">"):
+                return ctx["entity"].get(value[8:-1])
+            return value
+        if isinstance(value, dict):
+            return {k: self._fill_template(v, ctx) for k, v in value.items()}
+        if isinstance(value, list):
+            return [self._fill_template(v, ctx) for v in value]
+        return value
+
+    def _compiled_access(self, route, username, parent_id):
+        access = route.get("access", "owner")
+        if parent_id is None:
+            return None
+        # Ownership is tracked on the parent collection's first segment
+        # store via the entity that owns this parent id.
+        owner = self._owners.get(parent_id)
+        if owner is None or owner == username:
+            return None
+        if access == "any_auth":
+            return None
+        perm = self.shares.get(parent_id, {}).get(username)
+        if access == "shared_read" and perm is not None:
+            return None
+        if access == "shared_write" and perm is not None and perm >= 1:
+            return None
+        if access == "shared_read" and route["method"] == "GET" and perm is not None:
+            return None
+        if route.get("forbidden_body") is not None:
+            return 403, route["forbidden_body"]
+        return self._forbidden()
+
+    def _compiled(self, route, params, body, user, username):
+        store = self.stores.setdefault(route["collection"], {})
+        record = self.users.get(user, {})
+        ctx = {"creator": {"id": record.get("id", 1), "name": "",
+                           "username": user,
+                           "created": "2026-01-01T00:00:00Z",
+                           "updated": "2026-01-01T00:00:00Z"},
+               "request": body or {}, "params": params, "entity": {}}
+        parent_raw = params.get("pid") or params.get("tid")
+        parent_id = int(parent_raw) if str(parent_raw or "").isdigit() else None
+        kind = route["kind"]
+        status = route.get("status", 200)
+        if kind == "compiled_single":
+            return status, self._fill_template(route.get("template"), ctx)
+        if kind == "compiled_create":
+            if parent_id is not None:
+                err = self._compiled_access(route, username, parent_id)
+                if err:
+                    return err
+            ctx["index"] = sum(1 for e in store.values()
+                                if e.get("_parent") == parent_id) + 1
+            ctx["entity_id"] = self._id()
+            entity = self._fill_template(route.get("template"), ctx)
+            if isinstance(entity, dict) and "id" in entity:
+                entity["id"] = ctx["entity_id"]  # bind same-entity refs
+            if isinstance(entity, dict):
+                entity["_parent"] = parent_id
+                entity["_owner"] = username
+                store[entity.get("id")] = entity
+                if parent_id is None:
+                    self._owners[entity.get("id")] = username
+            return status, {k: v for k, v in entity.items()
+                            if not k.startswith("_")} \
+                if isinstance(entity, dict) else entity
+        if kind == "compiled_list":
+            # Route-shape overlay: fields the list response itself
+            # carries as null/object/empty differ per route from the
+            # create shape; the observed list exemplar decides.
+            template = route.get("template")
+            exemplar = template[0] if isinstance(template, list) and template else {}
+            overlay = {k: v for k, v in exemplar.items()
+                       if v is None or isinstance(v, (dict, list))}
+            items = []
+            for entity in store.values():
+                if parent_id is not None and entity.get("_parent") != parent_id:
+                    continue
+                err = self._compiled_access(route, username, entity.get("_parent", entity.get("id")))
+                if err and entity.get("_owner") != username:
+                    continue
+                out = {k: v for k, v in entity.items()
+                       if not k.startswith("_")}
+                ctx_e = dict(ctx, entity=entity)
+                for key, value in overlay.items():
+                    out[key] = self._fill_template(value, ctx_e)
+                items.append(out)
+            return status, items
+        # Item routes resolve the entity by the trailing path param.
+        entity = store.get(parent_id) if parent_id is not None else None
+        if entity is None:
+            return self._not_found()
+        err = self._compiled_access(
+            route, username,
+            entity.get("_parent", entity.get("id")))
+        if err:
+            return err
+        if kind == "compiled_get":
+            out = {k: v for k, v in entity.items()
+                   if not k.startswith("_")}
+            template = route.get("template")
+            if isinstance(template, dict):
+                ctx_e = dict(ctx, entity=entity)
+                for key, value in template.items():
+                    if value is None or isinstance(value, (dict, list)):
+                        out[key] = self._fill_template(value, ctx_e)
+            return status, out
+        if kind == "compiled_share":
+            target = (body or {}).get("username")
+            target_alias = {v: k for k, v in self.spec.get("users", {}).items()}.get(target, target)
+            self.shares.setdefault(entity.get("id"), {})[target_alias] = \
+                int((body or {}).get("permission", 0))
+            ctx["entity"] = entity
+            out = self._fill_template(route.get("template"), ctx)
+            return status, out
+        if kind == "compiled_update":
+            prev_done_at = entity.get("done_at")
+            for key, value in (body or {}).items():
+                entity[key] = value
+            ctx["entity"] = entity
+            filled = self._fill_template(route.get("template"), ctx)
+            # Entity data wins for scalars (the template's exemplar
+            # literals describe the probe's entity, not this one);
+            # template wins for shape fields (null/object/list) and
+            # timestamps the update itself produces.
+            out = dict(filled) if isinstance(filled, dict) else {}
+            for key, value in entity.items():
+                if key.startswith("_"):
+                    continue
+                current = out.get(key)
+                unresolved = isinstance(current, str) and current.startswith("<")
+                # Entity wins for data scalars; an observed EMPTY
+                # string in the update shape is a shape signal and
+                # the template keeps it.
+                if key not in out or unresolved or (current not in (None, "")
+                        and not isinstance(current, (dict, list))):
+                    out[key] = value
+            if isinstance(out, dict) and (body or {}).get("done") is True \
+                    and "done_at" in filled:
+                out["done_at"] = filled["done_at"]
+            if isinstance(out, dict) and (body or {}).get("done") is False \
+                    and "done_at" in out:
+                out["done_at"] = prev_done_at  # restore observed undone shape
+            if isinstance(out, dict):
+                for key, value in out.items():
+                    # Response-shape nulls/empty strings are not state:
+                    # never let an update's shape erase a stored value.
+                    if value in (None, "") and entity.get(key) not in (None, ""):
+                        continue
+                    entity[key] = value
+            return status, out if isinstance(out, dict) else entity
+        return 404, {"message": "unimplemented compiled kind"}
+
     def _permission(self, route, user, project):
         need = route.get("permission", "any_auth")
         if project is None:
@@ -177,6 +359,8 @@ class Candidate:
         if err:
             return err
         kind = route.get("kind")
+        if isinstance(kind, str) and kind.startswith("compiled"):
+            return self._compiled(route, params, body, user, username)
         pid = int(params["pid"]) if "pid" in params else None
         tid = int(params["tid"]) if "tid" in params else None
         project = self.projects.get(pid) if pid is not None else None

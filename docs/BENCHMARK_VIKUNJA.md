@@ -81,9 +81,20 @@ self-check still passed) — the strongest argument for mutation tests.
   by the generic candidate interpreter: **6/6 held-out**. This proves
   the spec representation is expressive enough and the evaluator is
   discriminative. It is a plumbing control, **not** a model result.
-- Genuine model arms (A prior / B observations / C grounded) are
-  implemented in `scripts/vikunja_model_experiment.py`, preflighted
-  with zero calls, and blocked only on a rotated `GEMMA_API_KEY`.
+- Evidence-compiled candidate (`scripts/evidence_compiler.py`,
+  provenance EVIDENCE_COMPILED / NON_AI): a deterministic compiler
+  transcribes the 20 lossless public observations (request + response
+  + actor, file sha256 `40f23ce9…`) into a candidate spec
+  (sha256 `a5c9104e…`; dynamic ids/timestamps/creator tokenized, zero
+  literal `"none"` preserved, response-shape nulls/empty strings never
+  persisted into entity state). Evaluated **6/6 held-out** against a
+  fresh Vikunja reference; a response-status mutation of the compiled
+  spec scores **2/6**, confirming the evaluator still discriminates.
+  This validates the lossless-evidence → compilation path. It is
+  **not** a model result and does not raise any model score.
+- Genuine model arms (GEMMA_TEST, `gemma-4-26b-a4b-it`): A prior-only
+  **0/6**, C coverage-grounded **2/6** (error-contract cases), B and D
+  unmeasured due provider failure (recorded, never scored as 0).
   The genuine Meta (Muse) Vikunja experiment additionally requires
   separate owner authorization: the earlier $0.50 approval covered
   the G4 fixture only.

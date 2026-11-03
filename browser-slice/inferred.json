@@ -1,0 +1,129 @@
+{
+  "method": "grid-search + local refinement of damped-spring ODE (m=1: x''=-k*x-c*v) fitted to post-release trajectory only; log-decrement/peak cross-check reported separately. Input: observations.json trajectory only — reference source never read.",
+  "spring": {
+    "stiffness_k": 188,
+    "damping_c": 11.4,
+    "naturalFreq_wn_rad_s": 13.711,
+    "dampingRatio_zeta": 0.4157,
+    "dampedFreq_wd_rad_s": 12.47
+  },
+  "residualRmsePx": 1.5415,
+  "fittedTimeOffsetS": 0.032,
+  "samplesUsed": 110,
+  "releaseXpx": 240,
+  "initialVelocityPxS": 0,
+  "observedOvershootPx": -57.41,
+  "overshootPresent": true,
+  "peakCrossCheck": [
+    {
+      "tS": 0.284,
+      "xPx": -57.41
+    },
+    {
+      "tS": 0.532,
+      "xPx": 13.7
+    },
+    {
+      "tS": 0.782,
+      "xPx": -3.26
+    }
+  ],
+  "parallaxFactorObserved": 0.35,
+  "layoutObserved": [
+    {
+      "selector": "#card",
+      "box": {
+        "x": 253,
+        "y": 287.6875,
+        "width": 260,
+        "height": 120
+      },
+      "styles": {
+        "transform": "matrix(1, 0, 0, 1, 0, 0)",
+        "transitionProperty": "all",
+        "transitionDuration": "0s",
+        "transitionTimingFunction": "ease",
+        "backgroundColor": "rgb(37, 99, 235)",
+        "borderRadius": "14px",
+        "cursor": "grab",
+        "position": "static"
+      }
+    },
+    {
+      "selector": "#hover-chip",
+      "box": {
+        "x": 253,
+        "y": 429.6875,
+        "width": 110.359375,
+        "height": 38
+      },
+      "styles": {
+        "transform": "none",
+        "transitionProperty": "transform, background-color, box-shadow",
+        "transitionDuration": "0.32s, 0.32s, 0.32s",
+        "transitionTimingFunction": "cubic-bezier(0.34, 1.4, 0.64, 1), cubic-bezier(0.34, 1.4, 0.64, 1), cubic-bezier(0.34, 1.4, 0.64, 1)",
+        "backgroundColor": "rgb(255, 255, 255)",
+        "borderRadius": "999px",
+        "cursor": "pointer",
+        "position": "static"
+      }
+    },
+    {
+      "selector": "#parallax-layer",
+      "box": {
+        "x": 0,
+        "y": -120,
+        "width": 1280,
+        "height": 340
+      },
+      "styles": {
+        "transform": "matrix(1, 0, 0, 1, 0, 0)",
+        "transitionProperty": "all",
+        "transitionDuration": "0s",
+        "transitionTimingFunction": "ease",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderRadius": "0px",
+        "cursor": "auto",
+        "position": "fixed"
+      }
+    },
+    {
+      "selector": "h1",
+      "box": {
+        "x": 224,
+        "y": 60,
+        "width": 832,
+        "height": 37
+      },
+      "styles": {
+        "transform": "none",
+        "transitionProperty": "all",
+        "transitionDuration": "0s",
+        "transitionTimingFunction": "ease",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderRadius": "0px",
+        "cursor": "auto",
+        "position": "static"
+      }
+    },
+    {
+      "selector": ".stage",
+      "box": {
+        "x": 224,
+        "y": 188,
+        "width": 832,
+        "height": 340.6875
+      },
+      "styles": {
+        "transform": "none",
+        "transitionProperty": "all",
+        "transitionDuration": "0s",
+        "transitionTimingFunction": "ease",
+        "backgroundColor": "rgb(255, 255, 255)",
+        "borderRadius": "16px",
+        "cursor": "auto",
+        "position": "static"
+      }
+    }
+  ]
+}

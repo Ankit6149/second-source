@@ -2,6 +2,21 @@
 
 **Status: DRAFT for owner review. Not submitted. No portal receipt exists.**
 Deadline: **Nov 4, 9:00 PM ET** — https://cerebralvalley.ai/e/meta-ai-developer-hackathon/hackathon/submit
+Final `main` SHA: `FINAL_MAIN_SHA_TO_FILL_AT_MERGE` — owner fills the exact merged commit at merge time. Do not submit with the placeholder.
+
+## Final measured scorecard (change only with a receipt)
+
+| Entry | Label / provenance | Result | Notes |
+|---|---|---|---|
+| Gemma arm A (prior only) | GEMMA_TEST / model-authored | 0/6 | Scored. Gemma dev test, not Meta, not REAL_MODEL. |
+| Gemma arm C (coverage-grounded) | GEMMA_TEST / model-authored | 2/6 | Scored. A vs C does not isolate the coverage-gate effect. |
+| Oracle control (Vikunja) | NON_AI / runtime-supplied | 6/6 | Hand-written oracle via generic interpreter. Never a model result. |
+| Historical ledger | REAL_MODEL / model-authored | 14/25 | Muse Spark 1.3, frozen 25-case suite. Not comparable to Vikunja. |
+| Muse packet (genuine HTTP) | — | Prepared, not run | No genuine HTTP score until its report exists. |
+| Compiled evidence | EVIDENCE_COMPILED (NON_AI) / evidence-compiled | Pending | No coordinator artifact yet; workbench shows pending, no score. |
+| Browser / motion | — | Unavailable | browser-slice/observations.json not found; adapter absent (P3 NO-GO). |
+
+Gemma arms B and D were provider failures and stay unscored — never 0/6.
 
 ## Title
 
@@ -71,6 +86,19 @@ pydantic, FastAPI, pytest (backend); Vite/TypeScript (product).
 - Hosted cloud Auth/Storage two-user acceptance not established; the
   demonstrated product runs locally with synthetic identities.
 - No arbitrary-website cloning; authorized owned fixtures only.
+
+## Owner-only portal steps (exact; only the account owner does these)
+
+No agent submits. No receipt exists until step 8 completes.
+
+1. Merge the release to `main`; copy the full commit SHA and replace `FINAL_MAIN_SHA_TO_FILL_AT_MERGE` above. Re-check the placeholder is gone.
+2. Upload the final demo video publicly (unlisted/public per portal rules); open the link in a signed-out/private window and confirm it plays with readable labels.
+3. Open the repo signed-out: https://github.com/Ankit6149/second-source — confirm it loads, the README path works, and no private `.runs` material is public.
+4. Sign in **as the owner** to https://cerebralvalley.ai/e/meta-ai-developer-hackathon/hackathon/submit before **Nov 4, 9:00 PM ET**.
+5. Select the **Indie** track; paste Title, One-liner and section text from this draft verbatim. Enter the repo URL and the final `main` SHA from step 1.
+6. Paste the verified public video URL from step 2. State the Muse packet as prepared-not-run and browser/motion as unavailable; claim no genuine HTTP score and no submitted status.
+7. Re-read every number against the scorecard above (A 0/6, C 2/6 GEMMA_TEST; oracle NON_AI 6/6; ledger REAL_MODEL 14/25). Remove anything without a receipt, then preview the full entry.
+8. Click submit **once**. Save the portal confirmation receipt (screenshot + copied text/ID + timestamp) outside the repo. Only then may any document say "submitted", quoting that receipt.
 
 ## Owner checklist before clicking submit
 
