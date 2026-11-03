@@ -21,6 +21,8 @@ test('Gemma arms: A scored 0/6, C scored 2/6, B and D are unscored provider fail
   const byArm = new Map(record.arms.map(arm => [arm.arm, arm]));
   assert.equal(armScoreText(byArm.get('A_prior')!), '0/6');
   assert.equal(armScoreText(byArm.get('C_grounded')!), '2/6');
+  assert.equal(armScoreText(byArm.get('H_hybrid')!), '3/6');
+  assert.equal(byArm.get('H_hybrid')!.provenance, 'model-authored');
   for (const id of ['B_observations', 'D_active']) {
     const arm = byArm.get(id)!;
     assert.equal(arm.status, 'provider_failure');

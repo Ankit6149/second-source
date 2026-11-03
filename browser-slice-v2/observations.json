@@ -1,0 +1,986 @@
+{
+  "viewport": {
+    "width": 1280,
+    "height": 800
+  },
+  "fitDragPx": 260,
+  "fitScrolls": [
+    0,
+    300
+  ],
+  "fitFilter": "work",
+  "domSummary": {
+    "title": "Flowboard — Task Board",
+    "lang": "en",
+    "elementCount": 46,
+    "ids": [
+      "parallax-layer",
+      "hover-chip",
+      "filter-all",
+      "filter-work",
+      "filter-personal",
+      "status",
+      "task-1",
+      "card",
+      "task-3",
+      "task-4",
+      "task-5",
+      "task-6"
+    ],
+    "headings": [
+      "Flowboard",
+      "Design review",
+      "Ship launch checklist",
+      "Book flights",
+      "Fix flaky test",
+      "Gym session",
+      "Read chapter 4"
+    ],
+    "buttons": [
+      {
+        "id": "filter-all",
+        "text": "All",
+        "filter": "all"
+      },
+      {
+        "id": "filter-work",
+        "text": "Work",
+        "filter": "work"
+      },
+      {
+        "id": "filter-personal",
+        "text": "Personal",
+        "filter": "personal"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "task-1",
+        "cat": "work"
+      },
+      {
+        "id": "card",
+        "cat": "work"
+      },
+      {
+        "id": "task-3",
+        "cat": "personal"
+      },
+      {
+        "id": "task-4",
+        "cat": "work"
+      },
+      {
+        "id": "task-5",
+        "cat": "personal"
+      },
+      {
+        "id": "task-6",
+        "cat": "personal"
+      }
+    ]
+  },
+  "a11y": [
+    {
+      "tag": "header",
+      "id": null,
+      "role": "banner",
+      "ariaLabel": null,
+      "text": "Flowboard\n    Your week at a glance. Dra"
+    },
+    {
+      "tag": "div",
+      "id": "parallax-layer",
+      "role": null,
+      "ariaLabel": null,
+      "text": ""
+    },
+    {
+      "tag": "h1",
+      "id": null,
+      "role": "heading",
+      "ariaLabel": null,
+      "text": "Flowboard"
+    },
+    {
+      "tag": "span",
+      "id": "hover-chip",
+      "role": null,
+      "ariaLabel": null,
+      "text": "Hover me"
+    },
+    {
+      "tag": "main",
+      "id": null,
+      "role": "main",
+      "ariaLabel": null,
+      "text": "All\n    Work\n    Personal\n    At rest\n  "
+    },
+    {
+      "tag": "div",
+      "id": null,
+      "role": "toolbar",
+      "ariaLabel": "Filter tasks",
+      "text": "All\n    Work\n    Personal\n    At rest"
+    },
+    {
+      "tag": "button",
+      "id": "filter-all",
+      "role": "button",
+      "ariaLabel": null,
+      "text": "All"
+    },
+    {
+      "tag": "button",
+      "id": "filter-work",
+      "role": "button",
+      "ariaLabel": null,
+      "text": "Work"
+    },
+    {
+      "tag": "button",
+      "id": "filter-personal",
+      "role": "button",
+      "ariaLabel": null,
+      "text": "Personal"
+    },
+    {
+      "tag": "span",
+      "id": "status",
+      "role": "status",
+      "ariaLabel": null,
+      "text": "At rest"
+    },
+    {
+      "tag": "section",
+      "id": null,
+      "role": "region",
+      "ariaLabel": "Task board",
+      "text": "Design reviewWalk through the new onboar"
+    },
+    {
+      "tag": "article",
+      "id": "task-1",
+      "role": null,
+      "ariaLabel": null,
+      "text": "Design reviewWalk through the new onboar"
+    },
+    {
+      "tag": "h2",
+      "id": null,
+      "role": "heading",
+      "ariaLabel": null,
+      "text": "Design review"
+    },
+    {
+      "tag": "article",
+      "id": "card",
+      "role": null,
+      "ariaLabel": null,
+      "text": "Ship launch checklistDrag me sideways, t"
+    },
+    {
+      "tag": "h2",
+      "id": null,
+      "role": "heading",
+      "ariaLabel": null,
+      "text": "Ship launch checklist"
+    },
+    {
+      "tag": "article",
+      "id": "task-3",
+      "role": null,
+      "ariaLabel": null,
+      "text": "Book flightsCompare Friday evening depar"
+    },
+    {
+      "tag": "h2",
+      "id": null,
+      "role": "heading",
+      "ariaLabel": null,
+      "text": "Book flights"
+    },
+    {
+      "tag": "article",
+      "id": "task-4",
+      "role": null,
+      "ariaLabel": null,
+      "text": "Fix flaky testInvestigate the intermitte"
+    },
+    {
+      "tag": "h2",
+      "id": null,
+      "role": "heading",
+      "ariaLabel": null,
+      "text": "Fix flaky test"
+    },
+    {
+      "tag": "article",
+      "id": "task-5",
+      "role": null,
+      "ariaLabel": null,
+      "text": "Gym sessionLeg day, 45 minutes.personal"
+    },
+    {
+      "tag": "h2",
+      "id": null,
+      "role": "heading",
+      "ariaLabel": null,
+      "text": "Gym session"
+    },
+    {
+      "tag": "article",
+      "id": "task-6",
+      "role": null,
+      "ariaLabel": null,
+      "text": "Read chapter 4Twenty pages before bed.pe"
+    },
+    {
+      "tag": "h2",
+      "id": null,
+      "role": "heading",
+      "ariaLabel": null,
+      "text": "Read chapter 4"
+    },
+    {
+      "tag": "footer",
+      "id": null,
+      "role": "contentinfo",
+      "ariaLabel": null,
+      "text": "Flowboard demo — scroll to see the paral"
+    }
+  ],
+  "layout": [
+    {
+      "selector": "header",
+      "box": {
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 240
+      },
+      "styles": {
+        "backgroundColor": "rgb(35, 41, 70)",
+        "borderRadius": "0px",
+        "cursor": "auto",
+        "position": "relative",
+        "fontSize": "16px",
+        "transform": "none"
+      }
+    },
+    {
+      "selector": "#parallax-layer",
+      "box": {
+        "x": 0,
+        "y": -120,
+        "width": 1280,
+        "height": 480
+      },
+      "styles": {
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderRadius": "0px",
+        "cursor": "auto",
+        "position": "absolute",
+        "fontSize": "16px",
+        "transform": "matrix(1, 0, 0, 1, 0, 0)"
+      }
+    },
+    {
+      "selector": "#card",
+      "box": {
+        "x": 648,
+        "y": 320,
+        "width": 502,
+        "height": 119
+      },
+      "styles": {
+        "backgroundColor": "rgb(255, 255, 255)",
+        "borderRadius": "14px",
+        "cursor": "grab",
+        "position": "static",
+        "fontSize": "16px",
+        "transform": "none"
+      }
+    },
+    {
+      "selector": "#task-1",
+      "box": {
+        "x": 130,
+        "y": 320,
+        "width": 502,
+        "height": 119
+      },
+      "styles": {
+        "backgroundColor": "rgb(255, 255, 255)",
+        "borderRadius": "14px",
+        "cursor": "auto",
+        "position": "static",
+        "fontSize": "16px",
+        "transform": "none"
+      }
+    },
+    {
+      "selector": "#task-3",
+      "box": {
+        "x": 130,
+        "y": 455,
+        "width": 502,
+        "height": 117
+      },
+      "styles": {
+        "backgroundColor": "rgb(255, 255, 255)",
+        "borderRadius": "14px",
+        "cursor": "auto",
+        "position": "static",
+        "fontSize": "16px",
+        "transform": "none"
+      }
+    },
+    {
+      "selector": "#filter-all",
+      "box": {
+        "x": 130,
+        "y": 268,
+        "width": 49.5625,
+        "height": 34
+      },
+      "styles": {
+        "backgroundColor": "rgb(108, 99, 255)",
+        "borderRadius": "999px",
+        "cursor": "pointer",
+        "position": "static",
+        "fontSize": "14px",
+        "transform": "none"
+      }
+    },
+    {
+      "selector": "#hover-chip",
+      "box": {
+        "x": 40,
+        "y": 153,
+        "width": 83.953125,
+        "height": 33
+      },
+      "styles": {
+        "backgroundColor": "rgb(255, 183, 3)",
+        "borderRadius": "999px",
+        "cursor": "pointer",
+        "position": "static",
+        "fontSize": "13px",
+        "transform": "none"
+      }
+    },
+    {
+      "selector": "#status",
+      "box": {
+        "x": 1109.515625,
+        "y": 275.5,
+        "width": 40.484375,
+        "height": 19
+      },
+      "styles": {
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderRadius": "0px",
+        "cursor": "auto",
+        "position": "static",
+        "fontSize": "14px",
+        "transform": "none"
+      }
+    },
+    {
+      "selector": "main",
+      "box": {
+        "x": 90,
+        "y": 240,
+        "width": 1100,
+        "height": 1405
+      },
+      "styles": {
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderRadius": "0px",
+        "cursor": "auto",
+        "position": "static",
+        "fontSize": "16px",
+        "transform": "none"
+      }
+    },
+    {
+      "selector": ".board",
+      "box": {
+        "x": 130,
+        "y": 320,
+        "width": 1020,
+        "height": 385
+      },
+      "styles": {
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "borderRadius": "0px",
+        "cursor": "auto",
+        "position": "static",
+        "fontSize": "16px",
+        "transform": "none"
+      }
+    }
+  ],
+  "hover": {
+    "before": "none",
+    "after": {
+      "transform": "matrix(1.12, 0, 0, 1.12, 0, 0)",
+      "transitionDuration": "0.3s",
+      "transitionTimingFunction": "cubic-bezier(0.34, 1.56, 0.64, 1)"
+    }
+  },
+  "parallaxFit": [
+    {
+      "scrollY": 0,
+      "layerRectY": -120,
+      "transform": "matrix(1, 0, 0, 1, 0, 0)"
+    },
+    {
+      "scrollY": 300,
+      "layerRectY": -330,
+      "transform": "matrix(1, 0, 0, 1, 0, 90)"
+    }
+  ],
+  "filterFit": {
+    "choice": "work",
+    "visible": [
+      "task-1",
+      "card",
+      "task-4"
+    ],
+    "activeButton": "filter-work",
+    "visibleAfterAll": [
+      "task-1",
+      "card",
+      "task-3",
+      "task-4",
+      "task-5",
+      "task-6"
+    ]
+  },
+  "trajectory": {
+    "dragPx": 260,
+    "originX": 648,
+    "releaseMarkMs": 3332,
+    "samples": [
+      {
+        "tMs": 2445.062,
+        "x": 0
+      },
+      {
+        "tMs": 2461.6,
+        "x": 0
+      },
+      {
+        "tMs": 2478.3,
+        "x": 0
+      },
+      {
+        "tMs": 2495,
+        "x": 13
+      },
+      {
+        "tMs": 2511.6,
+        "x": 13
+      },
+      {
+        "tMs": 2528.3,
+        "x": 26
+      },
+      {
+        "tMs": 2545,
+        "x": 26
+      },
+      {
+        "tMs": 2561.7,
+        "x": 39
+      },
+      {
+        "tMs": 2578.3,
+        "x": 39
+      },
+      {
+        "tMs": 2595,
+        "x": 52
+      },
+      {
+        "tMs": 2611.6,
+        "x": 52
+      },
+      {
+        "tMs": 2628.3,
+        "x": 65
+      },
+      {
+        "tMs": 2645,
+        "x": 65
+      },
+      {
+        "tMs": 2661.7,
+        "x": 78
+      },
+      {
+        "tMs": 2678.4,
+        "x": 78
+      },
+      {
+        "tMs": 2695,
+        "x": 91
+      },
+      {
+        "tMs": 2711.6,
+        "x": 91
+      },
+      {
+        "tMs": 2728.3,
+        "x": 104
+      },
+      {
+        "tMs": 2745,
+        "x": 104
+      },
+      {
+        "tMs": 2761.6,
+        "x": 117
+      },
+      {
+        "tMs": 2778.3,
+        "x": 117
+      },
+      {
+        "tMs": 2795,
+        "x": 130
+      },
+      {
+        "tMs": 2811.6,
+        "x": 130
+      },
+      {
+        "tMs": 2828.3,
+        "x": 143
+      },
+      {
+        "tMs": 2845,
+        "x": 143
+      },
+      {
+        "tMs": 2861.7,
+        "x": 143
+      },
+      {
+        "tMs": 2878.4,
+        "x": 156
+      },
+      {
+        "tMs": 2895,
+        "x": 156
+      },
+      {
+        "tMs": 2911.7,
+        "x": 169
+      },
+      {
+        "tMs": 2928.3,
+        "x": 169
+      },
+      {
+        "tMs": 2944.9,
+        "x": 182
+      },
+      {
+        "tMs": 2961.7,
+        "x": 182
+      },
+      {
+        "tMs": 2978.3,
+        "x": 195
+      },
+      {
+        "tMs": 2995,
+        "x": 195
+      },
+      {
+        "tMs": 3011.6,
+        "x": 208
+      },
+      {
+        "tMs": 3028.3,
+        "x": 208
+      },
+      {
+        "tMs": 3044.9,
+        "x": 208
+      },
+      {
+        "tMs": 3061.7,
+        "x": 221
+      },
+      {
+        "tMs": 3078.3,
+        "x": 221
+      },
+      {
+        "tMs": 3094.9,
+        "x": 234
+      },
+      {
+        "tMs": 3111.7,
+        "x": 234
+      },
+      {
+        "tMs": 3128.3,
+        "x": 247
+      },
+      {
+        "tMs": 3145,
+        "x": 247
+      },
+      {
+        "tMs": 3161.6,
+        "x": 247
+      },
+      {
+        "tMs": 3178.3,
+        "x": 260
+      },
+      {
+        "tMs": 3194.9,
+        "x": 260
+      },
+      {
+        "tMs": 3211.7,
+        "x": 260
+      },
+      {
+        "tMs": 3228.3,
+        "x": 260
+      },
+      {
+        "tMs": 3244.9,
+        "x": 260
+      },
+      {
+        "tMs": 3261.7,
+        "x": 260
+      },
+      {
+        "tMs": 3278.3,
+        "x": 260
+      },
+      {
+        "tMs": 3295,
+        "x": 260
+      },
+      {
+        "tMs": 3311.6,
+        "x": 260
+      },
+      {
+        "tMs": 3328.3,
+        "x": 260
+      },
+      {
+        "tMs": 3345,
+        "x": 260
+      },
+      {
+        "tMs": 3361.6,
+        "x": 253.594
+      },
+      {
+        "tMs": 3378.3,
+        "x": 234.038
+      },
+      {
+        "tMs": 3395,
+        "x": 207.216
+      },
+      {
+        "tMs": 3411.6,
+        "x": 176.262
+      },
+      {
+        "tMs": 3428.3,
+        "x": 143.901
+      },
+      {
+        "tMs": 3444.9,
+        "x": 111.734
+      },
+      {
+        "tMs": 3461.7,
+        "x": 81.6473
+      },
+      {
+        "tMs": 3478.3,
+        "x": 54.2122
+      },
+      {
+        "tMs": 3495,
+        "x": 30.7147
+      },
+      {
+        "tMs": 3511.6,
+        "x": 11.0606
+      },
+      {
+        "tMs": 3528.2,
+        "x": -4.48415
+      },
+      {
+        "tMs": 3544.9,
+        "x": -16.1939
+      },
+      {
+        "tMs": 3561.6,
+        "x": -24.407
+      },
+      {
+        "tMs": 3578.3,
+        "x": -29.4747
+      },
+      {
+        "tMs": 3595,
+        "x": -31.8779
+      },
+      {
+        "tMs": 3611.6,
+        "x": -32.1189
+      },
+      {
+        "tMs": 3628.3,
+        "x": -30.7097
+      },
+      {
+        "tMs": 3645,
+        "x": -28.0819
+      },
+      {
+        "tMs": 3661.6,
+        "x": -24.6587
+      },
+      {
+        "tMs": 3678.3,
+        "x": -20.8237
+      },
+      {
+        "tMs": 3694.9,
+        "x": -16.8223
+      },
+      {
+        "tMs": 3711.6,
+        "x": -12.9348
+      },
+      {
+        "tMs": 3728.3,
+        "x": -9.28889
+      },
+      {
+        "tMs": 3745,
+        "x": -6.02912
+      },
+      {
+        "tMs": 3761.6,
+        "x": -3.22882
+      },
+      {
+        "tMs": 3778.2,
+        "x": -0.932024
+      },
+      {
+        "tMs": 3794.9,
+        "x": 0.877222
+      },
+      {
+        "tMs": 3811.6,
+        "x": 2.22778
+      },
+      {
+        "tMs": 3828.3,
+        "x": 3.15074
+      },
+      {
+        "tMs": 3844.9,
+        "x": 3.69975
+      },
+      {
+        "tMs": 3861.6,
+        "x": 3.93513
+      },
+      {
+        "tMs": 3878.3,
+        "x": 3.91903
+      },
+      {
+        "tMs": 3894.9,
+        "x": 3.70995
+      },
+      {
+        "tMs": 3911.6,
+        "x": 3.36641
+      },
+      {
+        "tMs": 3928.3,
+        "x": 2.9326
+      },
+      {
+        "tMs": 3944.9,
+        "x": 2.45301
+      },
+      {
+        "tMs": 3961.6,
+        "x": 1.9654
+      },
+      {
+        "tMs": 3978.3,
+        "x": 1.49088
+      },
+      {
+        "tMs": 3994.9,
+        "x": 1.05247
+      },
+      {
+        "tMs": 4011.6,
+        "x": 0.665748
+      },
+      {
+        "tMs": 4028.3,
+        "x": 0.33424
+      },
+      {
+        "tMs": 4045,
+        "x": 0.0634588
+      },
+      {
+        "tMs": 4061.6,
+        "x": -0.147199
+      },
+      {
+        "tMs": 4078.3,
+        "x": -0.300631
+      },
+      {
+        "tMs": 4094.9,
+        "x": -0.403806
+      },
+      {
+        "tMs": 4111.6,
+        "x": -0.462501
+      },
+      {
+        "tMs": 4128.2,
+        "x": -0.484525
+      },
+      {
+        "tMs": 4144.9,
+        "x": -0.477298
+      },
+      {
+        "tMs": 4161.6,
+        "x": -0.447766
+      },
+      {
+        "tMs": 4178.3,
+        "x": -0.402661
+      },
+      {
+        "tMs": 4194.9,
+        "x": -0.347887
+      },
+      {
+        "tMs": 4211.6,
+        "x": -0.28884
+      },
+      {
+        "tMs": 4228.3,
+        "x": -0.228825
+      },
+      {
+        "tMs": 4244.9,
+        "x": -0.171355
+      },
+      {
+        "tMs": 4261.6,
+        "x": -0.119005
+      },
+      {
+        "tMs": 4278.2,
+        "x": -0.0726796
+      },
+      {
+        "tMs": 4294.9,
+        "x": -0.0337279
+      },
+      {
+        "tMs": 4311.5,
+        "x": -0.0020101
+      },
+      {
+        "tMs": 4328.2,
+        "x": 0.0222903
+      },
+      {
+        "tMs": 4344.9,
+        "x": 0.0399025
+      },
+      {
+        "tMs": 4361.5,
+        "x": 0.0513939
+      },
+      {
+        "tMs": 4378.2,
+        "x": 0.0576126
+      },
+      {
+        "tMs": 4395,
+        "x": 0.059514
+      },
+      {
+        "tMs": 4411.6,
+        "x": 0.0579533
+      },
+      {
+        "tMs": 4428.3,
+        "x": 0.0538951
+      },
+      {
+        "tMs": 4444.9,
+        "x": 0
+      },
+      {
+        "tMs": 4461.6,
+        "x": 0
+      },
+      {
+        "tMs": 4478.2,
+        "x": 0
+      },
+      {
+        "tMs": 4494.9,
+        "x": 0
+      },
+      {
+        "tMs": 4511.6,
+        "x": 0
+      },
+      {
+        "tMs": 4528.2,
+        "x": 0
+      },
+      {
+        "tMs": 4544.9,
+        "x": 0
+      },
+      {
+        "tMs": 4561.6,
+        "x": 0
+      },
+      {
+        "tMs": 4578.2,
+        "x": 0
+      }
+    ]
+  },
+  "finalStatus": "At rest"
+}

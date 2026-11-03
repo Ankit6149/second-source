@@ -20,7 +20,8 @@
     { "arm": "A_prior", "label": "GEMMA_TEST", "provenance": "model-authored", "condition": "Prior only (no observations)", "status": "scored", "passed": 0, "total": 6, "failureClass": null },
     { "arm": "B_observations", "label": "GEMMA_TEST", "provenance": "model-authored", "condition": "Observations", "status": "provider_failure", "passed": null, "total": 6, "failureClass": "INFRASTRUCTURE" },
     { "arm": "C_grounded", "label": "GEMMA_TEST", "provenance": "model-authored", "condition": "Coverage-grounded synthesis", "status": "scored", "passed": 2, "total": 6, "failureClass": null },
-    { "arm": "D_active", "label": "GEMMA_TEST", "provenance": "model-authored", "condition": "Active experiment selection", "status": "provider_failure", "passed": null, "total": 6, "failureClass": "INFRASTRUCTURE" }
+    { "arm": "D_active", "label": "GEMMA_TEST", "provenance": "model-authored", "condition": "Active experiment selection", "status": "provider_failure", "passed": null, "total": 6, "failureClass": "INFRASTRUCTURE" },
+    { "arm": "H_hybrid", "label": "GEMMA_TEST", "provenance": "model-authored", "condition": "Compiler-assisted per-route synthesis: model edits deterministic compiled facts (templates carried, contract fields model-decided)", "status": "scored", "passed": 3, "total": 6, "failureClass": null }
   ],
   "oracle": { "label": "NON_AI", "provenance": "runtime-supplied", "description": "Hand-written oracle spec (public observations only), executed by the generic candidate interpreter. Plumbing control, never a model result.", "passed": 6, "total": 6 },
   "compiled": { "label": "EVIDENCE_COMPILED", "parentLabel": "NON_AI", "provenance": "evidence-compiled", "status": "available", "reason": null, "passed": 6, "total": 6, "artifact": ".runs/vikunja-model/spec_compiled.json", "artifactSha256": "sha256:a5c9104eebe74bf1f7620a7ca67d28535dbae87728ee4bcce246afe127ad4984" },
@@ -28,6 +29,7 @@
     "Gemma arms are GEMMA_TEST (gemma-4-26b-a4b-it via gemma-test provider), not Meta Muse and not REAL_MODEL.",
     "Provider failures (B, D) are unscored; they are never reported as 0/6.",
     "A (prior only) vs C (grounded) does not isolate the coverage-gate effect.",
+    "HYBRID (GEMMA_TEST, model-authored): per-route model edits of the compiled facts scored 3/6 held-out (spec file sha256:df2981dbda3bd11cd77c92ebf8b48f803225a4901857870d1fe04dcca0171d17) vs model-only C 2/6 and compiled NON_AI 6/6; public conformance 7/19; bounded repair call not admitted/provider-failed. The model improves unaided synthesis but its contract edits still degrade compiled facts.",
     "EVIDENCE_COMPILED 6/6 is deterministic transcription of the 20 public observations (spec sha256:a5c9104eebe74bf1f7620a7ca67d28535dbae87728ee4bcce246afe127ad4984; evidence sha256:40f23ce95eb9199a3c9cef33b8dd440f2f9afd0f0a298a9fdfb07342a5f66777), re-verified this session with a status-mutation control scoring 2/6. It is NON_AI — not a model result. The model-authored Gemma C remains 2/6.",
     "Scores on this benchmark are not comparable to the 14/25 ledger score: different target, suite and denominator.",
     "Contamination caveat: Vikunja is popular open source; a good score may reflect reconstruction plus possible recall.",

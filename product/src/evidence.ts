@@ -161,7 +161,7 @@ export function parseVikunjaSummary(value: unknown): VikunjaRecord | null {
   for (const key of ['interpreterSha256', 'evaluatorSha256', 'heldOutSha256'] as const) {
     if (typeof value[key] !== 'string' || !SHA.test(value[key] as string)) return null;
   }
-  if (!Array.isArray(value.arms) || value.arms.length !== 4) return null;
+  if (!Array.isArray(value.arms) || value.arms.length < 4 || value.arms.length > 8) return null;
   const arms: GemmaArm[] = [];
   for (const raw of value.arms) {
     if (!isRecord(raw)) return null;

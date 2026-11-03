@@ -95,6 +95,29 @@ self-check still passed) — the strongest argument for mutation tests.
 - Genuine model arms (GEMMA_TEST, `gemma-4-26b-a4b-it`): A prior-only
   **0/6**, C coverage-grounded **2/6** (error-contract cases), B and D
   unmeasured due provider failure (recorded, never scored as 0).
+- Generalization probe (NON_AI, File Browser v2.63.23 — an
+  independent professional OSS app the compiler had never seen;
+  `scripts/filebrowser_generalization_probe.py`): 8 black-box probes
+  (login ok/wrong, user list/get, unauthenticated, user create).
+  The compiler transferred structurally: it compiled `GET /users`
+  and `GET /users/1` routes plus auth facts (401 unauthenticated,
+  403 login error) with zero code changes. Named boundaries: login
+  returns a raw string token (the interpreter issues `{"token": …}`
+  JSON), no identity route was observed (empty user map), and the
+  create-user probe returned 400 (payload shape unobserved), so no
+  create route was compiled. Model contribution on this target: not
+  run — no improvement is claimed beyond structural transfer.
+- Hybrid (`scripts/vikunja_hybrid_experiment.py`, GEMMA_TEST,
+  model-authored): the model edits the compiled NON_AI facts route by
+  route (per-route structured calls; templates carried verbatim,
+  contract fields model-decided; full diff vs baseline recorded).
+  **3/6 held-out** (cases 0, 2, 3), public conformance 7/19, spec
+  sha256 `df2981db…`. This beats model-only C (2/6) and stays below
+  compiled NON_AI (6/6): the model's contract edits currently
+  degrade compiled facts. 16 design attempts are recorded in the
+  result file (provider timeouts/500s, prose/empty-object
+  degeneration, unsupported generation parameters); the bounded
+  public-probe repair call was not admitted (provider failure).
   The genuine Meta (Muse) Vikunja experiment additionally requires
   separate owner authorization: the earlier $0.50 approval covered
   the G4 fixture only.

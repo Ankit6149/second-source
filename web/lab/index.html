@@ -25,7 +25,7 @@ h2{color:var(--ink);font-size:clamp(22px,2.8vw,30px);letter-spacing:-.02em;margi
 .tabs button{font:inherit;font-weight:700;font-size:14px;padding:9px 18px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}
 .tabs button[aria-pressed="true"]{background:var(--mint-soft);border-color:var(--mint)}
 .tag{font-size:11px;font-weight:800;letter-spacing:.05em;padding:4px 10px;border-radius:999px;white-space:nowrap}
-.t-real{background:#173d27;color:#c9f2d6}.t-nonai{background:var(--wash);color:var(--body);border:1px solid var(--line)}
+.t-real{background:#173d27;color:#c9f2d6}.t-nonai{background:var(--wash);color:var(--body);border:1px solid var(--line)}.t-gemma{background:#fdf0d9;color:#7a4a08;border:1px solid #e3c07a}.t-compiled{background:#e8effc;color:#1d3fae;border:1px solid #a9bdf0}
 .timeline{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:0 0 24px}
 .stage{border:1px solid var(--line);border-radius:12px;padding:14px 15px;background:var(--wash)}
 .stage b{display:block;color:var(--ink);font-size:13px;margin-bottom:5px}
@@ -41,6 +41,13 @@ pre{font-family:var(--mono);font-size:11.5px;line-height:1.55;background:var(--w
 .matchline{color:var(--mint);font-weight:650}
 .verdict{font-size:12px;font-weight:800;letter-spacing:.05em;padding:5px 12px;border-radius:999px}
 .v-diff{background:var(--bad-soft);color:var(--bad)}.v-match{background:var(--mint-soft);color:var(--mint)}
+.t-browser{background:#eef3ee;color:var(--body);border:1px solid var(--line)}
+.repro{font-size:13px;color:var(--muted);margin:14px 0 0}.repro code{color:var(--ink)}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 16px}
+.metric{border:1px solid var(--line);border-radius:12px;padding:14px 15px;background:var(--wash);min-width:0}
+.metric b{display:block;color:var(--ink);font-size:19px;line-height:1.25}
+.metric span{font-size:12.5px}
+@media(max-width:860px){.metrics{grid-template-columns:1fr 1fr}}
 .note{border:1px solid var(--line);border-left:4px solid var(--mint);border-radius:10px;padding:16px 18px;font-size:14px;background:#fbfdfb}
 .note b{color:var(--ink)}
 footer{background:var(--dark);color:#93a89a;padding:40px 0;font-size:13.5px}footer a{color:#c9f2d6}
@@ -76,7 +83,7 @@ code{font-family:var(--mono);font-size:12px}
 <div class="col"><h3>REFERENCE (OBSERVED)</h3><pre id="ref-out"></pre></div>
 <div class="col"><h3 id="cand-title">CANDIDATE</h3><pre id="cand-out"></pre></div>
 </div>
-<p style="font-size:13px;color:var(--muted)" id="probe-note"></p>
+<p style="font-size:13px;color:var(--muted)" id="probe-note"></p><p class="repro">How to reproduce: recorded replay only — no command is run from the browser and no live status is shown. Sealed scores are stated in the Versions section below.</p>
 </div></section>
 <section><div class="wrap">
 </div></section>
@@ -89,10 +96,10 @@ code{font-family:var(--mono);font-size:12px}
 <div class="col"><h3>HELD-OUT CASES (EVALUATOR-SIDE, NEVER SHOWN TO THE MODEL)</h3><pre id="vk-cases"></pre></div>
 <div class="col"><h3>CLAIM COVERAGE VS PUBLIC EVIDENCE</h3><pre id="vk-coverage"></pre></div>
 </div>
-<p style="font-size:13px;color:var(--muted)">Diagnosis so far: prior-only reasoning fails on real software conventions (PUT creates, POST updates, 412-vs-400 validation split). Coverage-grounded synthesis earned the two error-contract cases and now fails mainly on field-<i>value</i> fidelity (zero-time literals, per-route null-vs-empty fields, default view payloads) — the next measured improvement targets exactly that. The 6/6 NON_AI oracle only proves the evaluator and spec surface are sound; it is not an AI result. Genuine Meta (Muse) arms are prepared under a frozen authorization packet and have not been run.</p>
+<p class="repro">How to reproduce: <code>python scripts/vikunja_benchmark.py --mode probe</code> then <code>python scripts/vikunja_benchmark.py --mode evaluate</code> (recorded replay on this page; no live model is called).</p><p style="font-size:13px;color:var(--muted)">Diagnosis so far: prior-only reasoning fails on real software conventions (PUT creates, POST updates, 412-vs-400 validation split). Coverage-grounded synthesis earned the two error-contract cases and now fails mainly on field-<i>value</i> fidelity (zero-time literals, per-route null-vs-empty fields, default view payloads) — the next measured improvement targets exactly that. The 6/6 NON_AI oracle only proves the evaluator and spec surface are sound; it is not an AI result. Genuine Meta (Muse) arms are prepared under a frozen authorization packet and have not been run.</p>
 </div></section>
 <section><div class="wrap">
-<h2>Versions, scores, uncertainty</h2>
+<h2>Browser / motion — spring-back reconstruction</h2><p class="sub">Recorded replay. <span class="tag t-browser">BROWSER_SLICE · DETERMINISTIC FIT (NON_AI)</span> A draggable card was observed in a real browser, its spring-back was fitted from the recorded trajectory only, and the rebuild was scored on a held-out drag the fit never saw. Nothing here is live; no model is called from this page.</p><p style="font-size:13px;color:var(--muted)" id="bm-source">Recorded, source: <code>browser-slice/verdict.json</code> and <code>browser-slice/inferred.json</code> in repo (embedded exact values — the static site layout cannot fetch <code>../../browser-slice/</code>; the page probes that path once and keeps the embedded record if it is unavailable).</p><div class="metrics"><div class="metric"><b>240px → 140px</b><span>capture drag (fit input) vs held-out drag (scored, never fitted)</span></div><div class="metric"><b id="bm-rmse">1.054px</b><span>held-out trajectory RMSE, candidate vs reference</span></div><div class="metric"><b id="bm-settle">0.009s</b><span>settling-time difference (ref 0.6458s vs cand 0.6364s)</span></div><div class="metric"><b id="bm-pass">pass: true</b><span>overall verdict in <code>verdict.json</code></span></div></div><div class="probes" role="group" aria-label="Choose browser evidence view" id="bm-views"><button type="button" data-bm="overview" aria-pressed="true">Overview &amp; inferred spring</button><button type="button" data-bm="trajectory" aria-pressed="false">Trajectory &amp; overshoot</button><button type="button" data-bm="adversarial" aria-pressed="false">Adversarial detection</button></div><div class="compare"><div class="col"><h3 id="bm-left-title">CAPTURE VS HELD-OUT (RECORDED)</h3><pre id="bm-left"></pre></div><div class="col"><h3 id="bm-right-title">INFERRED PARAMETERS (RECORDED)</h3><pre id="bm-right"></pre></div></div><p style="font-size:13px;color:var(--muted)">Provenance stays distinct: reference values are OBSERVED in the browser; spring constants are INFERRED by a deterministic fit (<code>inferred.json</code>); held-out and adversarial numbers are EVALUATOR output (<code>verdict.json</code>). Inferred constants are an effective model, not a claim about the reference source constants.</p><p class="repro">How to reproduce: <code>cd browser-slice &amp;&amp; node capture.mjs &amp;&amp; node fit.mjs &amp;&amp; node evaluate.mjs</code> (writes <code>observations.json</code>, <code>inferred.json</code>, <code>verdict.json</code>; pinned viewport 1280x800, headless Chromium via <code>../product/node_modules</code>).</p></div></section><section><div class="wrap"><h2>Versions, scores, uncertainty</h2>
 <div class="note" id="versions"></div>
 </div></section>
 </main>
@@ -729,6 +736,10 @@ var VK={
  "D_active":{label:"D · Active probing",tag:"GEMMA_TEST",score:"not measured",parse:"-",
   summary:"The model first chooses probes from a menu, sees their outcomes, then synthesizes. Not measured yet: selection output was unparseable and the synthesis call timed out (recorded, no score inferred). The menu executor itself is verified against the reference.",
   cases:["-","-","-","-","-","-"],coverage:"no admitted spec"},
+ "H_hybrid":{label:"H · Compiler-assisted model synthesis",tag:"GEMMA_TEST",score:"3/6",parse:"strict (per-route)",
+  summary:"The model edited the deterministic compiled facts route by route (templates carried verbatim; kind/status/access/validate/error bodies model-decided; every change diffed against the NON_AI baseline). Admitted and measured: 3/6 held-out (cases 0, 2, 3) vs model-only C at 2/6 and compiled NON_AI at 6/6; public conformance 7/19. The model improves unaided synthesis, but its contract edits still degrade compiled facts — the remaining bottleneck is model contract judgment, not evidence. Bounded public-probe repair was not admitted (provider failure). 16 recorded attempts: provider timeouts/500s, prose and empty-object degeneration, unsupported generation params — all logged in scripts/vikunja_hybrid_experiment.py.",
+  cases:["PASS","FAIL","PASS","PASS","FAIL","FAIL"],
+  coverage:"model diff vs compiled: 8 routes modified, 0 added, 0 removed (recorded in hybrid_result.json)"},
  "compiled":{label:"Compiled · Evidence transcription",tag:"EVIDENCE_COMPILED (NON_AI)",score:"6/6",parse:"deterministic",
   summary:"No model involved: a deterministic compiler (scripts/evidence_compiler.py) transcribes the 20 lossless public observations into a candidate spec — exact values preserved, dynamic ids/timestamps tokenized, response-shape nulls kept out of stored state. Evaluated 6/6 against a fresh Vikunja reference; a status-mutation control drops to 2/6, so the evaluator still discriminates. Spec sha256:a5c9104e…, evidence sha256:40f23ce9…. This proves the evidence-to-spec path, NOT model ability — the model-authored Gemma C remains 2/6 above.",
   cases:["PASS","PASS","PASS","PASS","PASS","PASS"],
@@ -748,12 +759,11 @@ Object.keys(VK).forEach(function(key,i){
 function show(key){
  holder.querySelectorAll("button").forEach(function(b){b.setAttribute("aria-pressed",String(b.dataset.arm===key));});
  var a=VK[key];
- document.getElementById("vk-summary").innerHTML="<b>"+a.label+"</b> <span class='tag t-nonai'>"+a.tag+"</span> <b>"+a.score+"</b> held-out · parse: "+a.parse+"<br>"+a.summary;
+ document.getElementById("vk-summary").innerHTML="<b>"+a.label+"</b> <span class='tag "+(a.tag==="GEMMA_TEST"?"t-gemma":a.tag.indexOf("EVIDENCE_COMPILED")===0?"t-compiled":"t-nonai")+"'>"+a.tag+"</span> <b>"+a.score+"</b> held-out · parse: "+a.parse+"<br>"+a.summary;
  document.getElementById("vk-cases").textContent=a.cases.map(function(c,i){return (c==="PASS"?"= ":c==="FAIL"?"!= ":"- ")+"case "+i+": "+NAMES[i]+"  ["+c+"]";}).join("\n");
  document.getElementById("vk-coverage").textContent=a.coverage+"\n\nClaims are classified against PUBLIC probe evidence only. UNKNOWN claims block any verified-equivalence language.";
 }
-show("C_grounded");
-})();
+show("C_grounded");})();</script><script>(function(){"use strict";var VERDICT={"heldOutDragPx":140,"captureDragPx":240,"trajectory":{"rmseCandidatePx":1.054,"settlingRefS":0.645800000011921,"settlingCandS":0.6364000000357628,"settlingDiffS":0.009},"overshoot":{"refMinX":-33.47,"candMinX":-32.6,"refPresent":true,"candPresent":true,"match":true},"adversarial":{"thresholdRmsePx":8,"noOvershootVariant":{"rmsePx":38.543,"overshootPresent":false,"detectedDifferent":true},"wrongEasingVariant":{"rmsePx":35.809,"overshootPresent":false,"detectedDifferent":true}},"pass":true};var VIEWS={overview:["CAPTURE VS HELD-OUT (RECORDED)","captureDragPx: 240 (fit input, observations.json trajectory)\nheldOutDragPx: 140 (scored only, never fitted)\nfunctional match: true (both final: At rest, x = 0)\nlayout: maxCardBoxDiffPx 0 (tolerancePx 4, pass true)\nparallax: maxLayerRectDiffPx 0 (pass true)\noverall verdict pass: true","INFERRED PARAMETERS (RECORDED)","spring stiffness_k: 188\ndamping_c: 11.4\nnaturalFreq_wn_rad_s: 13.711\ndampingRatio_zeta: 0.4157\ndampedFreq_wd_rad_s: 12.47\nfit residual RMSE: 1.5415px over 110 samples\nfittedTimeOffsetS: 0.032, releaseXpx: 240\nobservedOvershootPx (capture): -57.41, parallaxFactorObserved: 0.35"],trajectory:["TRAJECTORY - HELD-OUT 140px (RECORDED)","trajectory RMSE (candidate vs reference): 1.054px\nsettlingRefS: 0.645800000011921\nsettlingCandS: 0.6364000000357628\nsettlingDiffS: 0.009","OVERSHOOT - HELD-OUT (RECORDED)","refMinX: -33.47px (refPresent: true)\ncandMinX: -32.6px (candPresent: true)\novershoot match: true\n(capture-drag observed overshoot was -57.41px at 240px)"],adversarial:["ADVERSARIAL CONTROLS (RECORDED)","thresholdRmsePx: 8\nno-overshoot variant: RMSE 38.543px, overshootPresent false, detectedDifferent true\nwrong-easing variant: RMSE 35.809px, overshootPresent false, detectedDifferent true","READING (RECORDED)","Both deliberately-wrong variants exceed the 8px threshold by a wide margin and are detected as different. The candidate itself is at 1.054px."]};function render(view){var v=VIEWS[view];document.getElementById("bm-left-title").textContent=v[0];document.getElementById("bm-left").textContent=v[1];document.getElementById("bm-right-title").textContent=v[2];document.getElementById("bm-right").textContent=v[3];document.querySelectorAll("[data-bm]").forEach(function(b){b.setAttribute("aria-pressed",String(b.getAttribute("data-bm")===view));});}document.querySelectorAll("[data-bm]").forEach(function(b){b.addEventListener("click",function(){render(b.getAttribute("data-bm"));});});render("overview");if(window.fetch){fetch("../../browser-slice/verdict.json").then(function(r){if(!r.ok)throw new Error("unavailable");return r.json();}).then(function(j){if(j&&j.trajectory&&j.trajectory.rmseCandidatePx===VERDICT.trajectory.rmseCandidatePx&&j.pass===true){document.getElementById("bm-source").textContent="Recorded, source: browser-slice/verdict.json and browser-slice/inferred.json in repo (fetched from the repo layout; values match the embedded record).";}}).catch(function(){});}})();
 </script>
 </body>
 </html>

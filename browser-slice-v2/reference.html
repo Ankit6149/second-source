@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Flowboard — Task Board</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: Segoe UI, Arial, sans-serif; background: #f4f5fb; color: #1c2130; }
+  header { position: relative; height: 240px; overflow: hidden; background: #232946; color: #fff; }
+  #parallax-layer { position: absolute; left: 0; top: -120px; width: 100%; height: 480px;
+    background: linear-gradient(160deg, #6c63ff, #232946 70%); will-change: transform; }
+  header .inner { position: relative; padding: 64px 40px; }
+  header h1 { font-size: 34px; }
+  header p { opacity: .85; margin-top: 8px; }
+  main { padding: 28px 40px 40px; max-width: 1100px; margin: 0 auto; }
+  .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 18px; flex-wrap: wrap; }
+  .filter-btn { border: 1px solid #c9cde0; background: #fff; padding: 8px 16px; border-radius: 999px;
+    cursor: pointer; font-size: 14px; transition: background-color .25s ease, transform .25s ease; }
+  .filter-btn:hover { transform: translateY(-1px); }
+  .filter-btn.active { background: #6c63ff; color: #fff; border-color: #6c63ff; }
+  #status { margin-left: auto; font-size: 14px; color: #555b73; }
+  .board { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .task { background: #fff; border: 1px solid #e2e5f1; border-radius: 14px; padding: 18px; }
+  .task h2 { font-size: 17px; margin-bottom: 6px; }
+  .task p { font-size: 14px; color: #555b73; }
+  .tag { display: inline-block; margin-top: 10px; font-size: 12px; padding: 3px 10px; border-radius: 999px; background: #eceaff; color: #4a43b8; }
+  .tag.personal { background: #e6f7ee; color: #1d7a4c; }
+  #card { cursor: grab; touch-action: none; user-select: none; border: 2px solid #6c63ff; }
+  #card:active { cursor: grabbing; }
+  .spacer { height: 900px; }
+  footer { padding: 30px 40px; color: #555b73; font-size: 13px; }
+  #hover-chip { display: inline-block; margin-top: 14px; background: #ffb703; color: #3a2c00;
+    padding: 8px 14px; border-radius: 999px; font-size: 13px; cursor: pointer;
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1); }
+  #hover-chip:hover { transform: scale(1.12); }
+</style>
+</head>
+<body>
+<header>
+  <div id="parallax-layer" aria-hidden="true"></div>
+  <div class="inner">
+    <h1>Flowboard</h1>
+    <p>Your week at a glance. Drag the launch card — it springs home.</p>
+    <span id="hover-chip">Hover me</span>
+  </div>
+</header>
+<main>
+  <div class="toolbar" role="toolbar" aria-label="Filter tasks">
+    <button id="filter-all" class="filter-btn active" data-filter="all">All</button>
+    <button id="filter-work" class="filter-btn" data-filter="work">Work</button>
+    <button id="filter-personal" class="filter-btn" data-filter="personal">Personal</button>
+    <span id="status" role="status">At rest</span>
+  </div>
+  <section class="board" aria-label="Task board">
+    <article class="task" id="task-1" data-cat="work"><h2>Design review</h2><p>Walk through the new onboarding flow.</p><span class="tag">work</span></article>
+    <article class="task" id="card" data-cat="work"><h2>Ship launch checklist</h2><p>Drag me sideways, then let go.</p><span class="tag">work</span></article>
+    <article class="task" id="task-3" data-cat="personal"><h2>Book flights</h2><p>Compare Friday evening departures.</p><span class="tag personal">personal</span></article>
+    <article class="task" id="task-4" data-cat="work"><h2>Fix flaky test</h2><p>Investigate the intermittent CI failure.</p><span class="tag">work</span></article>
+    <article class="task" id="task-5" data-cat="personal"><h2>Gym session</h2><p>Leg day, 45 minutes.</p><span class="tag personal">personal</span></article>
+    <article class="task" id="task-6" data-cat="personal"><h2>Read chapter 4</h2><p>Twenty pages before bed.</p><span class="tag personal">personal</span></article>
+  </section>
+  <div class="spacer" aria-hidden="true"></div>
+</main>
+<footer>Flowboard demo — scroll to see the parallax header.</footer>
+<script>
+  // --- Scroll-linked parallax (TRUE factor below) ---
+  var PARALLAX = 0.3;
+  var layer = document.getElementById('parallax-layer');
+  function onScroll() { layer.style.transform = 'translateY(' + (window.scrollY * PARALLAX) + 'px)'; }
+  window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+  // --- Filter buttons ---
+  var buttons = Array.prototype.slice.call(document.querySelectorAll('.filter-btn'));
+  var tasks = Array.prototype.slice.call(document.querySelectorAll('.task'));
+  buttons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      buttons.forEach(function (b) { b.classList.toggle('active', b === btn); });
+      var f = btn.getAttribute('data-filter');
+      tasks.forEach(function (t) {
+        t.style.display = (f === 'all' || t.getAttribute('data-cat') === f) ? '' : 'none';
+      });
+    });
+  });
+
+  // --- Draggable card with spring return (TRUE spring below) ---
+  var K = 180, C = 14;
+  var card = document.getElementById('card');
+  var statusEl = document.getElementById('status');
+  var x = 0, v = 0, dragging = false, startX = 0, startCardX = 0, raf = null, lastT = 0;
+  function tick(now) {
+    var dt = Math.min(0.032, (now - lastT) / 1000 || 0.016); lastT = now;
+    var a = -K * x - C * v; v += a * dt; x += v * dt;
+    card.style.transform = 'translateX(' + x + 'px)';
+    if (Math.abs(x) < 0.05 && Math.abs(v) < 1) {
+      x = 0; v = 0; card.style.transform = 'translateX(0px)';
+      statusEl.textContent = 'At rest'; raf = null; return;
+    }
+    raf = requestAnimationFrame(tick);
+  }
+  card.addEventListener('pointerdown', function (e) {
+    dragging = true; startX = e.clientX; startCardX = x;
+    if (raf) cancelAnimationFrame(raf); raf = null;
+    card.setPointerCapture(e.pointerId); statusEl.textContent = 'Dragging…';
+  });
+  card.addEventListener('pointermove', function (e) {
+    if (!dragging) return;
+    x = startCardX + (e.clientX - startX); v = 0;
+    card.style.transform = 'translateX(' + x + 'px)';
+  });
+  card.addEventListener('pointerup', function () {
+    if (!dragging) return; dragging = false;
+    statusEl.textContent = 'Settling…'; lastT = performance.now();
+    raf = requestAnimationFrame(tick);
+  });
+</script>
+</body>
+</html>

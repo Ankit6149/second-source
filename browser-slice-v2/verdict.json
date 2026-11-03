@@ -1,0 +1,112 @@
+{
+  "heldOut": {
+    "dragPx": 150,
+    "scrolls": [
+      0,
+      150,
+      450,
+      750
+    ],
+    "filter": "personal"
+  },
+  "fitUsed": {
+    "dragPx": 260,
+    "scrolls": [
+      0,
+      300
+    ],
+    "filter": "work"
+  },
+  "functional": {
+    "refFinalStatus": "At rest",
+    "candFinalStatus": "At rest",
+    "refVisiblePersonal": [
+      "task-3",
+      "task-5",
+      "task-6"
+    ],
+    "candVisiblePersonal": [
+      "task-3",
+      "task-5",
+      "task-6"
+    ],
+    "refActive": "filter-personal",
+    "candActive": "filter-personal",
+    "match": true
+  },
+  "layout": {
+    "maxBoxDiffPx": 0,
+    "tolerancePx": 4,
+    "pass": true
+  },
+  "trajectory": {
+    "rmseCandidatePx": 1.741,
+    "thresholdPx": 8,
+    "settlingRefS": 0.567,
+    "settlingCandS": 0.433,
+    "settlingDiffS": 0.134,
+    "pass": true
+  },
+  "overshoot": {
+    "refMinX": -18.51,
+    "candMinX": -15.97,
+    "refPresent": true,
+    "candPresent": true,
+    "match": true
+  },
+  "parallax": {
+    "maxLayerRectDiffPx": 0,
+    "tolerancePx": 6,
+    "refSeq": [
+      {
+        "scrollY": 0,
+        "layerRectY": -120
+      },
+      {
+        "scrollY": 150,
+        "layerRectY": -225
+      },
+      {
+        "scrollY": 450,
+        "layerRectY": -435
+      },
+      {
+        "scrollY": 750,
+        "layerRectY": -645
+      }
+    ],
+    "candSeq": [
+      {
+        "scrollY": 0,
+        "layerRectY": -120
+      },
+      {
+        "scrollY": 150,
+        "layerRectY": -225
+      },
+      {
+        "scrollY": 450,
+        "layerRectY": -435
+      },
+      {
+        "scrollY": 750,
+        "layerRectY": -645
+      }
+    ],
+    "pass": true
+  },
+  "adversarial": {
+    "thresholdRmsePx": 8,
+    "wrongSpring": {
+      "rmsePx": 44.349,
+      "candMinX": 0,
+      "detectedDifferent": true
+    },
+    "wrongParallax": {
+      "maxLayerRectDiffPx": 210,
+      "detectedDifferent": true
+    },
+    "pass": true
+  },
+  "pass": true
+}
