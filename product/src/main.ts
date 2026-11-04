@@ -6,6 +6,7 @@ import { createIcons, PanelLeft, PanelLeftClose, SquarePen, FolderOpen, SwatchBo
 import type { Session } from '@supabase/supabase-js';
 import { auth, observeSession, signIn, signOut } from './auth';
 import { Api, ApiError, validatedOrigin, type Target, type Investigation, type Run, type RunEvent, type Verification } from './api';
+import type { OrchestrationEvidenceView } from './orchestration_panel';
 import { detectReference } from './reference';
 import { supportedTargets } from './targets';
 import { clearOwnerNotes, loadNotes, saveNotes } from './notes';
@@ -23,12 +24,12 @@ const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as
 const apiOrigin = validatedOrigin(import.meta.env.VITE_API_ORIGIN || '', import.meta.env.DEV);
 const state: {
   session: Session | null; ownerId: string | null; investigations: Investigation[]; targets: Target[]; target: Target | null; selected: Investigation | null;
-  run: Run | null; events: RunEvent[]; verification: Verification | null; messages: string[]; draft: string;
+  run: Run | null; events: RunEvent[]; verification: Verification | null; orch: OrchestrationEvidenceView | null; messages: string[]; draft: string;
   view: 'home' | 'conversation' | 'library' | 'system' | 'compare' | 'reports' | 'settings'; loading: boolean; error: string; pollError: string; uncertain: boolean; actionUncertain: string | null;
   executionError: { runId: string; message: string } | null;
   busy: boolean; executing: boolean; epoch: number;
 } = { session: null, ownerId: null, investigations: [], targets: [], target: null, selected: null, run: null, events: [], verification: null,
-  messages: [], draft: sessionStorage.getItem('ss-product-draft') || '', view: 'home', loading: false, error: '', pollError: '',
+  orch: null, messages: [], draft: sessionStorage.getItem('ss-product-draft') || '', view: 'home', loading: false, error: '', pollError: '',
   uncertain: false, actionUncertain: null, executionError: null, busy: false, executing: false, epoch: 0 };
 const api = new Api(apiOrigin, () => state.session?.access_token || null);
 let pollTimer: number | undefined;
@@ -68,7 +69,7 @@ function describe(error: unknown) {
     if (error.status === 401) {
       ++state.epoch; state.loading = false; state.busy = false; state.executing = false; state.uncertain = false; state.actionUncertain = null;
       state.session = null; state.ownerId = null; state.targets = []; state.target = null; state.investigations = []; state.selected = null;
-      state.run = null; state.verification = null; state.events = []; state.messages = []; state.draft = ''; state.pollError = ''; state.executionError = null; state.view = 'home';
+      state.run = null; state.verification = null; state.events = []; state.orch = null; state.messages = []; state.draft = ''; state.pollError = ''; state.executionError = null; state.view = 'home';
       sessionStorage.removeItem('ss-product-draft'); stopPolling();
     }
     return error.message + (error.correlationId ? ` Reference: ${error.correlationId}` : '');
@@ -204,7 +205,7 @@ function investigationCard() {
 function conversation() {
   if (state.selected) return renderInvestigationWorkspace({
     investigation: state.selected, target: state.target, run: state.run, events: state.events,
-    verification: state.verification, notes: state.messages, actionsHtml: controls(),
+    verification: state.verification, notes: state.messages, actionsHtml: controls(), orchestration: state.orch,
   });
   const messages = state.messages.map(message => `<div class="message user"><div class="bubble">${esc(message)}</div></div>`).join('');
   return `<section class="conversation">${messages}${investigationCard()}</section>`;
@@ -251,7 +252,7 @@ async function hydrate(session: Session | null) {
   const generation = ++state.epoch;
   const previousUser = state.session?.user.id;
   if (previousUser && previousUser !== session?.user.id) {
-    state.investigations = []; state.targets = []; state.target = null; state.selected = null; state.run = null; state.events = []; state.verification = null;
+    state.investigations = []; state.targets = []; state.target = null; state.selected = null; state.run = null; state.events = []; state.verification = null; state.orch = null;
     state.messages = []; state.draft = ''; state.view = 'home';
   }
   state.session = session; state.ownerId = null; state.error = ''; state.pollError = ''; state.executionError = null; state.executing = false; state.busy = false; state.actionUncertain = null; stopPolling();
