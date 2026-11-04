@@ -84,7 +84,7 @@ export function renderInvestigationWorkspace(view: WorkspaceView): string {
       </section>
       <section class="work-panel" aria-label="Observed backend activity">
         <div class="work-panel-head"><div><span class="work-eyebrow">02 / OBSERVATIONS</span><h2>Execution log</h2></div><span class="work-tag">${events.length} EVENTS</span></div>
-        ${activity}
+        ${events.length ? `<details class="activity work-activity" open><summary>Recorded activity (${events.length})</summary>${activity}</details>` : activity}
         <p class="work-small">Only persisted lifecycle events are shown. Detailed reference inputs or outputs cannot be inferred from these status events alone.</p>
       </section>
       <section class="work-panel work-wide" aria-label="Independent verification">
