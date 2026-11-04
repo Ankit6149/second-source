@@ -23,10 +23,12 @@ every result carries a provenance label that is never merged or relabeled:
 Headline outcomes (current, 4 Nov 2026):
 
 - **Vikunja, end-to-end through the product engine:** public ladder
-  **18/19** after generic interpreter fixes (was 11/19; sole remaining
-  divergence is the reference's per-user default project list), and the
-  same fixed candidate re-scored **6/6 on the frozen suite and 6/6 on
-  the extended suite** - no regression.
+  **19/19** (was 11/19). The last divergences were a measurement
+  artifact (ladder replayed on an already-probed reference, duplicating
+  a project) plus missing default-project seeding - the rule Muse
+  identified in its recorded seed experiment, now derived generically
+  from public evidence by the compiler. Frozen suite **6/6** and
+  extended suite **6/6** still hold - no regression.
 - **Muse has worked inside the experiments on every API target**
   (REAL_MODEL, receipted, gated): route reviews preserved File Browser
   **7/7** (2 calls) and Gitea **6/6** (6 calls); on Vikunja's fixed

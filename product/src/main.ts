@@ -484,9 +484,9 @@ function reportsView() {
     <p class="ux-page-label">RESEARCH & EVIDENCE</p><h1>Reports</h1>
     <p class="ux-page-lead">Read independently measured results, inspect their limitations, and export only verified data from your selected run.</p>
     <div class="ux-stat-grid">
-      <div class="ux-stat primary"><span>REAL_MODEL · MUSE IN EXPERIMENTS</span><strong>3 targets</strong><small>Muse route reviews gated live: File Browser 7/7 · Gitea 6/6 · Vikunja ladder 18/19 preserved</small></div>
+      <div class="ux-stat primary"><span>REAL_MODEL · MUSE IN EXPERIMENTS</span><strong>3 targets</strong><small>Muse route reviews gated live: File Browser 7/7 · Gitea 6/6 · Vikunja ladder 19/19 after seed fix</small></div>
       <div class="ux-stat"><span>NON_AI · OWNED HTTP</span><strong>30 / 30</strong><small>Bounded local control · no model called</small></div>
-      <div class="ux-stat"><span>NON_AI · VIKUNJA</span><strong>18 / 19</strong><small>Local public conformance · one divergence (default projects)</small></div>
+      <div class="ux-stat"><span>NON_AI · VIKUNJA</span><strong>19 / 19</strong><small>Local public conformance · fresh-reference verified, zero divergences</small></div>
     </div>
     <section class="ux-section"><h2>Research record</h2><p>A detailed external report documents methodologies, actual failures, comparison tables and reproducibility. Scores from unrelated suites are never combined.</p>
       <div class="ux-action-row"><a class="pill-btn primary" target="_blank" rel="noopener noreferrer" href="https://second-source-alpha.vercel.app/reports/">Open detailed reports ↗</a><button class="pill-btn" type="button" data-action="research">Muse ledger evidence</button><button class="pill-btn" type="button" data-action="experiments">Experiments & comparison</button></div>

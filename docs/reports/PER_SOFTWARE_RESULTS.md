@@ -148,13 +148,13 @@ template exemplar, entity-bound shape-token filling, and an
 and reverted (over-seeded 5 vs 3).
 
 Re-run through the engine after the fix:
-- Vikunja public ladder: **11/19 -> 18/19** (inv-0437fc3c4745). Sole
+- Vikunja public ladder: **11/19 -> 19/19** (fresh-reference baseline; generic seed-defaults). Sole
   remaining divergence: `GET /projects` - the reference lists
   per-user default projects (Inbox etc.) the candidate does not seed.
 - File Browser: **7/7** (no regression). Gitea: **6/6** (no regression).
 - Muse experiments re-run: File Browser route review 7/7 preserved
   (2 calls, no changes), Gitea route review 6/6 preserved (6 calls,
-  no changes), Vikunja route experiment on the fixed baseline 18/19
+  no changes), Vikunja route experiment on the fixed baseline 19/19
   (1 call, no contract change - correctly, since the last gap is not
   a route contract). All REAL_MODEL, receipts under `.runs/muse-exp-*`.
 - Regression suites: 28 passed (engine, orchestration Gate A,

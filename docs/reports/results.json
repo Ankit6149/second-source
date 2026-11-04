@@ -164,7 +164,7 @@
       "passed": 12,
       "total": 12,
       "provenance": "NON_AI",
-      "note": "after interpreter blocker fixes; public ladder 18/19; frozen 6/6 and extended 6/6 both hold, no regression"
+      "note": "after interpreter blocker fixes; public ladder 19/19 (fresh-reference baseline, generic seed-defaults); frozen 6/6 and extended 6/6 both hold, no regression"
     }
   ],
   "submission": {
