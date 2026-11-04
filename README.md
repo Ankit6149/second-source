@@ -2,9 +2,9 @@
 
 ![Second Source — Rebuild the behavior. Prove the match.](assets/readme-hero.svg)
 
-**From an observable black box to a separately implemented, evidence-tested substitute.**
+**The long-term vision: give Second Source an authorized software reference, and receive a reconstructed, independently verified implementation.**
 
-**Start here:** [Product](https://second-source-alpha.vercel.app/) · [Detailed Reports](https://second-source-alpha.vercel.app/reports/) · [Experiments](https://second-source-alpha.vercel.app/experiments/) · [Open the workspace](https://second-source-alpha.vercel.app/app/). The first-screen behavioral contrast is recorded evidence, not live model inference. Supported local investigations require a connected backend.
+**Start here:** [How it works](https://second-source-alpha.vercel.app/architecture/) · [Try the web workspace](https://second-source-alpha.vercel.app/app/) · [Measured results](https://second-source-alpha.vercel.app/reports/) · [Run the full local engine](#try-it-locally). The public website is for product discovery and bounded hosted investigations; the full supported-target reconstruction engine runs on localhost.
 
 [Why it exists](#why-not-just-ask-ai-to-copy-a-website) · [How it works](#how-second-source-works) · [Live capabilities](#what-works-today) · [Try it locally](#try-it-locally) · [Architecture](#system-architecture)
 
@@ -16,7 +16,7 @@
 </div>
 
 > [!IMPORTANT]
-> **Engineering prototype, not a universal cloning service.** The repository has a reproducible **NON_AI** reconstruction/evaluation workflow and recorded **genuine Meta G2 reasoning**. A **genuine Meta-generated G3 candidate was admitted and independently scored 14/25** (9 schema, 2 error mismatches; provider attestation incomplete) - see [judge evidence](docs/JUDGE_EVIDENCE_G3.md). Real-model repair is not yet demonstrated. The public frontend is an interactive research preview; hosted backend execution, durable cloud investigation storage, real-model repair, and arbitrary-target reconstruction are **not accepted as live production capabilities**. See [current evidence and release gates](#what-works-today).
+> **What works, and where to try it.** Second Source is an engineering prototype, **not yet an arbitrary-link-to-full-app generator**. The [hosted website](https://second-source-alpha.vercel.app/) supports the public product experience and a **bounded authenticated NON_AI investigation**. To reproduce the supported professional-target probe → reconstruction → independent verification workflow, **run the local engine and local app on your own machine** ([instructions](#try-it-locally)). A genuine Meta Muse Spark 1.3 gateway exists in the local engine; an explicit opt-in repair attempt requires your own server-side `MODEL_API_KEY`, operator enablement, and informed consent. Do not treat hosted execution, local candidate conformance, or historic model-only scores as interchangeable.
 
 ## The idea
 
@@ -129,29 +129,24 @@ Its first candidate format is a **restricted, declarative specification**, not a
 
 ## What works today
 
-<sub>Engineering status checked 3 November 2026. Current GitHub state can change; [docs/BENCHMARK_VIKUNJA.md](docs/BENCHMARK_VIKUNJA.md) and linked PRs provide the detailed evidence trail. Some dated board entries are historical checkpoints, not the latest merged SHA.</sub>
+Second Source is building toward **authorized reference in → independently reconstructed software out, with evidence for every claim**. The prototype proves important components of that journey, but does not yet perform universal end-to-end software generation from arbitrary URLs.
 
-| Area | Status | Evidence / limitation |
+| Capability | Current status | How to use or verify it |
 |:--|:--|:--|
-| Owned-ledger observation, hypothesis and experiment flow | **Implemented for the approved fixture** | Genuine Meta-driven G2 reasoning recorded; **3 hypotheses, 5 observations, 2 real provider receipts** |
-| Candidate admission and independent sealed evaluator | **Implemented and tested** | Reproducible controls: hand-authored positive **25/25**; deliberately defective controls trigger **2 / 2 / 1** failures |
-| Scripted end-to-end reconstruction | **Demonstrated — NON_AI** | Mock candidate scores **22 passed / 3 failed / 0 indeterminate / 25** |
-| Genuine Meta-generated G3 candidate | **Demonstrated: 14/25** | Muse Spark 1.3 candidate admitted and independently scored 14 passed / 11 failed / 0 indeterminate (9 schema, 2 error); provider attestation incomplete; see docs/JUDGE_EVIDENCE_G3.md |
-| Professional benchmark: Vikunja v2.4.0 (`/api/v1`, bounded scope) | **Measured — GEMMA_TEST** | Genuine external-model arms (`gemma-4-26b-a4b-it`, dev provider, NOT Meta): A prior-only **0/6**, C coverage-grounded **2/6**, B/D provider-failure (unmeasured, never scored 0); see docs/BENCHMARK_VIKUNJA.md |
-| Evidence-compiled candidate | **Demonstrated: 6/6 — NON_AI** | Deterministic compiler (`scripts/evidence_compiler.py`) transcribes 20 lossless public observations into a candidate spec; 6/6 held-out vs fresh reference, status-mutation control 2/6. Proves the evidence→spec path; **not** a model result |
-| Browser / motion slice | **Bounded demonstration** | Chromium capture → spring-physics fit from observations only → candidate passes held-out 140px drag at 1.05px trajectory RMSE; adversarial variants detected (`browser-slice/`). One owned fixture; no general website reconstruction claimed |
-| Bounded mock candidate repair | **Implemented on [PR #18](https://github.com/Ankit6149/second-source/pull/18); pending integration** | Frozen-context retries and versioned evidence; **not** real feedback-conditioned synthesis or real-model repair |
-| Durable local API and worker | **Implemented** | Owner-scoped local SQLite lifecycle, cancellation/fencing, mock execution, sanitized export |
-| Cloud backend and storage | **Live** | Render API `second-source-api.onrender.com` (`/health/ready` 200), Supabase Postgres + Auth (Google) + Storage; signed-in create/authorize/queue/events verified in production. Hosted execution stays disabled (only a mock executor exists there) |
-| Public website and app | **Live** | https://second-source-alpha.vercel.app/ (`/`, `/app/`, `/reports/`, `/experiments/`, `/challenge/`, `/architecture/`): sign-in, investigations, experiments, reports |
-| E2B / Daytona sandbox | **Gated integration work** | Interface and fake tests exist; production sandbox execution is not enabled |
+| Public product website + hosted workspace | **Deployed** | [Open the website](https://second-source-alpha.vercel.app/) or [workspace](https://second-source-alpha.vercel.app/app/). Sign-in, supported scope, investigation/job tracking and a bounded hosted **NON_AI** execution path exist. |
+| Professional-target reconstruction | **Local engine; bounded** | Run `scripts/investigation_engine.py` alongside the local app. The same generic evidence compiler and interpreter were tested on pinned software references. |
+| Vikunja v2.4.0 | **19/19 public conformance** | Reference probes, evidence-compiled independent candidate, fresh-reference public replay; separate frozen and extended suites previously recorded 6/6 and 6/6. The 19/19 is **not** a model-generated-source-code score. |
+| File Browser / Gitea | **7/7 and 6/6 public cases** | Supported bounded API actions in local measurements. Not whole-application cloning or general web reconstruction. |
+| PocketBase v0.28.4 | **9/9 compiler baseline** | An initial bounded target; separate Muse route-review proposals were gated. Do not interpret the baseline as a successful AI-authored improvement. |
+| Meta Muse Spark 1.3 | **Real API experiments + opt-in local repair stage** | Muse identified a default-project rule for Vikunja, later derived generically from public evidence by the compiler. The server-side model gateway can propose a bounded edit; a fresh independent public gate admits only measured improvements. Provider responses can fail or be rejected. |
+| Independent reports and exports | **Implemented for supported paths** | Download the chosen local candidate specification and measured report, or use the hosted bounded job's separate export workflow. Keep model and NON_AI provenance separate. |
+| Arbitrary URL → ordinary source-code project | **Roadmap, not shipped** | [Interactive full architecture](https://second-source-alpha.vercel.app/architecture/). General connectors, source-code synthesis, isolated build/repair and visual reconstruction remain future engineering work. |
 
-> [!NOTE]
-> **25/25 is a trusted control, and 22/25 is a scripted mock result. Neither is a genuine model-reconstruction accuracy score.** The genuine Meta score is **14/25** (see docs/JUDGE_EVIDENCE_G3.md). No additional paid inference is authorized by this project documentation (rev-7 proposed, not approved).
+**Demonstration guidance:** For a judge or evaluator, use localhost for the most complete supported-target engine. Use the public site to understand the product, explore architecture and review reports. Do not describe the hosted NON_AI worker as the full local Muse-powered professional-target reconstruction engine. The end goal is ambitious; the scores above refer only to explicitly named, measured scopes.
 
 ## Try it locally
 
-**Requirements:** Python 3.11+, Git, and a reviewed checkout. No Meta API key, billing card, or cloud account is needed for the nonbillable examples.
+**Requirements:** Python 3.11+, Node.js/npm, Git, the appropriate supported local reference service and a reviewed checkout. The default NON_AI workflow needs **no** Meta Model API key. The optional paid Muse API mode is separate and requires an explicit operator opt-in. `MODEL_API_KEY` must never be committed, logged publicly or sent to a browser.
 
 ~~~bash
 git clone https://github.com/Ankit6149/second-source.git
@@ -181,9 +176,14 @@ cd product && npm install && npm run dev   # open the printed local URL
 # candidate, public-conformance score, and download the report/evidence ZIP.
 # References: Vikunja/File Browser are started by the engine/operator locally;
 # Gitea must be running at 127.0.0.1:3000, File Browser at 127.0.0.1:3471.
-# Optional Muse gated route repair (paid, off by default):
-#   set MODEL_API_KEY and SECOND_SOURCE_ALLOW_MUSE_REPAIR=1, or run
-#   scripts/start-local-muse.ps1 — then choose model_mode "muse-repair".
+# Optional genuine Meta Muse public-repair call (paid; disabled by default):
+# On the *local engine process only*, set MODEL_API_KEY securely and
+# SECOND_SOURCE_ALLOW_MUSE_REPAIR=true, then explicitly authorize Muse in
+# the app. The stage allows one model call with a $0.50 estimated cap.
+# For Windows, scripts/start-local-muse.ps1 -Muse performs checks and starts
+# the local engine/app, but requires an already-set MODEL_API_KEY.
+# No hidden evaluation data is sent to the model and no improvement is
+# claimed unless an independent public replay measures it.
 
 # Or exercise the local durable API → worker → evaluator workflow.
 python -m second_source.backend --data-dir ../second-source-operator-data mock
@@ -262,7 +262,7 @@ flowchart TB
     class U,G2,SPEC neutral;
 ~~~
 
-**Deployed vs proposed (updated 4 Nov 2026):** Vercel hosts the public frontend (https://second-source-alpha.vercel.app/) and the Render/Supabase cloud backend IS deployed and passed live acceptance today: https://second-source-api.onrender.com/health/ready returns 200, and a signed-in production investigation (create, authorize, queue, persisted events) was executed end-to-end (main `a0c8bdd`). Hosted *execution* remains deliberately disabled (honest 409, no mock presented as real); the genuine reconstruction engine runs locally. The Muse-led inference loop is demonstrated in recorded, receipted experiments and one in-pipeline packet, not yet as live UI inference - that integration is the top post-submission priority. E2B is a proposed isolated execution provider, with Daytona as an alternative, **not an active fallback currently running**. Genuine Meta model dispatch is controlled separately by exact-input approval and spending limits.
+**Live vs local vs roadmap (updated 5 Nov 2026):** The hosted Vercel frontend, Render API and Supabase-backed account/investigation control plane are deployed. The hosted backend has a bounded **NON_AI** execution worker, independent of the local professional-target engine. The local engine supports real supported-target probes, an evidence-compiled candidate, independent conformance, report exports, and an opt-in **genuine Meta Muse Spark 1.3** public-repair stage, dispatched through the server-side Meta Model API under budgets and explicit consent. Actual accepted model improvements must be verified per run; an API call alone proves neither success nor final equivalence. Arbitrary authorized-link ingestion, generated source-code projects, full hosted professional-target execution and visual-app reconstruction are still roadmap work. E2B/Daytona are possible future sandboxes, not active deployment fallbacks.
 
 ## Where this could go
 
