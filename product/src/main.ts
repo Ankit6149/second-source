@@ -90,7 +90,7 @@ function account() {
   } else if (state.session) {
     showDialog('Account', `<p>You are signed in.</p><div class="dialog-actions"><button class="pill-btn" data-action="sign-out">${icon('log-out')} Sign out</button></div>`, 'signin');
   } else {
-    showDialog('Sign in', `<p>Save investigations and pick up where you left off.</p><div class="dialog-actions"><button class="pill-btn primary" data-action="sign-in">${icon('log-in')} Continue with Google</button></div>`, 'signin');
+    showDialog('Sign in', `<p>Sign in to save investigations and pick up where you left off.</p><div class="dialog-actions"><button class="pill-btn primary" data-action="sign-in">${icon('log-in')} Continue with Google</button></div>`, 'signin');
   }
 }
 
