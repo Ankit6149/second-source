@@ -378,6 +378,15 @@ function capabilityPicker() {
   return `<div class="capability-list" role="group" aria-label="Target capabilities">${groups}</div><h3>Source options</h3><p class="component-note">Source-assisted means source or docs would be available; black-box means behavior only. Only service-backed options can be chosen — the rest stay disabled with their reason.</p><div class="capability-list" role="group" aria-label="Source options">${sources}</div>`;
 }
 function showCandidate() {
+  const actual = state.orch?.workspace?.candidate;
+  if (actual) {
+    showDialog('Exact generated candidate', `<p><strong>NON_AI · SCOPE-DERIVED SPECIFICATION</strong></p>
+      <p>This is the exact declarative JSON returned by the authorized orchestration engine. It contains route descriptions from the approved scope, not recovered application source, live model output or proof of behavioral equivalence.</p>
+      <pre class="scope-json">${esc(JSON.stringify(actual, null, 2))}</pre>
+      <p class="component-note">The legacy source_observations_sha256 field in this scope-only control fingerprints the authorized scope, not actual black-box observations.</p>
+      <div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Close</button></div>`);
+    return;
+  }
   const rec = engineState.record;
   const repair = state.verification?.repair;
   if (rec?.compiled) {
@@ -590,6 +599,20 @@ async function showReport() {
   }
   catch (error) { if (generation === state.epoch) setError(error); }
 }
+async function downloadOrchestrationArtifact(artifactId: string) {
+  const evidence = state.orch;
+  const artifact = evidence?.workspace?.artifacts.find(a => a.artifact_id === artifactId);
+  if (!evidence || !artifact || !state.session) return;
+  const generation = state.epoch;
+  try {
+    const blob = await api.orchArtifact(evidence.id, artifactId);
+    if (generation !== state.epoch || state.orch?.id !== evidence.id) return;
+    saveBlob(blob, artifact.name);
+  } catch (error) {
+    if (generation === state.epoch) setError(error);
+  }
+}
+
 async function downloadExport() {
   if (!state.run) return;
   const generation = state.epoch; const runId = state.run.run_id;
@@ -608,6 +631,7 @@ document.addEventListener('click', event => {
   if (target.dataset.investigation) { void openInvestigation(target.dataset.investigation); return; }
   if (target.dataset.suggestion) { state.draft = target.dataset.suggestion; sessionStorage.setItem('ss-product-draft', state.draft); render(); const input = el<HTMLTextAreaElement>('promptInput'); input?.dispatchEvent(new Event('input', { bubbles: true })); input?.focus(); return; }
   const action = target.dataset.action;
+  if (action === 'download-orch-artifact' && target.dataset.artifactId) { void downloadOrchestrationArtifact(target.dataset.artifactId); return; }
   if (action === 'new') { ++state.epoch; stopPolling(); state.executing = false; state.busy = false; state.view = 'home'; state.selected = null; state.run = null; state.events = []; state.verification = null; state.orch = null; state.messages = []; state.pollError = ''; state.executionError = null; state.uncertain = false; state.actionUncertain = null; sessionStorage.removeItem('ss-selected-investigation'); render(); }
   else if (action === 'library') { state.view = 'library'; render(); }
   else if (action === 'account') account();
