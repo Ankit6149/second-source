@@ -285,6 +285,7 @@ try {
   await second.getByText('Available here: owned ledger and HTTP task-workflow controls.', { exact: false }).waitFor();
   await second.getByRole('button', { name: 'Toggle navigation' }).click();
   await second.getByRole('button', { name: 'Investigations' }).click();
+  assert.equal(await second.locator('#sidebar').evaluate(el => el.inert), true, 'destination selection closes mobile navigation');
   assert.match(await second.locator('#content').innerText(), /No investigations yet/);
   assert.doesNotMatch(await second.locator('#content').innerText(), /Real browser fixture acceptance/);
   const forbidden = await second.evaluate(async ({ id, accessToken }) => {
@@ -297,7 +298,6 @@ try {
       { id: g4RunId, accessToken: otherToken, suffix });
     assert.equal(status, 404, 'second owner cannot read the HTTP run or its artifacts');
   }
-  await second.getByRole('button', { name: 'Close navigation' }).click();
   await second.locator('.topbar [data-action="new"]').click();
   await second.getByRole('button', { name: 'Choose a supported target' }).click();
   await second.locator('[data-target-id="owned-ledger-v1"]').click();
