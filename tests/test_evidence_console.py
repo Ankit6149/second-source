@@ -12,12 +12,21 @@ HTML = (Path(__file__).resolve().parents[1] / "demo" / "index.html").read_text(e
 
 def test_public_research_status_is_historical_and_not_live_inference():
     root = Path(__file__).resolve().parents[1]
-    for name in ("web/index.html", "landing/index.html"):
-        page = (root / name).read_text(encoding="utf-8")
-        assert "14 passed" in page and "11 failed" in page
-        assert "independent artifact audit" in page
-        assert "live inference" in page
-        assert "Both real attempts stopped before admission" not in page
+    # Main landing explains the product; historical figures belong in the
+    # reports, not as frozen marketing prose.
+    home = (root / "web/index.html").read_text(encoding="utf-8")
+    assert "What if software could" in home
+    assert "19/19" in home
+    assert 'href="./reports/"' in home
+    assert "NO LIVE EXECUTION" in home
+    assert "NON_AI" in home
+    assert "Both real attempts stopped before admission" not in home
+
+    historical = (root / "landing/index.html").read_text(encoding="utf-8")
+    assert "14 passed" in historical and "11 failed" in historical
+    assert "independent artifact audit" in historical
+    assert "live inference" in historical
+    assert "Both real attempts stopped before admission" not in historical
 
 
 class Nodes(HTMLParser):

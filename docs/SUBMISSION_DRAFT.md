@@ -1,130 +1,114 @@
-# Submission draft — Meta Global AI Developer Hackathon (Indie)
+# Second Source — Meta Global AI Developer Hackathon / Indie submission
 
-**Status: DRAFT for owner review. Not submitted. No portal receipt exists.**
-Deadline: **Nov 4, 9:00 PM ET** — https://cerebralvalley.ai/e/meta-ai-developer-hackathon/hackathon/submit
-Final `main` SHA: enter the live `main` HEAD at the moment of submission; do not copy an older SHA from this draft.
-**Final public navigation (verify deployed commit before submission):** https://second-source-alpha.vercel.app/ — Product (`/`), Reports (`/reports/`), Experiments (`/experiments/`), Workspace (`/app/`). Retired challenge/lab/evidence routes redirect to these. Hosted backend execution and live model inference remain unverified as production capabilities.
+**Owner submission draft — not a submission receipt.** Last aligned with the repository: 5 November 2026. Before submitting, confirm the live `main` SHA, the published video URL, and any new Meta Model API evidence. Official deadline: **4 November 2026, 9:00 PM Eastern / 5 November 2026, 7:30 AM IST**.
 
-## Judge-first entry — the experience before the scorecard
-
-**Lead with the problem, not the model benchmark.** A code generator can copy a screen while missing the hidden rules its users rely on. Second Source begins with a **permitted running black box**, forms testable hypotheses, observes edge cases, constructs an independent bounded candidate, and independently tests what actually matches.
-
-**Judge-facing opening (proposed copy):** "Can you reconstruct software you can operate but cannot inspect? Second Source treats the running application as experimental evidence. Watch it discover what a screenshot never shows, generate a separate behavioral specification using Meta Muse, and check that candidate against an independent evaluator. It reports the errors, too — because the difference between plausible software and compatible software is what the tests reveal."
-
-**Try first:** [Product](https://second-source-alpha.vercel.app/), with three clickable recorded differences between reference and model candidate; [Reports](https://second-source-alpha.vercel.app/reports/) with the genuine Muse 14/25 evaluation and failures; [Experiments](https://second-source-alpha.vercel.app/experiments/) with method, origin and uncertainty; then [Workspace](https://second-source-alpha.vercel.app/app/) for actual service-backed NON_AI investigations when the local backend is connected. Nothing is staged as a live model call.
-
-**Proof, with provenance separated:** The ledger reconstruction was authored by genuine Muse Spark 1.3 and scored **14/25** on its own sealed suite (11 failures; incomplete provider attestation). A separate genuine Muse-assisted Vikunja hybrid scored **6/6 frozen and 6/6 extended**, but the NON_AI evidence compiler also scored 6/6 on both suites, so **no lift over that compiler is claimed**. The HTTP 25/30 → 30/30 improvement is **NON_AI**, not AI self-repair. These benchmarks must never be added together or depicted as comparable.
-
-**Audience promise:** Second Source does not promise arbitrary code recovery, perfect equivalence or fully autonomous site cloning. Its current differentiated result is evidence-linked **behavioral investigation + bounded generation + independent measurement**. Never replace this with an unsupported blanket accuracy number.
-
-**Publication dependency:** The v3 video is recorded locally but still needs a public playback URL, signed-out verification and an actual owner portal submission receipt. This draft is **not a submission confirmation**.
-
-## Final measured scorecard (change only with a receipt)
-
-| Entry | Label / provenance | Result | Notes |
-|---|---|---|---|
-| Gemma arm A (prior only) | GEMMA_TEST / model-authored | 0/6 | Scored. Gemma dev test, not Meta, not REAL_MODEL. |
-| Gemma arm C (coverage-grounded) | GEMMA_TEST / model-authored | 2/6 | Scored. A vs C does not isolate the coverage-gate effect. |
-| Hybrid H_hybrid (compiler-assisted model synthesis) | GEMMA_TEST / model-authored | 3/6 | Re-measured 3/6 (cases 0, 2, 3). Model edits compiled NON_AI facts per route; below compiled NON_AI 6/6; public conformance 7/19. |
-| Gemma per-route repair (semantic admission) | GEMMA_TEST / model-authored | 2/6 | Admitted but regressed held-out from 3/6 to 2/6. Measured negative result; do not claim repair improvement. |
-| Public-verification gate audit | NON_AI mechanism over GEMMA_TEST edits | 0/8 kept | Damage-prevention audit, NEVER a model score: 0/8 model route edits kept, 5 regressed public conformance, 3 tied; gated candidate = compiled NON_AI 6/6. |
-| Gemma arm D | GEMMA_TEST | Unscored | Selection fixed and verified (strict parse, 6 probes, 27 observations); synthesis blocked by provider 429/500 - INFRASTRUCTURE, unscored. |
-| Oracle control (Vikunja) | NON_AI / runtime-supplied | 6/6 | Hand-written oracle via generic interpreter. Never a model result. |
-| Historical ledger | REAL_MODEL / model-authored | 14/25 | Muse Spark 1.3, frozen 25-case suite. Not comparable to Vikunja. |
-| Meta Vikunja C_grounded | REAL_MODEL / model-authored | 2/6 | EXECUTED: 3 calls total for packet, digests matched, cases 1, 3. Record `.runs/vikunja-model/meta_arms_result.json`. Receipts lost to a driver crash; spend reservation-capped at $0.50. |
-| Muse hybrid per-route (packet muse-hybrid-20261104) | REAL_MODEL / model-authored | Raw 6/6 frozen, 6/6 extended | EXECUTED 2026-11-04: 8 per-route calls (~$0.19 total across attempts incl. provider-failure bookings), durable fsync receipts in `.runs/vikunja-model/muse_hybrid_20261104/`. Public-conformance gate rejected every edit (gated candidate = compiler NON_AI, also 6/6 + 6/6); raw candidate evaluated once scored 6/6 frozen / 6/6 extended. Ties the compiler on both suites; no improvement over compiler claimed. |
-| Meta Vikunja D_active | REAL_MODEL / model-authored | 1/6 | EXECUTED: case 3 only; model selected probes D1, D4, D5, D6, D7; 22 probe observations. Same packet/receipt note as C. |
-| Compiled evidence | EVIDENCE_COMPILED (NON_AI) / evidence-compiled | 6/6 | Deterministic transcription of the 20 public observations (`scripts/evidence_compiler.py`); status-mutation control 2/6. Never a model result; Gemma C stays 2/6. |
-| Browser / motion | NON_AI slice / evidence-compiled | Bounded pass | `browser-slice/`: spring-drag fit from observations only, held-out drag RMSE 1.054px and 1.741px, adversarial variants detected. In-app execution unavailable; one owned fixture only. |
-
-Gemma arm B is unmeasured. Gemma arm D stays unscored (selection verified; synthesis provider-blocked 429/500, INFRASTRUCTURE) - never 0/6.
+**Project:** [Second Source](https://second-source-alpha.vercel.app/)  
+**Repository:** https://github.com/Ankit6149/second-source  
+**Interactive architecture:** https://second-source-alpha.vercel.app/architecture/  
+**Working application:** https://second-source-alpha.vercel.app/app/  
+**Evidence and measurements:** https://second-source-alpha.vercel.app/reports/  
+**Demo video:** `demos/second-source-v3.mp4` in the repository; **replace this note with a verified public/unlisted streaming URL before submission.**
 
 ## Title
 
-Second Source — evidence-first reconstruction of authorized black-box software
+**Second Source — Reconstruct software from what it does, not what it looks like**
 
-## One-liner
+## One-line pitch
 
-Second Source learns how an explicitly authorized system behaves by asking
-black-box questions, builds a separate candidate implementation, and scores
-it against a withheld evaluator — reporting matches, failures, and unknowns.
+An AI-assisted software reconstruction system that investigates authorized running software, learns hidden behavior, builds an independent implementation, and independently verifies what actually matches.
 
-## Problem / impact (30%)
+## Why this matters / Impact
 
-Teams inherit undocumented internal and legacy APIs whose behavior lives
-only in the running system. A screenshot or prompt cannot reveal boundary
-rules, state transitions, or error behavior. Second Source targets
-authorized behavioral reconstruction for migration, maintenance, and
-regression testing: observe Ã¢â€ â€™ hypothesize Ã¢â€ â€™ run distinguishing experiments
-Ã¢â€ â€™ synthesize an independent candidate Ã¢â€ â€™ measure it blind.
+A working application is often its only accurate specification. Undocumented APIs, legacy systems, access rules, state transitions, validation logic, and unexpected edge cases can make a replacement look right while still being incompatible.
 
-## Meta AI use (25%)
+Our long-term goal is simple to describe but technically ambitious: **give Second Source a reference to software you own or are permitted to investigate, and receive an independently reconstructed, runnable replacement—alongside the tests and evidence that explain its limits.**
 
-- Genuine **Muse Spark 1.3** (`meta-direct`) performed G2 discovery
-  reasoning (evidence-linked hypotheses, discriminating experiments) and
-  G3 guided synthesis of a declarative candidate spec.
-- Vikunja packet EXECUTED with genuine Meta `muse-spark-1.3`: C_grounded **2/6**, D_active **1/6** (REAL_MODEL, digests matched, 3 calls, $0.50 reservation cap; receipts lost to a driver crash).
-- Measured result: **14/25** on a frozen sealed suite (9 schema, 2 error
-  mismatches), response `chatcmpl-01a19314-Ã¢â‚¬Â¦`, 2,756/2,555 tokens, ~$0.014.
-- Full provenance, concrete mismatches, and limits:
-  [`JUDGE_EVIDENCE_G3.md`](JUDGE_EVIDENCE_G3.md) +
-  [`evidence/g3-rev6-sanitized/`](evidence/g3-rev6-sanitized/).
-- No repair improvement is claimed (rev-7 not executed; owner decision).
+Second Source approaches that goal scientifically: experiments against the original system establish observable behavior; an evidence compiler records facts; Meta Muse reasons over unresolved rules; a separate candidate is executed; an independent evaluator checks reference-versus-candidate behavior. **Verification is part of the product, not an afterthought.**
 
-## Demo (25%)
+Potential uses include authorized legacy/API migration, compatibility verification, preserving undocumented internal workflows, and reducing the risk of rebuilding critical software from guesses.
 
-- Video v3 (170.02s, local .runs/submission-v3/second-source-v3.mp4, SHA-256 20E0079343E93B06C80361DCF7EFE3AD9850F07E9A808969C492FB25556F548A): scope, observation, genuine Meta 14/25, NON_AI controls, honest limits. **NOT yet publicly hosted. Owner must upload publicly and verify signed-out before submitting.**
-- Reports & exports (in /app/): comparison scoreboard, recorded public probes with per-step diff highlighting, versions and uncertainty - REAL_MODEL vs NON_AI always labeled (PR #34).
-- muse-spark-1.3 Vikunja packet EXECUTED (REAL_MODEL): C_grounded 2/6 (cases 1, 3), D_active 1/6 (case 3), 3 calls total, digests matched, $0.50 reservation cap; receipts lost to a driver crash (no billing claim beyond cap). Record: `.runs/vikunja-model/meta_arms_result.json`.
-- 2D browser reconstruction: assessed NO-GO for this window (docs/P3_BROWSER_SPIKE_ASSESSMENT.md); explicitly not implemented.
-- Live local demo: `npm run demo:local` (product) — synthetic identities,
-  loopback-only HTTP fixture, clearly labeled NON_AI.
+## What we actually built
 
-## Technical (20%)
+This submission demonstrates the **working foundation of that larger system**:
 
-- Scope contracts + scope guard (observation Ã¢â€°Â  permission to rebuild).
-- Declarative candidate DSL executed by a trusted sandboxed interpreter —
-  the model never emits arbitrary code.
-- Independent pinned evaluator; sealed suite never enters model context;
-  aggregate-only repair feedback (no case IDs/inputs/gold).
-- Two-target product: ledger CLI + owned HTTP task-workflow fixture through
-  the same scope/evidence/worker/report/export pipeline, with owner
-  isolation, cancellation, and offline-verifiable proof bundles.
+- A local professional-target engine that probes bounded, authorized versions of real software, compiles observed contracts into an independent behavioral candidate, runs that candidate, and measures it against a fresh reference.
+- A server-side, genuine **Meta Muse Spark 1.3 Model API** integration with recorded real model experiments. In the local product, an optional, explicitly authorized public-repair stage makes at most one model call with a **$0.50 estimated spending ceiling** and accepts changed behavior only after an independently measured public improvement.
+- A provenance-separated evaluation system: REAL_MODEL results, evidence-compiled NON_AI candidates, frozen/held-out tests and provider failures are not conflated.
+- A working web product for supported, bounded investigations, authentication, reports and exports; a separate interactive architecture explaining the current engine and the full authorized-link-to-rebuild roadmap.
 
-## Original work
+**Today this does not clone arbitrary websites, generate any app from any URL, or run the full professional-target engine in the hosted backend.** Judges can run the supported-target local engine on localhost; the hosted worker offers a narrower bounded NON_AI workflow.
 
-Built during the hackathon window (repo created 2026-10-26). Human: Ankit
-Bhardwaj (owner/design/decisions). AI coding agents assisted implementation
-under owner direction across dated PRs #1Ã¢â‚¬â€œ#28; see
-[`HACKATHON_ORIGINALITY.md`](HACKATHON_ORIGINALITY.md). Dependencies:
-pydantic, FastAPI, pytest (backend); Vite/TypeScript (product).
+## Evidence from real software
 
-## Known limits (state plainly)
+| Target / test suite | Recorded result | Provenance and meaning |
+|---|---|---|
+| Vikunja v2.4.0 | **19/19** public action checks; separately **6/6 frozen** and **6/6 extended** last recorded | NON_AI evidence-compiled candidate on supported routes; fresh-reference replay. Muse identified a default-project behavior that informed a generic compiler fix. |
+| File Browser 2.63.23 | **7/7** public checks | NON_AI generic compiler/interpreter, bounded subsystem |
+| Gitea 1.22.6 | **6/6** public checks | NON_AI generic compiler/interpreter, bounded subsystem; sealed cases not claimed |
+| PocketBase 0.28.4 | **9/9** public baseline | NON_AI evidence-compiled; model review proposals did not improve the baseline |
+| Owned HTTP workflow | **30/30** | NON_AI bounded end-to-end workflow |
+| Browser motion slice | **PASS, 2.505 px RMSE** | NON_AI measured trajectory on an owned slice |
+| Owned ledger (Meta Muse Spark 1.3 alone) | **14/25** | Genuine model-authored candidate independently evaluated; 11 mismatches retained, provider attestation incomplete |
 
-- One genuine synthesis, one target, 25 sealed cases; provider attestation
-  incomplete (local broker attestation only, offline replay consistent).
-- Hosted cloud Auth/Storage two-user acceptance not established; the
-  demonstrated product runs locally with synthetic identities.
-- No arbitrary-website cloning; authorized owned fixtures only.
-- Video v3 is local only and NOT yet publicly hosted; portal submission is NOT done and no receipt exists.
-- Meta Vikunja receipts were lost to a driver crash; only the $0.50 reservation cap and the run record are claimed, not a billing total. Gemma per-route repair regressed held-out to 2/6 (negative); gate audit is a NON_AI damage-prevention mechanism, not a model score; Gemma D synthesis is provider-blocked and unscored.
+**These scores are not one combined accuracy rate**, and public conformance of a bounded subsystem does not prove full software equivalence. Research records, negative results and uncertainty remain available in [the reports](docs/reports/PER_SOFTWARE_RESULTS.md).
 
-## Owner-only portal steps (exact; only the account owner does these)
+## What Meta AI contributes
 
-No agent submits. No receipt exists until step 8 completes.
+Meta Muse is a real, bounded reasoning participant rather than a decorative label:
 
-1. Fetch the exact live `main` HEAD from GitHub and record that commit in the portal; do not use the older historical SHA printed in prior drafts. Re-check no placeholder remains.
-2. Upload the final demo video publicly (unlisted/public per portal rules); open the link in a signed-out/private window and confirm it plays with readable labels.
-3. Open the repo signed-out: https://github.com/Ankit6149/second-source — confirm it loads, the README path works, and no private `.runs` material is public.
-4. Sign in **as the owner** to https://cerebralvalley.ai/e/meta-ai-developer-hackathon/hackathon/submit before **Nov 4, 9:00 PM ET**.
-5. Select the **Indie** track; paste Title, One-liner and section text from this draft verbatim. Enter the repo URL and the final `main` SHA from step 1.
-6. Paste the verified public video URL from step 2. State Meta Vikunja as EXECUTED REAL_MODEL (C 2/6, D 1/6; receipts lost, $0.50 cap) and browser/motion as a bounded recorded slice (in-app execution unavailable); claim no submitted status.
-7. Re-read every number against the scorecard above (Gemma A 0/6, C 2/6, H re-measured 3/6, per-route repair 2/6 negative, Gemma D unscored; Meta C 2/6, D 1/6 REAL_MODEL; oracle/compiled NON_AI 6/6; gate audit NON_AI mechanism not a score; ledger REAL_MODEL 14/25). Remove anything without a receipt, then preview the full entry.
-8. Click submit **once**. Save the portal confirmation receipt (screenshot + copied text/ID + timestamp) outside the repo. Only then may any document say "submitted", quoting that receipt.
+1. **Discover:** use observed reference behavior to form or refine hypotheses, including Vikunja's default-project initialization rule (`Inbox`, `My Open Tasks`), identified in a genuine recorded Muse call.
+2. **Propose:** generate bounded candidate route-rule changes through the server-side Meta Model API; never expose credentials to the browser or let model output overwrite immutable observed templates.
+3. **Test:** run independent public conformance before admitting a proposed improvement. Model attempts can be rejected; a successful API call is not equivalent to successful reconstruction.
+4. **Extend:** the planned autonomous agent selects discriminating experiments, synthesizes ordinary source-code projects, builds them in isolated environments, measures behavioral and UI differences, and iterates under human approval and spending constraints.
 
-## Owner checklist before clicking submit
+**The 19/19 Vikunja score is a measured evidence-compiled candidate**, not a claim that Muse authored the entire finished implementation. Muse's scientifically meaningful contribution was a recorded missing-rule discovery; the compiler subsequently derived that rule generically from observations. Additional current model experiments should be added here **only with exact run IDs, local receipts and accepted independent scores**.
 
-- [ ] Upload video publicly; open link signed-out; paste URL in form.
-- [ ] Confirm merged release SHA on `main`; open repo signed-out.
-- [ ] Re-read every claim above against evidence; remove anything unproven.
-- [ ] Submit; save the portal confirmation receipt (screenshot + text).
+## Technical differentiation
+
+Second Source distinguishes **observation, inference, construction and proof**. It uses explicit authorized scopes, versioned public probe ladders, an evidence-derived behavioral specification, isolated candidate state, canonicalized differential evaluation, fresh-reference replays, separated test ownership, bounded model calls, and exportable evidence. This prevents an AI-generated implementation from grading itself and makes failures actionable.
+
+The system is deliberately modular: adding a new target should require a reviewed adapter and an evaluation contract, not a handcrafted reconstruction engine for each app.
+
+## Demo experience (target: up to 3 minutes)
+
+The demo should make the **end goal visible from the first 15 seconds**, while showing current working evidence without implying that planned nodes already execute:
+
+| Time | Shot | Purpose |
+|---|---|---|
+| 0:00–0:20 | Website / product promise | **Authorized reference in → independent replacement out, with proof**; the future ambition |
+| 0:20–0:45 | Architecture: switch **Working core → End-goal product** | Explain Meta Muse, the reference explorer, source generation, sandbox build, independent verification and export; mark future nodes clearly |
+| 0:45–1:45 | Localhost: actual supported-target reconstruction | Real reference probes, compiled candidate, fresh-reference differential score, inspect and download the result |
+| 1:45–2:15 | Genuine Muse API evidence | Show a real model request/response or verified recorded packet and the independent acceptance/rejection gate; do not invent success |
+| 2:15–2:45 | Cross-target verified results | Vikunja 19/19, File Browser 7/7, Gitea 6/6, explain bounded scope |
+| 2:45–3:00 | User value and expansion | Legacy modernization, compatibility testing, the ambition of general authorized link-to-working-software |
+
+**Use localhost for the strongest supported-target reconstruction.** The public website and hosted executor have a smaller capability surface. No API keys, private receipts, sealed tests or personal local paths should appear in the video.
+
+## Additional Muse source branch — pending verification
+
+[Draft PR #81](https://github.com/Ankit6149/second-source/pull/81) (`fb26af6`) contains an AI-first local workbench, PocketBase reference adapter, server-side Muse assist, permission-gated public-link observation, a $15 estimated-cost ledger and a SAM-compatible segmentation adapter. **This branch is not merged into this submission release yet.** PocketBase **8/12** is an owner-reported local run and must not be added to the verified scoreboard without a fresh-reference receipt.
+
+The SAM adapter currently requires a configured external vision service; it is **not verified as a working frontend segmentation experience**. The proposed public-engine deployment is **not yet authorized**: frontend remote-engine wiring, server-side authentication, spoof-resistant rate limits and atomic spending reservations must be verified before using shared Meta API credits.
+
+## Scope and limitations
+
+- Software must be owned or explicitly authorized, with action and resource budgets.
+- The current generic candidate is predominantly an executable **behavioral specification**, not a fully generated source repository for arbitrary targets.
+- Hosted execution is bounded NON_AI; professional-target engine and Meta repair are currently local.
+- Reported numbers are suite-specific, with distinct provenance. Provider failure, rejected edits, indeterminate outcomes and incomplete attestation remain in the research record.
+- The architecture's browser observation, autonomous experiment planner, generated source projects, sandbox repair and universal link ingestion are a **roadmap**, not shipped functionality.
+
+## Original work and build process
+
+Built for the hackathon from October 26, 2026 onward. The owner directed product vision, decisions, demonstrations and code review, with AI coding agents assisting implementation. Technical history and attribution are recorded in [HACKATHON_ORIGINALITY.md](HACKATHON_ORIGINALITY.md) and the repository's PR/commit history.
+
+## Owner-only submission checklist
+
+- [ ] Verify the current public website and README in a signed-out browser.
+- [ ] Confirm local engine actually runs and produces the recorded candidate, measured report and export.
+- [ ] Verify any newly added Meta API contribution via real receipts and an independent improvement gate.
+- [ ] Publish `demos/second-source-v3.mp4` or a corrected final video to a publicly accessible/unlisted video URL; test playback signed-out.
+- [ ] Copy the exact latest `main` SHA and the verified public video URL into the portal.
+- [ ] Submit through https://cerebralvalley.ai/e/meta-ai-developer-hackathon/hackathon/submit before the deadline; save the confirmation receipt (ID, screenshot, timestamp) privately.
+
+**Until a portal receipt exists, label this project `readying submission`, not `submitted`.**

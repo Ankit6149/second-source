@@ -14,13 +14,13 @@ denominator and difficulty; rows are never averaged.
 | 2b | Owned ledger (CLI) | Genuine model candidate, sealed 25-case (recorded) | **14/25** | REAL_MODEL | — (recorded evidence) |
 | 3 | Vikunja v2.4.0 | Frozen held-out, compiler | **6/6** | NON_AI | — |
 | 3b | Vikunja v2.4.0 | Extended frozen suite, compiler | **6/6** | NON_AI | — |
-| 3c | Vikunja v2.4.0 | Live engine rebuild, public ladder | **11/19** | NON_AI | `demos/software-tests/vikunja/vikunja.webm` |
+| 3c | Vikunja v2.4.0 | Fresh-reference live engine public ladder (latest recorded) | **19/19** | NON_AI | `demos/software-tests/vikunja/vikunja.webm` (historical capture; see latest report) |
 | 3d | Vikunja v2.4.0 | Muse grounded, alone (recorded) | **2/6** | REAL_MODEL | — |
 | 3e | Vikunja v2.4.0 | Muse active probing, alone (recorded) | **1/6** | REAL_MODEL | — |
 | 3f | Vikunja v2.4.0 | Muse hybrid raw candidate (single post-gate eval) | **6/6 + 6/6** | REAL_MODEL | — |
 | 4 | File Browser v2.63.23 | Differential (6 cases + mutated control) | **7/7** | NON_AI | `demos/software-tests/filebrowser/filebrowser.webm` |
 | 5 | Browser/motion — Flowboard spring | Held-out drag/scroll evaluation | **PASS** (RMSE 2.505px ≤ 8px; layout 0px) | NON_AI | `demos/software-tests/motion/motion.webm` |
-| 6 | Gitea 1.22.6 | First contact: probe → compile → 6 differential cases | **2/6** | NON_AI | pending production session |
+| 6 | Gitea 1.22.6 | Public bounded probe → compile → differential evaluation (latest) | **6/6** | NON_AI | pending new video; first-contact result was 2/6 |
 
 ## Detail per software
 
@@ -44,9 +44,7 @@ denominator and difficulty; rows are never averaged.
 ### 3. Vikunja v2.4.0
 - Suites: frozen 6-case held-out (continuity), extended suite frozen before
   any prompt use (SHA-pinned, AST-isolated imports), 19-step public ladder.
-- Compiler: 6/6 frozen, 6/6 extended, 11/19 public ladder.
-  Public-ladder divergences concentrate in read-after-share routes
-  (`GET /projects/{pid}/tasks`, `GET /tasks/{tid}` after sharing).
+- Compiler: **19/19** on a freshly reset public ladder in the latest recorded run; frozen **6/6** and extended **6/6** were separately last re-scored. The historical first-contact public ladder scored **11/19**, with differences involving read-after-share routes and state semantics. The subsequent generic interpreter fixes, fresh-reference measurement and evidence-derived default-project seeding closed the recorded public gaps.
 - Muse arms (recorded, packet-authorized, receipts durable):
   grounded 2/6, active 1/6. Per-route hybrid: every proposed edit was
   rejected by the public-conformance gate (singles 1–2/19 vs compiler
@@ -138,19 +136,17 @@ denominator and difficulty; rows are never averaged.
   rather than a claim that Muse was not used.
 
 ### 9. Blocker fix + full re-run (4 Nov 2026)
-The route-contract blocker was fixed in the candidate interpreter and
+The historical route-contract blocker was fixed in the candidate interpreter and
 compiler (generic semantics, no per-target branches): full-replace
 update semantics with identity/date preservation, boolean query
 filters, missing-parent 404 contracts from concrete error observations,
 403 when a list is fully access-filtered, richest observed shape as
 template exemplar, entity-bound shape-token filling, and an
-`<entity:id>` fallback. Seeding reference-default entities was tried
-and reverted (over-seeded 5 vs 3).
+`<entity:id>` fallback. An initial default-entity seeding attempt was reverted (it over-seeded 5 vs 3); a later evidence-derived rule corrected the implementation.
 
 Re-run through the engine after the fix:
 - Vikunja public ladder: **11/19 -> 19/19** (fresh-reference baseline; generic seed-defaults). Sole
-  remaining divergence: `GET /projects` - the reference lists
-  per-user default projects (Inbox etc.) the candidate does not seed.
+  prior missing-default-project behavior was resolved by compiling the publicly observed per-user default projects generically. There was **no remaining public divergence** in that scored fresh-reference ladder.
 - File Browser: **7/7** (no regression). Gitea: **6/6** (no regression).
 - Muse experiments re-run: File Browser route review 7/7 preserved
   (2 calls, no changes), Gitea route review 6/6 preserved (6 calls,
@@ -159,3 +155,15 @@ Re-run through the engine after the fix:
   a route contract). All REAL_MODEL, receipts under `.runs/muse-exp-*`.
 - Regression suites: 28 passed (engine, orchestration Gate A,
   candidate share-read).
+
+### 10. PocketBase and AI-first / SAM work — owner-reported local branch (5 Nov 2026)
+
+**Status: source available, execution measurements pending review.** Muse pushed `fb26af6` on `feat/ai-first-ui-20261105`; [draft PR #81](https://github.com/Ankit6149/second-source/pull/81) now exists. Source inspection confirms the components below, but not the claimed local 8/12 evidence or a deployed hosted engine. These claims are **not included in the independently confirmed scoreboard above**.
+
+- PocketBase `pocketbase-v1`: reportedly added to the full local target engine; one local run scored **8/12** with disclosed divergences. This is **a different evaluation ladder** from the previously committed 9/9 compiler baseline, not evidence of a regression or improvement by itself.
+- Muse-first frontend: reportedly prefers AI-assisted rebuild controls when the server has a key, with a deterministic fallback and response ID, token and cost receipts shown per run/report.
+- Server-funded AI access: source confirms `MODEL_API_KEY` is read in the engine rather than placed in frontend code, with a **$15 per-instance estimated-cost ledger** and HTTP 402 for over-cap requests. This is **not a global or concurrency-safe hard cap**: admission and later receipt recording are separated, and public endpoints lack account authentication. Do not deploy this configuration with owner credits until corrected. Do **not** enable unrestricted publicly accessible inference merely because the client hides the key.
+- **SAM/vision:** source review confirms `scripts/vision_scan.py`, a provider-neutral PNG→regions adapter requiring `SECOND_SOURCE_VISION_ENDPOINT`, plus local NON_AI motion summaries. The source does not establish a working frontend SAM workflow or an actual SAM provider receipt; without an endpoint, segmentation explicitly reports unavailable.
+- Local review URL provided by Muse: `http://127.0.0.1:5173/?engine=http://127.0.0.1:8770`. This loopback address is accessible only on the owner's machine.
+
+**Promotion criteria:** push the branch; record its exact commit; run Python/DOM acceptance; execute a fresh PocketBase reference/candidate comparison; verify server-side Muse consent, receipts and budget behavior; exercise SAM with an actual authorized screenshot and independent UI output; and update results only from those artifacts. A user-visible button alone is not proof of functional model integration.

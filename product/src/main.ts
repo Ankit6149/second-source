@@ -182,9 +182,9 @@ async function runEngineInvestigation(target = 'vikunja-v1', modelMode: 'none' |
 
 function renderHome() {
   return `<section class="empty-home calm-home" aria-label="Start a new investigation">
-    <div class="ux-page-label">SECOND SOURCE / WORKSPACE</div>
-    <h1>Learn the rules a screen cannot show.</h1>
-    <p>Choose an authorized reference. Follow the evidence, inspect the candidate, and measure what actually matches.</p>
+    <div class="ux-page-label">SECOND SOURCE / RECONSTRUCTION WORKSPACE</div>
+    <h1>Rebuild the behavior. Prove the result.</h1>
+    <p>Start with software you're authorized to study. Second Source discovers how it behaves, constructs an independent candidate, and verifies what matches the original. Today, investigations are limited to supported targets; the long-term vision is an authorized link to a verified, runnable replacement.</p>
     <div class="home-actions">
       <button class="pill-btn primary" type="button" data-action="select-target">${icon("flask-conical")} New investigation</button>
       <button class="pill-btn" type="button" data-action="reports">${icon("file-text")} View reports</button>
