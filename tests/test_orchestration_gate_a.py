@@ -178,6 +178,14 @@ def test_workspace_candidate_artifacts_and_export(client):
     raw = client.get(f"/v1/orchestration/investigations/{iid}/artifacts/{bundle['artifact_id']}/content", headers=HEADERS).content
     names = set(zipfile.ZipFile(io.BytesIO(raw)).namelist())
     assert names == {"candidate.json", "report.md", "manifest.json", "README.txt"}
+    import json as _json
+    with zipfile.ZipFile(io.BytesIO(raw)) as proof:
+        manifest = _json.loads(proof.read("manifest.json"))
+        assert manifest["evaluator"] == "structural-v1"
+        assert set(manifest["file_sha256"]) == {"candidate.json", "report.md", "README.txt"}
+        for name, digest in manifest["file_sha256"].items():
+            assert _h.sha256(proof.read(name)).hexdigest() == digest
+
     ev = client.get(f"/v1/orchestration/investigations/{iid}/events", headers=HEADERS).json()["items"]
     assert [e["event_id"] for e in ev] == sorted(e["event_id"] for e in ev)
     stages = [e for e in ev if e["event_type"].startswith("stage_")]
