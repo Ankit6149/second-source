@@ -74,21 +74,21 @@ function describe(error: unknown) {
   return error instanceof Error ? error.message : 'Something went wrong. Try again.';
 }
 function stopPolling() { if (pollTimer) window.clearTimeout(pollTimer); pollTimer = undefined; }
-function showDialog(title: string, content: string) {
+function showDialog(title: string, content: string, variant = '') {
   currentDialogReturn = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   el('dialogContent').innerHTML = `<div class="dialog-head"><h2 id="dialogTitle">${esc(title)}</h2><button class="icon-button" type="button" data-action="close-dialog" aria-label="Close">${icon('x')}</button></div>${content}`;
-  const dialog = el<HTMLDialogElement>('dialog'); if (!dialog.open) dialog.showModal(); renderIcons();
+  const dialog = el<HTMLDialogElement>('dialog'); dialog.className = variant ? `dialog-${variant}` : ''; if (!dialog.open) dialog.showModal(); renderIcons();
 }
 function closeDialog() { const dialog = el<HTMLDialogElement>('dialog'); if (dialog.open) dialog.close(); if (currentDialogReturn?.isConnected) currentDialogReturn.focus(); else el('main').focus(); }
 function setError(error: unknown) { state.error = describe(error); render(); }
 
 function account() {
   if (!auth) {
-    showDialog('Sign in', `<p>Sign-in is not configured for this deployment yet.</p><p class="component-note">You can explore the product, but saved investigations require a connected service and an account.</p><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Close</button></div>`);
+    showDialog('Sign in', `<p>Sign-in is not available on this deployment yet.</p><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Close</button></div>`, 'signin');
   } else if (state.session) {
-    showDialog('Account', `<p>Signed in. Your investigations are scoped to this account.</p><p class="component-note">Signing out clears this browser session. Existing access tokens can remain valid until they expire.</p><div class="dialog-actions"><button class="pill-btn" data-action="sign-out">${icon('log-out')} Sign out</button></div>`);
+    showDialog('Account', `<p>You are signed in.</p><div class="dialog-actions"><button class="pill-btn" data-action="sign-out">${icon('log-out')} Sign out</button></div>`, 'signin');
   } else {
-    showDialog('Sign in', `<p>Sign in to save investigations and review their results.</p>${apiOrigin ? '' : '<p class="component-note">Account sign-in works here; saved investigations additionally need the connected backend service, which is not deployed on this page yet.</p>'}<div class="dialog-actions"><button class="pill-btn primary" data-action="sign-in">${icon('log-in')} Continue with Google</button></div>`);
+    showDialog('Sign in', `<p>Save investigations and pick up where you left off.</p><div class="dialog-actions"><button class="pill-btn primary" data-action="sign-in">${icon('log-in')} Continue with Google</button></div>`, 'signin');
   }
 }
 
@@ -180,7 +180,24 @@ function eventName(event: RunEvent) {
 }
 function investigationCard() {
   const run = state.run;
-  return `<div class="message assistant"><div class="assistant-mark">${icon('shield-check')}</div><div class="response"><h2>${state.selected ? esc(state.selected.title) : 'Choose what to investigate.'}</h2><p>${state.selected ? 'This investigation is limited to its approved fixture scope.' : !state.session ? 'Sign in to see the targets available from the connected service. A URL or software name does not grant permission or start an investigation.' : state.target ? 'Choose an available owned fixture. A URL or software name does not grant permission or start an investigation.' : 'No supported target is currently available from this service.'}</p>${state.selected ? `<div class="artifact"><div class="artifact-top"><div class="artifact-symbol">${icon('file-text')}</div><div><strong>${esc(state.target?.label || 'Unsupported fixture')} · NON_AI</strong><small>Scope ${esc(state.selected.scope_digest.slice(0, 12))}…</small></div><span class="artifact-tag">${esc(run?.status || state.selected.status)}</span></div>${run ? `<div class="artifact-bottom">${esc(run.stage ? `Stage: ${run.stage}` : 'No stage reported')}${run.error_code ? ` · ${esc(run.error_code)}` : ''}</div>` : ''}</div>` : ''}${outcomeBanner()}${state.events.length ? `<details class="activity"><summary>Activity (${state.events.length}) — genuine backend events</summary><ol>${state.events.map(e => `<li>${esc(eventName(e))}</li>`).join('')}</ol></details>` : ''}<div class="response-actions">${controls()}</div><p class="component-note">Your notes are kept only in this browser tab and are cleared on sign-out. The backend does not yet save conversations or answer follow-up questions.</p></div></div>`;
+  const line = !state.session
+    ? 'Sign in, then tell me what you would like to investigate.'
+    : !state.selected
+      ? 'Choose a supported target to get started.'
+      : !run
+        ? 'Ready when you are.'
+        : run.status === 'queued'
+          ? 'Queued and ready to start.'
+          : run.status === 'running'
+            ? 'Working on it.'
+            : run.status === 'completed'
+              ? 'Done. Your results are ready.'
+              : run.status === 'failed'
+                ? 'That run did not finish.'
+                : run.status === 'cancelled'
+                  ? 'Cancelled.'
+                  : 'This run needs a review before it can continue.';
+  return `<div class="message assistant"><div class="assistant-mark">${icon('shield-check')}</div><div class="response"><h2>${state.selected ? esc(state.selected.title) : 'What would you like to investigate?'}</h2><p>${line}</p><div class="response-actions">${controls()}</div></div></div>`;
 }
 function conversation() {
   const messages = state.messages.map(message => `<div class="message user"><div class="bubble">${esc(message)}</div></div>`).join('');
