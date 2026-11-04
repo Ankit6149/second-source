@@ -68,3 +68,7 @@ footer nav{display:flex;gap:25px;font-size:12px}
 @media(max-width:740px){.site-top{height:auto;min-height:70px;padding:16px 0;flex-wrap:wrap}.site-nav{order:3;width:100%;justify-content:space-between}.intro-wrap{display:flex;flex-direction:column;align-items:stretch;padding:58px 0 70px}.intro-copy h1{max-width:650px}.demo{width:100%}.section{padding:58px 0}.section-head{display:block}.section-head p{margin-top:12px}.steps{grid-template-columns:repeat(2,minmax(0,1fr))}.proof{grid-template-columns:1fr}.end{padding:35px;display:block}.end .button{margin-top:24px}.footer{display:block}footer nav{margin-top:21px;flex-wrap:wrap}}
 @media(max-width:420px){.wrap{width:calc(100% - 30px)}.site-nav{gap:8px}.site-nav a{font-size:11px}.header-cta{font-size:11px;padding:9px 13px}.intro-copy h1{font-size:42px}.demo-tabs{gap:4px;padding:12px}.demo-main{padding:0 12px 16px}.demo-compare{grid-template-columns:1fr}.demo-result pre{min-height:0}.steps{grid-template-columns:1fr}.end{border-radius:18px;padding:28px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{transition:none!important;animation:none!important}}
+/* Controlled click feedback: real content switches only, no decorative motion loops. */
+.demo-tabs button{transition:background-color 160ms ease,border-color 160ms ease,transform 130ms ease}
+.demo-tabs button:active{transform:scale(.975)}
+@media(prefers-reduced-motion:reduce){.demo-tabs button{transition:none}}

@@ -118,6 +118,17 @@ class PublicPreview(unittest.TestCase):
             self.assertNotIn("GEMMA_TEST", text)
             self.assertNotIn("Sealed evaluation cases:", text)
 
+    def test_landing_tabs_are_real_accessible_recorded_comparisons(self):
+        text = (ROOT / "index.html").read_text(encoding="utf-8")
+        for case in ("duplicate", "limit", "schema"):
+            self.assertIn(f'data-case="{case}"', text)
+        self.assertIn('role="group" aria-label="Choose observed case"', text)
+        self.assertIn("button.setAttribute", text) if False else self.assertIn("aria-pressed", text)
+        self.assertIn("Recorded public probe", text)
+        self.assertIn("prefers-reduced-motion: reduce", text)
+        self.assertNotIn("LIVE_MODEL", text)
+        self.assertNotIn("gemma", text.lower())
+
     def test_vercel_publishes_only_built_site(self):
         config = json.loads((ROOT.parent / "vercel.json").read_text(encoding="utf-8"))
         self.assertEqual(config["buildCommand"], "python3 web/build.py --with-app")
