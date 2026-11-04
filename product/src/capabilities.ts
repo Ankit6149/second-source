@@ -62,7 +62,7 @@ export const TARGET_CAPABILITIES: readonly TargetCapability[] = [
     id: 'api-professional',
     title: 'API / professional software',
     status: 'supported',
-    detail: 'Supported, bounded: owned HTTP task-workflow fixture on loopback when the connected service advertises its exact scope. Vikunja evidence is a recorded GEMMA_TEST benchmark, not a live run from this app.',
+    detail: 'Supported, bounded: owned HTTP task-workflow fixture on loopback when the connected service advertises its exact scope. Vikunja evidence is a recorded benchmark, not a live run from this app.',
     action: 'choose-target',
   },
   {
