@@ -1,13 +1,14 @@
 """HTTP adapter for orchestration. NL instruction enters here, reaches service."""
 from __future__ import annotations
 from typing import Annotated, Callable
-from fastapi import APIRouter, Depends, Header, Path
+from fastapi import APIRouter, Depends, Header, Path, Response
 from pydantic import Field
 from second_source.contracts import StrictModel
 from second_source.backend.contracts import Principal
 from .schemas import (
-    AuthorizeInvestigationV1, CreateInvestigationV1, InvestigationV1, JobV1,
-    OrchestrationEventV1, TargetRegistrationV1,
+    ArtifactListItemV1, AuthorizeInvestigationV1, CandidateV1, CreateInvestigationV1,
+    ExportV1, InvestigationV1, JobV1, OrchestrationEventV1, TargetRegistrationV1,
+    VerificationV1, WorkspaceV1,
 )
 from .service import OrchestrationService
 
@@ -84,5 +85,38 @@ def create_orchestration_router(service: OrchestrationService,
                principal: Principal = Depends(get_principal), after: int = 0, limit: int = 100):
         items = service.list_events(principal, investigation_id, after=after, limit=limit)
         return EventPageV1(items=items, next_after=items[-1].event_id if items else after)
+
+    @router.get("/investigations/{investigation_id}/workspace", response_model=WorkspaceV1)
+    def workspace(investigation_id: Annotated[str, Path(pattern=_ID)],
+                  principal: Principal = Depends(get_principal)):
+        return service.get_workspace(principal, investigation_id)
+
+    @router.get("/investigations/{investigation_id}/candidate", response_model=CandidateV1)
+    def candidate(investigation_id: Annotated[str, Path(pattern=_ID)],
+                  principal: Principal = Depends(get_principal)):
+        return service.get_workspace(principal, investigation_id).candidate
+
+    @router.get("/investigations/{investigation_id}/verification", response_model=VerificationV1)
+    def verification(investigation_id: Annotated[str, Path(pattern=_ID)],
+                     principal: Principal = Depends(get_principal)):
+        return service.get_verification(principal, investigation_id)
+
+    @router.get("/investigations/{investigation_id}/export", response_model=ExportV1)
+    def export(investigation_id: Annotated[str, Path(pattern=_ID)],
+               principal: Principal = Depends(get_principal)):
+        return service.get_export(principal, investigation_id)
+
+    @router.get("/investigations/{investigation_id}/artifacts", response_model=list[ArtifactListItemV1])
+    def artifacts(investigation_id: Annotated[str, Path(pattern=_ID)],
+                  principal: Principal = Depends(get_principal)):
+        return service.list_artifacts(principal, investigation_id)
+
+    @router.get("/investigations/{investigation_id}/artifacts/{artifact_id}/content")
+    def artifact_content(investigation_id: Annotated[str, Path(pattern=_ID)],
+                         artifact_id: Annotated[str, Path(pattern=r"^art-[a-f0-9]{16}$")],
+                         principal: Principal = Depends(get_principal)):
+        content, media_type, name = service.artifact_content(principal, investigation_id, artifact_id)
+        return Response(content=content, media_type=media_type,
+                        headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
     return router

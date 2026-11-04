@@ -134,5 +134,122 @@ def test_execute_job_completes_with_genuine_stage_events(client):
     assert done.status_code == 200 and done.json()["status"] == "completed", done.text
     ev = client.get(f"/v1/orchestration/investigations/{inv['investigation_id']}/events", headers=HEADERS)
     kinds = [e["event_type"] for e in ev.json()["items"]]
-    assert "stage_capture" in kinds and "stage_execute" in kinds and kinds[-1] == "job_completed"
+    assert "stage_capture" in kinds and "stage_execute" in kinds and "job_completed" in kinds and kinds[-1] == "delivery_ready"
 
+
+
+def _run_to_completion(client, key="kw"):
+    inv = _create(client, key=key)
+    r = client.post(f"/v1/orchestration/investigations/{inv['investigation_id']}/authorize",
+                    headers=HEADERS, json={"expected_revision": 1, "scope_digest": inv["scope_digest"],
+                                           "mode": "mock", "maximum_model_spend_usd": 0})
+    assert r.status_code == 200, r.text
+    j = client.post(f"/v1/orchestration/investigations/{inv['investigation_id']}/jobs",
+                    headers={**HEADERS, "Idempotency-Key": key + "j"}, json={"schema_version": "1"})
+    assert j.status_code == 201, j.text
+    job = j.json()
+    done = client.post(f"/v1/orchestration/jobs/{job['job_id']}/execute", headers=HEADERS, json={})
+    assert done.status_code == 200 and done.json()["status"] == "completed", done.text
+    return inv, done.json()
+
+def test_workspace_candidate_artifacts_and_export(client):
+    import hashlib as _h, io, zipfile
+    inv, job = _run_to_completion(client)
+    iid = inv["investigation_id"]
+    assert job["result_report_id"]
+    ws = client.get(f"/v1/orchestration/investigations/{iid}/workspace", headers=HEADERS)
+    assert ws.status_code == 200, ws.text
+    ws = ws.json()
+    cand = ws["candidate"]
+    assert cand["provenance"] == "NON_AI" and cand["ir_version"] == 2
+    assert cand["routes"] and cand["routes"][0]["kind"] == "cli-action"
+    ver = ws["verification"]
+    assert ver["passed"] + ver["failed"] + ver["indeterminate"] == ver["total"]
+    assert ver["real"] is False and ver["origin"] == "mock"
+    kinds = {a["kind"] for a in ws["artifacts"]}
+    assert {"candidate", "report", "report_json", "manifest", "bundle"} <= kinds
+    for a in ws["artifacts"]:
+        c = client.get(f"/v1/orchestration/investigations/{iid}/artifacts/{a['artifact_id']}/content", headers=HEADERS)
+        assert c.status_code == 200
+        assert _h.sha256(c.content).hexdigest() == a["sha256"] and len(c.content) == a["size_bytes"]
+    exp = client.get(f"/v1/orchestration/investigations/{iid}/export", headers=HEADERS).json()
+    bundle = next(a for a in ws["artifacts"] if a["kind"] == "bundle")
+    assert exp["bundle"]["artifact_id"] == bundle["artifact_id"] and exp["contains_sealed"] is False
+    raw = client.get(f"/v1/orchestration/investigations/{iid}/artifacts/{bundle['artifact_id']}/content", headers=HEADERS).content
+    names = set(zipfile.ZipFile(io.BytesIO(raw)).namelist())
+    assert names == {"candidate.json", "report.md", "manifest.json", "README.txt"}
+    import json as _json
+    with zipfile.ZipFile(io.BytesIO(raw)) as proof:
+        manifest = _json.loads(proof.read("manifest.json"))
+        assert manifest["evaluator"] == "structural-v1"
+        assert set(manifest["file_sha256"]) == {"candidate.json", "report.md", "README.txt"}
+        for name, digest in manifest["file_sha256"].items():
+            assert _h.sha256(proof.read(name)).hexdigest() == digest
+
+    ev = client.get(f"/v1/orchestration/investigations/{iid}/events", headers=HEADERS).json()["items"]
+    assert [e["event_id"] for e in ev] == sorted(e["event_id"] for e in ev)
+    stages = [e for e in ev if e["event_type"].startswith("stage_")]
+    assert stages and all(e["status"] == "RUNNING" for e in stages) and all(e["provenance"] == "NON_AI" for e in ev)
+    distill = next(e for e in ev if e["event_type"] == "stage_distill")
+    assert distill["artifact_refs"] == [cand["candidate_id"] and next(a["artifact_id"] for a in ws["artifacts"] if a["kind"] == "candidate")]
+    assert ev[-1]["event_type"] == "delivery_ready" and ev[-1]["status"] == "COMPLETED"
+    assert ev[-1]["artifact_refs"] == [bundle["artifact_id"]]
+
+def test_workspace_not_ready_and_owner_isolated(client, orch):
+    inv = _create(client, key="knr")
+    r = client.get(f"/v1/orchestration/investigations/{inv['investigation_id']}/workspace", headers=HEADERS)
+    assert r.status_code == 409, r.text
+    from second_source.backend.contracts import BackendError as _BE
+    import pytest as _pt
+    reg = default_registry(); t = reg.get("owned-ledger-v1")
+    mine = orch.create_investigation(Principal(owner_id="owner"),
+        CreateInvestigationV1(title="t", instruction=NL, target_id="owned-ledger-v1", scope=t.scope), "kiso")
+    with _pt.raises(_BE):
+        orch.get_workspace(Principal(owner_id="other"), mine.investigation_id)
+    with _pt.raises(_BE):
+        orch.list_artifacts(Principal(owner_id="other"), mine.investigation_id)
+
+
+def test_identical_artifact_payloads_remain_owner_isolated(orch):
+    """Content addressing must not silently alias a different investigation."""
+    registry = default_registry()
+    target = registry.get("owned-ledger-v1")
+    principal_a, principal_b = Principal(owner_id="alpha"), Principal(owner_id="bravo")
+    payload = dict(title="Owned ledger", instruction=NL,
+                   target_id="owned-ledger-v1", scope=target.scope)
+    inv_a = orch.create_investigation(principal_a, CreateInvestigationV1(**payload), "scope-a")
+    inv_b = orch.create_investigation(principal_b, CreateInvestigationV1(**payload), "scope-b")
+    identical = b'{"metadata":"same"}'
+    with orch.store.transaction() as db:
+        ref_a = orch._store_artifact(db, inv_a.investigation_id, None,
+                                     "manifest", "manifest.json", "application/json", identical)
+        ref_b = orch._store_artifact(db, inv_b.investigation_id, None,
+                                     "manifest", "manifest.json", "application/json", identical)
+    assert ref_a.artifact_id != ref_b.artifact_id
+    assert orch.artifact_content(principal_a, inv_a.investigation_id, ref_a.artifact_id)[0] == identical
+    assert orch.artifact_content(principal_b, inv_b.investigation_id, ref_b.artifact_id)[0] == identical
+    with pytest.raises(BackendError):
+        orch.artifact_content(principal_b, inv_b.investigation_id, ref_a.artifact_id)
+    with pytest.raises(BackendError):
+        orch.artifact_content(principal_a, inv_a.investigation_id, ref_b.artifact_id)
+
+
+def test_verification_not_ready_after_candidate_before_report(orch):
+    """The verification endpoint must never turn a pending result into a 500."""
+    from second_source.orchestration.schemas import CandidateV1
+    from second_source.g2_persistence import canonical
+    target = default_registry().get("owned-ledger-v1")
+    me = Principal(owner_id="owner")
+    inv = orch.create_investigation(
+        me, CreateInvestigationV1(title="Check", instruction=NL,
+                                  target_id="owned-ledger-v1", scope=target.scope), "scope-check")
+    candidate = CandidateV1(candidate_id="cand-pending",
+                            investigation_id=inv.investigation_id,
+                            source_observations_sha256="0" * 64)
+    with orch.store.transaction() as db:
+        orch._store_artifact(db, inv.investigation_id, None, "candidate",
+                             "candidate.json", "application/json",
+                             canonical(candidate.model_dump(mode="python")))
+    assert orch.get_workspace(me, inv.investigation_id).verification is None
+    with pytest.raises(BackendError):
+        orch.get_verification(me, inv.investigation_id)
