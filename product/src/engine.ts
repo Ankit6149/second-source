@@ -82,3 +82,8 @@ export async function getEngineInvestigation(id: string): Promise<EngineInvestig
 export function engineCandidateUrl(id: string): string {
   return `${ENGINE_BASE}/engine/v1/investigations/${encodeURIComponent(id)}/candidate`;
 }
+
+/** Only a completed local run can return the evidence-backed Markdown report. */
+export function engineReportUrl(id: string): string {
+  return `${ENGINE_BASE}/engine/v1/investigations/${encodeURIComponent(id)}/report`;
+}
