@@ -68,6 +68,12 @@ class SupabaseHTTPTransport:
             if (type(value) is not str or not 1 <= len(value) <= 16_384
                     or any(ord(c) < 33 or ord(c) > 126 for c in value)):
                 raise _error("INVALID_STORAGE_CONFIG", 422)
+        # Modern sb_secret_* keys are API keys, not JWT bearer tokens.
+        # Refuse browser publishable keys in the privileged Storage transport.
+        if access_token.startswith("sb_publishable_") or api_key.startswith("sb_publishable_"):
+            raise _error("INVALID_STORAGE_CONFIG", 422)
+        if access_token.startswith("sb_secret_") and access_token != api_key:
+            raise _error("INVALID_STORAGE_CONFIG", 422)
         self._access_token, self._api_key = access_token, api_key
 
     def request(self, method, url, *, headers, body, max_response_bytes,
@@ -91,8 +97,11 @@ class SupabaseHTTPTransport:
                 raise ValueError
             if method == "POST" and {k.lower(): v for k, v in headers.items()}.get("x-upsert") != "false":
                 raise ValueError
-            outgoing = {**headers, "Authorization": "Bearer " + self._access_token,
-                        "apikey": self._api_key, "Accept-Encoding": "identity"}
+            outgoing = {**headers, "apikey": self._api_key, "Accept-Encoding": "identity"}
+            # Opaque sb_secret_* values authenticate via the apikey header.
+            # Legacy credentials keep their existing bearer-token behavior.
+            if not self._access_token.startswith("sb_secret_"):
+                outgoing["Authorization"] = "Bearer " + self._access_token
             deadline = time.monotonic() + timeout_seconds
             connection = http.client.HTTPSConnection(target.hostname, timeout=timeout_seconds,
                                                        context=ssl.create_default_context())
