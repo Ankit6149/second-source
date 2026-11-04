@@ -62,3 +62,7 @@ dialog:has(.auth-window){width:min(480px,calc(100vw - 32px));padding:28px}
 @media(max-width:800px){.work-grid{grid-template-columns:1fr}.work-wide{grid-column:auto}.content:has(.investigation-workspace){padding:12px 15px 55px!important}.work-hero{padding:19px;align-items:start}.work-context{grid-template-columns:1fr}.work-panel{padding:18px}}
 @media(max-width:490px){.auth-capabilities{grid-template-columns:1fr}.auth-capabilities>div{border-right:0;border-bottom:1px solid var(--border)}.auth-capabilities>div:last-child{border:0}.work-hero{flex-direction:column}.work-status{border-left:0;border-top:1px solid var(--border);padding:12px 0 0;width:100%}.work-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.top-account{padding:8px 9px}}
 @media(prefers-reduced-motion:reduce){.top-account{transition:none}}
+
+.work-activity{margin:0;border:0;padding:0;min-width:0}
+.work-activity>summary{font:700 11px var(--mono);color:var(--secondary);padding:0 0 9px;cursor:pointer}
+@media(max-width:600px){.top-account span{display:none}.top-account{width:35px;height:35px;justify-content:center;padding:7px;flex:none}.preview-label{max-width:72px!important;font-size:10px}}
