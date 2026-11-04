@@ -133,6 +133,8 @@ class JobV1(StrictModel):
     error_code: str | None = None
     result_report_id: str | None = None
 
+EventStatus = Literal["RUNNING", "FAILED", "CANNOT_VERIFY", "COMPLETED", "CANCELLED"]
+
 class OrchestrationEventV1(StrictModel):
     schema_version: SCHEMA_VERSION = "1"
     event_id: int
@@ -142,6 +144,23 @@ class OrchestrationEventV1(StrictModel):
     stage: JobStage | None = None
     revision: int
     created_at: str
+    status: EventStatus = "COMPLETED"
+    provenance: ProvenanceLabel = ProvenanceLabel.NON_AI
+    artifact_refs: tuple[str, ...] = ()
+    detail: str | None = Field(default=None, max_length=200)
+
+class ArtifactListItemV1(ArtifactRefV1):
+    kind: str
+    name: str
+    created_at: str
+
+class WorkspaceV1(StrictModel):
+    schema_version: SCHEMA_VERSION = "1"
+    investigation_id: str
+    candidate: CandidateV1 | None = None
+    verification: VerificationV1 | None = None
+    report: ReportV1 | None = None
+    artifacts: list[ArtifactListItemV1] = Field(default_factory=list)
 
 class TargetRegistrationV1(StrictModel):
     schema_version: SCHEMA_VERSION = "1"

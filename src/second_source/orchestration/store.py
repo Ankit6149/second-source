@@ -27,6 +27,10 @@ CREATE TABLE IF NOT EXISTS orch_events(
 CREATE TABLE IF NOT EXISTS orch_idempotency(
  owner_id TEXT NOT NULL, operation TEXT NOT NULL, key TEXT NOT NULL,
  request_digest TEXT NOT NULL, resource_id TEXT NOT NULL, PRIMARY KEY(owner_id,operation,key));
+CREATE TABLE IF NOT EXISTS orch_artifacts(
+ artifact_id TEXT PRIMARY KEY, investigation_id TEXT NOT NULL, job_id TEXT,
+ kind TEXT NOT NULL, name TEXT NOT NULL, media_type TEXT NOT NULL,
+ sha256 TEXT NOT NULL, size_bytes INTEGER NOT NULL, content BLOB NOT NULL, created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS orch_spend(
  investigation_id TEXT NOT NULL, seq INTEGER NOT NULL, amount_usd REAL NOT NULL,
  packet_id TEXT, created_at TEXT NOT NULL, PRIMARY KEY(investigation_id, seq));
@@ -41,6 +45,13 @@ class OrchestrationStore:
         checked_regular_file(self.path)
         with self.transaction() as c:
             c.executescript(SCHEMA)
+            cols = {r[1] for r in c.execute("PRAGMA table_info(orch_events)")}
+            for col, ddl in (("status", "TEXT NOT NULL DEFAULT 'COMPLETED'"),
+                             ("provenance", "TEXT NOT NULL DEFAULT 'NON_AI'"),
+                             ("artifact_refs", "TEXT NOT NULL DEFAULT '[]'"),
+                             ("detail", "TEXT")):
+                if col not in cols:
+                    c.execute(f"ALTER TABLE orch_events ADD COLUMN {col} {ddl}")
         self.path.chmod(0o600)
 
     def _connect(self):
