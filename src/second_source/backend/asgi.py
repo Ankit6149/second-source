@@ -82,10 +82,48 @@ def build_cloud_app(settings: CloudSettings, *, store=None, transport=None, iden
     return app
 
 
+def _degraded_app():
+    """Boot-visible fallback when cloud configuration is invalid.
+
+    The process must still answer so the host does not hold requests
+    forever: liveness is ok, readiness honestly reports not_ready, and
+    every API route refuses with 503. No database, storage or identity
+    system is touched, and no configuration value is disclosed.
+    """
+    from fastapi import FastAPI
+
+    app = FastAPI(title="Second Source API (configuration unavailable)")
+
+    @app.get("/health/live")
+    def live():
+        return {"status": "ok"}
+
+    @app.get("/health/ready")
+    def ready():
+        return JSONResponse({"status": "not_ready"}, status_code=503)
+
+    @app.api_route("/{path:path}",
+                   methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
+    async def unavailable(path: str):
+        correlation = uuid.uuid4().hex
+        return JSONResponse(
+            {"code": "CONFIGURATION_UNAVAILABLE",
+             "message": "Server configuration is unavailable or invalid.",
+             "correlation_id": correlation},
+            status_code=503,
+            headers={"X-Correlation-ID": correlation,
+                     "Cache-Control": "no-store"})
+
+    return app
+
+
 def create_application():
     try:
         return build_cloud_app(CloudSettings.from_environment(os.environ))
     except Exception:
-        raise RuntimeError("Cloud startup configuration is invalid or unavailable") from None
+        # Never log configuration values; only that startup degraded.
+        logging.getLogger("second_source.backend.cloud").error(json.dumps({
+            "event": "STARTUP_CONFIGURATION_INVALID"}))
+        return _degraded_app()
 
 

@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 import pytest
 
-from second_source.backend.asgi import build_cloud_app
+from second_source.backend.asgi import build_cloud_app, create_application
 from second_source.backend.artifacts import verify_bundle
 from second_source.backend.contracts import BackendError, Principal, CodeStage, EngineResult
 from second_source.backend.cloud_artifacts import SupabaseArtifactStore
@@ -163,6 +163,22 @@ def test_environment_configuration_errors_never_disclose_values():
                                        "SECOND_SOURCE_CORS_ORIGINS": marker})
     assert marker not in str(error.value)
     assert marker not in repr(config())
+
+
+def test_invalid_startup_configuration_boots_degraded_not_silent(monkeypatch):
+    # A misconfigured deployment must still answer: liveness ok, readiness
+    # honestly not_ready, API refused. Regression: the process used to exit
+    # at startup, so hosts held every request until timeout.
+    monkeypatch.setenv("SECOND_SOURCE_DATABASE_URL",
+                       "postgresql://postgres.example.invalid/not-a-dsn")
+    client = TestClient(create_application())
+    assert client.get("/health/live").status_code == 200
+    ready = client.get("/health/ready")
+    assert ready.status_code == 503 and ready.json()["status"] == "not_ready"
+    refused = client.get("/v1/targets")
+    assert refused.status_code == 503
+    assert refused.json()["code"] == "CONFIGURATION_UNAVAILABLE"
+    assert "not-a-dsn" not in refused.text
 
 
 def test_unexpected_request_exception_does_not_reach_server_logs(tmp_path, caplog):
