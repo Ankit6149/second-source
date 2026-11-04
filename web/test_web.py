@@ -77,7 +77,7 @@ class PublicPreview(unittest.TestCase):
 
     def test_static_package_contains_only_public_files(self):
         output = build()
-        expected = {"index.html", "landing.css", "research.css", "reports/index.html",
+        expected = {"index.html", "landing.css", "styles.css", "release.css", "script.js", "research.css", "reports/index.html",
                     "experiments/index.html", "console/index.html", "evidence/index.html",
                     "lab/index.html", "challenge/index.html", "handoff/index.html", "architecture/index.html"}
         expected.update("assets/" + name for name in ASSETS)
@@ -134,12 +134,16 @@ class PublicPreview(unittest.TestCase):
 
     def test_landing_tabs_are_real_accessible_recorded_comparisons(self):
         text = (ROOT / "index.html").read_text(encoding="utf-8")
-        for case in ("duplicate", "limit", "schema"):
+        for case in ("0", "1", "2"):
             self.assertIn(f'data-case="{case}"', text)
-        self.assertIn('role="group" aria-label="Choose observed case"', text)
-        self.assertIn("button.setAttribute", text) if False else self.assertIn("aria-pressed", text)
-        self.assertIn("Recorded public probe", text)
-        self.assertIn("prefers-reduced-motion: reduce", text)
+        self.assertIn('aria-label="Choose a simulated test case"', text)
+        self.assertIn("aria-pressed", text)
+        self.assertIn("RECORDED REFERENCE BEHAVIOR", text)
+        self.assertIn("No live execution here", text)
+        self.assertIn('id="motionToggle"', text)
+        self.assertIn("animate-hero", text)
+        css = (ROOT / "styles.css").read_text(encoding="utf-8") + (ROOT / "release.css").read_text(encoding="utf-8")
+        self.assertIn("prefers-reduced-motion", css)
         self.assertNotIn("LIVE_MODEL", text)
         self.assertNotIn("gemma", text.lower())
 

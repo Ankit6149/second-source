@@ -8,7 +8,7 @@ from urllib.parse import unquote, urlsplit
 from build import app_asset
 
 ROOT = Path(__file__).resolve().parent
-PUBLIC = {"index.html", "landing.css", "research.css"}
+PUBLIC = {"index.html", "landing.css", "styles.css", "release.css", "script.js", "research.css"}
 ASSETS = {"dm-sans.ttf", "manrope.ttf", "DM-Sans-OFL.txt", "Manrope-OFL.txt"}
 
 
