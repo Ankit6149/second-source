@@ -79,7 +79,7 @@ class PublicPreview(unittest.TestCase):
         output = build()
         expected = {"index.html", "landing.css", "research.css", "reports/index.html",
                     "experiments/index.html", "console/index.html", "evidence/index.html",
-                    "lab/index.html", "challenge/index.html", "handoff/index.html"}
+                    "lab/index.html", "challenge/index.html", "handoff/index.html", "architecture/index.html"}
         expected.update("assets/" + name for name in ASSETS)
         actual = {path.relative_to(output).as_posix() for path in output.rglob("*") if path.is_file()}
         self.assertEqual(actual, expected)

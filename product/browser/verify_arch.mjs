@@ -1,0 +1,11 @@
+import { chromium } from 'playwright';
+const browser = await chromium.launch({ headless: true });
+const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+await page.goto('file:///C:/Users/ANKIT%20BHARDWAJ/Desktop/second-source-release-review/web/architecture/index.html');
+await page.waitForTimeout(1200);
+await page.screenshot({ path: '../.runs/ui-videos/arch-top.png' });
+await page.click('.step[data-step="2"]');
+await page.waitForTimeout(700);
+await page.screenshot({ path: '../.runs/ui-videos/arch-drawer.png' });
+await browser.close();
+console.log('ARCH_SHOTS_DONE');
