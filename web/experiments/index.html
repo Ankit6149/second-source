@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#10271c">
+<meta name="description" content="Second Source experiment methods and measured outcomes: genuine Meta model research and separately labeled deterministic software controls.">
+<title>Experiments — Second Source</title><link rel="stylesheet" href="../research.css"></head>
+<body>
+<a class="skip" href="#main">Skip to experiments</a>
+<header class="masthead"><div class="wrap">
+ <div class="top"><a class="logo" href="../">second<span>source.</span></a>
+  <nav aria-label="Primary"><a href="../">Product</a><a href="../reports/">Reports</a><a href="./" aria-current="page">Experiments</a></nav>
+  <a class="open" href="../app/">Open app ↗</a></div>
+ <a class="back" href="../">← Back to product</a>
+ <div class="hero"><div class="eyebrow">Research / Experimental method</div>
+ <h1>See the experiment.<br>Know what it proves.</h1>
+ <p>Each reconstruction is a testable claim about an authorized system. Browse the recorded experiments, their methods, measured results and failure boundaries.</p>
+ <div class="hero-actions"><a class="btn primary" href="#catalog">Browse experiments</a><a class="btn" href="../reports/">Read measured reports</a></div></div>
+ </div></header>
+<main id="main">
+ <section class="section"><div class="wrap">
+  <div class="section-head"><div><div class="eyebrow">01 / Protocol</div><h2>Four steps. Independent verification.</h2></div><p>A black-box approach does not mean guessing. Each stage keeps evidence, scope, and test ownership explicit.</p></div>
+  <div class="steps">
+   <div class="step"><b>01 — CAPTURE</b><strong>Observe real behavior</strong><p>Within an authorized scope, record actual inputs, outputs, errors and state changes.</p></div>
+   <div class="step"><b>02 — ORGANIZE</b><strong>Separate facts from guesses</strong><p>Track observed, inferred, conflicting and unknown rules independently.</p></div>
+   <div class="step"><b>03 — DISTILL</b><strong>Construct a candidate</strong><p>Generate a bounded specification. Keep model-authored and compiled facts labeled.</p></div>
+   <div class="step"><b>04 — EXECUTE</b><strong>Challenge the reconstruction</strong><p>Run a separate evaluator; expose passed, failed and indeterminate outcomes.</p></div>
+  </div>
+ </div></section>
+ <section class="section" id="catalog"><div class="wrap">
+  <div class="section-head"><div><div class="eyebrow">02 / Research catalogue</div><h2>Measured investigations</h2></div><p>Filter by origin. Model experiments and deterministic controls are never blended into a single performance number.</p></div>
+  <div class="filters" role="group" aria-label="Filter experiments">
+   <button type="button" aria-pressed="true" data-filter="all">All experiments</button>
+   <button type="button" aria-pressed="false" data-filter="meta">Meta model</button>
+   <button type="button" aria-pressed="false" data-filter="control">Deterministic</button>
+  </div>
+  <div class="experiment-list" id="experimentsList" style="margin-top:20px">
+   <article class="experiment" data-kind="meta">
+    <div class="experiment-head"><div><div class="sub"><span class="pill">REAL_MODEL</span><span class="muted">Owned ledger · sealed suite</span></div>
+     <h3>Muse Spark 1.3 — infer hidden ledger rules</h3><p>Evidence-linked Meta model synthesis of a scoped declarative candidate. The evaluator checked frozen cases the candidate had not seen.</p></div><span class="score">14/25</span></div>
+    <details><summary>Method and limitations</summary><p>Recorded input/output probes informed hypotheses about label uniqueness, amount boundaries and exact response schemas. The historical candidate failed 9 schema cases and 2 error cases. Provider attestation is incomplete; the independent offline replay was consistent. No live Meta call is made by this page.</p>
+     <p><a href="../reports/#ledger">Open detailed ledger report →</a></p></details></article>
+   <article class="experiment" data-kind="meta">
+    <div class="experiment-head"><div><div class="sub"><span class="pill">REAL_MODEL</span><span class="muted">Vikunja v2.4.0 · sealed six-case suite</span></div>
+     <h3>Grounded versus active Meta reasoning</h3><p>Two genuine Muse Spark 1.3 arms tested whether additional grounded observations and active probe selection improve reconstruction on professional task software.</p></div><span class="score">2/6 · 1/6</span></div>
+    <details><summary>Method and limitations</summary><p>Grounded C reproduced 2/6 frozen workflows, and active D reproduced 1/6 after model-selected probes. The experiment demonstrates real model exploration, not a positive improvement. Original driver failure meant some ephemeral receipts were lost; the durable run record and packet digests remain in the research record.</p>
+     <p><a href="../reports/#results">Compare independently measured results →</a></p></details></article>
+   <article class="experiment" data-kind="meta">
+    <div class="experiment-head"><div><div class="sub"><span class="pill">REAL_MODEL</span><span class="muted">Muse-assisted hybrid · candidate versus compiler</span></div>
+     <h3>Can a model improve a faithful compiler?</h3><p>Proposed route-level changes were compared against an evidence-compiled candidate and evaluated independently.</p></div><span class="score">6/6 + 6/6</span></div>
+    <details><summary>Method and limitations</summary><p>The raw model-assisted candidate tied the NON_AI evidence compiler on both frozen and extended suites. The public-conformance gate rejected the proposed edits. There is no measured improvement over the compiler, so the result is presented as a tie rather than a model win.</p></details></article>
+   <article class="experiment" data-kind="control">
+    <div class="experiment-head"><div><div class="sub"><span class="pill control">NON_AI</span><span class="muted">Owned HTTP task workflow · local executable control</span></div>
+     <h3>Bounded reconstruction and repair control</h3><p>Authorized scope, recorded stages, candidate JSON, independent evaluation, and downloadable reports. The locally tested deterministic repair used previously collected evidence.</p></div><span class="score">30/30</span></div>
+    <details><summary>Method and limitations</summary><p>The control improved from 25/30 to 30/30 on its own bounded suite. A scope-derived candidate can expose two generated route declarations and integrity-hashed artifacts. This is not AI repair; do not compare its denominator to the Meta ledger suite.</p>
+     <p><a href="../app/">Open the connected product workspace →</a> <span class="muted">(requires locally running backend for new jobs)</span></p></details></article>
+   <article class="experiment" data-kind="control">
+    <div class="experiment-head"><div><div class="sub"><span class="pill control">NON_AI</span><span class="muted">Vikunja v2.4.0 · actual local engine</span></div>
+     <h3>Probe → compile → public conformance</h3><p>A real local engine investigates a disposable self-hosted Vikunja reference, compiles public observations into a candidate, and checks a public workflow ladder.</p></div><span class="score">11/19</span></div>
+    <details><summary>Method and limitations</summary><p>This result is from a local public conformance run, not a sealed held-out evaluator or live Meta synthesis. Eight public checks diverged. The locally served app offers Reports → Compare → Run Vikunja rebuild if the operator service is running.</p>
+     <p><a href="../app/">Inspect the app's Compare workspace →</a></p></details></article>
+   <article class="experiment" data-kind="control">
+    <div class="experiment-head"><div><div class="sub"><span class="pill control">NON_AI</span><span class="muted">Browser motion · one owned slice</span></div>
+     <h3>Behavior includes time and motion</h3><p>A spring-back interaction was observed and fitted from motion data, then checked on a different held-out drag without re-fitting.</p></div><span class="score">1.054px</span></div>
+    <details><summary>Method and limitations</summary><p>The measured held-out trajectory root mean square error was 1.054px for one bounded slice; another recorded slice measured 1.741px. This was a deterministic fit, not general browser reconstruction or an in-app browser adapter.</p></details></article>
+  </div>
+  <p class="note" id="filterCount" role="status" aria-live="polite">Showing all six experiments.</p>
+ </div></section>
+ <section class="section"><div class="wrap">
+  <div class="section-head"><div><div class="eyebrow">03 / Inspect further</div><h2>Run the supported workflow.</h2></div><p>The browser can explore recorded public research without credentials. New executions require a connected local service and authorized targets.</p></div>
+  <div class="report-overview"><div>
+   <p>Second Source does not fabricate execution in the hosted UI. With the local operator service running, the app shows durable events, generated declarative route specifications, evaluation counts and exportable proof bundles.</p>
+   <div class="hero-actions"><a class="btn primary" href="../app/">Open workspace ↗</a><a class="btn" href="https://github.com/Ankit6149/second-source/blob/main/product/README.md">Local setup instructions ↗</a></div>
+  </div><aside><strong>Boundary</strong><p>The hosted site is not a production backend. No unrestricted website ingestion, recovered private source, or new billable AI model execution is promised.</p></aside></div>
+ </div></section>
+</main>
+<footer><div class="wrap footer-inner"><a class="logo" href="../">second<span>source.</span></a><nav aria-label="Footer"><a href="../">Product</a><a href="../reports/">Reports</a><a href="../app/">Workspace</a><a href="https://github.com/Ankit6149/second-source">Source ↗</a></nav></div></footer>
+<script>
+(() => {
+ const buttons = [...document.querySelectorAll('[data-filter]')];
+ const articles = [...document.querySelectorAll('[data-kind]')];
+ const status = document.getElementById('filterCount');
+ buttons.forEach(button => button.addEventListener('click', () => {
+   const kind = button.dataset.filter;
+   buttons.forEach(b => b.setAttribute('aria-pressed', String(b === button)));
+   let shown = 0;
+   articles.forEach(article => { const visible = kind === 'all' || article.dataset.kind === kind; article.hidden = !visible; if (visible) shown++; });
+   status.textContent = 'Showing ' + shown + ' ' + (kind === 'all' ? 'experiments.' : kind === 'meta' ? 'genuine Meta model experiments.' : 'deterministic control experiments.');
+ }));
+})();
+</script></body></html>
