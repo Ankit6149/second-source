@@ -49,7 +49,7 @@ test('workspace controls drive an authorized NON_AI investigation through the lo
     const assetDir = path.join(directory, 'assets');
     const asset = (await readdir(assetDir)).find(name => name.endsWith('.js')); assert.ok(asset);
     const bundle = await readFile(path.join(assetDir, asset), 'utf8');
-    let failNextPoll = false; let loseExecuteAck = false; let lostAckCompleted = false; let executions = 0;
+    let failNextPoll = false; let loseExecuteAck = false; let lostAckCompleted = false; let executions = 0; const executeCalls = [];
     function openWorkspace(userId, accessToken, priorStorage) {
       const instance = new Window({ url: 'https://preview.test/', settings: { disableJavaScriptFileLoading: true, disableCSSFileLoading: true } });
       windows.push(instance);
@@ -66,7 +66,7 @@ test('workspace controls drive an authorized NON_AI investigation through the lo
         if (url.origin !== 'https://backend.test') throw new Error('External transport forbidden');
         const method = options?.method || 'GET';
         if (method === 'POST' && url.pathname.endsWith('/execute')) {
-          executions++;
+          executions++; executeCalls.push({ at: Date.now(), stack: new Error('execute request').stack });
           if (loseExecuteAck) {
             loseExecuteAck = false;
             // The server keeps processing while the client loses its acknowledgement.
@@ -107,7 +107,7 @@ test('workspace controls drive an authorized NON_AI investigation through the lo
       const button = doc.querySelector('[data-action="execute"]'); return button && !button.disabled ? button : null;
     }, 'queued run')).click();
     const warning = await until(() => [...doc.querySelectorAll('.inline-note')].find(item => item.textContent.includes('status may be out of date')), 'stale-status warning');
-    assert.equal(executions, 1);
+    assert.equal(executions, 1, JSON.stringify(executeCalls, null, 2));
     warning.querySelector('[data-action="refresh"]').click();
     await until(() => !doc.querySelector('#content').textContent.includes('status may be out of date'), 'progress recovery');
     (await until(() => doc.querySelector('[data-action="verification"]'), 'completed run', 200_000)).click();
