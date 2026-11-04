@@ -20,7 +20,53 @@
  </div>
 </header>
 <main id="main">
- <section class="section" id="ledger"><div class="wrap">
+ <section class="section" id="paper"><div class="wrap">
+<div class="section-head"><div><div class="eyebrow">The research paper · reports + experiments combined</div><h2>What we measured, what it means</h2></div><p>One page, every result. Bars show measured pass rates; the text under each explains what the number does — and does not — prove. Provenance labels (REAL_MODEL / NON_AI) are never merged.</p></div>
+
+<h3 class="paper-h">Results at a glance</h3>
+<div class="bars">
+ <div class="bar-row"><span class="bar-label">Vikunja public ladder · NON_AI compiler (+ Muse's seed rule)</span><span class="bar-track"><span class="bar-fill" style="width:100%"></span></span><b>19/19</b></div>
+ <div class="bar-row"><span class="bar-label">Vikunja frozen suite · NON_AI</span><span class="bar-track"><span class="bar-fill" style="width:100%"></span></span><b>6/6</b></div>
+ <div class="bar-row"><span class="bar-label">File Browser public · NON_AI</span><span class="bar-track"><span class="bar-fill" style="width:100%"></span></span><b>7/7</b></div>
+ <div class="bar-row"><span class="bar-label">Gitea public subsystem · NON_AI</span><span class="bar-track"><span class="bar-fill" style="width:100%"></span></span><b>6/6</b></div>
+ <div class="bar-row"><span class="bar-label">Owned HTTP workflow · NON_AI</span><span class="bar-track"><span class="bar-fill" style="width:100%"></span></span><b>30/30</b></div>
+ <div class="bar-row"><span class="bar-label">Owned ledger · NON_AI compiler</span><span class="bar-track"><span class="bar-fill" style="width:88%"></span></span><b>22/25</b></div>
+ <div class="bar-row"><span class="bar-label">Owned ledger · Muse Spark 1.3 alone (REAL_MODEL)</span><span class="bar-track"><span class="bar-fill model" style="width:56%"></span></span><b>14/25</b></div>
+ <div class="bar-row"><span class="bar-label">File Browser · Muse alone</span><span class="bar-track"><span class="bar-fill model" style="width:43%"></span></span><b>3/7</b></div>
+ <div class="bar-row"><span class="bar-label">Browser motion held-out · NON_AI fitter</span><span class="bar-track"><span class="bar-fill" style="width:100%"></span></span><b>PASS · 2.5px</b></div>
+</div>
+<p class="note">Full-width bars are complete public conformance on bounded, pinned subsystems — not whole-product clones. Denominators differ per suite and are always shown. The two shorter bars are the honest model-alone results: they are why Muse works under a gate here, not on its own.</p>
+
+<h3 class="paper-h">What the numbers mean</h3>
+<div class="paper-grid">
+<article><h4>The compiler is the control, not the product</h4><p>Deterministic evidence compilation transcribes exactly what was observed, so it scores high wherever behavior was publicly probed (19/19, 7/7, 6/6). That proves the observation and candidate machinery works. It does not prove intelligence — which is why Muse's contribution is measured separately, and why compiler scores are never relabeled as AI.</p></article>
+<article><h4>Muse alone is not enough — yet</h4><p>Asked to reconstruct from specifications alone, Muse scored 14/25 on the sealed ledger and 3/7 on File Browser. Failures concentrate in exact response schemas (9) and error contracts (2): models approximate shapes; real systems are exact. This is a measured limitation, published with the failures kept.</p></article>
+<article><h4>Where Muse actually moved the score</h4><p>On Vikunja the last divergence was per-user default projects. Muse, shown only public evidence, named them exactly: <i>Inbox</i> and <i>My Open Tasks</i> (1 call, $0.005464, receipt in repo). The candidate went 18/19 → 19/19, and the compiler now derives the same rule generically. Conversely, Muse whole-route rewrites regressed 11 → 2 and were rejected by the gate. Both directions are the evidence.</p></article>
+<article><h4>A number we had to earn twice</h4><p>An apparent 17/19 regression turned out to be our own measurement bug: the ladder was replayed on an already-probed reference, creating a duplicate project. Baselines now always run on a fresh reference. Reporting this matters: a benchmark you cannot trust is worse than a lower score.</p></article>
+</div>
+
+<h3 class="paper-h">Experiment registry</h3>
+<div class="table-scroll"><table class="paper-table">
+<tr><th>Target</th><th>Method</th><th>Public</th><th>Held-out</th><th>Model calls</th><th>Cost</th><th>Status</th></tr>
+<tr><td>Vikunja v2.4.0</td><td>NON_AI compiler</td><td>19/19</td><td>6/6 frozen · 6/6 extended</td><td>0</td><td>$0</td><td>Evaluated</td></tr>
+<tr><td>Vikunja</td><td>Muse seed proposal (REAL_MODEL)</td><td>18/19 → 19/19</td><td>—</td><td>1</td><td>$0.005464</td><td>Accepted improvement</td></tr>
+<tr><td>Vikunja</td><td>Muse whole-route repair</td><td>11 → 2</td><td>—</td><td>3</td><td>$0.053</td><td>Gate-rejected</td></tr>
+<tr><td>Vikunja</td><td>Muse route reviews, gated</td><td>19/19 preserved</td><td>—</td><td>recorded</td><td>recorded</td><td>Evaluated</td></tr>
+<tr><td>File Browser v2.63.23</td><td>NON_AI compiler</td><td>7/7</td><td>mutated control passed</td><td>0</td><td>$0</td><td>Evaluated</td></tr>
+<tr><td>File Browser</td><td>Muse alone / gated review</td><td>3/7 alone · 7/7 gated</td><td>—</td><td>recorded</td><td>recorded</td><td>Evaluated</td></tr>
+<tr><td>Gitea 1.22.6</td><td>NON_AI compiler</td><td>6/6</td><td>sealed, unrun</td><td>0</td><td>$0</td><td>Evaluated (public)</td></tr>
+<tr><td>Owned ledger</td><td>Muse Spark 1.3 (REAL_MODEL)</td><td>—</td><td>14/25</td><td>recorded</td><td>recorded</td><td>Evaluated</td></tr>
+<tr><td>Owned ledger</td><td>NON_AI compiler</td><td>—</td><td>22/25</td><td>0</td><td>$0</td><td>Evaluated</td></tr>
+<tr><td>Browser motion</td><td>NON_AI fitter</td><td>—</td><td>PASS · RMSE 2.505px (≤8px)</td><td>0</td><td>$0</td><td>Evaluated</td></tr>
+</table></div>
+<p class="note">"Recorded" = the value exists in the repository receipts/registry; this page does not invent it. Full per-software narratives, failure taxonomy and reproduction steps: <a href="https://github.com/Ankit6149/second-source/blob/main/docs/reports/SECOND_SOURCE_FINAL_REPORT.md">final technical report (Markdown)</a> · <a href="https://github.com/Ankit6149/second-source/blob/main/docs/reports/PER_SOFTWARE_RESULTS.md">per-software results</a> · <a href="https://github.com/Ankit6149/second-source/blob/main/docs/reports/CLAUDE_EVIDENCE_REPORT.md">Muse evidence report</a>.</p>
+
+<h3 class="paper-h">Method, in one paragraph</h3>
+<p class="paper-p">Probe the reference with public actions only → compile observations into a behavioral spec (observed facts immutable) → Muse reasons only about unknowns, proposing gated edits → execute the candidate with a generic interpreter → score public conformance on a fresh reference → freeze and score held-out suites evaluator-side only. Provider failures are recorded as unscored infrastructure events, never as zeros.</p>
+<h3 class="paper-h">Limitations</h3>
+<p class="paper-p">Bounded, pinned subsystems — not arbitrary URLs (that is the stated end goal, not a current claim). Public conformance is not whole-product equivalence. The 14/25 attestation could not be provider-verified and is labeled recorded. Hosted execution is the bounded NON_AI worker; the full professional-target engine runs locally.</p>
+</div></section>
+<section class="section" id="ledger"><div class="wrap">
   <div class="section-head"><div><div class="eyebrow">01 / Genuine Meta model</div><h2>Owned ledger — Muse Spark 1.3</h2></div>
   <p>A bounded, model-authored declarative candidate. Scored by an independent evaluator on a frozen 25-case suite.</p></div>
   <div class="metrics">

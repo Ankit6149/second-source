@@ -4,7 +4,11 @@
 <title>Architecture — Second Source</title>
 <link rel="stylesheet" href="../research.css">
 <style>
-.flow{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.flow{display:flex;gap:0;flex-wrap:wrap;align-items:stretch;margin:18px 0}
+.flow .step{position:relative;margin-right:26px}
+.flow .step:not(:last-child)::after{content:'\2192';position:absolute;right:-22px;top:50%;transform:translateY(-50%);font-size:19px;color:#3b8658;font-weight:700}
+.flowloop{flex-basis:100%;margin-top:12px;font-size:13.5px;color:#41584a;background:#eef5ef;border:1px dashed #9db8a4;border-radius:10px;padding:9px 13px}
+.flowloop b{color:#1d5c36}
 .step{flex:1 1 140px;text-align:left;border:1px solid var(--line,#c9d4cc);background:#fffdf8;border-radius:12px;padding:12px;cursor:pointer;font:inherit}
 .step strong{display:block;font-size:15px;margin-bottom:4px}
 .step span{font-size:12.5px;color:#5c6f63}
@@ -41,7 +45,7 @@ measured, what is honestly limited, and where it goes next. Click each stage.</p
 </header>
 <main id="main">
 
-<h2>The pipeline — click a stage</h2>
+<h2>How Second Source works — the flow</h2><p style="max-width:70ch">Follow the arrows. Every stage is real: the reference is only ever probed in public, the candidate never sees held-out tests, and Muse may only enter through a gate that rejects anything which makes the score worse. Click any stage for the full story.</p>
 <div class="flow" role="group" aria-label="Pipeline stages">
 <button class="step" data-step="0" aria-pressed="true"><strong>1 · Observe</strong><span>probe the real API</span></button>
 <button class="step" data-step="1" aria-pressed="false"><strong>2 · Compile</strong><span>evidence → spec</span></button>
@@ -49,6 +53,7 @@ measured, what is honestly limited, and where it goes next. Click each stage.</p
 <button class="step" data-step="3" aria-pressed="false"><strong>4 · Construct</strong><span>candidate runs</span></button>
 <button class="step" data-step="4" aria-pressed="false"><strong>5 · Verify</strong><span>independent check</span></button>
 <button class="step" data-step="5" aria-pressed="false"><strong>6 · Deliver</strong><span>code + report</span></button>
+<span class="flowloop"><b>Repair loop:</b> public divergences go back to <b>3 · Reason</b> — Muse proposes, the gate re-measures, worse candidates are discarded. <b>Side channel:</b> the independent evaluator (frozen + held-out suites) scores the frozen candidate only; its cases never enter prompts.</span>
 </div>
 <div class="panel" id="panel" aria-live="polite"></div>
 
