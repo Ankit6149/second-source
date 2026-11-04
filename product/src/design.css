@@ -20,3 +20,8 @@
 .history{grid-template-columns:minmax(0,1fr)}.history-item{min-width:0;max-width:100%;overflow:hidden}.history-item .history-title{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .conversation{padding-top:48px}
 @media(max-width:760px){.conversation{padding-top:28px}}
+/* Custom scrollbar */
+html{scrollbar-width:thin;scrollbar-color:#3f9e63 #eef3ee}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:#eef3ee}
+::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#63b57e,#2e7d4f);border-radius:99px;border:2px solid #eef3ee}
