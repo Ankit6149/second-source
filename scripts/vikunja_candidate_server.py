@@ -255,6 +255,8 @@ class Candidate:
             # create shape; the observed list exemplar decides.
             template = route.get("template")
             exemplar = template[0] if isinstance(template, list) and template else {}
+            if not isinstance(exemplar, dict):
+                exemplar = {}
             overlay = {k: v for k, v in exemplar.items()
                        if v is None or isinstance(v, (dict, list))}
             items = []
@@ -277,6 +279,14 @@ class Candidate:
             return status, items
         # Item routes resolve the entity by the trailing path param.
         entity = store.get(parent_id) if parent_id is not None else None
+        if entity is None and params:
+            # Name-addressed resources (e.g. /repos/{owner}/{repo-name}):
+            # resolve by the observed name/title field, generically.
+            trailing = list(params.values())[-1]
+            for e in store.values():
+                if e.get("name") == trailing or e.get("title") == trailing:
+                    entity = e
+                    break
         if entity is None:
             return self._not_found()
         err = self._compiled_access(

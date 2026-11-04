@@ -254,8 +254,11 @@ def _run_gitea(rec: dict) -> None:
         st, body = _gt_call(GT_BASE, "GET", "/repos/ssadmin/ss-demo/issues", auth="basic")
         rec_obs("GET /repos/ssadmin/ss-demo/issues", None, st,
                 [i.get("title") for i in body] if isinstance(body, list) else body)
-        st, body = _gt_call(GT_BASE, "GET", "/user")
+        st, body = _gt_call(GT_BASE, "GET", "/user", auth="basic")
         rec_obs("GET /user", None, st, body)
+        st, body = _gt_call(GT_BASE, "GET", "/user")
+        obs.append({"action": "GET /user", "as": "None", "request": None,
+                    "status": st, "body": body})
         digest = hashlib.sha256(json.dumps(obs, sort_keys=True, default=str).encode()).hexdigest()
         _set(rec, observations={"count": len(obs), "sha256": "sha256:" + digest})
         _check_cancelled(rec)
