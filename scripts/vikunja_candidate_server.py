@@ -291,6 +291,36 @@ class Candidate:
             # provides by default. Seed unseen ones for this user and
             # present seeded/created items in exemplar order.
             seed_titles = route.get("seed_defaults")
+            # Spec-enabled query semantics (set only when a gated
+            # model repair proposed them from public evidence):
+            # ?filter=(field = value), ?sort=field / -field, ?perPage&page.
+            qf = route.get("query_features") or {}
+            if qf:
+                import re as _re
+                from urllib.parse import parse_qs, unquote
+                qs = parse_qs(unquote(query))
+                if qf.get("filter"):
+                    fv = (qs.get("filter") or [""])[0]
+                    m = _re.search(r"([A-Za-z_][A-Za-z0-9_.]*)\s*=\s*('[^']*'|[^)]+)", fv) if fv else None
+                    if m:
+                        field = m.group(1).split(".")[-1]
+                        raw = m.group(2).strip().strip("'")
+                        want = {"true": True, "false": False}.get(raw.lower(), raw)
+                        items = [i for i in items if i.get(field) == want]
+                if qf.get("sort"):
+                    sv = (qs.get("sort") or [""])[0]
+                    if sv:
+                        rev = sv.startswith("-")
+                        field = sv.lstrip("-+")
+                        items = sorted(items, key=lambda i: (i.get(field) is None, i.get(field)), reverse=rev)
+                if qf.get("paginate"):
+                    try:
+                        per = int((qs.get("perPage") or [0])[0])
+                        page = int((qs.get("page") or [1])[0])
+                    except (TypeError, ValueError):
+                        per, page = 0, 1
+                    if per > 0:
+                        items = items[(page - 1) * per: page * per]
             if isinstance(seed_titles, list) and isinstance(template, list):
                 known = {e.get("title") or e.get("name") for e in store.values()}
                 for item in template:
@@ -522,6 +552,9 @@ class Candidate:
             return self._not_found()
         user = self._user(headers)
         if route.get("auth", True) and user is None:
+            if route.get("unauth_status"):
+                return route["unauth_status"], route.get(
+                    "unauth_body", {"message": "Not found"})
             auth = self.spec.get("auth", {})
             return (auth.get("unauthenticated_status", 401),
                     auth.get("unauthenticated_body", {"message": "Unauthorized"}))
@@ -639,6 +672,7 @@ def serve(spec_path, port):
         def do_PUT(self): self._go("PUT")
         def do_POST(self): self._go("POST")
         def do_DELETE(self): self._go("DELETE")
+        def do_PATCH(self): self._go("PATCH")
         def log_message(self, *a): pass
 
     HTTPServer(("127.0.0.1", port), Handler).serve_forever()

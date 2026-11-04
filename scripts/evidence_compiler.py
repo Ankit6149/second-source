@@ -197,9 +197,14 @@ def compile_spec(observations, source_hash=""):
         root_id = best["body"].get("id") if isinstance(best.get("body"), dict) else None
         tokenizer = _Tokenizer(best.get("request"), {"pid": pid, "tid": tid},
                                root_id=root_id)
-        template = tokenizer.walk(best.get("body"))
+        _best_body = best.get("body")
+        if isinstance(_best_body, dict) and isinstance(_best_body.get("items"), list):
+            _best_body = _best_body["items"]  # envelope list (e.g. PocketBase)
+        template = tokenizer.walk(_best_body)
         kind = ("compiled_list" if method == "GET" and not is_item
-                and isinstance(first.get("body"), list) else
+                and (isinstance(first.get("body"), list)
+                     or (isinstance(first.get("body"), dict)
+                         and isinstance(first["body"].get("items"), list))) else
                 "compiled_single" if method == "GET" and not is_item else
                 "compiled_get" if method == "GET" else
                 "compiled_share" if segs and segs[-1] == "users"
@@ -210,6 +215,16 @@ def compile_spec(observations, source_hash=""):
                  "collection": collection, "auth": True,
                  "status": first["status"], "template": template,
                  "source": "observed"}
+
+        # Per-route unauthenticated contract: some systems answer
+        # 404 (existence hiding) instead of 401 for anonymous calls.
+        for err in obs_list:
+            if err.get("as") in (None, "None") and isinstance(err.get("status"), int) \
+                    and err["status"] >= 400:
+                route["unauth_status"] = err["status"]
+                if isinstance(err.get("body"), dict):
+                    route["unauth_body"] = err["body"]
+                break
 
         # Missing-resource contract: an observed 404 on this route is
         # the reference's answer for unknown ids on it.
@@ -227,6 +242,23 @@ def compile_spec(observations, source_hash=""):
                     validate.append({"field": field, "rule": "nonempty",
                                      "status": err["status"],
                                      "error_body": err.get("body")})
+        # Missing-field contract: a 400 whose request omits a field
+        # every successful request carried means the field is required.
+        if kind in ("compiled_create", "compiled_update"):
+            succ_keys = None
+            for o in successes:
+                req = o.get("request") or {}
+                if isinstance(req, dict) and req:
+                    succ_keys = set(req) if succ_keys is None else succ_keys & set(req)
+            for err in errors:
+                if err.get("status") != 400:
+                    continue
+                req = err.get("request") or {}
+                for field in sorted((succ_keys or set()) - set(req)):
+                    if not any(v["field"] == field for v in validate):
+                        validate.append({"field": field, "rule": "nonempty",
+                                         "status": err["status"],
+                                         "error_body": err.get("body")})
         if validate:
             route["validate"] = validate
 

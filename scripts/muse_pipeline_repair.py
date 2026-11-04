@@ -40,6 +40,7 @@ ROUTE_PATCH_SCHEMA = {
                 "access": {"type": "string"},
                 "validate": {"type": "array", "items": {"type": "object"}},
                 "forbidden_body": {"type": "object"},
+                "query_features": {"type": "object"},
             },
             "required": ["method", "path", "template_unchanged"],
         },
@@ -54,7 +55,7 @@ def _select_divergent_route(spec: dict, divergences: list[dict]) -> dict | None:
         if " " not in action:
             continue
         method, path = action.split(" ", 1)
-        route = hybrid.find_route(spec, method, path)
+        route = hybrid.find_route(spec, method, path.split("?")[0])
         if route is not None:
             return route
     return None
@@ -93,6 +94,10 @@ def admit_route_patch(base_spec: dict, reference_route: dict, response_text: str
         if field == "validate" and (not isinstance(value, list) or len(value) > 10
                                     or any(not isinstance(item, dict) for item in value)):
             raise ValueError("MODEL_INVALID_VALIDATION")
+        if field == "query_features" and (not isinstance(value, dict)
+                or len(value) > 6
+                or any(v is not True for v in value.values())):
+            raise ValueError("MODEL_INVALID_QUERY_FEATURES")
         if field == "forbidden_body" and (not isinstance(value, dict)
                                            or len(json.dumps(value)) > 2048):
             raise ValueError("MODEL_INVALID_ERROR_BODY")
@@ -126,6 +131,10 @@ def build_public_prompt(route: dict, observations: list[dict], divergences: list
         + json.dumps(summaries)
         + "\nReturn one bounded route object. Do not invent unseen results. "
           "A separate deterministic evaluator will reject regressions."
+          " If the differential data shows list query behavior (filter, "
+          "sort, pagination) that the candidate lacks, you may set "
+          "query_features to {\"filter\": true, \"sort\": true, "
+          "\"paginate\": true} (only the keys the evidence supports)."
     )
 
 

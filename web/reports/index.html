@@ -45,17 +45,22 @@
 <article><h4>A number we had to earn twice</h4><p>An apparent 17/19 regression turned out to be our own measurement bug: the ladder was replayed on an already-probed reference, creating a duplicate project. Baselines now always run on a fresh reference. Reporting this matters: a benchmark you cannot trust is worse than a lower score.</p></article>
 </div>
 
-<h3 class="paper-h">Experiment registry</h3>
+<h3 class="paper-h">Experiment registry — Muse first</h3>
+<p class="paper-p"><strong>Second Source is an AI product.</strong> Muse Spark 1.3 is the reasoning engine: it identifies rules nobody observed, reviews routes, and proposes repairs. The deterministic compiler is its control — the notebook that keeps observed facts exact so Muse's contribution can be measured instead of asserted. Muse rows lead this registry; NON_AI rows are the baselines Muse is measured against.</p>
 <div class="table-scroll"><table class="paper-table">
 <tr><th>Target</th><th>Method</th><th>Public</th><th>Held-out</th><th>Model calls</th><th>Cost</th><th>Status</th></tr>
+<tr><td>Vikunja</td><td><b>Muse seed proposal (REAL_MODEL)</b></td><td>18/19 → <b>19/19</b></td><td>—</td><td>1</td><td>$0.005464</td><td><b>Accepted improvement</b> — Muse named the default projects</td></tr>
+<tr><td>PocketBase (new, first contact)</td><td><b>Muse route reviews, gated</b></td><td>9/9 → <b>9/9</b></td><td>—</td><td>6</td><td>$0.0328</td><td>4 regressions proposed, <b>all gate-rejected</b>; baseline preserved</td></tr>
+<tr><td>File Browser</td><td><b>Muse route reviews, gated</b></td><td>7/7 → <b>7/7</b></td><td>—</td><td>4 routes</td><td>$0.0426</td><td>Evaluated, preserved</td></tr>
+<tr><td>Gitea</td><td><b>Muse route reviews, gated</b></td><td>6/6 → <b>6/6</b></td><td>sealed, unrun</td><td>6</td><td>$0.0575</td><td>Evaluated, preserved</td></tr>
+<tr><td>Owned ledger</td><td><b>Muse alone (REAL_MODEL)</b></td><td>—</td><td><b>14/25</b></td><td>recorded</td><td>recorded</td><td>Evaluated — capability + ceiling, both shown</td></tr>
+<tr><td>File Browser</td><td><b>Muse alone</b></td><td><b>3/7</b></td><td>—</td><td>recorded</td><td>recorded</td><td>Why the gate exists</td></tr>
+<tr><td>Vikunja</td><td><b>Muse whole-route repair</b></td><td>11 → 2</td><td>—</td><td>3</td><td>$0.053</td><td><b>Gate-rejected</b> — published, not hidden</td></tr>
+<tr><td colspan="7" style="background:#eef5ef"><b>NON_AI controls — the baselines Muse is measured against (never reported as AI)</b></td></tr>
 <tr><td>Vikunja v2.4.0</td><td>NON_AI compiler</td><td>19/19</td><td>6/6 frozen · 6/6 extended</td><td>0</td><td>$0</td><td>Evaluated</td></tr>
-<tr><td>Vikunja</td><td>Muse seed proposal (REAL_MODEL)</td><td>18/19 → 19/19</td><td>—</td><td>1</td><td>$0.005464</td><td>Accepted improvement</td></tr>
-<tr><td>Vikunja</td><td>Muse whole-route repair</td><td>11 → 2</td><td>—</td><td>3</td><td>$0.053</td><td>Gate-rejected</td></tr>
-<tr><td>Vikunja</td><td>Muse route reviews, gated</td><td>19/19 preserved</td><td>—</td><td>recorded</td><td>recorded</td><td>Evaluated</td></tr>
+<tr><td>PocketBase v0.28.4</td><td>NON_AI compiler</td><td>9/9</td><td>—</td><td>0</td><td>$0</td><td>First contact, evaluated (target was empty; collection/user created as setup)</td></tr>
 <tr><td>File Browser v2.63.23</td><td>NON_AI compiler</td><td>7/7</td><td>mutated control passed</td><td>0</td><td>$0</td><td>Evaluated</td></tr>
-<tr><td>File Browser</td><td>Muse alone / gated review</td><td>3/7 alone · 7/7 gated</td><td>—</td><td>recorded</td><td>recorded</td><td>Evaluated</td></tr>
 <tr><td>Gitea 1.22.6</td><td>NON_AI compiler</td><td>6/6</td><td>sealed, unrun</td><td>0</td><td>$0</td><td>Evaluated (public)</td></tr>
-<tr><td>Owned ledger</td><td>Muse Spark 1.3 (REAL_MODEL)</td><td>—</td><td>14/25</td><td>recorded</td><td>recorded</td><td>Evaluated</td></tr>
 <tr><td>Owned ledger</td><td>NON_AI compiler</td><td>—</td><td>22/25</td><td>0</td><td>$0</td><td>Evaluated</td></tr>
 <tr><td>Browser motion</td><td>NON_AI fitter</td><td>—</td><td>PASS · RMSE 2.505px (≤8px)</td><td>0</td><td>$0</td><td>Evaluated</td></tr>
 </table></div>

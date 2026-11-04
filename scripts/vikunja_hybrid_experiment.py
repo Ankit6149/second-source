@@ -469,7 +469,7 @@ DIVERGENCE_CLASSES = ("missing-observation", "bad-inference",
 COMPILED_FROZEN_FIELDS = ("template", "method", "path")
 REPAIR_EDITABLE_FIELDS = frozenset(
     {"kind", "status", "access", "collection", "auth", "validate",
-     "forbidden_body"})
+     "forbidden_body", "query_features"})
 MAX_REPAIR_EDITS = 8
 
 
