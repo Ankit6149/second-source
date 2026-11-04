@@ -1,6 +1,7 @@
 ﻿import './fonts.css';
 import './design.css';
 import './product.css';
+import './workspace.css';
 import { createIcons, PanelLeft, PanelLeftClose, SquarePen, FolderOpen, SwatchBook, ChevronUp, ArrowUp, ShieldCheck, FileText, ListChecks, Download, CircleHelp, X, Play, Square, RefreshCw, Clock, Check, AlertTriangle, LogIn, LogOut, Link, FlaskConical, MessageSquare, ExternalLink, Search, GitBranch, Puzzle, Plus } from 'lucide';
 import type { Session } from '@supabase/supabase-js';
 import { auth, observeSession, signIn, signOut } from './auth';
@@ -13,6 +14,7 @@ import { HISTORICAL_LEDGER, PROVENANCE_META, compiledScoreText, metaArmScoreText
 import { capabilityEnabled, targetCapabilities } from './capabilities';
 import { checkEngine, createEngineInvestigation, getEngineInvestigation, engineCandidateUrl, type EngineInvestigation } from './engine';
 import { SCOREBOARD, SOURCE_OPTIONS, OUTCOME_LABEL, buildManifest, buildReadme, buildReportHtml, buildReportMarkdown, runOutcome, stageIndex } from './workbench';
+import { renderInvestigationWorkspace } from './investigation_workspace';
 
 const icons = { PanelLeft, PanelLeftClose, SquarePen, FolderOpen, SwatchBook, ChevronUp, ArrowUp, ShieldCheck, FileText, ListChecks, Download, CircleHelp, X, Play, Square, RefreshCw, Clock, Check, AlertTriangle, LogIn, LogOut, Link, FlaskConical, MessageSquare, ExternalLink, Search, GitBranch, Puzzle, Plus };
 const icon = (name: string) => `<i data-lucide="${name}" aria-hidden="true"></i>`;
@@ -94,7 +96,7 @@ function account() {
 
 function composer() {
   const hint = detectReference(state.draft);
-  return `<form class="composer" id="composer"><div id="draftContext"><div class="detection" id="detection" ${hint ? '' : 'hidden'}>${hint ? `${icon('link')} <span><strong>${esc(hint.label)}</strong><br><small>${esc(hint.description)}</small></span>` : ''}</div></div><label class="sr-only" for="promptInput">Describe the software behavior you want to investigate</label><textarea rows="2" id="promptInput" maxlength="4000" placeholder="Ask about a workflow, software, or a reference…">${esc(state.draft)}</textarea><div class="composer-lower"><div class="tool-row"><button class="tool-icon" type="button" disabled title="Attachments are not supported yet" aria-label="Attachments unavailable">${icon('plus')}</button><button class="small-tool" type="button" data-action="select-target">${icon('flask-conical')} Choose a supported target</button></div><div class="send-area"><span class="kbd-help">Shift + Enter for new line</span><button class="send-btn" type="submit" aria-label="Send message">${icon('arrow-up')}</button></div></div></form>`;
+  return `<form class="composer" id="composer"><div id="draftContext"><div class="detection" id="detection" ${hint ? '' : 'hidden'}>${hint ? `${icon('link')} <span><strong>${esc(hint.label)}</strong><br><small>${esc(hint.description)}</small></span>` : ''}</div></div><label class="sr-only" for="promptInput">Describe the software behavior you want to investigate</label><textarea rows="2" id="promptInput" maxlength="4000" placeholder="${state.selected ? 'Add a private investigation note (not an AI command)…' : 'Describe a workflow question (saved as a local note only)…'}">${esc(state.draft)}</textarea><div class="composer-lower"><div class="tool-row"><button class="tool-icon" type="button" disabled title="Attachments are not supported yet" aria-label="Attachments unavailable">${icon('plus')}</button><button class="small-tool" type="button" data-action="select-target">${icon('flask-conical')} Choose a supported target</button></div><div class="send-area"><span class="kbd-help">Shift + Enter for new line</span><button class="send-btn" type="submit" aria-label="Send message">${icon('arrow-up')}</button></div></div></form>`;
 }
 
 function enginePanel() {
@@ -160,7 +162,7 @@ function renderHome() {
   return `<section class="empty-home"><h1>Understand how software <em>really works.</em></h1><p>Second Source observes software you own or are authorized to study, infers its hidden rules from behavior, builds an independent candidate, and scores that candidate against the reference — without seeing its source.</p><div class="home-evidence"><span class="prov-pill prov-model-authored">REAL_MODEL · Model-authored</span><p><strong>14/25</strong> — a genuine muse-spark-1.3 candidate for the owned ledger, independently scored on a sealed 25-case suite. Recorded evidence only: no live model inference runs in this app, and REAL_MODEL and NON_AI scores are never merged.</p><button class="pill-btn primary" type="button" data-action="research">Read the research record</button>${state.session ? '' : `<button class="pill-btn" type="button" data-action="account">${icon('log-in')} Sign in with Google</button>`}</div><div class="suggestion-row"><button class="suggestion" data-suggestion="Understand how the owned ledger handles repeated inputs.">${icon('search')} Understand behavior</button><button class="suggestion" data-suggestion="Compare the owned ledger with a scoped candidate.">${icon('git-branch')} Compare versions</button><button class="suggestion" data-suggestion="Explore how the owned ledger workflow could be reconstructed.">${icon('puzzle')} Reconstruct a workflow</button></div><p class="home-note">${state.session ? state.target ? (state.targets.length > 1 ? 'Available here: owned ledger and HTTP task-workflow NON_AI fixtures.' : 'Available here: the owned ledger NON_AI fixture.') : 'No supported target is currently available.' : 'Signed out: the research record above is open to everyone. Sign in only to save investigations against a connected service.'}</p></section>` + storySections() + enginePanel();
 }
 function controls() {
-  if (!state.session) return `<button class="pill-btn primary" data-action="account">${icon('log-in')} Sign in to start</button>`;
+  if (!state.session) return `<p class="component-note">Use Sign in in the application header to start an authorized investigation. Public research remains accessible.</p>`;
   if (!state.selected) return state.target ? `<button class="pill-btn primary" data-action="review-scope" ${state.busy ? 'disabled' : ''}>${icon('shield-check')} Review scope</button>` : `<button class="pill-btn" disabled>Supported target unavailable</button>`;
   if (state.selected.status === 'created') return state.target && state.selected.scope_digest === state.target.scope_digest
     ? `<button class="pill-btn primary" data-action="authorize" ${state.busy ? 'disabled' : ''}>${icon('shield-check')} Confirm scope</button>`
@@ -200,6 +202,10 @@ function investigationCard() {
   return `<div class="message assistant"><div class="assistant-mark">${icon('shield-check')}</div><div class="response"><h2>${state.selected ? esc(state.selected.title) : 'What would you like to investigate?'}</h2><p>${line}</p><div class="response-actions">${controls()}</div></div></div>`;
 }
 function conversation() {
+  if (state.selected) return renderInvestigationWorkspace({
+    investigation: state.selected, target: state.target, run: state.run, events: state.events,
+    verification: state.verification, notes: state.messages, actionsHtml: controls(),
+  });
   const messages = state.messages.map(message => `<div class="message user"><div class="bubble">${esc(message)}</div></div>`).join('');
   return `<section class="conversation">${messages}${investigationCard()}</section>`;
 }
@@ -218,6 +224,8 @@ function render() {
   const statusText = state.run ? `Run ${state.run.status.replaceAll('_', ' ')}${state.run.stage ? `, stage ${state.run.stage}` : ''}.` : state.loading ? 'Loading investigations.' : '';
   if (el('liveStatus').textContent !== statusText) el('liveStatus').textContent = statusText;
   el('accountState').textContent = state.session ? 'Signed in' : 'Not signed in';
+  el('topAccountLabel').textContent = state.session ? 'Account' : 'Sign in';
+  el('topAccountButton').setAttribute('aria-label', state.session ? 'Open account window' : 'Open sign-in window');
   el('connectionLabel').textContent = !auth ? 'Sign-in not configured' : !apiOrigin ? (state.session ? 'Signed in \u00b7 backend offline' : 'Backend offline') : state.session ? 'Signed in · NON_AI only' : 'Sign in to start';
   el('topName').textContent = state.view === 'library' ? 'Your work' : state.view === 'system' ? 'Component showroom' : state.selected?.title || 'Second Source';
   el('history').innerHTML = state.investigations.slice(0, 12).map(item => `<button class="history-item ${item.investigation_id === state.selected?.investigation_id ? 'active' : ''}" data-investigation="${esc(item.investigation_id)}">${icon('message-square')}<span class="history-title">${esc(item.title)}</span></button>`).join('');
@@ -230,7 +238,7 @@ function render() {
     const replacement = [...content.querySelectorAll<HTMLButtonElement>('[data-action]')].find(button => button.dataset.action === focusedAction && !button.disabled);
     replacement?.focus({ preventScroll: true });
   }
-  el('dock').hidden = state.view === 'library' || state.view === 'system' || state.view === 'settings';
+  el('dock').hidden = state.view === 'library' || state.view === 'system' || state.view === 'settings' || state.view === 'compare' || state.view === 'reports';
   if (!el('dock').hidden) {
     const existing = document.getElementById('promptInput') as HTMLTextAreaElement | null;
     if (!existing) el('dockInner').innerHTML = composer();
