@@ -54,7 +54,10 @@ RUNS = ROOT / ".runs" / "engine"
 ENGINE_VERSION = "1.0.0"
 TARGET_ID = "vikunja-v1"
 FB_TARGET_ID = "filebrowser-v1"
-TARGETS = (TARGET_ID, FB_TARGET_ID)
+GT_TARGET_ID = "gitea-v1"
+TARGETS = (TARGET_ID, FB_TARGET_ID, GT_TARGET_ID)
+GT_BASE = "http://127.0.0.1:3000/api/v1"
+GT_ADMIN = {"username": "ssadmin", "password": "SsPass#12345"}
 MAX_BODY_BYTES = 16384
 MAX_INVESTIGATIONS = 64
 MAX_IDEMPOTENCY_KEY_LEN = 128
@@ -153,6 +156,168 @@ def _wait_candidate(base: str) -> None:
         except Exception:
             time.sleep(0.2)
     raise RuntimeError("candidate server did not start")
+
+
+def _gt_call(base, method, path, body=None, auth=None):
+    """auth: None | 'basic' (reference) | token string (candidate X-Auth)."""
+    import base64 as _b64
+    import urllib.error as _e
+    import urllib.request as _r
+    req = _r.Request(base + path, method=method)
+    data = None
+    if body is not None:
+        data = json.dumps(body).encode()
+        req.add_header("Content-Type", "application/json")
+    if auth == "basic":
+        raw = f"{GT_ADMIN['username']}:{GT_ADMIN['password']}".encode()
+        req.add_header("Authorization", "Basic " + _b64.b64encode(raw).decode())
+    elif auth:
+        req.add_header("X-Auth", auth)
+    try:
+        with _r.urlopen(req, data=data, timeout=15) as resp:
+            raw = resp.read().decode()
+            try:
+                return resp.status, json.loads(raw)
+            except json.JSONDecodeError:
+                return resp.status, raw
+    except _e.HTTPError as exc:
+        raw = exc.read().decode()
+        try:
+            return exc.code, json.loads(raw)
+        except json.JSONDecodeError:
+            return exc.code, raw
+
+
+def _gt_available() -> bool:
+    try:
+        st, _ = _gt_call(GT_BASE, "GET", "/version")
+        return st == 200
+    except Exception:
+        return False
+
+
+def _gt_case(base, auth):
+    """One differential case set; returns comparable tuples per case."""
+    out = {}
+    st, body = _gt_call(base, "GET", "/version", auth=auth)
+    out["version"] = (st,)
+    _gt_call(base, "DELETE", "/repos/ssadmin/ss-case", auth=auth)
+    st, body = _gt_call(base, "POST", "/user/repos",
+                        {"name": "ss-case", "auto_init": True}, auth=auth)
+    out["create_repo"] = (st, body.get("name") if isinstance(body, dict) else None)
+    st, body = _gt_call(base, "GET", "/repos/ssadmin/ss-case", auth=auth)
+    out["get_repo"] = (st, body.get("name") if isinstance(body, dict) else None)
+    st, body = _gt_call(base, "POST", "/repos/ssadmin/ss-case/issues",
+                        {"title": "Case bug"}, auth=auth)
+    out["create_issue"] = (st, body.get("title") if isinstance(body, dict) else None)
+    st, body = _gt_call(base, "GET", "/repos/ssadmin/ss-case/issues", auth=auth)
+    out["list_issues"] = (st, len(body) if isinstance(body, list) else None)
+    st, _ = _gt_call(base, "GET", "/user")
+    out["unauth_user"] = (st,)
+    _gt_call(base, "DELETE", "/repos/ssadmin/ss-case", auth=auth)
+    return out
+
+
+def _run_gitea(rec: dict) -> None:
+    """Gitea 1.22.6 first contact: public probes -> compile -> differential.
+
+    Bounded subsystem only (version, repositories, issues, auth boundary).
+    The candidate is the generic spec interpreter; Gitea's large nested
+    bodies are compiled as observed templates, so field-level mismatches
+    are expected and reported, never hidden.
+    """
+    procs = []
+    try:
+        _check_cancelled(rec)
+        _set(rec, stage="starting_reference")
+        if not _gt_available():
+            raise RuntimeError("gitea reference not reachable at 127.0.0.1:3000")
+        _check_cancelled(rec)
+        _set(rec, stage="probing_reference")
+        _gt_call(GT_BASE, "DELETE", "/repos/ssadmin/ss-demo", auth="basic")
+        obs = []
+
+        def rec_obs(action, request, status, body):
+            obs.append({"action": action, "as": "alice", "request": request,
+                        "status": status, "body": body})
+
+        st, body = _gt_call(GT_BASE, "GET", "/version", auth="basic")
+        rec_obs("GET /version", None, st, body)
+        st, body = _gt_call(GT_BASE, "POST", "/user/repos",
+                            {"name": "ss-demo", "auto_init": True}, auth="basic")
+        rec_obs("POST /user/repos", {"name": "ss-demo", "auto_init": True}, st, body)
+        st, body = _gt_call(GT_BASE, "GET", "/repos/ssadmin/ss-demo", auth="basic")
+        rec_obs("GET /repos/ssadmin/ss-demo", None, st, body)
+        st, body = _gt_call(GT_BASE, "POST", "/repos/ssadmin/ss-demo/issues",
+                            {"title": "Demo bug"}, auth="basic")
+        rec_obs("POST /repos/ssadmin/ss-demo/issues", {"title": "Demo bug"}, st, body)
+        st, body = _gt_call(GT_BASE, "GET", "/repos/ssadmin/ss-demo/issues", auth="basic")
+        rec_obs("GET /repos/ssadmin/ss-demo/issues", None, st,
+                [i.get("title") for i in body] if isinstance(body, list) else body)
+        st, body = _gt_call(GT_BASE, "GET", "/user")
+        rec_obs("GET /user", None, st, body)
+        digest = hashlib.sha256(json.dumps(obs, sort_keys=True, default=str).encode()).hexdigest()
+        _set(rec, observations={"count": len(obs), "sha256": "sha256:" + digest})
+        _check_cancelled(rec)
+        _set(rec, stage="compiling_evidence")
+        spec = fb.compile_spec(obs, digest)
+        spec.setdefault("auth", {})["raw_header_name"] = "X-Auth"
+        spec["users"] = {"alice": "ssadmin"}
+        _set(rec, compiled={
+            "routes": [f"{r['method']} {r['path']}" for r in spec.get("routes", [])],
+            "provenance": "EVIDENCE_COMPILED",
+            "label": "NON_AI"}, _spec=spec)
+        _check_cancelled(rec)
+        _set(rec, stage="checking_public_conformance")
+        RUNS.mkdir(parents=True, exist_ok=True)
+        spec_path = RUNS / f"{rec['id']}-gt-spec.json"
+        spec_path.write_text(json.dumps(spec, indent=1, default=str), encoding="utf-8")
+        port = _next_port()
+        proc = subprocess.Popen(
+            [sys.executable, str(ROOT / "scripts" / "vikunja_candidate_server.py"),
+             str(spec_path), str(port)],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        procs.append(proc)
+        cand = f"http://127.0.0.1:{port}"
+        _wait_candidate(cand)
+        fb.call(cand, "POST", "/register", GT_ADMIN)
+        _, tok = fb.token_of(cand, GT_ADMIN)
+        ref_cases = _gt_case(GT_BASE, "basic")
+        cand_cases = _gt_case(cand, tok)
+        results = [{"case": k, "pass": ref_cases[k] == cand_cases[k],
+                    "ref": ref_cases[k], "cand": cand_cases[k]} for k in ref_cases]
+        passed = sum(1 for r in results if r["pass"])
+        _check_cancelled(rec)
+        _set(rec, public_conformance={
+            "passed": passed, "total": len(results),
+            "divergences": [f"{r['case']}: ref={r['ref']} cand={r['cand']}"
+                            for r in results if not r["pass"]]},
+            held_out={
+                "status": "not_run_by_engine",
+                "reason": "Held-out scoring is evaluator-side only; "
+                          "the engine never imports held-out cases."},
+            model={"called": False,
+                   "reason": "This engine runs the deterministic NON_AI pipeline. "
+                             "Model-authored results are recorded evidence, not generated here."},
+            status="completed", stage="completed")
+    except _Cancelled:
+        _set(rec, status="cancelled", stage="cancelled")
+    except Exception as exc:
+        _set(rec, status="failed", stage="failed",
+             error=f"{type(exc).__name__}: {exc}"[:300])
+    finally:
+        for proc in procs:
+            try:
+                proc.terminate()
+            except Exception:
+                pass
+        with _STATE_LOCK:
+            stored = {k: copy.deepcopy(v) for k, v in rec.items()
+                      if not k.startswith("_")}
+            RUNS.mkdir(parents=True, exist_ok=True)
+            (RUNS / f"{rec['id']}.json").write_text(
+                json.dumps(stored, indent=1, default=str), encoding="utf-8")
+            _prune_locked()
 
 
 def _run_filebrowser(rec: dict) -> None:
@@ -264,6 +429,9 @@ def run_investigation(inv_id: str) -> None:
         return
     if rec.get("target") == FB_TARGET_ID:
         _run_filebrowser(rec)
+        return
+    if rec.get("target") == GT_TARGET_ID:
+        _run_gitea(rec)
         return
     proc = workdir = None
     try:
@@ -380,6 +548,11 @@ def targets():
         {"id": FB_TARGET_ID, "label": "File Browser v2.63.23 (/api)",
          "kind": "professional-http",
          "status": "available" if _fb_ref_available() else "reference-missing",
+         "provenance": "NON_AI",
+         "pipeline": ["probe", "compile", "differential-cases"]},
+        {"id": GT_TARGET_ID, "label": "Gitea 1.22.6 (/api/v1)",
+         "kind": "professional-http",
+         "status": "available" if _gt_available() else "reference-missing",
          "provenance": "NON_AI",
          "pipeline": ["probe", "compile", "differential-cases"]},
     ]
