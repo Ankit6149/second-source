@@ -56,14 +56,14 @@ try {
   const reportRequested = new Promise(resolve => { reportSeen = resolve; });
   const reportMayFinish = new Promise(resolve => { releaseReport = resolve; });
   const protectedRequests = [];
-  async function waitForTestRateHeadroom() {
+  async function waitForTestRateHeadroom(maxPending = 40) {
     // The synthetic users share the real pre-authentication rate bucket.
     // Pace the test before its next burst, without changing production limits
     // or retrying an execution after an ambiguous outcome.
     for (;;) {
       const now = Date.now();
       while (protectedRequests.length && protectedRequests[0] <= now - 60000) protectedRequests.shift();
-      if (protectedRequests.length <= 40) return;
+      if (protectedRequests.length <= maxPending) return;
       const delay = Math.min(30000, Math.max(1, protectedRequests[0] + 60010 - now));
       await new Promise(resolve => setTimeout(resolve, delay));
     }
@@ -331,7 +331,7 @@ try {
   releaseExecution(); await (await executionResponse).finished();
   await second.waitForFunction(() => { const button = document.querySelector('[data-action="queue"]'); return button && !button.disabled; }, null, { timeout: 15000 });
   syntheticTerminal = null;
-  await waitForTestRateHeadroom();
+  await waitForTestRateHeadroom(10);
   await second.locator('.topbar [data-action="new"]').click();
   await second.locator('#promptInput').fill('Mobile HTTP fixture'); await second.locator('#promptInput').press('Enter');
   await second.getByRole('button', { name: 'Choose a supported target' }).click();
@@ -361,7 +361,7 @@ try {
   assert.equal(reverseOwner, 404, 'first owner cannot read the second owner HTTP report');
   // The two synthetic identities share one real pre-auth rate bucket.
   // Leave headroom before another mutation sequence; never bypass limits.
-  await waitForTestRateHeadroom();
+  await waitForTestRateHeadroom(10);
   await second.locator('.topbar [data-action="new"]').click();
   await second.locator('#promptInput').fill('Mobile ledger fixture'); await second.locator('#promptInput').press('Enter');
   await second.getByRole('button', { name: 'Choose a supported target' }).click();
