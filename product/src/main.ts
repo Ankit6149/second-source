@@ -248,6 +248,25 @@ function render() {
   renderIcons();
 }
 
+function linkedOrchestrationKey(owner: string, selectedId: string): string {
+  return `ss-orchestration-link:${owner}:${selectedId}`;
+}
+async function loadOrchestrationEvidence(orchId: string, selectedId: string, generation: number) {
+  if (!state.session || !apiOrigin) return;
+  try {
+    const events = await api.orchEvents(orchId);
+    let workspace = null;
+    try { workspace = await api.orchWorkspace(orchId); }
+    catch (error) {
+      // Older services and incomplete runs cannot provide a workspace. Events remain genuine.
+      if (!(error instanceof ApiError && (error.status === 404 || error.status === 409))) throw error;
+    }
+    if (generation !== state.epoch || state.selected?.investigation_id !== selectedId) return;
+    state.orch = { id: orchId, workspace, events: events.items };
+    render();
+  } catch { /* A disconnected/old service cannot invent candidate evidence. */ }
+}
+
 async function hydrate(session: Session | null) {
   const generation = ++state.epoch;
   const previousUser = state.session?.user.id;
@@ -257,7 +276,7 @@ async function hydrate(session: Session | null) {
   }
   state.session = session; state.ownerId = null; state.error = ''; state.pollError = ''; state.executionError = null; state.executing = false; state.busy = false; state.actionUncertain = null; stopPolling();
   if (!session || !apiOrigin) {
-    state.investigations = []; state.targets = []; state.target = null; state.selected = null; state.run = null; state.events = []; state.verification = null;
+    state.investigations = []; state.targets = []; state.target = null; state.selected = null; state.run = null; state.events = []; state.verification = null; state.orch = null;
     render(); return;
   }
   state.loading = true; render();
@@ -294,6 +313,9 @@ async function openInvestigation(id: string) {
     state.uncertain = !!state.run && sessionStorage.getItem(`ss-execution-uncertain:${state.run.run_id}`) === '1';
     state.actionUncertain = state.run ? sessionStorage.getItem(`ss-action-uncertain:${state.run.run_id}`) : null;
     sessionStorage.setItem('ss-selected-investigation', id); state.view = 'conversation';
+    state.orch = null;
+    const linked = state.ownerId ? sessionStorage.getItem(linkedOrchestrationKey(state.ownerId, id)) : null;
+    if (linked && /^[A-Za-z0-9_-]{1,80}$/.test(linked)) void loadOrchestrationEvidence(linked, id, generation);
     if (state.run) await refresh(false);
   } catch (error) { if (generation === state.epoch) { state.error = describe(error); render(); } }
   finally { if (generation === state.epoch) { state.loading = false; render(); } }
@@ -584,7 +606,7 @@ document.addEventListener('click', event => {
   if (target.dataset.investigation) { void openInvestigation(target.dataset.investigation); return; }
   if (target.dataset.suggestion) { state.draft = target.dataset.suggestion; sessionStorage.setItem('ss-product-draft', state.draft); render(); const input = el<HTMLTextAreaElement>('promptInput'); input?.dispatchEvent(new Event('input', { bubbles: true })); input?.focus(); return; }
   const action = target.dataset.action;
-  if (action === 'new') { ++state.epoch; stopPolling(); state.executing = false; state.busy = false; state.view = 'home'; state.selected = null; state.run = null; state.events = []; state.verification = null; state.messages = []; state.pollError = ''; state.executionError = null; state.uncertain = false; state.actionUncertain = null; sessionStorage.removeItem('ss-selected-investigation'); render(); }
+  if (action === 'new') { ++state.epoch; stopPolling(); state.executing = false; state.busy = false; state.view = 'home'; state.selected = null; state.run = null; state.events = []; state.verification = null; state.orch = null; state.messages = []; state.pollError = ''; state.executionError = null; state.uncertain = false; state.actionUncertain = null; sessionStorage.removeItem('ss-selected-investigation'); render(); }
   else if (action === 'library') { state.view = 'library'; render(); }
   else if (action === 'account') account();
   else if (action === 'sign-in') { void signIn().catch(setError); }
