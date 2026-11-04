@@ -200,3 +200,48 @@ def test_workspace_not_ready_and_owner_isolated(client, orch):
         orch.get_workspace(Principal(owner_id="other"), mine.investigation_id)
     with _pt.raises(_BE):
         orch.list_artifacts(Principal(owner_id="other"), mine.investigation_id)
+
+
+def test_identical_artifact_payloads_remain_owner_isolated(orch):
+    """Content addressing must not silently alias a different investigation."""
+    registry = default_registry()
+    target = registry.get("owned-ledger-v1")
+    principal_a, principal_b = Principal(owner_id="alpha"), Principal(owner_id="bravo")
+    payload = dict(title="Owned ledger", instruction=NL,
+                   target_id="owned-ledger-v1", scope=target.scope)
+    inv_a = orch.create_investigation(principal_a, CreateInvestigationV1(**payload), "scope-a")
+    inv_b = orch.create_investigation(principal_b, CreateInvestigationV1(**payload), "scope-b")
+    identical = b'{"metadata":"same"}'
+    with orch.store.transaction() as db:
+        ref_a = orch._store_artifact(db, inv_a.investigation_id, None,
+                                     "manifest", "manifest.json", "application/json", identical)
+        ref_b = orch._store_artifact(db, inv_b.investigation_id, None,
+                                     "manifest", "manifest.json", "application/json", identical)
+    assert ref_a.artifact_id != ref_b.artifact_id
+    assert orch.artifact_content(principal_a, inv_a.investigation_id, ref_a.artifact_id)[0] == identical
+    assert orch.artifact_content(principal_b, inv_b.investigation_id, ref_b.artifact_id)[0] == identical
+    with pytest.raises(BackendError):
+        orch.artifact_content(principal_b, inv_b.investigation_id, ref_a.artifact_id)
+    with pytest.raises(BackendError):
+        orch.artifact_content(principal_a, inv_a.investigation_id, ref_b.artifact_id)
+
+
+def test_verification_not_ready_after_candidate_before_report(orch):
+    """The verification endpoint must never turn a pending result into a 500."""
+    from second_source.orchestration.schemas import CandidateV1
+    from second_source.g2_persistence import canonical
+    target = default_registry().get("owned-ledger-v1")
+    me = Principal(owner_id="owner")
+    inv = orch.create_investigation(
+        me, CreateInvestigationV1(title="Check", instruction=NL,
+                                  target_id="owned-ledger-v1", scope=target.scope), "scope-check")
+    candidate = CandidateV1(candidate_id="cand-pending",
+                            investigation_id=inv.investigation_id,
+                            source_observations_sha256="0" * 64)
+    with orch.store.transaction() as db:
+        orch._store_artifact(db, inv.investigation_id, None, "candidate",
+                             "candidate.json", "application/json",
+                             canonical(candidate.model_dump(mode="python")))
+    assert orch.get_workspace(me, inv.investigation_id).verification is None
+    with pytest.raises(BackendError):
+        orch.get_verification(me, inv.investigation_id)
