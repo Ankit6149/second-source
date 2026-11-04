@@ -1,0 +1,93 @@
+# Per-software results — detail
+
+Companion to [SECOND_SOURCE_FINAL_REPORT.md](SECOND_SOURCE_FINAL_REPORT.md).
+Every row is measured. Provenance labels: `REAL_MODEL` (genuine Muse,
+recorded), `NON_AI` (deterministic, zero model calls). Suites differ in
+denominator and difficulty; rows are never averaged.
+
+## Summary table
+
+| # | Software (pinned) | Test | Result | Provenance | Video |
+|---|---|---|---|---|---|
+| 1 | Owned HTTP task-workflow v1 | Full UI job, independent verification | **30/30 passed** | NON_AI | `demos/software-tests/http/http.webm` |
+| 2 | Owned ledger (CLI) | Full UI job, independent verification | **22/25 passed** | NON_AI | `demos/software-tests/ledger/ledger.webm` |
+| 2b | Owned ledger (CLI) | Genuine model candidate, sealed 25-case (recorded) | **14/25** | REAL_MODEL | — (recorded evidence) |
+| 3 | Vikunja v2.4.0 | Frozen held-out, compiler | **6/6** | NON_AI | — |
+| 3b | Vikunja v2.4.0 | Extended frozen suite, compiler | **6/6** | NON_AI | — |
+| 3c | Vikunja v2.4.0 | Live engine rebuild, public ladder | **11/19** | NON_AI | `demos/software-tests/vikunja/vikunja.webm` |
+| 3d | Vikunja v2.4.0 | Muse grounded, alone (recorded) | **2/6** | REAL_MODEL | — |
+| 3e | Vikunja v2.4.0 | Muse active probing, alone (recorded) | **1/6** | REAL_MODEL | — |
+| 3f | Vikunja v2.4.0 | Muse hybrid raw candidate (single post-gate eval) | **6/6 + 6/6** | REAL_MODEL | — |
+| 4 | File Browser v2.63.23 | Differential (6 cases + mutated control) | **7/7** | NON_AI | `demos/software-tests/filebrowser/filebrowser.webm` |
+| 5 | Browser/motion — Flowboard spring | Held-out drag/scroll evaluation | **PASS** (RMSE 2.505px ≤ 8px; layout 0px) | NON_AI | `demos/software-tests/motion/motion.webm` |
+| 6 | Gitea 1.22.6 | First contact: probe → compile → 6 differential cases | **2/6** | NON_AI | pending production session |
+
+## Detail per software
+
+### 1. Owned HTTP task-workflow
+- Flow: choose target → review exact scope → consent → authorize (digest
+  pinned) → queue → start → verification dialog.
+- Verification: 30 passed, 0 failed, 0 indeterminate, 30 total.
+- Candidate lineage: `repair-1 · improved` selected over the initial
+  candidate by the same public suite; candidate preview exposes the exact
+  backend-sanitized lineage (no private source).
+- Orchestration candidate also constructed: 2 generated routes, proof
+  bundle with hash-verified manifest.
+
+### 2. Owned ledger (CLI)
+- NON_AI baseline candidate (`initial · no change`): **22/25** — the three
+  failures are recorded in the candidate lineage, not repaired silently.
+- REAL_MODEL recorded run (separate target/suite provenance): **14/25** —
+  a genuine muse-spark-1.3 candidate scored on the sealed 25-case suite;
+  provider attestation incomplete, labeled as such.
+
+### 3. Vikunja v2.4.0
+- Suites: frozen 6-case held-out (continuity), extended suite frozen before
+  any prompt use (SHA-pinned, AST-isolated imports), 19-step public ladder.
+- Compiler: 6/6 frozen, 6/6 extended, 11/19 public ladder.
+  Public-ladder divergences concentrate in read-after-share routes
+  (`GET /projects/{pid}/tasks`, `GET /tasks/{tid}` after sharing).
+- Muse arms (recorded, packet-authorized, receipts durable):
+  grounded 2/6, active 1/6. Per-route hybrid: every proposed edit was
+  rejected by the public-conformance gate (singles 1–2/19 vs compiler
+  11/19); the raw merged candidate, evaluated once after gating, scored
+  6/6 + 6/6. Deployable candidate = compiler; **no improvement claimed**.
+
+### 4. File Browser v2.63.23
+- Cases: login, wrong-password 401, non-admin user-create 403, admin
+  user create/read, duplicate-user contract (500 reference), file/user
+  surface from compiled routes — **6/6**, plus mutated-spec control
+  (login error 200) correctly **differs** → **7/7** total.
+- Transfer note: the same generic compiler/interpreter as Vikunja; the two
+  initial failures (missing non-admin/duplicate public probes, a `_parent`
+  fallback bug) were fixed generically, with public probes added — no
+  per-product branches.
+
+### 5. Browser / motion — Flowboard spring
+- Setup: reference spring (stiffness 170, damping 26) inferred from
+  held-out observations: drag 150px; scrolls 0/150/450/750. Fitting and
+  evaluation use disjoint observation sets.
+- Fresh run (4 Nov 2026): trajectory RMSE **2.505px** (threshold 8px),
+  overshoot/settle behaviors pass, layout max diff **0px** → **PASS**.
+  Full numbers: `browser-slice-v2/verdict.json`.
+
+### 6. Gitea 1.22.6 — first contact (never previously tested)
+- Setup: pinned 1.22.6, local sqlite, admin via CLI; bounded subsystem:
+  version, repositories, issues, auth boundary.
+- Probes (6): `GET /version`, `POST /user/repos`, `GET /repos/{owner}/{repo}`,
+  `POST …/issues`, `GET …/issues`, unauthenticated `GET /user`.
+- Differential cases vs compiled candidate:
+
+| Case | Reference | Candidate | Verdict |
+|---|---|---|---|
+| version | 200 | 200 | pass |
+| create_repo | 201, name matches | 201, name matches | pass |
+| get_repo | 200 | 404 | **fail** — probed repo name stays literal in the route template |
+| create_issue | 201 | 404 | **fail** — same template generalization gap |
+| list_issues | 200, 1 issue | 404 | **fail** — same gap |
+| unauth_user | 401 | 404 | **fail** — error-only routes are not compiled |
+
+- Result **2/6**. Next fix (not yet done): generalize path segments that
+  match created-entity names into templates, and compile error-boundary
+  routes. Recorded here so the improvement, when made, is measurable
+  against this baseline.
