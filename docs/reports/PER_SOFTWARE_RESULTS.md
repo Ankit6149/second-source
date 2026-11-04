@@ -130,7 +130,8 @@ denominator and difficulty; rows are never averaged.
   `GET /tasks/{tid}`, and `GET /user`; the concrete `/projects/999999`
   action has no separate candidate route. Its only proposed change, a
   validation edit to `POST /tasks/{tid}`, regressed the composed
-  candidate to **2/19** and was rejected by the identical public ladder.
+  candidate initially appeared to fall to **2/19**, but isolated recheck proved a candidate port-reuse measurement race; the exact edit is neutral at **11/19** and was not kept under the strict-improvement gate.
+- Checker correction: `public_conformance` now waits for the terminated candidate process to exit before any port reuse.
 - Result: **no deployable improvement**. The remaining divergences are
   primarily candidate-interpreter/state semantics that the permitted
   route-contract fields cannot express; this is now the precise blocker,

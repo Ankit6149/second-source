@@ -439,6 +439,10 @@ def public_conformance(spec: dict, ref_base: str, cand_port: int) -> dict:
                 "public_total": len(ref), "divergences": divergences}
     finally:
         proc.terminate()
+        try:
+            proc.wait(timeout=8)
+        except Exception:
+            proc.kill()
 
 
 def diff_text(divergences, limit=6) -> str:

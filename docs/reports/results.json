@@ -124,7 +124,7 @@
       "passed": 11,
       "total": 19,
       "provenance": "REAL_MODEL",
-      "note": "5 Muse calls, $0.031 recorded; compiler baseline 11/19. Four routes produced no contract change; one validation edit regressed the candidate to 2/19 and was rejected. No deployable improvement. Public ladder only; held-out never in prompts. Receipts: .runs/muse-exp-routes-20261104/"
+      "note": "5 Muse calls, $0.031 recorded; compiler baseline 11/19. Four routes produced no contract change; one empty-validation edit was neutral (11/19) on isolated recheck after fixing a candidate port-reuse measurement race. No deployable improvement. Public ladder only; held-out never in prompts. Receipts: .runs/muse-exp-routes-20261104/"
     }
   ],
   "submission": {
