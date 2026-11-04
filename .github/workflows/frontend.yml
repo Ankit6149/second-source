@@ -5,6 +5,8 @@ on:
     types: [opened, synchronize, reopened, labeled]
     paths:
       - 'product/**'
+      - 'web/**'
+      - 'vercel.json'
       - 'src/second_source/backend/**'
       - 'src/second_source/g4_http_reconstruct.py'
       - 'src/second_source/g2_persistence.py'
@@ -18,6 +20,8 @@ on:
     branches: [main]
     paths:
       - 'product/**'
+      - 'web/**'
+      - 'vercel.json'
       - 'src/second_source/backend/**'
       - 'src/second_source/g4_http_reconstruct.py'
       - 'src/second_source/g2_persistence.py'
@@ -63,6 +67,8 @@ jobs:
         working-directory: product
       - run: npm run test:dom
         working-directory: product
+      - name: Public judge pages and route smoke
+        run: python -m unittest discover -s web -p test_web.py
   browser:
     if: (github.event_name == 'workflow_dispatch' && inputs.full_browser) || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'browser-acceptance'))
     runs-on: ${{ matrix.os }}

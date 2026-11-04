@@ -82,15 +82,41 @@ class PublicPreview(unittest.TestCase):
         actual = {path.relative_to(output).as_posix() for path in output.rglob("*") if path.is_file()}
         self.assertEqual(actual, expected)
 
-    def test_removed_showcase_routes_redirect_to_the_app(self):
+    def test_legacy_handoff_routes_redirect_to_the_app(self):
         output = build()
-        for route in ("console", "evidence", "lab", "challenge", "handoff"):
+        for route in ("console", "handoff"):
             stub = (output / route / "index.html").read_text(encoding="utf-8")
             self.assertIn('url=/app/', stub)
             self.assertIn('href="/app/"', stub)
             with urlopen(self.origin + f"/{route}/") as response:
                 self.assertEqual(response.status, 200)
                 self.assertIn(b"/app/", response.read())
+
+    def test_judge_evidence_routes_serve_the_real_read_only_pages(self):
+        output = build()
+        for route, marker in (("challenge", "Three questions a screenshot cannot answer"),
+                              ("evidence", "14/25"),
+                              ("lab", "RECORDED")):
+            source = (ROOT / route / "index.html").read_text(encoding="utf-8")
+            packaged = (output / route / "index.html").read_text(encoding="utf-8")
+            self.assertEqual(source, packaged)
+            self.assertIn(marker.lower(), packaged.lower())
+            self.assertNotIn('url=/app/', packaged)
+            with urlopen(self.origin + f"/{route}/") as response:
+                body = response.read()
+                self.assertEqual(response.status, 200)
+                self.assertIn(marker.lower().encode(), body.lower())
+                self.assertNotIn(b'url=/app/', body)
+
+    def test_recorded_challenge_has_no_false_live_model_claim(self):
+        html = (ROOT / "challenge/index.html").read_text(encoding="utf-8")
+        self.assertIn("no live AI calls", html)
+        self.assertIn("provider attestation is incomplete", html)
+        self.assertIn("duplicate_label", html)
+        self.assertIn('role="group" aria-label="Predict reference behavior"', html)
+        config = json.loads((ROOT.parent / "vercel.json").read_text(encoding="utf-8"))
+        redirected = {entry["source"] for entry in config.get("redirects", [])}
+        self.assertTrue({"/challenge", "/challenge/", "/lab", "/lab/", "/evidence", "/evidence/"}.isdisjoint(redirected))
 
     def test_vercel_publishes_only_built_site(self):
         config = json.loads((ROOT.parent / "vercel.json").read_text(encoding="utf-8"))

@@ -17,7 +17,7 @@ STUB = ('<!doctype html><meta charset="utf-8"><title>Second Source</title>'
         '<link rel="canonical" href="/app/">'
         '<p>This page has moved into the app. <a href="/app/">Open Second Source</a>.</p>'
         "<script>location.replace('/app/')</script>")
-REMOVED = ("console", "evidence", "lab", "challenge", "handoff")
+REMOVED = ("console", "handoff")
 
 class PreviewHandler(SimpleHTTPRequestHandler):
     def _stub(self):
@@ -34,6 +34,12 @@ class PreviewHandler(SimpleHTTPRequestHandler):
         if any(path in {f"/{r}", f"/{r}/", f"/{r}/index.html"} for r in REMOVED):
             self._stub()
             return
+        elif path in {"/evidence", "/evidence/", "/evidence/index.html"}:
+            self.public_file = ROOT / "evidence" / "index.html"
+        elif path in {"/lab", "/lab/", "/lab/index.html"}:
+            self.public_file = ROOT / "lab" / "index.html"
+        elif path in {"/challenge", "/challenge/", "/challenge/index.html"}:
+            self.public_file = ROOT / "challenge" / "index.html"
         elif path in {"/app", "/app/"} or app_asset(path.lstrip("/")):
             name = "app/index.html" if path in {"/app", "/app/"} else path.lstrip("/")
             candidate = (ROOT / "dist" / name).resolve()

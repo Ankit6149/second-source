@@ -110,14 +110,14 @@ function enginePanel() {
   } else if (engineState.status === 'unavailable') {
     body = `<p class="component-note">Local engine not running. Start it with <code>python scripts/investigation_engine.py</code>, then check again. Nothing is faked while it is offline: no run can be started from here.</p><button class="pill-btn" data-action="engine-check">${icon('refresh-cw')} Check again</button>`;
   } else if (!rec) {
-    body = `<p>Runs the real deterministic pipeline against a disposable local Vikunja reference: probe → compile → public conformance. No model is called.</p><button class="pill-btn primary" data-action="engine-run">${icon('play')} Run live investigation (NON_AI)</button>`;
+    body = `<p>Runs the real deterministic pipeline against a disposable local reference: probe \u2192 compile \u2192 scored comparison. No model is called.</p><div class="response-actions"><button class="pill-btn primary" data-action="engine-run">${icon('play')} Run Vikunja rebuild (NON_AI)</button><button class="pill-btn" data-action="engine-run-fb">${icon('play')} Run File Browser rebuild (NON_AI)</button><button class="pill-btn" data-action="engine-run-gitea">${icon('play')} Run Gitea rebuild (NON_AI)</button></div>`;
   } else if (rec.status === 'running') {
     body = `<p>Running… stage: <strong>${esc(rec.stage)}</strong> (investigation ${esc(rec.id)}). This page refreshes itself; do not start another run meanwhile.</p>`;
   } else if (rec.status === 'failed') {
     body = `<p class="component-note">Investigation ${esc(rec.id)} failed: ${esc(rec.error || 'unknown error')}</p><button class="pill-btn" data-action="engine-run">${icon('play')} Run again</button>`;
   } else {
     body = `<p>Investigation <strong>${esc(rec.id)}</strong> completed against a fresh local reference.</p>
-      <div class="artifact"><div class="artifact-top"><div class="artifact-symbol">${icon('file-text')}</div><div><strong>Vikunja v2.4.0 · EVIDENCE_COMPILED (NON_AI)</strong><small>${rec.observations ? `${rec.observations.count} observations · ${esc(rec.observations.sha256.slice(0, 19))}…` : ''}</small></div><span class="artifact-tag">completed</span></div>
+      <div class="artifact"><div class="artifact-top"><div class="artifact-symbol">${icon('file-text')}</div><div><strong>${esc(engineTargetLabel(rec.target))} \u00b7 EVIDENCE_COMPILED (NON_AI)</strong><small>${rec.observations ? `${rec.observations.count} observations · ${esc(rec.observations.sha256.slice(0, 19))}…` : ''}</small></div><span class="artifact-tag">completed</span></div>
       <div class="artifact-bottom">Compiled routes: ${rec.compiled ? rec.compiled.routes.map(esc).join(' · ') : '—'}<br>Public-ladder conformance: <strong>${rec.public_conformance ? `${rec.public_conformance.passed}/${rec.public_conformance.total}` : '—'}</strong> (stateful public probe sequence; not the held-out score). Held-out: not run by the engine — evaluator-side only.</div></div>
       <div class="response-actions"><a class="pill-btn" href="${engineCandidateUrl(rec.id)}" download>${icon('download')} Download candidate spec</a><button class="pill-btn" data-action="engine-run">${icon('play')} Run again</button></div>`;
   }
@@ -137,9 +137,12 @@ async function refreshEngine() {
   engineState.status = await checkEngine() ? 'available' : 'unavailable';
   render();
 }
-async function runEngineInvestigation() {
+function engineTargetLabel(target: string): string {
+  return target === 'filebrowser-v1' ? 'File Browser v2.63.23' : target === 'gitea-v1' ? 'Gitea 1.22.6' : 'Vikunja v2.4.0';
+}
+async function runEngineInvestigation(target = 'vikunja-v1') {
   try {
-    engineState.record = await createEngineInvestigation();
+    engineState.record = await createEngineInvestigation(target);
     render();
     window.clearInterval(engineState.poll);
     engineState.poll = window.setInterval(async () => {
@@ -414,9 +417,9 @@ function compareView() {
     : `<p>No completed investigation is selected yet.</p><p>Run one real job from the workspace first: choose a supported target, confirm its scope, start the run, then return here.</p><button class="pill-btn primary" type="button" data-action="library">${icon('folder-open')} Open Your work</button>`;
   let right: string;
   if (rec?.status === 'completed' && rec.public_conformance) {
-    right = `<p>Vikunja rebuild finished. Public-ladder conformance: <strong>${rec.public_conformance.passed}/${rec.public_conformance.total}</strong></p>${rec.public_conformance.divergences.length ? `<p>Divergences:</p><ul class="scope-list">${rec.public_conformance.divergences.map(d => `<li>${esc(d)}</li>`).join('')}</ul>` : '<p>No divergences on the public ladder.</p>'}<p>Compiled routes: ${rec.compiled ? rec.compiled.routes.map(esc).join(' \u00b7 ') : '-'}</p><div class="response-actions"><a class="pill-btn" href="${engineCandidateUrl(rec.id)}" download>${icon('download')} Download candidate spec</a><button class="pill-btn" type="button" data-action="engine-run">${icon('play')} Run again</button></div>`;
+    right = `<p>${esc(engineTargetLabel(rec.target))} rebuild finished. Public-ladder conformance: <strong>${rec.public_conformance.passed}/${rec.public_conformance.total}</strong></p>${rec.public_conformance.divergences.length ? `<p>Divergences:</p><ul class="scope-list">${rec.public_conformance.divergences.map(d => `<li>${esc(d)}</li>`).join('')}</ul>` : '<p>No divergences on the public ladder.</p>'}<p>Compiled routes: ${rec.compiled ? rec.compiled.routes.map(esc).join(' \u00b7 ') : '-'}</p><div class="response-actions"><a class="pill-btn" href="${engineCandidateUrl(rec.id)}" download>${icon('download')} Download candidate spec</a><button class="pill-btn" type="button" data-action="engine-run">${icon('play')} Run again</button></div>`;
   } else if (rec?.status === 'running') {
-    right = `<p>Rebuilding Vikunja now \u00b7 stage: <strong>${esc(rec.stage)}</strong>. This panel updates itself.</p>`;
+    right = `<p>Rebuilding ${esc(engineTargetLabel(rec.target))} now \u00b7 stage: <strong>${esc(rec.stage)}</strong>. This panel updates itself.</p>`;
   } else if (rec?.status === 'failed') {
     right = `<p>That rebuild failed: ${esc(rec.error || 'unknown error')}</p><button class="pill-btn primary" type="button" data-action="engine-run">${icon('play')} Run again</button>`;
   } else if (engineState.status === 'hosted') {
@@ -426,9 +429,9 @@ function compareView() {
   } else if (engineState.status === 'unknown') {
     right = `<p>Checking for the local rebuild engine\u2026</p><button class="pill-btn" type="button" data-action="engine-check">${icon('refresh-cw')} Check again</button>`;
   } else {
-    right = `<p>Rebuild Vikunja v2.4.0 from behavior: probe a fresh reference, compile the evidence, then score the candidate on the public ladder. No model is called (NON_AI).</p><button class="pill-btn primary" type="button" data-action="engine-run">${icon('play')} Run Vikunja rebuild</button>`;
+    right = `<p>Rebuild a real application from behavior: probe a fresh reference, compile the evidence, then score the candidate. No model is called (NON_AI).</p><div class="response-actions"><button class="pill-btn primary" type="button" data-action="engine-run">${icon('play')} Run Vikunja rebuild</button><button class="pill-btn" type="button" data-action="engine-run-fb">${icon('play')} Run File Browser rebuild</button><button class="pill-btn" type="button" data-action="engine-run-gitea">${icon('play')} Run Gitea rebuild</button></div>`;
   }
-  return `<section class="single-page"><h1>Compare</h1><p>Two real rebuilds, side by side. Held-out and sealed cases are never shown.</p>${outcomeBanner()}<div class="compare-grid"><section><h2>Software 1 \u00b7 selected investigation</h2>${left}</section><section><h2>Software 2 \u00b7 Vikunja v2.4.0 rebuild</h2>${right}</section></div><div class="response-actions"><button class="pill-btn" data-action="candidate">${icon('search')} Candidate preview</button><button class="pill-btn" data-action="verification">${icon('list-checks')} Verification</button></div></section>`;
+  return `<section class="single-page"><h1>Compare</h1><p>Two real rebuilds, side by side. Held-out and sealed cases are never shown.</p>${outcomeBanner()}<div class="compare-grid"><section><h2>Software 1 \u00b7 selected investigation</h2>${left}</section><section><h2>Software 2 \u00b7 ${esc(engineTargetLabel(rec?.target || 'vikunja-v1'))} rebuild</h2>${right}</section></div><div class="response-actions"><button class="pill-btn" data-action="candidate">${icon('search')} Candidate preview</button><button class="pill-btn" data-action="verification">${icon('list-checks')} Verification</button></div></section>`;
 }
 
 function scoreboardHtml() {
@@ -662,6 +665,8 @@ document.addEventListener('click', event => {
   else if (action === 'refresh') void refresh();
   else if (action === 'engine-check') void refreshEngine();
   else if (action === 'engine-run') void runEngineInvestigation();
+  else if (action === 'engine-run-fb') void runEngineInvestigation('filebrowser-v1');
+  else if (action === 'engine-run-gitea') void runEngineInvestigation('gitea-v1');
   else if (action === 'candidate') showCandidate();
   else if (action === 'compare') { state.view = 'compare'; render(); }
   else if (action === 'reports') { state.view = 'reports'; render(); }

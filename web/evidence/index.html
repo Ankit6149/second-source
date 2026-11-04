@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0c1110">
+<meta name="description" content="Second Source reconstruction report: a genuine Muse Spark candidate, independently scored 14/25, with every inferred rule checked against observed reference behavior.">
+<title>Second Source — Reconstruction Report: 14/25, measured</title>
+<style>
+@font-face{font-family:Manrope;src:url(../assets/manrope.ttf) format("truetype");font-display:swap}
+:root{--ink:#14201a;--body:#3d4f45;--muted:#68796e;--line:#dde5dc;--paper:#fff;--wash:#f3f6f2;
+--dark:#0c1110;--mint:#2f7d4f;--mint-soft:#e7f2e9;--bad:#a03d2d;--bad-soft:#faeeea;--amber:#8a5c10;--amber-soft:#fdf3df;
+--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--sans:Manrope,system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box}body{margin:0;font-family:var(--sans);color:var(--body);background:var(--paper);line-height:1.65;-webkit-font-smoothing:antialiased}
+a{color:var(--mint)}:focus-visible{outline:3px solid #9fd3ae;outline-offset:2px}
+.skip{position:absolute;left:-9999px}.skip:focus{left:12px;top:12px;background:#fff;padding:10px 14px;z-index:99;border:2px solid var(--mint)}
+.wrap{max-width:1080px;margin:0 auto;padding:0 28px}
+header.top{background:var(--dark);color:#cfe0d4;padding:64px 0 54px}
+.kicker{font-size:12px;font-weight:800;letter-spacing:.14em;color:#8fd0a4;margin:0 0 16px}
+h1{color:#fff;font-size:clamp(32px,4.4vw,52px);line-height:1.12;letter-spacing:-.02em;margin:0 0 18px;font-weight:800}
+.lede{font-size:17px;max-width:62ch;margin:0;color:#a9bfae}
+.badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:26px}
+.badge{font-size:11.5px;font-weight:800;letter-spacing:.06em;padding:5px 12px;border-radius:999px;border:1px solid #33503c;color:#bfe6cb}
+.badge.real{background:#173d27;color:#c9f2d6;border-color:#2f7d4f}
+section{padding:56px 0}section+section{border-top:1px solid var(--line)}
+h2{color:var(--ink);font-size:clamp(24px,3vw,34px);letter-spacing:-.02em;margin:0 0 12px}
+.sub{max-width:68ch;margin:0 0 30px}
+.score-grid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:28px;align-items:start}
+.score-card{border:1px solid var(--line);border-radius:16px;padding:30px;background:#fff}
+.score-card .big{font-size:64px;font-weight:800;color:var(--ink);line-height:1;letter-spacing:-.03em}
+.bar{height:9px;border-radius:99px;background:#e8eee7;overflow:hidden;margin:18px 0 12px}
+.bar i{display:block;height:100%;background:var(--mint)}
+.cats{display:grid;gap:10px}
+.cat{border:1px solid var(--line);border-radius:12px;padding:16px 18px;background:var(--wash)}
+.cat b{color:var(--ink)}
+table{width:100%;border-collapse:collapse;font-size:13.5px;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th,td{text-align:left;padding:12px 15px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}th{color:var(--ink);background:var(--wash);font-size:12.5px}
+code{font-family:var(--mono);font-size:12px;background:var(--wash);border:1px solid var(--line);border-radius:6px;padding:1px 6px;word-break:break-all}
+td code{background:none;border:0;padding:0}
+.verdict{font-size:11px;font-weight:800;letter-spacing:.05em;padding:4px 10px;border-radius:999px;white-space:nowrap}
+.v-ok{background:var(--mint-soft);color:var(--mint)}.v-bad{background:var(--bad-soft);color:var(--bad)}.v-part{background:var(--amber-soft);color:var(--amber)}
+.hash{font-family:var(--mono);font-size:11.5px;word-break:break-all;color:var(--body)}
+.note{border:1px solid var(--line);border-left:4px solid var(--amber);border-radius:10px;padding:18px 20px;background:#fffdf6;font-size:14px}
+.note b{color:var(--ink)}
+footer{background:var(--dark);color:#93a89a;padding:44px 0;font-size:13.5px}
+footer a{color:#c9f2d6}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.replay{display:grid;gap:14px;margin:0 0 28px}
+.probe{border:1px solid var(--line);border-radius:12px;padding:18px 20px;background:var(--wash)}
+.probe h3{color:var(--ink);font-size:16px;margin:0 0 8px}
+.probe p{margin:0 0 10px;font-size:14px}
+.probe-actions{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+.probe-actions button{font:inherit;font-size:13.5px;font-weight:700;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 16px;cursor:pointer}
+.probe-actions button:hover{border-color:var(--mint)}
+.probe-actions button[aria-pressed="true"]{background:var(--mint-soft);border-color:var(--mint)}
+.reveal{border-top:1px solid var(--line);padding-top:12px;margin-top:4px}
+.reveal[hidden]{display:none}
+.reveal .feedback{font-weight:700;color:var(--ink)}
+@media(max-width:820px){.score-grid,.grid2{grid-template-columns:1fr}table{display:block;overflow-x:auto;max-width:100%;font-size:12.5px}th,td{padding:10px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap">
+<p class="kicker">SECOND SOURCE / RECONSTRUCTION REPORT</p>
+<h1>A real AI reconstruction,<br>measured — not narrated.</h1>
+<p class="lede">On 31 October 2026, Muse Spark 1.3 studied an authorized black-box ledger program, inferred its hidden rules from observations, and produced an independent candidate. A sealed evaluator it never saw scored the result. This page shows exactly what it got right, what it guessed wrong, and how we know.</p>
+<div class="badges"><span class="badge real">REAL_MODEL</span><span class="badge">meta-direct / muse-spark-1.3</span><span class="badge">guided synthesize-v2</span><span class="badge">2,756 in / 2,555 out tokens</span><span class="badge">est. $0.0143</span></div>
+</div></header>
+<main id="main">
+<section><div class="wrap">
+<h2>The score</h2>
+<p class="sub">Independent pinned evaluation on a frozen, sealed 25-case suite (digest <span class="hash">sha256:04239350…</span>). The suite never entered model context. Failure categories come from the evaluator, not the model.</p>
+<div class="score-grid">
+<div class="score-card"><div class="big">14 / 25</div><div class="bar" role="img" aria-label="14 of 25 sealed cases passed"><i style="width:56%"></i></div><p style="margin:0;font-size:13.5px">passed &middot; 11 failed &middot; 0 indeterminate &middot; <b style="color:var(--ink)">g3_accepted: false</b></p></div>
+<div class="cats">
+<div class="cat"><b>9 &times; schema</b> — response shape differs from the reference (extra or wrongly named fields).</div>
+<div class="cat"><b>2 &times; error</b> — the candidate accepted inputs the reference rejects (boundary rules it never probed).</div>
+<div class="cat"><b>0 &times; indeterminate</b> — every case produced a decisive comparison; nothing was hand-waved.</div>
+</div></div>
+</div></section>
+<section><div class="wrap">
+<h2>How the discovery actually went</h2>
+<p class="sub">Every step below is recorded in the genuine G2/G3 run artifacts (run <span class="hash">real-g2-20261028T163538Z-fd60310f</span>, receipt <span class="hash">sha256:947910b0&hellip;</span>). Nothing here is reconstructed narration.</p>
+<table>
+<thead><tr><th>Stage</th><th>What is recorded</th><th>Outcome</th></tr></thead>
+<tbody>
+<tr><td><b>1. Observed</b><br>(reference, black-box)</td><td><code>add {label:"Alpha", amount:3}</code> &rarr; <code>{"ok":true,"id":"1"}</code>; <code>add {label:"Beta", amount:5}</code> &rarr; <code>{"id":"2"}</code>; <code>total</code> &rarr; <code>{"count":2,"amount":8}</code> (5 hashed evidence artifacts)</td><td>Behavior captured without seeing reference source</td></tr>
+<tr><td><b>2. Hypothesized</b><br>(Muse, hypothesize-v1)</td><td>Three competing hypotheses: <code>H-add-create</code> (add persists a record), <code>H-total-aggregate</code> (total = count + sum), <code>H-sequence-state</code> (mutations persist within a sequence) &mdash; each with named alternatives. Unresolved questions recorded verbatim, including: <i>&ldquo;What validation exists for amount and label?&rdquo;</i></td><td>Claims tied to evidence IDs, alternatives kept alive</td></tr>
+<tr><td><b>3. Predicted &amp; tested</b><br>(Muse, propose-v1)</td><td>Model proposed experiment <code>P-aggregate-2adds</code> (3 actions) to separate the aggregate/state hypotheses from their alternatives</td><td><code>H-total-aggregate</code>: <b>supported</b> &middot; <code>H-sequence-state</code>: <b>supported</b> &middot; <code>H-add-create</code>: still hypothesized</td></tr>
+<tr><td><b>4. Synthesized</b><br>(Muse, guided v2)</td><td>Independent declarative candidate built from this evidence (response <span class="hash">chatcmpl-01a19314&hellip;</span>), executed by a trusted interpreter &mdash; never arbitrary model code</td><td>Scored <b>14/25</b> by the sealed evaluator (above)</td></tr>
+<tr><td><b>5. Where it diverged</b></td><td>The validation question from stage 2 was never probed, so the candidate <i>guessed</i> the boundaries (label max 100 vs true 24; amount max 1,000,000 vs true 100; case-sensitive duplicates vs true case-insensitive) and unobserved response shapes</td><td>9 schema + 2 error mismatches &mdash; each one traceable to a question the evidence never answered</td></tr>
+</tbody></table>
+<p style="font-size:13.5px;color:var(--muted)">That last row is the product thesis in one line: the failures are not random &mdash; they map exactly to the hypotheses that were never turned into experiments. Second Source makes that gap visible instead of averaging it away.</p>
+</div></section>
+<section><div class="wrap">
+<h2>What the model inferred — rule by rule</h2>
+<p class="sub">The candidate is a declarative spec, executed by a trusted interpreter — the model wrote no code. Each inferred rule below is checked against the observed reference behavior. This is the scientific core of Second Source: a screenshot cannot answer any row; a black-box experiment can.</p>
+<table>
+<thead><tr><th>Behavioral rule</th><th>Model inferred</th><th>Reference truth</th><th>Verdict</th></tr></thead>
+<tbody>
+<tr><td>Command set &amp; state model</td><td><code>add / list / total / remove</code>, IDs, stored records</td><td>same</td><td><span class="verdict v-ok">INFERRED</span></td></tr>
+<tr><td>Aggregation</td><td><code>total = count + sum(amount)</code></td><td>same</td><td><span class="verdict v-ok">INFERRED</span></td></tr>
+<tr><td>Error vocabulary</td><td><code>invalid_label, invalid_amount, duplicate_label, not_found, unknown_command</code></td><td>same</td><td><span class="verdict v-ok">INFERRED</span></td></tr>
+<tr><td>Label trimming</td><td>trim whitespace</td><td>trims</td><td><span class="verdict v-ok">INFERRED</span></td></tr>
+<tr><td><code>list</code> / <code>total</code> response shapes</td><td><code>{items}</code>, <code>{count, amount}</code></td><td>same fields</td><td><span class="verdict v-ok">INFERRED</span></td></tr>
+<tr><td><code>add</code> response shape</td><td><code>{id, label, amount}</code></td><td><code>{id}</code> only</td><td><span class="verdict v-bad">WRONG — schema</span></td></tr>
+<tr><td><code>remove</code> response shape</td><td><code>{id}</code></td><td><code>{removed}</code></td><td><span class="verdict v-bad">WRONG — schema</span></td></tr>
+<tr><td>Duplicate labels</td><td>case-sensitive (<code>unique_casefold: false</code>)</td><td>case-<b>in</b>sensitive</td><td><span class="verdict v-bad">WRONG — error</span></td></tr>
+<tr><td>Amount range</td><td>1 … 1,000,000</td><td>1 … 100</td><td><span class="verdict v-bad">WRONG — error</span></td></tr>
+<tr><td>Label length</td><td>max 100</td><td>max 24</td><td><span class="verdict v-bad">WRONG — schema</span></td></tr>
+</tbody></table>
+<p style="font-size:13.5px;color:var(--muted)">Pattern: structure, state, and vocabulary were discovered correctly from evidence; unprobed numeric boundaries and response shapes were guessed — plausibly, and wrongly. That gap is precisely what active, hypothesis-driven probing exists to close.</p>
+</div></section>
+<section><div class="wrap">
+<h2>See the divergence yourself</h2>
+<p class="sub">Identical public inputs run against the reference and the genuine candidate (replayed locally with the repo's trusted interpreter; sealed cases are never used here).</p>
+<p style="font-size:14px">Try it yourself: for each recorded probe below, predict what the Reference does, then reveal the recorded outputs. All data is verbatim from the divergence table that follows.</p>
+<noscript><p style="font-size:14px">The interactive replay needs JavaScript; the same recorded results are in the table below.</p></noscript>
+<div class="replay">
+<article class="probe" data-probe data-answer="duplicate">
+<h3>Probe 1 &mdash; case-fold duplicate</h3>
+<p>Input sequence: <code>add Milk &rarr; add MILK</code></p>
+<p>Predict: what does the Reference do?</p>
+<div class="probe-actions" role="group" aria-label="Probe 1 prediction">
+<button type="button" data-pick="accepts" aria-pressed="false">Accepts both labels</button>
+<button type="button" data-pick="duplicate" aria-pressed="false">Returns <code>duplicate_label</code></button>
+</div>
+<div class="reveal" data-reveal hidden aria-live="polite">
+<p class="feedback" data-feedback></p>
+<p><b style="color:var(--ink)">Reference:</b> <code>duplicate_label</code></p>
+<p><b style="color:var(--ink)">Meta candidate:</b> accepted as <code>id "2"</code></p>
+<p>Verdict: <span class="verdict v-bad">DIFF</span></p>
+</div>
+</article>
+<article class="probe" data-probe data-answer="invalid">
+<h3>Probe 2 &mdash; amount 500</h3>
+<p>Input: <code>add {amount:500}</code></p>
+<p>Predict: what does the Reference do?</p>
+<div class="probe-actions" role="group" aria-label="Probe 2 prediction">
+<button type="button" data-pick="invalid" aria-pressed="false">Returns <code>invalid_amount</code></button>
+<button type="button" data-pick="accepts" aria-pressed="false">Accepts amount 500</button>
+</div>
+<div class="reveal" data-reveal hidden aria-live="polite">
+<p class="feedback" data-feedback></p>
+<p><b style="color:var(--ink)">Reference:</b> <code>invalid_amount</code></p>
+<p><b style="color:var(--ink)">Meta candidate:</b> accepted</p>
+<p>Verdict: <span class="verdict v-bad">DIFF</span></p>
+</div>
+</article>
+<article class="probe" data-probe data-answer="removed">
+<h3>Probe 3 &mdash; remove response shape</h3>
+<p>Input sequence: <code>add &rarr; remove {id:"1"}</code></p>
+<p>Predict: what does the Reference do?</p>
+<div class="probe-actions" role="group" aria-label="Probe 3 prediction">
+<button type="button" data-pick="id" aria-pressed="false">Returns <code>{"ok":true,"id":"1"}</code></button>
+<button type="button" data-pick="removed" aria-pressed="false">Returns <code>{"ok":true,"removed":"1"}</code></button>
+</div>
+<div class="reveal" data-reveal hidden aria-live="polite">
+<p class="feedback" data-feedback></p>
+<p><b style="color:var(--ink)">Reference:</b> <code>{"ok":true,"removed":"1"}</code></p>
+<p><b style="color:var(--ink)">Meta candidate:</b> <code>{"ok":true,"id":"1"}</code></p>
+<p>Verdict: <span class="verdict v-bad">DIFF</span> &mdash; the Reference succeeds with a <code>removed</code> field, while the candidate responds with <code>id</code>. This is a response-schema mismatch, not a rejected command.</p>
+</div>
+</article>
+</div>
+<table>
+<thead><tr><th>Input sequence</th><th>Reference</th><th>Meta candidate</th><th></th></tr></thead>
+<tbody>
+<tr><td><code>add {label:"Milk", amount:2}</code></td><td><code>{"ok":true,"id":"1"}</code></td><td><code>{"ok":true,"id":"1","label":"Milk","amount":2}</code></td><td><span class="verdict v-bad">DIFF</span></td></tr>
+<tr><td><code>add Milk &rarr; add MILK</code></td><td><code>duplicate_label</code></td><td>accepted as <code>id "2"</code></td><td><span class="verdict v-bad">DIFF</span></td></tr>
+<tr><td><code>add {amount:500}</code></td><td><code>invalid_amount</code></td><td>accepted</td><td><span class="verdict v-bad">DIFF</span></td></tr>
+<tr><td><code>add {label: 30 chars}</code></td><td><code>invalid_label</code></td><td>accepted</td><td><span class="verdict v-bad">DIFF</span></td></tr>
+<tr><td><code>add &rarr; remove {id:"1"}</code></td><td><code>{"ok":true,"removed":"1"}</code></td><td><code>{"ok":true,"id":"1"}</code></td><td><span class="verdict v-bad">DIFF</span></td></tr>
+<tr><td><code>add &rarr; list &rarr; total</code></td><td><code>{items:[…]}, {count:1, amount:2}</code></td><td>identical</td><td><span class="verdict v-ok">MATCH</span></td></tr>
+</tbody></table>
+</div></section>
+<section><div class="wrap">
+<h2>Provenance — and what we do not claim</h2>
+<div class="grid2">
+<div class="cat"><b>Candidate</b><br><span class="hash">sha256:ee1f3f32e66050bbdf2dde86aaba09e56d17b25c21c35762eeea6208c2a146cd</span></div>
+<div class="cat"><b>Model response</b><br><span class="hash">chatcmpl-01a19314-e7c6-7014-bddd-a49e08a6c210</span></div>
+<div class="cat"><b>Approved context (G2-bound)</b><br><span class="hash">sha256:93a9a01ad473e7aa3b92ba1726c9552d41f049a77355671b202993566a5bf009</span></div>
+<div class="cat"><b>Sanitized evidence</b><br><a href="https://github.com/Ankit6149/second-source/blob/main/docs/JUDGE_EVIDENCE_G3.md">Judge evidence doc + export in the repository</a> (private receipts excluded by construction)</div>
+</div>
+<div class="note" style="margin-top:22px"><b>Honest limits.</b> Provider attestation is incomplete: the broker artifact is a local attestation, and the ephemeral signature cannot be reverified; the 14/25 was reproduced by offline replay at pinned source, which proves internal consistency, not provider provenance. One target, one genuine synthesis, 25 sealed cases. Deterministic NON_AI controls elsewhere in this project (e.g. 25&rarr;30/30 on the owned HTTP fixture) test harness mechanics and are never presented as model scores. Real-model repair (rev-7) was proposed and deliberately not executed.</div>
+<p style="margin-top:22px"><a href="../console/">Open the read-only evidence console</a> &middot; <a href="../">Back to Second Source</a> &middot; <a href="https://github.com/Ankit6149/second-source">Repository</a></p>
+</div></section>
+</main>
+<script>
+document.querySelectorAll("[data-probe]").forEach(function (probe) {
+  var reveal = probe.querySelector("[data-reveal]");
+  var feedback = probe.querySelector("[data-feedback]");
+  var buttons = probe.querySelectorAll("[data-pick]");
+  buttons.forEach(function (button) {
+    button.addEventListener("click", function () {
+      buttons.forEach(function (other) { other.setAttribute("aria-pressed", other === button ? "true" : "false"); });
+      feedback.textContent = button.getAttribute("data-pick") === probe.getAttribute("data-answer")
+        ? "Correct prediction \u2014 here is the recorded evidence:"
+        : "Not quite \u2014 here is the recorded evidence:";
+      reveal.hidden = false;
+    });
+  });
+});
+</script>
+<footer><div class="wrap">Second Source — evidence over claims. Meta Global AI Developer Hackathon, Indie track. All scores on this page are recorded local evidence or labeled NON_AI controls — never portable provider attestation.</div></footer>
+</body>
+</html>
