@@ -1,0 +1,784 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0c1110">
+<meta name="description" content="Second Source Reconstruction Lab: recorded observations, AI hypotheses, candidates, and side-by-side behavioral probes for two owned targets.">
+<title>Second Source — Reconstruction Lab</title>
+<style>
+@font-face{font-family:Manrope;src:url(../assets/manrope.ttf) format("truetype");font-display:swap}
+:root{--ink:#14201a;--body:#3d4f45;--muted:#68796e;--line:#dde5dc;--wash:#f3f6f2;--dark:#0c1110;
+--mint:#2f7d4f;--mint-soft:#e7f2e9;--bad:#a03d2d;--bad-soft:#faeeea;
+--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--sans:Manrope,system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box}body{margin:0;font-family:var(--sans);color:var(--body);background:#fff;line-height:1.6}
+a{color:var(--mint)}:focus-visible{outline:3px solid #9fd3ae;outline-offset:2px}
+.skip{position:absolute;left:-9999px}.skip:focus{left:12px;top:12px;background:#fff;padding:10px 14px;z-index:99;border:2px solid var(--mint)}
+.wrap{max-width:1080px;margin:0 auto;padding:0 28px}
+header.top{background:var(--dark);color:#cfe0d4;padding:56px 0 46px}
+.kicker{font-size:12px;font-weight:800;letter-spacing:.14em;color:#8fd0a4;margin:0 0 14px}
+h1{color:#fff;font-size:clamp(30px,4.2vw,48px);line-height:1.12;letter-spacing:-.02em;margin:0 0 14px}
+.lede{font-size:16.5px;max-width:64ch;margin:0;color:#a9bfae}
+section{padding:44px 0}section+section{border-top:1px solid var(--line)}
+h2{color:var(--ink);font-size:clamp(22px,2.8vw,30px);letter-spacing:-.02em;margin:0 0 10px}
+.sub{max-width:68ch;margin:0 0 22px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.tabs button{font:inherit;font-weight:700;font-size:14px;padding:9px 18px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--mint-soft);border-color:var(--mint)}
+.tag{font-size:11px;font-weight:800;letter-spacing:.05em;padding:4px 10px;border-radius:999px;white-space:nowrap}
+.t-real{background:#173d27;color:#c9f2d6}.t-nonai{background:var(--wash);color:var(--body);border:1px solid var(--line)}.t-gemma{background:#fdf0d9;color:#7a4a08;border:1px solid #e3c07a}.t-compiled{background:#e8effc;color:#1d3fae;border:1px solid #a9bdf0}
+.timeline{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:0 0 24px}
+.stage{border:1px solid var(--line);border-radius:12px;padding:14px 15px;background:var(--wash)}
+.stage b{display:block;color:var(--ink);font-size:13px;margin-bottom:5px}
+.stage span{font-size:12.5px}
+.probes{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.probes button{font:inherit;font-size:13px;font-weight:650;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}
+.probes button[aria-pressed="true"]{background:var(--mint-soft);border-color:var(--mint)}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.col{border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.col h3{margin:0 0 10px;font-size:13px;color:var(--ink);letter-spacing:.04em}
+pre{font-family:var(--mono);font-size:11.5px;line-height:1.55;background:var(--wash);border:1px solid var(--line);border-radius:8px;padding:12px;overflow-x:auto;margin:0 0 10px;white-space:pre-wrap;word-break:break-word}
+.diffline{background:var(--bad-soft);color:var(--bad);font-weight:650}
+.matchline{color:var(--mint);font-weight:650}
+.verdict{font-size:12px;font-weight:800;letter-spacing:.05em;padding:5px 12px;border-radius:999px}
+.v-diff{background:var(--bad-soft);color:var(--bad)}.v-match{background:var(--mint-soft);color:var(--mint)}
+.t-browser{background:#eef3ee;color:var(--body);border:1px solid var(--line)}
+.repro{font-size:13px;color:var(--muted);margin:14px 0 0}.repro code{color:var(--ink)}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 16px}
+.metric{border:1px solid var(--line);border-radius:12px;padding:14px 15px;background:var(--wash);min-width:0}
+.metric b{display:block;color:var(--ink);font-size:19px;line-height:1.25}
+.metric span{font-size:12.5px}
+@media(max-width:860px){.metrics{grid-template-columns:1fr 1fr}}
+.note{border:1px solid var(--line);border-left:4px solid var(--mint);border-radius:10px;padding:16px 18px;font-size:14px;background:#fbfdfb}
+.note b{color:var(--ink)}
+footer{background:var(--dark);color:#93a89a;padding:40px 0;font-size:13.5px}footer a{color:#c9f2d6}
+code{font-family:var(--mono);font-size:12px}
+@media(max-width:860px){.timeline{grid-template-columns:1fr 1fr}.compare{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap">
+<p class="kicker">SECOND SOURCE / RECONSTRUCTION LAB</p>
+<h1>Watch a reconstruction<br>succeed — and fail.</h1>
+<p class="lede">Two authorized targets, one method: observe, hypothesize, experiment, synthesize, measure. Pick a target, then run the recorded public probes and see exactly where the candidate matches the reference — and where it diverges. Recorded replays are labeled; nothing here calls a model live.</p>
+</div></header>
+<main id="main">
+<noscript><section><div class="wrap"><div class="note"><b>Recorded summary (interactive explorer needs JavaScript).</b> Owned ledger CLI: REAL_MODEL genuine Meta candidate, sealed <b>14/25</b>. Owned HTTP tasks: NON_AI deterministic v1, sealed <b>25/30</b>, scripted repair 30/30 — not a model score; a genuine Meta HTTP reconstruction has not been run (authorization pending). Vikunja v2.4.0 Meta <span class="tag t-real">REAL_MODEL</span> arms (3 calls total, packet digests matched, $0.50 reservation cap; record <code>.runs/vikunja-model/meta_arms_result.json</code>): C_grounded <b>2/6</b> held-out (cases 1, 3); D_active <b>1/6</b> (case 3; selected probes D1, D4, D5, D6, D7; 22 probe observations). Gemma <span class="tag t-gemma">GEMMA_TEST</span> per-route repair (semantic admission) admitted but regressed held-out <b>3/6 → 2/6</b> — measured negative result. Public-verification gate audit (<span class="tag t-nonai">NON_AI</span> mechanism over GEMMA_TEST edits): <b>0/8</b> model route edits kept (5 regressed public conformance, 3 tied); gated candidate is the compiled <span class="tag t-compiled">NON_AI</span> 6/6 — a damage-prevention audit, not a model score. Full narrative: <a href="../evidence/">Reconstruction Report</a>.</div></div></section></noscript>
+<section><div class="wrap">
+<h2>Choose a reconstruction</h2>
+<div class="tabs" role="group" aria-label="Choose target">
+<button type="button" id="tab-ledger" aria-pressed="true">Owned ledger CLI <span class="tag t-real">REAL_MODEL · 14/25</span></button>
+<button type="button" id="tab-http" aria-pressed="false">Owned HTTP tasks <span class="tag t-nonai">NON_AI v1 · sealed 25/30</span></button>
+</div>
+<div class="timeline" id="timeline"></div>
+<p style="font-size:14px">Full narrative, provenance hashes, and limits: <a href="../evidence/">Reconstruction Report</a> · <a href="../console/">Evidence console</a></p>
+</div></section>
+<section><div class="wrap">
+<h2>Probe explorer</h2>
+<p class="sub" id="probe-intro"></p>
+<div class="probes" role="group" aria-label="Choose a probe" id="probe-buttons"></div>
+<p>Input sequence: <code id="probe-input"></code> &nbsp; <span class="verdict" id="probe-verdict"></span></p>
+<div class="compare">
+<div class="col"><h3>REFERENCE (OBSERVED)</h3><pre id="ref-out"></pre></div>
+<div class="col"><h3 id="cand-title">CANDIDATE</h3><pre id="cand-out"></pre></div>
+</div>
+<p style="font-size:13px;color:var(--muted)" id="probe-note"></p><p class="repro">How to reproduce: recorded replay only — no command is run from the browser and no live status is shown. Sealed scores are stated in the Versions section below.</p>
+</div></section>
+<section><div class="wrap">
+</div></section>
+<section><div class="wrap">
+<h2>Professional benchmark — Vikunja v2.4.0</h2>
+<p class="sub">A real, self-hosted task-management application (not a fixture), investigated as a black box through its frozen <code>/api/v1</code>. A Gemma model (GEMMA_TEST — not Meta, not REAL_MODEL) authored declarative candidate specs; a generic interpreter executed them; an independent held-out evaluator scored six multi-step workflows (projects, tasks, sharing, permissions, done transitions). Recorded results — no live model is called from this page. Full method: <code>docs/BENCHMARK_VIKUNJA.md</code> in the repository.</p>
+<div class="probes" role="group" aria-label="Choose Vikunja result (GEMMA_TEST arms and NON_AI controls are labeled per button)" id="vk-arms"></div>
+<p style="font-size:14px" id="vk-summary"></p>
+<div class="compare">
+<div class="col"><h3>HELD-OUT CASES (EVALUATOR-SIDE, NEVER SHOWN TO THE MODEL)</h3><pre id="vk-cases"></pre></div>
+<div class="col"><h3>CLAIM COVERAGE VS PUBLIC EVIDENCE</h3><pre id="vk-coverage"></pre></div>
+</div>
+<p class="repro">How to reproduce: <code>python scripts/vikunja_benchmark.py --mode probe</code> then <code>python scripts/vikunja_benchmark.py --mode evaluate</code> (recorded replay on this page; no live model is called).</p><p style="font-size:13px;color:var(--muted)">Diagnosis so far: prior-only reasoning fails on real software conventions (PUT creates, POST updates, 412-vs-400 validation split). Coverage-grounded synthesis earned the two error-contract cases and now fails mainly on field-<i>value</i> fidelity (zero-time literals, per-route null-vs-empty fields, default view payloads) — the next measured improvement targets exactly that. The 6/6 NON_AI oracle only proves the evaluator and spec surface are sound; it is not an AI result. Genuine Meta (Muse) Vikunja arms <span class="tag t-real">REAL_MODEL</span> have now run (3 calls total, packet digests matched, $0.50 reservation cap; record <code>.runs/vikunja-model/meta_arms_result.json</code>): C_grounded <b>2/6</b> held-out (cases 1, 3); D_active <b>1/6</b> (case 3; selected probes D1, D4, D5, D6, D7; 22 probe observations). Gemma <span class="tag t-gemma">GEMMA_TEST</span> per-route repair (semantic admission) admitted but regressed held-out from <b>3/6 to 2/6</b> — recorded as a measured negative result. Public-verification gate audit (<span class="tag t-nonai">NON_AI</span> mechanism over GEMMA_TEST edits): <b>0/8</b> model route edits kept (5 regressed public conformance, 3 tied); gated candidate is the compiled <span class="tag t-compiled">NON_AI</span> 6/6 — a damage-prevention audit, never a model score.</p>
+</div></section>
+<section><div class="wrap">
+<h2>Browser / motion — spring-back reconstruction</h2><p class="sub">Recorded replay. <span class="tag t-browser">BROWSER_SLICE · DETERMINISTIC FIT (NON_AI)</span> A draggable card was observed in a real browser, its spring-back was fitted from the recorded trajectory only, and the rebuild was scored on a held-out drag the fit never saw. Nothing here is live; no model is called from this page.</p><p style="font-size:13px;color:var(--muted)" id="bm-source">Recorded, source: <code>browser-slice/verdict.json</code> and <code>browser-slice/inferred.json</code> in repo (exact values embedded in this page; regenerate them with the browser-slice commands below).</p><div class="metrics"><div class="metric"><b>240px → 140px</b><span>capture drag (fit input) vs held-out drag (scored, never fitted)</span></div><div class="metric"><b id="bm-rmse">1.054px</b><span>held-out trajectory RMSE, candidate vs reference</span></div><div class="metric"><b id="bm-settle">0.009s</b><span>settling-time difference (ref 0.6458s vs cand 0.6364s)</span></div><div class="metric"><b id="bm-pass">pass: true</b><span>overall verdict in <code>verdict.json</code></span></div></div><div class="probes" role="group" aria-label="Choose browser evidence view" id="bm-views"><button type="button" data-bm="overview" aria-pressed="true">Overview &amp; inferred spring</button><button type="button" data-bm="trajectory" aria-pressed="false">Trajectory &amp; overshoot</button><button type="button" data-bm="adversarial" aria-pressed="false">Adversarial detection</button></div><div class="compare"><div class="col"><h3 id="bm-left-title">CAPTURE VS HELD-OUT (RECORDED)</h3><pre id="bm-left"></pre></div><div class="col"><h3 id="bm-right-title">INFERRED PARAMETERS (RECORDED)</h3><pre id="bm-right"></pre></div></div><p style="font-size:13px;color:var(--muted)">Provenance stays distinct: reference values are OBSERVED in the browser; spring constants are INFERRED by a deterministic fit (<code>inferred.json</code>); held-out and adversarial numbers are EVALUATOR output (<code>verdict.json</code>). Inferred constants are an effective model, not a claim about the reference source constants.</p><p class="repro">How to reproduce: <code>cd browser-slice &amp;&amp; node capture.mjs &amp;&amp; node fit.mjs &amp;&amp; node evaluate.mjs</code> (writes <code>observations.json</code>, <code>inferred.json</code>, <code>verdict.json</code>; pinned viewport 1280x800, headless Chromium via <code>../product/node_modules</code>).</p></div></section><section><div class="wrap"><h2>Versions, scores, uncertainty</h2>
+<div class="note" id="versions"></div>
+</div></section>
+</main>
+<footer><div class="wrap"><a href="../">Second Source</a> · <a href="../evidence/">Reconstruction Report</a> · <a href="https://github.com/Ankit6149/second-source">Repository</a> — evidence over claims. Sealed cases are never shown here; public probes only.</div></footer>
+<script type="application/json" id="lab-data">{
+ "ledger": {
+  "add-basic": {
+   "actions": [
+    {
+     "command": "add",
+     "label": "Milk",
+     "amount": 2
+    }
+   ],
+   "reference": [
+    {
+     "ok": true,
+     "id": "1"
+    }
+   ],
+   "candidate": [
+    {
+     "ok": true,
+     "id": "1",
+     "label": "Milk",
+     "amount": 2
+    }
+   ],
+   "match": false
+  },
+  "casefold-duplicate": {
+   "actions": [
+    {
+     "command": "add",
+     "label": "Milk",
+     "amount": 2
+    },
+    {
+     "command": "add",
+     "label": "MILK",
+     "amount": 3
+    }
+   ],
+   "reference": [
+    {
+     "ok": true,
+     "id": "1"
+    },
+    {
+     "ok": false,
+     "error": "duplicate_label"
+    }
+   ],
+   "candidate": [
+    {
+     "ok": true,
+     "id": "1",
+     "label": "Milk",
+     "amount": 2
+    },
+    {
+     "ok": true,
+     "id": "2",
+     "label": "MILK",
+     "amount": 3
+    }
+   ],
+   "match": false
+  },
+  "amount-500": {
+   "actions": [
+    {
+     "command": "add",
+     "label": "Big",
+     "amount": 500
+    }
+   ],
+   "reference": [
+    {
+     "ok": false,
+     "error": "invalid_amount"
+    }
+   ],
+   "candidate": [
+    {
+     "ok": true,
+     "id": "1",
+     "label": "Big",
+     "amount": 500
+    }
+   ],
+   "match": false
+  },
+  "remove-shape": {
+   "actions": [
+    {
+     "command": "add",
+     "label": "Milk",
+     "amount": 2
+    },
+    {
+     "command": "remove",
+     "id": "1"
+    }
+   ],
+   "reference": [
+    {
+     "ok": true,
+     "id": "1"
+    },
+    {
+     "ok": true,
+     "removed": "1"
+    }
+   ],
+   "candidate": [
+    {
+     "ok": true,
+     "id": "1",
+     "label": "Milk",
+     "amount": 2
+    },
+    {
+     "ok": true,
+     "id": "1"
+    }
+   ],
+   "match": false
+  },
+  "list-total": {
+   "actions": [
+    {
+     "command": "add",
+     "label": "Milk",
+     "amount": 2
+    },
+    {
+     "command": "list"
+    },
+    {
+     "command": "total"
+    }
+   ],
+   "reference": [
+    {
+     "ok": true,
+     "id": "1"
+    },
+    {
+     "ok": true,
+     "items": [
+      {
+       "id": "1",
+       "label": "Milk",
+       "amount": 2
+      }
+     ]
+    },
+    {
+     "ok": true,
+     "count": 1,
+     "amount": 2
+    }
+   ],
+   "candidate": [
+    {
+     "ok": true,
+     "id": "1",
+     "label": "Milk",
+     "amount": 2
+    },
+    {
+     "ok": true,
+     "items": [
+      {
+       "id": "1",
+       "label": "Milk",
+       "amount": 2
+      }
+     ]
+    },
+    {
+     "ok": true,
+     "amount": 2,
+     "count": 1
+    }
+   ],
+   "match": false
+  }
+ },
+ "http": {
+  "create-and-get": {
+   "actions": [
+    {
+     "method": "POST",
+     "path": "/v1/tasks",
+     "actor": "alice",
+     "body": {
+      "title": "Write report",
+      "priority": 3
+     }
+    },
+    {
+     "method": "GET",
+     "path": "/v1/tasks/tsk-1",
+     "actor": "alice"
+    }
+   ],
+   "reference": [
+    {
+     "status": 201,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "owner": "alice",
+       "priority": 3,
+       "revision": 1,
+       "status": "todo",
+       "title": "Write report"
+      }
+     }
+    },
+    {
+     "status": 200,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "owner": "alice",
+       "priority": 3,
+       "revision": 1,
+       "status": "todo",
+       "title": "Write report"
+      }
+     }
+    }
+   ],
+   "candidate": [
+    {
+     "status": 201,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "title": "Write report",
+       "priority": 3,
+       "status": "todo",
+       "owner": "alice",
+       "revision": 1
+      }
+     }
+    },
+    {
+     "status": 200,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "title": "Write report",
+       "priority": 3,
+       "status": "todo",
+       "owner": "alice",
+       "revision": 1
+      }
+     }
+    }
+   ],
+   "match": true
+  },
+  "shortcut-transition": {
+   "actions": [
+    {
+     "method": "POST",
+     "path": "/v1/tasks",
+     "actor": "alice",
+     "body": {
+      "title": "Ship it",
+      "priority": 2
+     }
+    },
+    {
+     "method": "PATCH",
+     "path": "/v1/tasks/tsk-1",
+     "actor": "alice",
+     "body": {
+      "status": "done"
+     }
+    }
+   ],
+   "reference": [
+    {
+     "status": 201,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "owner": "alice",
+       "priority": 2,
+       "revision": 1,
+       "status": "todo",
+       "title": "Ship it"
+      }
+     }
+    },
+    {
+     "status": 409,
+     "body": {
+      "error": "invalid_transition",
+      "ok": false
+     }
+    }
+   ],
+   "candidate": [
+    {
+     "status": 201,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "title": "Ship it",
+       "priority": 2,
+       "status": "todo",
+       "owner": "alice",
+       "revision": 1
+      }
+     }
+    },
+    {
+     "status": 200,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "title": "Ship it",
+       "priority": 2,
+       "status": "done",
+       "owner": "alice",
+       "revision": 2
+      }
+     }
+    }
+   ],
+   "match": false
+  },
+  "delete-in-progress": {
+   "actions": [
+    {
+     "method": "POST",
+     "path": "/v1/tasks",
+     "actor": "alice",
+     "body": {
+      "title": "Ongoing",
+      "priority": 1
+     }
+    },
+    {
+     "method": "PATCH",
+     "path": "/v1/tasks/tsk-1",
+     "actor": "alice",
+     "body": {
+      "status": "in_progress"
+     }
+    },
+    {
+     "method": "DELETE",
+     "path": "/v1/tasks/tsk-1",
+     "actor": "alice"
+    }
+   ],
+   "reference": [
+    {
+     "status": 201,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "owner": "alice",
+       "priority": 1,
+       "revision": 1,
+       "status": "todo",
+       "title": "Ongoing"
+      }
+     }
+    },
+    {
+     "status": 200,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "owner": "alice",
+       "priority": 1,
+       "revision": 2,
+       "status": "in_progress",
+       "title": "Ongoing"
+      }
+     }
+    },
+    {
+     "status": 409,
+     "body": {
+      "error": "task_in_progress",
+      "ok": false
+     }
+    }
+   ],
+   "candidate": [
+    {
+     "status": 201,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "title": "Ongoing",
+       "priority": 1,
+       "status": "todo",
+       "owner": "alice",
+       "revision": 1
+      }
+     }
+    },
+    {
+     "status": 200,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "title": "Ongoing",
+       "priority": 1,
+       "status": "in_progress",
+       "owner": "alice",
+       "revision": 2
+      }
+     }
+    },
+    {
+     "status": 200,
+     "body": {
+      "ok": true,
+      "deleted": "tsk-1"
+     }
+    }
+   ],
+   "match": false
+  },
+  "cross-owner-read": {
+   "actions": [
+    {
+     "method": "POST",
+     "path": "/v1/tasks",
+     "actor": "alice",
+     "body": {
+      "title": "Private",
+      "priority": 4
+     }
+    },
+    {
+     "method": "GET",
+     "path": "/v1/tasks/tsk-1",
+     "actor": "bob"
+    }
+   ],
+   "reference": [
+    {
+     "status": 201,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "owner": "alice",
+       "priority": 4,
+       "revision": 1,
+       "status": "todo",
+       "title": "Private"
+      }
+     }
+    },
+    {
+     "status": 200,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "owner": "alice",
+       "priority": 4,
+       "revision": 1,
+       "status": "todo",
+       "title": "Private"
+      }
+     }
+    }
+   ],
+   "candidate": [
+    {
+     "status": 201,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "title": "Private",
+       "priority": 4,
+       "status": "todo",
+       "owner": "alice",
+       "revision": 1
+      }
+     }
+    },
+    {
+     "status": 200,
+     "body": {
+      "ok": true,
+      "task": {
+       "id": "tsk-1",
+       "title": "Private",
+       "priority": 4,
+       "status": "todo",
+       "owner": "alice",
+       "revision": 1
+      }
+     }
+    }
+   ],
+   "match": true
+  },
+  "long-title": {
+   "actions": [
+    {
+     "method": "POST",
+     "path": "/v1/tasks",
+     "actor": "alice",
+     "body": {
+      "title": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "priority": 3
+     }
+    }
+   ],
+   "reference": [
+    {
+     "status": 422,
+     "body": {
+      "error": "invalid_title",
+      "ok": false
+     }
+    }
+   ],
+   "candidate": [
+    {
+     "status": 422,
+     "body": {
+      "ok": false,
+      "error": "invalid_title"
+     }
+    }
+   ],
+   "match": true
+  }
+ }
+}</script>
+<script>
+(function(){
+"use strict";
+var DATA=JSON.parse(document.getElementById("lab-data").textContent);
+var META={
+ ledger:{title:"META CANDIDATE — Muse Spark 1.3 (genuine)",
+  intro:"Public probes replayed locally from the recorded genuine candidate (digest sha256:ee1f3f32…). Divergences below are the same behaviors the sealed evaluator counted as schema/error mismatches.",
+  note:"Sealed score: 14/25 (9 schema, 2 error, 0 indeterminate). Provider attestation incomplete — see report.",
+  timeline:[["1 · Observed","add Alpha/3 → {ok,id 1}; total → count+sum"],["2 · Hypothesized","3 Muse hypotheses, evidence-cited, with rivals"],["3 · Experiment","P-aggregate-2adds: 2 supported, 1 open"],["4 · Synthesized","Guided declarative candidate, trusted interpreter"],["5 · Evaluated","Sealed 25-case suite: 14 passed, 11 failed"]],
+  versions:"<b>Ledger versions.</b> v1 genuine Meta candidate: <b>14/25</b> (only genuine version; no genuine repair has been run — rev-7 proposed, not executed). NON_AI controls for calibration only: scripted 22/25, hand-authored trusted control 25/25. Uncertainty: one target, one synthesis, attestation incomplete."},
+ http:{title:"CANDIDATE — NON_AI deterministic v1 (not a model score)",
+  intro:"Recorded replay: public probes run against the live owned HTTP reference and the deterministic v1 candidate through the trusted interpreter. The v1 candidate was built by a blinded observation-to-spec extractor — engineering control, not AI.",
+  note:"Sealed scores (30-case suite): v1 25/30 → scripted repair 30/30 (NON_AI). A genuine Meta HTTP reconstruction is engineered and gated (PR #33) but has not been run.",
+  timeline:[["1 · Observed","26 HTTP observations across passive + active rounds"],["2 · Hypothesized","Boundary hypotheses: transitions, locks, title reuse"],["3 · Experiment","Matched-budget active probing: +5 cases vs passive"],["4 · Synthesized","Deterministic rule extractor (NON_AI), spec-only"],["5 · Evaluated","Sealed 30-case suite: 25/30, then repair 30/30"]],
+  versions:"<b>HTTP versions (all NON_AI).</b> Uninformed prior 19/30 · passive-observation v1 <b>25/30</b> · active-evidence repair <b>30/30</b>. The repair uses previously collected active evidence and target-specific priors — it is not AI-discovered repair. Genuine Meta HTTP: not yet run; authorization packet pending owner key."}
+};
+var target="ledger", probeName=null;
+function fmt(v){return JSON.stringify(v,null,1);}
+function canon(v){if(v===null||typeof v!=="object")return JSON.stringify(v);if(Array.isArray(v))return "["+v.map(canon).join(",")+"]";return "{"+Object.keys(v).sort().map(function(k){return JSON.stringify(k)+":"+canon(v[k]);}).join(",")+"}";}
+function showTarget(t){
+ target=t; probeName=null;
+ document.getElementById("tab-ledger").setAttribute("aria-pressed",String(t==="ledger"));
+ document.getElementById("tab-http").setAttribute("aria-pressed",String(t==="http"));
+ var m=META[t];
+ document.getElementById("timeline").innerHTML=m.timeline.map(function(s){return '<div class="stage"><b>'+s[0]+'</b><span>'+s[1]+'</span></div>';}).join("");
+ document.getElementById("probe-intro").textContent=m.intro;
+ document.getElementById("cand-title").textContent=m.title;
+ document.getElementById("versions").innerHTML=m.versions;
+ var names=Object.keys(DATA[t]);
+ document.getElementById("probe-buttons").innerHTML=names.map(function(n){return '<button type="button" data-probe="'+n+'" aria-pressed="false">'+n+"</button>";}).join("");
+ document.querySelectorAll("[data-probe]").forEach(function(b){b.addEventListener("click",function(){showProbe(b.getAttribute("data-probe"));});});
+ showProbe(names[0]);
+}
+function showProbe(n){
+ probeName=n; var p=DATA[target][n];
+ document.querySelectorAll("[data-probe]").forEach(function(b){b.setAttribute("aria-pressed",String(b.getAttribute("data-probe")===n));});
+ document.getElementById("probe-input").textContent=fmt(p.actions);
+ var verdict=document.getElementById("probe-verdict");
+ function lines(arr,other){
+   return arr.map(function(o,i){
+     var same=canon(o)===canon(other[i]);
+     return (same?"  ":"▸ ")+fmt(o).replace(/\n/g,"\n  ");
+   }).join("\n");
+ }
+ var refEl=document.getElementById("ref-out"), candEl=document.getElementById("cand-out");
+ refEl.textContent=lines(p.reference,p.candidate);
+ candEl.textContent=lines(p.candidate,p.reference);
+ // mark differing blocks
+ function mark(el,arr,other){var blocks=fmt(arr).split(/\n(?=\{)/); el.innerHTML=arr.map(function(o,i){var same=canon(o)===canon(other[i]);var cls=same?"matchline":"diffline";return '<span class="'+cls+'">'+(same?"= ":"≠ ")+fmt(o).replace(/</g,"&lt;")+"</span>";}).join("\n");}
+ mark(refEl,p.reference,p.candidate); mark(candEl,p.candidate,p.reference);
+ var seqMatch=p.reference.length===p.candidate.length&&p.reference.every(function(o,i){return canon(o)===canon(p.candidate[i]);}); verdict.textContent=seqMatch?"SEQUENCE MATCH":"SEQUENCE DIFF";
+ verdict.className="verdict "+(seqMatch?"v-match":"v-diff");
+ document.getElementById("probe-note").textContent=META[target].note;
+}
+document.getElementById("tab-ledger").addEventListener("click",function(){showTarget("ledger");});
+document.getElementById("tab-http").addEventListener("click",function(){showTarget("http");});
+showTarget("ledger");
+})();
+</script>
+
+<script>
+(function(){
+var VK={
+ "A_prior":{label:"A · Prior-only",tag:"GEMMA_TEST",score:"0/6",parse:"embedded_json",
+  summary:"Engineering priors only, no observations. Admitted and measured: 0/6. Priors guessed conventional REST and missed Vikunja's PUT-create / 412-validation contract.",
+  cases:["FAIL","FAIL","FAIL","FAIL","FAIL","FAIL"],
+  coverage:"OBSERVED 5 · ASSUMED 2 · UNKNOWN 9 · CONTRADICTED 0"},
+ "C_grounded":{label:"C · Coverage-grounded",tag:"GEMMA_TEST",score:"2/6",parse:"embedded_json",
+  summary:"Public observations plus claim discipline (claim only what evidence shows). Admitted and measured: 2/6 — both passes are error-contract cases (412 project validation, 403 wrong-password login). Remaining failures are field-value fidelity, not route discovery.",
+  cases:["FAIL","PASS","FAIL","PASS","FAIL","FAIL"],
+  coverage:"OBSERVED 13 · ASSUMED 0 · UNKNOWN 2 · CONTRADICTED 0"},
+ "B_observations":{label:"B · Observations",tag:"GEMMA_TEST",score:"not measured",parse:"-",
+  summary:"Public observations without grounding discipline. Not measured: the development provider timed out on the synthesis call (recorded as INFRASTRUCTURE, no score inferred).",
+  cases:["-","-","-","-","-","-"],coverage:"no admitted spec"},
+ "D_active":{label:"D · Active probing",tag:"GEMMA_TEST",score:"not measured",parse:"-",
+  summary:"GEMMA_TEST active-probing arm (distinct from the Meta REAL_MODEL D_active 1/6 above). Selection now fixed and verified (strict parse, 6 probes, 27 observations); synthesis blocked by provider 429/500 — INFRASTRUCTURE, unscored, still not measured. Earlier selection was unparseable; no score inferred from either state.",
+  cases:["-","-","-","-","-","-"],coverage:"no admitted spec"},
+ "H_hybrid":{label:"H · Compiler-assisted model synthesis",tag:"GEMMA_TEST",score:"3/6",parse:"strict (per-route)",
+  summary:"The model edited the deterministic compiled facts route by route (templates carried verbatim; kind/status/access/validate/error bodies model-decided; every change diffed against the NON_AI baseline). Admitted and measured: 3/6 held-out (cases 0, 2, 3) vs model-only C at 2/6 and compiled NON_AI at 6/6; public conformance 7/19. The model improves unaided synthesis, but its contract edits still degrade compiled facts — the remaining bottleneck is model contract judgment, not evidence. Bounded public-probe repair was not admitted (provider failure). 16 recorded attempts: provider timeouts/500s, prose and empty-object degeneration, unsupported generation params — all logged in scripts/vikunja_hybrid_experiment.py.",
+  cases:["PASS","FAIL","PASS","PASS","FAIL","FAIL"],
+  coverage:"model diff vs compiled: 8 routes modified, 0 added, 0 removed (recorded in hybrid_result.json)"},
+ "meta_C_grounded":{label:"C · Coverage-grounded (Meta)",tag:"REAL_MODEL",score:"2/6",parse:"recorded (.runs/vikunja-model/meta_arms_result.json)",
+  summary:"Genuine Meta (REAL_MODEL) Vikunja arm, coverage-grounded synthesis. 3 Meta calls total across both arms, packet digests matched, $0.50 reservation cap. Admitted and measured: 2/6 held-out (cases 1, 3). Distinct from the GEMMA_TEST C arm above — same 2/6, different model and provenance; do not conflate.",
+  cases:["FAIL","PASS","FAIL","PASS","FAIL","FAIL"],
+  coverage:"REAL_MODEL record: .runs/vikunja-model/meta_arms_result.json (packet digests matched)"},
+ "meta_D_active":{label:"D · Active probing (Meta)",tag:"REAL_MODEL",score:"1/6",parse:"recorded (.runs/vikunja-model/meta_arms_result.json)",
+  summary:"Genuine Meta (REAL_MODEL) Vikunja arm, active probing. Model selected probes D1, D4, D5, D6, D7 (22 probe observations), then synthesized. Admitted and measured: 1/6 held-out (case 3 only). Part of the 3-call / $0.50-cap Meta run; packet digests matched.",
+  cases:["FAIL","FAIL","FAIL","PASS","FAIL","FAIL"],
+  coverage:"selected probes: D1, D4, D5, D6, D7 · 22 probe observations"},
+ "H_repair":{label:"H · Per-route repair (semantic admission)",tag:"GEMMA_TEST",score:"2/6",parse:"semantic admission",
+  summary:"Gemma per-route repair with semantic admission: repair admitted, then measured on held-out — regressed from H_hybrid 3/6 to 2/6. Recorded as a measured negative result (admission is not improvement).",
+  cases:["-","-","-","-","-","-"],
+  coverage:"held-out 3/6 → 2/6 after admitted repair (negative result; per-case detail not asserted here)"},
+ "gate_audit":{label:"Public-verification gate · audit",tag:"NON_AI",score:"0/8 kept",heldOut:false,parse:"public conformance gate (NON_AI mechanism over GEMMA_TEST edits)",
+  summary:"Damage-prevention audit, not a model score: a NON_AI public-verification gate reviewed GEMMA_TEST route edits — 0/8 model route edits kept (5 regressed public conformance, 3 tied). The gated candidate is the compiled NON_AI 6/6; that 6/6 is the compiled control, never a model score. The audit measures prevented damage, not model ability.",
+  cases:["-","-","-","-","-","-"],coverage:"0/8 kept · 5 regressed · 3 tied · gated = compiled NON_AI 6/6"},
+ "compiled":{label:"Compiled · Evidence transcription",tag:"EVIDENCE_COMPILED (NON_AI)",score:"6/6",parse:"deterministic",
+  summary:"No model involved: a deterministic compiler (scripts/evidence_compiler.py) transcribes the 20 lossless public observations into a candidate spec — exact values preserved, dynamic ids/timestamps tokenized, response-shape nulls kept out of stored state. Evaluated 6/6 against a fresh Vikunja reference; a status-mutation control drops to 2/6, so the evaluator still discriminates. Spec sha256:a5c9104e…, evidence sha256:40f23ce9…. This proves the evidence-to-spec path, NOT model ability — the model-authored Gemma C remains 2/6 above.",
+  cases:["PASS","PASS","PASS","PASS","PASS","PASS"],
+  coverage:"templates: observed · access: inferred_from_actor_outcomes (claims recorded in spec provenance)"},
+ "oracle":{label:"Oracle control",tag:"NON_AI",score:"6/6",parse:"-",
+  summary:"Hand-written spec built only from public observations, executed by the same interpreter. Proves the spec surface and evaluator can reach full marks. This is an engineering control, NOT an AI result.",
+  cases:["PASS","PASS","PASS","PASS","PASS","PASS"],
+  coverage:"OBSERVED 13 · ASSUMED 0 · UNKNOWN 2 · CONTRADICTED 0"}
+};
+var NAMES=["Create project + two tasks, list","Empty project title rejected","Done/undone state transition","Wrong-password login rejected","Cross-user isolation on private task","Share read-only: read allowed, write denied"];
+var holder=document.getElementById("vk-arms");
+Object.keys(VK).forEach(function(key,i){
+ var b=document.createElement("button"); b.type="button"; b.textContent=VK[key].label+" · "+VK[key].tag+" · "+VK[key].score;
+ b.setAttribute("aria-pressed", i===1?"true":"false"); b.dataset.arm=key;
+ b.addEventListener("click",function(){show(key);}); holder.appendChild(b);
+});
+function show(key){
+ holder.querySelectorAll("button").forEach(function(b){b.setAttribute("aria-pressed",String(b.dataset.arm===key));});
+ var a=VK[key];
+ document.getElementById("vk-summary").innerHTML="<b>"+a.label+"</b> <span class='tag "+(a.tag==="REAL_MODEL"?"t-real":a.tag==="GEMMA_TEST"?"t-gemma":a.tag.indexOf("EVIDENCE_COMPILED")===0?"t-compiled":"t-nonai")+"'>"+a.tag+"</span> <b>"+a.score+"</b>"+(a.heldOut===false?"":" held-out")+" · parse: "+a.parse+"<br>"+a.summary;
+ document.getElementById("vk-cases").textContent=a.cases.map(function(c,i){return (c==="PASS"?"= ":c==="FAIL"?"!= ":"- ")+"case "+i+": "+NAMES[i]+"  ["+c+"]";}).join("\n");
+ document.getElementById("vk-coverage").textContent=a.coverage+"\n\nClaims are classified against PUBLIC probe evidence only. UNKNOWN claims block any verified-equivalence language.";
+}
+show("C_grounded");})();</script><script>(function(){"use strict";var VERDICT={"heldOutDragPx":140,"captureDragPx":240,"trajectory":{"rmseCandidatePx":1.054,"settlingRefS":0.645800000011921,"settlingCandS":0.6364000000357628,"settlingDiffS":0.009},"overshoot":{"refMinX":-33.47,"candMinX":-32.6,"refPresent":true,"candPresent":true,"match":true},"adversarial":{"thresholdRmsePx":8,"noOvershootVariant":{"rmsePx":38.543,"overshootPresent":false,"detectedDifferent":true},"wrongEasingVariant":{"rmsePx":35.809,"overshootPresent":false,"detectedDifferent":true}},"pass":true};var VIEWS={overview:["CAPTURE VS HELD-OUT (RECORDED)","captureDragPx: 240 (fit input, observations.json trajectory)\nheldOutDragPx: 140 (scored only, never fitted)\nfunctional match: true (both final: At rest, x = 0)\nlayout: maxCardBoxDiffPx 0 (tolerancePx 4, pass true)\nparallax: maxLayerRectDiffPx 0 (pass true)\noverall verdict pass: true","INFERRED PARAMETERS (RECORDED)","spring stiffness_k: 188\ndamping_c: 11.4\nnaturalFreq_wn_rad_s: 13.711\ndampingRatio_zeta: 0.4157\ndampedFreq_wd_rad_s: 12.47\nfit residual RMSE: 1.5415px over 110 samples\nfittedTimeOffsetS: 0.032, releaseXpx: 240\nobservedOvershootPx (capture): -57.41, parallaxFactorObserved: 0.35"],trajectory:["TRAJECTORY - HELD-OUT 140px (RECORDED)","trajectory RMSE (candidate vs reference): 1.054px\nsettlingRefS: 0.645800000011921\nsettlingCandS: 0.6364000000357628\nsettlingDiffS: 0.009","OVERSHOOT - HELD-OUT (RECORDED)","refMinX: -33.47px (refPresent: true)\ncandMinX: -32.6px (candPresent: true)\novershoot match: true\n(capture-drag observed overshoot was -57.41px at 240px)"],adversarial:["ADVERSARIAL CONTROLS (RECORDED)","thresholdRmsePx: 8\nno-overshoot variant: RMSE 38.543px, overshootPresent false, detectedDifferent true\nwrong-easing variant: RMSE 35.809px, overshootPresent false, detectedDifferent true","READING (RECORDED)","Both deliberately-wrong variants exceed the 8px threshold by a wide margin and are detected as different. The candidate itself is at 1.054px."]};function render(view){var v=VIEWS[view];document.getElementById("bm-left-title").textContent=v[0];document.getElementById("bm-left").textContent=v[1];document.getElementById("bm-right-title").textContent=v[2];document.getElementById("bm-right").textContent=v[3];document.querySelectorAll("[data-bm]").forEach(function(b){b.setAttribute("aria-pressed",String(b.getAttribute("data-bm")===view));});}document.querySelectorAll("[data-bm]").forEach(function(b){b.addEventListener("click",function(){render(b.getAttribute("data-bm"));});});render("overview");})();
+</script>
+</body>
+</html>
