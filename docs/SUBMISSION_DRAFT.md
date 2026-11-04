@@ -3,7 +3,7 @@
 **Status: DRAFT for owner review. Not submitted. No portal receipt exists.**
 Deadline: **Nov 4, 9:00 PM ET** Ã¢â‚¬â€ https://cerebralvalley.ai/e/meta-ai-developer-hackathon/hackathon/submit
 Final `main` SHA: enter the live `main` HEAD at submit time (post-PR#48: `f559140` or later).
-Production: https://second-source-alpha.vercel.app/ Ã¢â‚¬â€ routes `/`, `/evidence/`, `/console/`, `/app/`, `/lab/` verified signed-out with 0 console errors.
+Production: https://second-source-alpha.vercel.app/ Ã¢â‚¬â€ routes `/` and `/app/` verified (former showcase routes redirect to `/app/`) signed-out with 0 console errors.
 
 ## Judge-first entry — the experience before the scorecard
 
@@ -74,7 +74,7 @@ regression testing: observe Ã¢â€ â€™ hypothesize Ã¢â€ â€™ 
 ## Demo (25%)
 
 - Video v3 (170.02s, local .runs/submission-v3/second-source-v3.mp4, SHA-256 20E0079343E93B06C80361DCF7EFE3AD9850F07E9A808969C492FB25556F548A): scope, observation, genuine Meta 14/25, NON_AI controls, honest limits. **NOT yet publicly hosted. Owner must upload publicly and verify signed-out before submitting.**
-- Interactive Reconstruction Lab (/lab/): two targets, recorded public probes with per-step diff highlighting, versions and uncertainty - REAL_MODEL vs NON_AI always labeled (PR #34).
+- Reports & exports (in /app/): comparison scoreboard, recorded public probes with per-step diff highlighting, versions and uncertainty - REAL_MODEL vs NON_AI always labeled (PR #34).
 - muse-spark-1.3 Vikunja packet EXECUTED (REAL_MODEL): C_grounded 2/6 (cases 1, 3), D_active 1/6 (case 3), 3 calls total, digests matched, $0.50 reservation cap; receipts lost to a driver crash (no billing claim beyond cap). Record: `.runs/vikunja-model/meta_arms_result.json`.
 - 2D browser reconstruction: assessed NO-GO for this window (docs/P3_BROWSER_SPIKE_ASSESSMENT.md); explicitly not implemented.
 - Live local demo: `npm run demo:local` (product) Ã¢â‚¬â€ synthetic identities,
