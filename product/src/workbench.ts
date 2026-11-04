@@ -54,9 +54,7 @@ export interface ScoreTarget { target: string; rows: ScoreRow[] }
 export const SCOREBOARD: readonly ScoreTarget[] = [
   { target: 'Vikunja v2.4.0', rows: [
     { method: 'AI alone (Muse grounded)', provenance: 'REAL_MODEL', frozen: '2/6', extended: 'unmeasured', status: 'Scored' },
-    { method: 'AI alone (Gemma grounded)', provenance: 'GEMMA_TEST', frozen: '2/6', extended: 'unmeasured', status: 'Scored' },
     { method: 'AI + our software (Muse hybrid)', provenance: 'REAL_MODEL', frozen: '6/6', extended: '6/6', status: 'Scored; gate rejected edits' },
-    { method: 'AI + our software (Gemma hybrid)', provenance: 'GEMMA_TEST', frozen: '3/6', extended: 'unmeasured', status: 'Scored' },
     { method: 'Our software alone (compiler)', provenance: 'NON_AI', frozen: '6/6', extended: '6/6', status: 'Scored; zero model calls' } ] },
   { target: 'File Browser v2.63.23', rows: [
     { method: 'Our software alone (compiler)', provenance: 'NON_AI', frozen: '7/7', extended: 'n/a', status: 'Scored' },
