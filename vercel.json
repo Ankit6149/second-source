@@ -13,9 +13,67 @@
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
       ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/challenge",
+      "destination": "/app/",
+      "permanent": true
+    },
+    {
+      "source": "/lab",
+      "destination": "/app/",
+      "permanent": true
+    },
+    {
+      "source": "/evidence",
+      "destination": "/app/",
+      "permanent": true
+    },
+    {
+      "source": "/console",
+      "destination": "/app/",
+      "permanent": true
+    },
+    {
+      "source": "/handoff",
+      "destination": "/app/",
+      "permanent": true
+    },
+    {
+      "source": "/challenge/",
+      "destination": "/app/",
+      "permanent": true
+    },
+    {
+      "source": "/lab/",
+      "destination": "/app/",
+      "permanent": true
+    },
+    {
+      "source": "/evidence/",
+      "destination": "/app/",
+      "permanent": true
+    },
+    {
+      "source": "/console/",
+      "destination": "/app/",
+      "permanent": true
+    },
+    {
+      "source": "/handoff/",
+      "destination": "/app/",
+      "permanent": true
     }
   ]
 }

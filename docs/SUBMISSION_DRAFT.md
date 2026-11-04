@@ -3,7 +3,7 @@
 **Status: DRAFT for owner review. Not submitted. No portal receipt exists.**
 Deadline: **Nov 4, 9:00 PM ET** Ã¢â‚¬â€ https://cerebralvalley.ai/e/meta-ai-developer-hackathon/hackathon/submit
 Final `main` SHA: enter the live `main` HEAD at submit time (post-PR#48: `f559140` or later).
-Production: https://second-source-alpha.vercel.app/ Ã¢â‚¬â€ routes `/`, `/evidence/`, `/console/`, `/app/`, `/lab/` verified signed-out with 0 console errors.
+Production: https://second-source-alpha.vercel.app/ Ã¢â‚¬â€ routes `/` and `/app/` verified (former showcase routes redirect to `/app/`) signed-out with 0 console errors.
 
 ## Judge-first entry — the experience before the scorecard
 
@@ -11,7 +11,7 @@ Production: https://second-source-alpha.vercel.app/ Ã¢â‚¬â€ routes `/
 
 **Judge-facing opening (proposed copy):** "Can you reconstruct software you can operate but cannot inspect? Second Source treats the running application as experimental evidence. Watch it discover what a screenshot never shows, generate a separate behavioral specification using Meta Muse, and check that candidate against an independent evaluator. It reports the errors, too — because the difference between plausible software and compatible software is what the tests reveal."
 
-**Try first:** [60-second black-box challenge](https://second-source-alpha.vercel.app/challenge/) — interactive, recorded public examples only. The judge predicts a case-insensitive duplicate, an input boundary and an output schema; the replay shows reference and genuine Meta candidate responses. No model call or sealed tests run in the browser. Follow it with the [full reconstruction lab](https://second-source-alpha.vercel.app/lab/) and [evidence report](https://second-source-alpha.vercel.app/evidence/).
+**Try first:** [Open Second Source](https://second-source-alpha.vercel.app/app/) — interactive, recorded public examples only. The judge predicts a case-insensitive duplicate, an input boundary and an output schema; the replay shows reference and genuine Meta candidate responses. No model call or sealed tests run in the browser. Follow it with the [full reconstruction lab](https://second-source-alpha.vercel.app/lab/) and [evidence report](https://second-source-alpha.vercel.app/evidence/).
 
 **Proof, with provenance separated:** The ledger reconstruction was authored by genuine Muse Spark 1.3 and scored **14/25** on its own sealed suite (11 failures; incomplete provider attestation). A separate genuine Muse-assisted Vikunja hybrid scored **6/6 frozen and 6/6 extended**, but the NON_AI evidence compiler also scored 6/6 on both suites, so **no lift over that compiler is claimed**. The HTTP 25/30 → 30/30 improvement is **NON_AI**, not AI self-repair. These benchmarks must never be added together or depicted as comparable.
 
@@ -74,7 +74,7 @@ regression testing: observe Ã¢â€ â€™ hypothesize Ã¢â€ â€™ 
 ## Demo (25%)
 
 - Video v3 (170.02s, local .runs/submission-v3/second-source-v3.mp4, SHA-256 20E0079343E93B06C80361DCF7EFE3AD9850F07E9A808969C492FB25556F548A): scope, observation, genuine Meta 14/25, NON_AI controls, honest limits. **NOT yet publicly hosted. Owner must upload publicly and verify signed-out before submitting.**
-- Interactive Reconstruction Lab (/lab/): two targets, recorded public probes with per-step diff highlighting, versions and uncertainty - REAL_MODEL vs NON_AI always labeled (PR #34).
+- Reports & exports (in /app/): comparison scoreboard, recorded public probes with per-step diff highlighting, versions and uncertainty - REAL_MODEL vs NON_AI always labeled (PR #34).
 - muse-spark-1.3 Vikunja packet EXECUTED (REAL_MODEL): C_grounded 2/6 (cases 1, 3), D_active 1/6 (case 3), 3 calls total, digests matched, $0.50 reservation cap; receipts lost to a driver crash (no billing claim beyond cap). Record: `.runs/vikunja-model/meta_arms_result.json`.
 - 2D browser reconstruction: assessed NO-GO for this window (docs/P3_BROWSER_SPIKE_ASSESSMENT.md); explicitly not implemented.
 - Live local demo: `npm run demo:local` (product) Ã¢â‚¬â€ synthetic identities,

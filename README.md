@@ -4,7 +4,7 @@
 
 **From an observable black box to a separately implemented, evidence-tested substitute.**
 
-**Start here:** [Take the 60-second black-box challenge](https://second-source-alpha.vercel.app/challenge/) — predict a hidden software rule, then compare the recorded genuine Meta candidate with the observable reference. This is a replay, not a live model call.
+**Start here:** [Open Second Source](https://second-source-alpha.vercel.app/app/) — predict a hidden software rule, then compare the recorded genuine Meta candidate with the observable reference. This is a replay, not a live model call.
 
 [Why it exists](#why-not-just-ask-ai-to-copy-a-website) · [How it works](#how-second-source-works) · [Live capabilities](#what-works-today) · [Try it locally](#try-it-locally) · [Architecture](#system-architecture)
 
@@ -189,7 +189,7 @@ For an offline-friendly public-site preview:
 ~~~bash
 python web/preview.py
 # Open http://127.0.0.1:8766/
-# The static research console is at /console/
+# The product is at /app/; measured results live under Reports & exports.
 ~~~
 
 This web preview **does not** authenticate users, launch model inference, or execute backend jobs. See [web/README.md](web/README.md) for the allowlisted Vercel build instructions.

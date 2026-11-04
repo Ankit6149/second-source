@@ -105,15 +105,14 @@ test('signed-out home shows what it does, the REAL_MODEL evidence, and one resea
   } finally { window.happyDOM.abort(); }
 });
 
-test('showroom actions remain separate from investigation results', () => {
+test('navigation is slim and the retired showroom route lands home', () => {
   const window = workspace('/?screen=system');
   try {
     const doc = window.document;
-    assert.match(doc.querySelector('#content').textContent, /component showroom/i);
-    assert.match(doc.querySelector('#content').textContent, /not investigation results/i);
-    doc.querySelector('[data-action="sample-dialog"]').click();
-    assert.equal(doc.querySelector('dialog').open, true);
-    assert.match(doc.querySelector('dialog').textContent, /component example/i);
+    const nav = [...doc.querySelectorAll('.side-nav .nav-item')].map(n => n.textContent.trim());
+    assert.deepEqual(nav, ['Your work', 'Reports & exports', 'Settings']);
+    assert.doesNotMatch(doc.querySelector('#content').textContent, /component showroom/i);
+    assert.match(doc.querySelector('#content').textContent, /Understand how software/);
   } finally { window.happyDOM.abort(); }
 });
 

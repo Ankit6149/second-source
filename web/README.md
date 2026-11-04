@@ -1,6 +1,6 @@
 # Second Source public research preview
 
-A static landing page and an actual local evidence viewer. The landing, interactive recorded black-box challenge at `/challenge/`, and
+A static landing page and an actual local evidence viewer. The landing, interactive recorded black-box challenge at `/app/`, and
 viewer make no account, model, backend, database, telemetry or external font
 request. The challenge replays public owned-ledger probes and labels the genuine Meta
 candidate as recorded; no model execution or sealed case is exposed. The optional workspace can contact its configured identity and API
@@ -16,7 +16,7 @@ python web/preview.py
 ```
 
 Open `http://127.0.0.1:8766/`. The same server exposes the canonical
-`demo/index.html` at `/console/`; it does not expose the rest of the repository.
+`demo/index.html` at `/app/`; it does not expose the rest of the repository.
 Press Ctrl+C to stop it. No dependencies beyond Python 3.11+ are needed.
 
 For an independently hosted static preview:

@@ -8,22 +8,32 @@ from urllib.parse import unquote, urlsplit
 from build import app_asset
 
 ROOT = Path(__file__).resolve().parent
-CONSOLE = ROOT.parent / "demo" / "index.html"
 PUBLIC = {"index.html", "styles.css", "release.css", "script.js"}
 ASSETS = {"dm-sans.ttf", "manrope.ttf", "DM-Sans-OFL.txt", "Manrope-OFL.txt"}
 
 
+STUB = ('<!doctype html><meta charset="utf-8"><title>Second Source</title>'
+        '<meta http-equiv="refresh" content="0; url=/app/">'
+        '<link rel="canonical" href="/app/">'
+        '<p>This page has moved into the app. <a href="/app/">Open Second Source</a>.</p>'
+        "<script>location.replace('/app/')</script>")
+REMOVED = ("console", "evidence", "lab", "challenge", "handoff")
+
 class PreviewHandler(SimpleHTTPRequestHandler):
+    def _stub(self):
+        body = STUB.encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self):
         path = unquote(urlsplit(self.path).path)
-        if path in {"/console", "/console/", "/console/index.html"}:
-            self.public_file = CONSOLE
-        elif path in {"/evidence", "/evidence/", "/evidence/index.html"}:
-            self.public_file = ROOT / "evidence" / "index.html"
-        elif path in {"/lab", "/lab/", "/lab/index.html"}:
-            self.public_file = ROOT / "lab" / "index.html"
-        elif path in {"/challenge", "/challenge/", "/challenge/index.html"}:
-            self.public_file = ROOT / "challenge" / "index.html"
+        if any(path in {f"/{r}", f"/{r}/", f"/{r}/index.html"} for r in REMOVED):
+            self._stub()
+            return
         elif path in {"/app", "/app/"} or app_asset(path.lstrip("/")):
             name = "app/index.html" if path in {"/app", "/app/"} else path.lstrip("/")
             candidate = (ROOT / "dist" / name).resolve()
