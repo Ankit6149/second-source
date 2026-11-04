@@ -248,7 +248,7 @@ flowchart TB
     class U,G2,SPEC neutral;
 ~~~
 
-**Deployed vs proposed:** the CLI and local mock backend are implemented. Vercel hosts only the public frontend when independently deployed; the Render/Supabase cloud backend is prepared in source but has not passed live deployment acceptance. E2B is a proposed isolated execution provider, with Daytona as an alternative, **not an active fallback currently running**. Genuine Meta model dispatch is controlled separately by exact-input approval and spending limits.
+**Deployed vs proposed (updated 4 Nov 2026):** Vercel hosts the public frontend (https://second-source-alpha.vercel.app/) and the Render/Supabase cloud backend IS deployed and passed live acceptance today: https://second-source-api.onrender.com/health/ready returns 200, and a signed-in production investigation (create, authorize, queue, persisted events) was executed end-to-end (main `a0c8bdd`). Hosted *execution* remains deliberately disabled (honest 409, no mock presented as real); the genuine reconstruction engine runs locally. The Muse-led inference loop is demonstrated in recorded, receipted experiments and one in-pipeline packet, not yet as live UI inference - that integration is the top post-submission priority. E2B is a proposed isolated execution provider, with Daytona as an alternative, **not an active fallback currently running**. Genuine Meta model dispatch is controlled separately by exact-input approval and spending limits.
 
 ## Where this could go
 
