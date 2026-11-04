@@ -354,11 +354,17 @@ async function refresh(showErrors = true) {
   if (!state.run) return;
   const runId = state.run.run_id;
   try {
-    const [run, events] = await Promise.all([api.run(runId), allEvents(runId)]);
+    // The status and the activity stream are separate read models. A temporary
+    // event-log failure must not hide a confirmed terminal run transition.
+    const [runResult, eventsResult] = await Promise.allSettled([api.run(runId), allEvents(runId)]);
+    if (runResult.status === 'rejected') throw runResult.reason;
+    if (eventsResult.status === 'rejected' && eventsResult.reason instanceof ApiError && eventsResult.reason.status === 401) throw eventsResult.reason;
+    const run = runResult.value;
     if (generation !== state.epoch || !state.run || !acceptsRunRevision(state.run, run)) return;
     state.run = run;
-    if ((events.at(-1)?.event_id ?? 0) >= (state.events.at(-1)?.event_id ?? 0)) state.events = events;
-    state.pollError = '';
+    const eventsError = eventsResult.status === 'rejected' ? eventsResult.reason : null;
+    if (eventsResult.status === 'fulfilled' && (eventsResult.value.at(-1)?.event_id ?? 0) >= (state.events.at(-1)?.event_id ?? 0)) state.events = eventsResult.value;
+    state.pollError = eventsError ? 'Execution status was updated, but the activity log could not be refreshed. Check status again after the service recovers.' : '';
     if (state.executionError?.runId === runId && outcomeConfirmed(run.status)) {
       if (state.error === state.executionError.message) state.error = '';
       state.executionError = null;
@@ -375,7 +381,11 @@ async function refresh(showErrors = true) {
       sessionStorage.removeItem(`ss-execution-uncertain:${runId}`); state.uncertain = false;
     }
     render();
-    if (run.status === 'running' || state.executing) { stopPolling(); pollTimer = window.setTimeout(() => { void refresh(false); }, 10000); }
+    if (run.status === 'running' || state.executing || eventsError) {
+      stopPolling();
+      const retryDelay = eventsError ? pollRetryDelay(eventsError instanceof ApiError ? eventsError.status : undefined) : 10000;
+      pollTimer = window.setTimeout(() => { void refresh(false); }, retryDelay);
+    }
   } catch (error) {
     if (generation !== state.epoch || !state.session || state.run?.run_id !== runId) return;
     if (showErrors || error instanceof ApiError && error.status === 401) state.error = describe(error);
