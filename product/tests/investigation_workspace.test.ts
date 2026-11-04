@@ -12,6 +12,7 @@ const initial = (): WorkspaceView => ({
 test('workspace with no run does not pretend construction, evaluation or stage completion', () => {
   const html = renderInvestigationWorkspace(initial());
   assert.match(html, /Not started/);
+  assert.doesNotMatch(html, /data-action="verification"/, 'verification must not be clickable before the evaluator returns a result');
   assert.match(html, /No execution events have been recorded/);
   assert.match(html, /No independent evaluation has been returned|An independent evaluation has not been returned/);
   assert.match(html, /Candidate lineage is not yet available/);
@@ -29,6 +30,7 @@ test('workspace shows only actual backend event progression and counts', () => {
   ];
   const html = renderInvestigationWorkspace(view);
   assert.match(html, /22<\/strong><span>Passed/);
+  assert.match(html, /data-action="verification"/, 'completed evaluated run exposes the real verification control');
   assert.match(html, /3<\/strong><span>Failed/);
   assert.match(html, /NON_AI fixture/);
   assert.ok(html.indexOf('#1') < html.indexOf('#3'));
@@ -48,6 +50,7 @@ test('workspace retains explicit reconciliation and escaped untrusted titles and
   assert.match(html, /&lt;img/);
   assert.match(html, /&lt;script&gt;/);
   assert.match(html, /requires operator reconciliation/);
+  assert.match(html, /class="artifact-tag">needs_reconciliation<\/span>/);
   assert.match(html, /NETWORK_UNCERTAIN/);
 });
 
