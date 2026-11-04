@@ -207,7 +207,10 @@ function render(next){
  nodes.innerHTML=m.nodes.map(function(n){const d=D[n[0]];return '<button class="node '+text(d[4])+'" type="button" data-id="'+text(n[0])+'" aria-current="false" style="left:'+n[1]+'px;top:'+n[2]+'px" aria-label="Inspect '+text(d[0])+'"><span class="glyph" aria-hidden="true">'+text(d[2])+'</span><span class="stage">'+text(d[3])+'</span><b>'+text(d[0])+'</b><small>'+text(d[1])+'</small><i class="port in" aria-hidden="true"></i><i class="port out" aria-hidden="true"></i></button>';}).join("");
  edges.innerHTML='<defs><marker id="core-arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0 0 L7 3 L0 6z" fill="#6b9f79"/></marker><marker id="future-arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0 0 L7 3 L0 6z" fill="#91a5b8"/></marker><marker id="ai-arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0 0 L7 3 L0 6z" fill="#be9441"/></marker></defs>';
  m.edges.forEach(function(e){wire(e[0],e[1],e[2]);});
- fit();inspect(m.initial);
+ // n8n-style default: readable nodes, not a tiny full-map thumbnail.
+ // The Fit control is available for a global overview.
+ scale=canvas.clientWidth<560?.75:.86;tx=18;ty=82;apply();
+ inspect(m.initial);
 }
 nodes.addEventListener("click",function(e){const node=e.target.closest(".node");if(node)inspect(node.dataset.id);});
 document.getElementById("arch-present").onclick=function(){render("current");};
