@@ -104,6 +104,11 @@ def public_probes():
               "current_password": ADMIN["password"]}
     st, out = call(REF, "POST", "/users", create, token=tok)
     rec("POST /users", "alice", create, st, out)
+    st, out = call(REF, "POST", "/users", create, token=tok)
+    rec("POST /users", "alice", create, st, out)
+    bst, btok = token_of(REF, {"username": "genbob", "password": "genpassword456"})
+    st, out = call(REF, "GET", "/users", token=btok)
+    rec("GET /users", "bob", None, st, out)
     st, out = call(REF, "GET", "/users", token=tok)
     rec("GET /users", "alice", None, st,
         [u.get("username") for u in out] if isinstance(out, list) else out)
@@ -116,7 +121,7 @@ def public_probes():
     return obs
 
 
-# Frozen cases: (id, kind, steps) — each step runs on both sides with
+# Frozen cases: (id, kind, steps) Ã¢â‚¬â€ each step runs on both sides with
 # side-local tokens; comparison is status + normalized body.
 def usernames(body):
     if isinstance(body, list):

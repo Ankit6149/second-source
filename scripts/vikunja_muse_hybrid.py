@@ -1,4 +1,4 @@
-"""Muse (REAL_MODEL) per-route hybrid for Vikunja — packet muse-hybrid-20261104.
+"""Muse (REAL_MODEL) per-route hybrid for Vikunja â€” packet muse-hybrid-20261104.
 
 Compiler (NON_AI) transcribes public observations; Muse edits one route
 per call (contract fields only, template restored verbatim); every edit is
@@ -36,6 +36,9 @@ def receipt_sink(kind, payload):
         fh.write(line + "\n"); fh.flush(); os.fsync(fh.fileno())
 
 
+_score_counter = [3600]
+
+
 def score_suite(spec, suite_name):
     """Evaluator-only: held-out modules imported here, never for prompts."""
     if suite_name == "frozen":
@@ -44,13 +47,19 @@ def score_suite(spec, suite_name):
         from vikunja_held_out_extended import EXTENDED_HELD_OUT as seqs
     spec_path = RUN / f"spec_score_{suite_name}.json"
     spec_path.write_text(json.dumps(spec, indent=1), encoding="utf-8")
-    proc, workdir, ref_base = mx.start_reference(3591)
+    _score_counter[0] += 10
+    ref_port, cand_port = _score_counter[0], _score_counter[0] + 1
+    proc, workdir, ref_base = mx.start_reference(ref_port)
     cand = subprocess.Popen([sys.executable, str(ROOT / "scripts" / "vikunja_candidate_server.py"),
-                             str(spec_path), str(3592)],
+                             str(spec_path), str(cand_port)],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         time.sleep(2)
-        cand_base = "http://127.0.0.1:3592/api/v1"
+        for _ in range(50):
+            try:
+                vb.call("GET", "/info", base=cand_base); break
+            except Exception: time.sleep(0.2)
+        cand_base = f"http://127.0.0.1:{cand_port}/api/v1"
         ref_api, cases = ref_base + "/api/v1", []
         for seq in seqs:
             ref = vb.canonical_sequence(vb.run_actions(seq, vb.fresh_tokens(ref_api), ref_api))

@@ -394,7 +394,7 @@
    "failure_class": "none",
    "evaluator_version": null,
    "provenance": "REAL_MODEL",
-   "reproducibility": "receipts in .runs/vikunja-model/muse_hybrid_20261104 (local, uncommitted); raw candidate 6/6 frozen + 0/6 extended, all edits rejected by public-conformance gate, gated candidate = compiler NON_AI",
+   "reproducibility": "receipts in .runs/vikunja-model/muse_hybrid_20261104 (local, uncommitted); raw candidate 6/6 frozen + 6/6 extended after scorer port/share fixes; all edits rejected by public-conformance gate, gated candidate = compiler NON_AI (also 6/6 + 6/6); no model improvement over compiler claimed",
    "source_refs": [
     ".runs/vikunja-model/muse_hybrid_20261104/result.json",
     ".runs/vikunja-model/muse_hybrid_20261104/raw_ungated_eval.json",

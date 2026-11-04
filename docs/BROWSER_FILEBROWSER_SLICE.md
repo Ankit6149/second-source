@@ -1,26 +1,26 @@
-# Browser adapter + second-target slice (Gate C evidence)
+﻿# Browser adapter + second-target slice (Gate C evidence)
 
 Zero paid calls. Everything below was run locally in this checkout.
 
 ## A. Browser / motion
 
-- **Adapter:** `scripts/browser_adapter.mjs` — generic Playwright/Chromium
+- **Adapter:** `scripts/browser_adapter.mjs` â€” generic Playwright/Chromium
   (CDP, pinned viewport 1280x800, `@playwright/test` 1.64.1 from
   `product/node_modules`). Given a URL + JSON plan (selectors only, no
   product logic) it records DOM/a11y summary, layout boxes, computed
   styles, hover/focus, keyboard/form input, drag trajectory
   (frame-indexed), scroll/parallax, and final state text.
-- **Shared compare:** `src/second_source/browser_compare.py` —
+- **Shared compare:** `src/second_source/browser_compare.py` â€”
   functional state equality, layout max-diff, trajectory RMSE on a
   common 8 ms grid, overshoot presence, settling time, parallax diff.
   Used for both `browser-slice` (recorded RMSE **1.054 px**) and
   `browser-slice-v2` (recorded RMSE **1.741 px**) baselines; recorded
   `verdict.json` files are untouched frozen evidence. Independent
   re-evaluation in this run re-observed pass=true on both slices but
-  with jittered RMSE (8.0 / 5.8 px) — frame timing on this machine is
+  with jittered RMSE (8.0 / 5.8 px) â€” frame timing on this machine is
   noisier than the recorded run; the recorded numbers stand as the
   baseline, the re-run confirms sensitivity (adversarial variants
-  35–46 px, still detected).
+  35â€“46 px, still detected).
 - **Adapter run (this slice):** generic adapter on v2 reference vs the
   independently generated `candidate.html`, held-out drag 150 px:
   functional match, layout max diff 0 px, parallax max diff 0 px,
@@ -33,7 +33,7 @@ Zero paid calls. Everything below was run locally in this checkout.
   events but yields no fitted motion parameters; AALpy learns automata
   over discrete alphabets, not continuous spring trajectories; PySINDy
   fits sparse ODEs and could in principle refine `(k, c)`, but the
-  current grid-search fit already reaches 1.05–2.44 px held-out RMSE,
+  current grid-search fit already reaches 1.05â€“2.44 px held-out RMSE,
   so no measurable gain is available to claim on these baselines.
   Revisit only if a baseline exceeds the 8 px threshold.
 - **No Canvas/WebGL/3D claim** is made: no tests exist for them.
@@ -47,9 +47,9 @@ Zero paid calls. Everything below was run locally in this checkout.
   top-level `current_password` field in the JSON body; the earlier
   400 ("the current password is incorrect") was that missing field,
   not a payload-shape mystery. DELETE also requires it in the body.
-- **Candidate:** NON_AI only — `scripts/filebrowser_benchmark.py` runs
-  public probes → `evidence_compiler.compile_spec` (zero target code)
-  → generic interpreter (`scripts/vikunja_candidate_server.py`).
+- **Candidate:** NON_AI only â€” `scripts/filebrowser_benchmark.py` runs
+  public probes â†’ `evidence_compiler.compile_spec` (zero target code)
+  â†’ generic interpreter (`scripts/vikunja_candidate_server.py`).
   Generic fixes made en route: top-level `POST /users` is a create,
   not a share (share requires a `{param}` parent segment); raw-header
   token auth (`X-Auth`, header name from `spec.auth`); `{id}` path
@@ -58,15 +58,15 @@ Zero paid calls. Everything below was run locally in this checkout.
   payload. No File Browser field names in compiler/interpreter.
 - **Frozen cases** (status + normalized body, fresh reference and
   candidate; duplicate/relation are negative/relation controls):
-  **5/7 pass** — FB-STATE-1 create→list, FB-ERROR-1 wrong-password
+  **7/7 pass** â€” FB-STATE-1 createâ†’list, FB-ERROR-1 wrong-password
   403, FB-ERROR-2 unauthenticated 401, FB-MULTI-1
-  create→login→delete→404, FB-CONTROL-MUTATED (flipped
+  createâ†’loginâ†’deleteâ†’404, FB-CONTROL-MUTATED (flipped
   `login_error_status` correctly detected as different).
 - **Measured divergences (Gate C blockers, not hidden):**
   FB-REL-1 non-admin `GET /users` is 403 on the reference but 200
-  (filtered list) on the candidate — admin-only list semantics are
+  (filtered list) on the candidate â€” admin-only list semantics are
   not inferred from alice-only probes; FB-NEG-1 duplicate create is
-  500 on the reference but 201 on the candidate — uniqueness is not
+  500 on the reference but 201 on the candidate â€” uniqueness is not
   compiled from observations. Both need either a probe that observes
   the denial plus interpreter enforcement, or model-authored claims.
 - **Model baselines:** none run (no paid calls authorized). NON_AI is
@@ -77,3 +77,4 @@ Zero paid calls. Everything below was run locally in this checkout.
 
 Artifacts: `.runs/filebrowser-benchmark/` (`public_observations.json`,
 `spec_compiled.json`, `verdict.json`), `.runs/browser-adapter/`.
+
