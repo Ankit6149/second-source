@@ -49,6 +49,8 @@ class PreviewHandler(SimpleHTTPRequestHandler):
             self.public_file = ROOT / "reports" / "index.html"
         elif path in {"/experiments", "/experiments/", "/experiments/index.html"}:
             self.public_file = ROOT / "experiments" / "index.html"
+        elif path in {"/architecture", "/architecture/", "/architecture/index.html"}:
+            self.public_file = ROOT / "architecture" / "index.html"
         elif path in {"/app", "/app/"} or app_asset(path.lstrip("/")):
             name = "app/index.html" if path in {"/app", "/app/"} else path.lstrip("/")
             candidate = (ROOT / "dist" / name).resolve()
