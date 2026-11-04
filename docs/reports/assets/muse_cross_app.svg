@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="330" viewBox="0 0 760 330" font-family="system-ui,sans-serif">
+  <rect width="760" height="330" fill="#ffffff"/>
+  <text x="24" y="30" font-size="17" font-weight="700" fill="#17251b">Muse alone vs Second Source compiler, per application</text>
+  <text x="24" y="50" font-size="11.5" fill="#5a6b5e">Genuine scored runs only. Suites differ per app — bars are within-app comparisons, never averaged.</text>
+  <!-- axes -->
+  <line x1="24" y1="280" x2="736" y2="280" stroke="#d8e2d9"/>
+  <!-- groups: 4 apps, two bars each (Muse #3b5bdb, compiler #328052), scale: 100% = 300px width max 620 -->
+  <!-- Owned ledger /25: Muse 14/25=56% (347px), compiler 22/25=88% (546px) -->
+  <text x="24" y="86" font-size="12.5" font-weight="600" fill="#17251b">Owned ledger (25)</text>
+  <rect x="24" y="92" width="347" height="16" fill="#3b5bdb"/><text x="379" y="105" font-size="11.5" fill="#17251b">Muse 14/25</text>
+  <rect x="24" y="112" width="546" height="16" fill="#328052"/><text x="578" y="125" font-size="11.5" fill="#17251b">compiler 22/25</text>
+  <!-- Vikunja /6: Muse 2/6=33% (205), compiler 6/6=100% (620) -->
+  <text x="24" y="152" font-size="12.5" font-weight="600" fill="#17251b">Vikunja (6)</text>
+  <rect x="24" y="158" width="205" height="16" fill="#3b5bdb"/><text x="237" y="171" font-size="11.5" fill="#17251b">Muse 2/6</text>
+  <rect x="24" y="178" width="620" height="16" fill="#328052"/><text x="652" y="191" font-size="11.5" fill="#17251b">6/6</text>
+  <!-- File Browser /7: Muse 3/7=43% (266), compiler 7/7 (620) -->
+  <text x="24" y="218" font-size="12.5" font-weight="600" fill="#17251b">File Browser (7)</text>
+  <rect x="24" y="224" width="266" height="16" fill="#3b5bdb"/><text x="298" y="237" font-size="11.5" fill="#17251b">Muse 3/7</text>
+  <rect x="24" y="244" width="620" height="16" fill="#328052"/><text x="652" y="257" font-size="11.5" fill="#17251b">7/7</text>
+  <!-- Gitea /6: Muse repair unscored (provider failure) -->
+  <text x="24" y="284" font-size="12.5" font-weight="600" fill="#17251b">Gitea (6)</text>
+  <rect x="24" y="290" width="620" height="16" fill="#328052"/><text x="24" y="303" font-size="11.5" fill="#ffffff"></text>
+  <text x="24" y="303" font-size="11.5" fill="#17251b"></text>
+  <rect x="24" y="290" width="207" height="16" fill="#328052"/><text x="239" y="303" font-size="11.5" fill="#17251b">compiler 2/6 · Muse repair: provider failure, unscored</text>
+</svg>
