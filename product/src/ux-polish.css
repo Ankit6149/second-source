@@ -9,7 +9,7 @@ button,a,summary{touch-action:manipulation}
 .nav-item{position:relative}
 .top-back{margin-right:2px}
 .top-back[hidden]{display:none!important}
-#content>.empty-home,#content>.single-page,#content>.conversation,#content>.investigation-workspace{animation:ux-page-in var(--ux-normal) var(--ux-ease) both}
+#content[data-route-change="true"]>.empty-home,#content[data-route-change="true"]>.single-page,#content[data-route-change="true"]>.conversation,#content[data-route-change="true"]>.investigation-workspace{animation:ux-page-in var(--ux-normal) var(--ux-ease) both}
 @keyframes ux-page-in{from{opacity:.75;transform:translateY(6px)}to{opacity:1;transform:none}}
 dialog[open]{animation:ux-dialog-in 200ms var(--ux-ease) both}
 dialog[open]::backdrop{animation:ux-backdrop-in 200ms ease both}
