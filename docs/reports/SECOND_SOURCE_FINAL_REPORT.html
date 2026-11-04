@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Second Source — Final Technical Report</title>
+<style>
+  :root { --ink:#17251b; --muted:#5a6b5e; --line:#d8e2d9; --accent:#256b3a; --bg:#f6f8f5; --card:#ffffff; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:16px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif; color:var(--ink); background:var(--bg); }
+  main { max-width:880px; margin:0 auto; padding:48px 24px 80px; }
+  h1 { font-size:34px; line-height:1.2; margin:0 0 6px; }
+  h2 { font-size:21px; margin:38px 0 10px; padding-bottom:6px; border-bottom:2px solid var(--line); }
+  h3 { font-size:16px; margin:22px 0 6px; }
+  p, li { color:#2c3a30; }
+  .sub { color:var(--muted); margin:0 0 4px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px 20px; margin:16px 0; }
+  table { width:100%; border-collapse:collapse; margin:12px 0; background:var(--card); }
+  th, td { text-align:left; padding:8px 10px; border:1px solid var(--line); vertical-align:top; }
+  th { background:#eef4ee; font-size:13px; text-transform:uppercase; letter-spacing:.04em; }
+  .pill { display:inline-block; padding:1px 8px; border-radius:999px; font-size:12px; font-weight:600; }
+  .real { background:#e3ecff; color:#1d3fae; } .nonai { background:#e4f2e6; color:var(--accent); }
+  code { background:#eef2ee; padding:1px 5px; border-radius:5px; font-size:13px; }
+  .flow { font-family:ui-monospace,Consolas,monospace; font-size:13px; background:#10231a; color:#cfe8d4; padding:16px; border-radius:10px; overflow-x:auto; white-space:pre; }
+  footer { margin-top:48px; color:var(--muted); font-size:13px; }
+  @media print { body { background:#fff; } main { max-width:none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Second Source — Final Technical Report</h1>
+  <p class="sub">Meta Global AI Developer Hackathon · Indie track · 4 November 2026</p>
+  <p class="sub">Codebase <code>7daf368</code> · Production: second-source-alpha.vercel.app</p>
+
+  <div class="card">
+    <strong>What it is.</strong> Second Source investigates authorized software, records what it
+    actually does, compiles that evidence into an independent candidate, scores the candidate
+    against the reference, and shows the code, the differences, and the proof. Every result is
+    labeled <span class="pill real">REAL_MODEL</span> (genuine Muse, recorded) or
+    <span class="pill nonai">NON_AI</span> (deterministic compiler) — never merged, never relabeled.
+  </div>
+
+  <h2>How it works</h2>
+  <div class="flow">Instruction + authorized target
+  → scope approval (digest-pinned) → observe (public probes)
+  → compile evidence → candidate spec → verify (independent evaluator)
+  → compare side-by-side → download code + report + proof bundle</div>
+  <p>Observed facts are protected: models must justify overriding evidence. Held-out cases are
+  never in prompts. Provider failures are unscored, never shown as 0.</p>
+
+  <h2>AI alone vs AI + Second Source vs Second Source alone</h2>
+  <table>
+    <tr><th>Method</th><th>Target / suite</th><th>Result</th><th>Provenance</th></tr>
+    <tr><td>Muse coverage-grounded, alone</td><td>Vikunja frozen</td><td>2/6</td><td><span class="pill real">REAL_MODEL</span></td></tr>
+    <tr><td>Muse active probing, alone</td><td>Vikunja frozen</td><td>1/6</td><td><span class="pill real">REAL_MODEL</span></td></tr>
+    <tr><td>Muse hybrid + compiler (raw, single post-gate evaluation)</td><td>Vikunja frozen + extended</td><td>6/6 + 6/6</td><td><span class="pill real">REAL_MODEL</span></td></tr>
+    <tr><td>Muse hybrid (deployable, after gate)</td><td>Vikunja</td><td>compiler retained — no improvement claimed</td><td><span class="pill nonai">NON_AI</span></td></tr>
+    <tr><td>Muse genuine candidate</td><td>Owned ledger, sealed 25-case</td><td>14/25</td><td><span class="pill real">REAL_MODEL</span></td></tr>
+    <tr><td>Evidence compiler alone</td><td>Vikunja frozen / extended</td><td>6/6 · 6/6</td><td><span class="pill nonai">NON_AI</span></td></tr>
+    <tr><td>Evidence compiler alone</td><td>File Browser differential + control</td><td>7/7</td><td><span class="pill nonai">NON_AI</span></td></tr>
+    <tr><td>Deterministic baseline</td><td>Owned ledger 25-case</td><td>22/25</td><td><span class="pill nonai">NON_AI</span></td></tr>
+  </table>
+
+  <h2>Per-software results</h2>
+  <table>
+    <tr><th>Software</th><th>Test</th><th>Result</th><th>Recording</th></tr>
+    <tr><td>Owned HTTP task-workflow</td><td>Full UI job, independent verification</td><td><strong>30/30</strong></td><td>demos/software-tests/http/http.webm</td></tr>
+    <tr><td>Owned ledger (CLI)</td><td>Full UI job</td><td><strong>22/25</strong></td><td>demos/software-tests/ledger/ledger.webm</td></tr>
+    <tr><td>Vikunja v2.4.0</td><td>Frozen + extended suites; live public ladder</td><td><strong>6/6 · 6/6 · 11/19</strong></td><td>demos/software-tests/vikunja/vikunja.webm</td></tr>
+    <tr><td>File Browser v2.63.23</td><td>Differential + mutated control</td><td><strong>7/7</strong></td><td>demos/software-tests/filebrowser/filebrowser.webm</td></tr>
+    <tr><td>Browser / motion (Flowboard)</td><td>Held-out drag/scroll</td><td><strong>PASS</strong> — RMSE 2.505px (≤8), layout 0px</td><td>demos/software-tests/motion/motion.webm</td></tr>
+    <tr><td>Gitea 1.22.6 (first-ever test)</td><td>Probe → compile → 6 differential cases</td><td><strong>2/6</strong> — divergences documented</td><td>pending production session</td></tr>
+  </table>
+
+  <h2>Failure analysis worth showing</h2>
+  <p><strong>Gitea 2/6:</strong> repo reads and issue operations fail on the candidate because
+  compiled route templates keep the probed repo name literal instead of generalizing the segment;
+  the auth boundary differs (404 vs 401) because error-only routes are not compiled. Both fixes
+  are identified and measurable against this baseline.</p>
+  <p><strong>Vikunja public ladder 11/19:</strong> divergences concentrate in read-after-share
+  routes. The frozen and extended suites remain 6/6; the ladder is the stricter public check.</p>
+  <p><strong>Why the hybrid claims a tie:</strong> every Muse edit was rejected by the
+  public-conformance gate (singles 1–2/19 vs compiler 11/19). The raw merged candidate scored
+  6/6 + 6/6 once, after gating. The deployable candidate is the compiler — reported as such.</p>
+
+  <h2>Limitations</h2>
+  <ul>
+    <li>Hosted investigations backend (Render blueprint) not yet activated; sign-in works on
+    production, saved investigations need that deployment. The full flow runs locally today.</li>
+    <li>Model evidence is recorded and packet-authorized; no live unattributed model calls.</li>
+    <li>Gitea is a first-contact probe (2/6), not a completed benchmark.</li>
+    <li>Motion is a bounded spring/layout slice; no Canvas/WebGL/3D claim.</li>
+  </ul>
+
+  <h2>Artifacts</h2>
+  <p>Per investigation: candidate specification (JSON), report.md / report.json, manifest.json
+  with file SHA-256 digests, deterministic proof-bundle ZIP. In this repo:
+  <code>docs/reports/</code> (this report, per-software detail, results.json) and
+  <code>demos/software-tests/</code> (raw per-software videos and screenshots).</p>
+
+  <footer>Submission status: production live; portal submission and public video upload are
+  owner actions — no receipt exists yet, and none is claimed.</footer>
+</main>
+</body>
+</html>
