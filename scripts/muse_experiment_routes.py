@@ -32,10 +32,10 @@ from second_source.model_gateway import MetaProvider, ModelGateway, ModelRequest
 from second_source.orchestration.guard import SpendingGuard, SpendPacketV1  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
-RUN = ROOT / ".runs" / "muse-exp-routes-20261104"
+RUN = ROOT / ".runs" / os.environ.get("MUSE_RUN_DIR", "muse-exp-routes-20261104")
 OBS_PATH = ROOT / ".runs" / "vikunja-benchmark" / "public_observations.json"
 PACKET = SpendPacketV1(
-    packet_id="muse-exp-routes-20261104",
+    packet_id=os.environ.get("MUSE_PACKET_ID", "muse-exp-routes-20261104"),
     owner_id="owner",
     investigation_id="vikunja-muse-experiment-routes",
     max_spend_usd=0.75,

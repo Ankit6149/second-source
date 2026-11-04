@@ -168,6 +168,15 @@ def compile_spec(observations, source_hash=""):
             continue
         first = successes[0]
         segs = _segments(path)
+        for (m2, p2), ol2 in routes_obs.items():
+            if m2 != method:
+                continue
+            segs2 = _segments(p2)
+            if len(segs2) == len(segs) and all(
+                    a == b or b.startswith("{") for a, b in zip(segs2, segs)):
+                errors = errors + [o for o in ol2
+                                   if isinstance(o.get("status"), int)
+                                   and o["status"] >= 400]
         is_item = bool(segs and segs[-1].startswith("{"))
         collection = segs[-2] if is_item else (segs[-1] if segs else "")
         if is_item and collection.startswith("{"):
@@ -177,10 +186,18 @@ def compile_spec(observations, source_hash=""):
                                if not s.startswith("{")), collection)
         if segs and segs[-1] == "users" and len(segs) >= 3 and segs[-2].startswith("{"):
             collection = segs[-3]  # share route acts on the parent entity
-        root_id = first["body"].get("id") if isinstance(first.get("body"), dict) else None
-        tokenizer = _Tokenizer(first.get("request"), {"pid": pid, "tid": tid},
+        # Shape exemplar: prefer the most complete successful response
+        # (fewest null fields); later observations often populate fields
+        # that are null in the first response (e.g. created_by).
+        def _richness(body):
+            items = body if isinstance(body, list) else [body]
+            return sum(1 for it in items if isinstance(it, dict)
+                       for v in it.values() if v is not None)
+        best = max(successes, key=lambda o: _richness(o.get("body")))
+        root_id = best["body"].get("id") if isinstance(best.get("body"), dict) else None
+        tokenizer = _Tokenizer(best.get("request"), {"pid": pid, "tid": tid},
                                root_id=root_id)
-        template = tokenizer.walk(first.get("body"))
+        template = tokenizer.walk(best.get("body"))
         kind = ("compiled_list" if method == "GET" and not is_item
                 and isinstance(first.get("body"), list) else
                 "compiled_single" if method == "GET" and not is_item else
@@ -189,9 +206,17 @@ def compile_spec(observations, source_hash=""):
                 and len(segs) >= 3 and segs[-2].startswith("{") else
                 "compiled_create" if not is_item else "compiled_update")
         route = {"method": method, "path": path, "kind": kind,
+
                  "collection": collection, "auth": True,
                  "status": first["status"], "template": template,
                  "source": "observed"}
+
+        # Missing-resource contract: an observed 404 on this route is
+        # the reference's answer for unknown ids on it.
+        for err in errors:
+            if err.get("status") == 404 and isinstance(err.get("body"), dict):
+                route["not_found_body"] = err["body"]
+                break
 
         # Validation contracts: an error whose request emptied a field.
         validate = []

@@ -136,3 +136,26 @@ denominator and difficulty; rows are never averaged.
   primarily candidate-interpreter/state semantics that the permitted
   route-contract fields cannot express; this is now the precise blocker,
   rather than a claim that Muse was not used.
+
+### 9. Blocker fix + full re-run (4 Nov 2026)
+The route-contract blocker was fixed in the candidate interpreter and
+compiler (generic semantics, no per-target branches): full-replace
+update semantics with identity/date preservation, boolean query
+filters, missing-parent 404 contracts from concrete error observations,
+403 when a list is fully access-filtered, richest observed shape as
+template exemplar, entity-bound shape-token filling, and an
+`<entity:id>` fallback. Seeding reference-default entities was tried
+and reverted (over-seeded 5 vs 3).
+
+Re-run through the engine after the fix:
+- Vikunja public ladder: **11/19 -> 18/19** (inv-0437fc3c4745). Sole
+  remaining divergence: `GET /projects` - the reference lists
+  per-user default projects (Inbox etc.) the candidate does not seed.
+- File Browser: **7/7** (no regression). Gitea: **6/6** (no regression).
+- Muse experiments re-run: File Browser route review 7/7 preserved
+  (2 calls, no changes), Gitea route review 6/6 preserved (6 calls,
+  no changes), Vikunja route experiment on the fixed baseline 18/19
+  (1 call, no contract change - correctly, since the last gap is not
+  a route contract). All REAL_MODEL, receipts under `.runs/muse-exp-*`.
+- Regression suites: 28 passed (engine, orchestration Gate A,
+  candidate share-read).

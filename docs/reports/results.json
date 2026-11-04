@@ -125,6 +125,38 @@
       "total": 19,
       "provenance": "REAL_MODEL",
       "note": "5 Muse calls, $0.031 recorded; compiler baseline 11/19. Four routes produced no contract change; one empty-validation edit was neutral (11/19) on isolated recheck after fixing a candidate port-reuse measurement race. No deployable improvement. Public ladder only; held-out never in prompts. Receipts: .runs/muse-exp-routes-20261104/"
+    },
+    {
+      "software": "Vikunja v2.4.0",
+      "test": "live engine rebuild after interpreter blocker fixes (inv-0437fc3c4745)",
+      "passed": 18,
+      "total": 19,
+      "provenance": "NON_AI",
+      "note": "was 11/19; fixes: full-replace update semantics, boolean query filters, missing-parent 404 contracts, fully-filtered-list 403, richest shape exemplar, entity-bound shape tokens, <entity:id> fallback. Remaining divergence: GET /projects reference-default entities (Inbox etc.)"
+    },
+    {
+      "software": "File Browser v2.63.23",
+      "test": "Muse route-review experiment (packet muse-exp-fb-20261104)",
+      "passed": 7,
+      "total": 7,
+      "provenance": "REAL_MODEL",
+      "note": "2 Muse route-review calls; no contract changes proposed; compiler candidate preserved 7/7 under non-regression gate"
+    },
+    {
+      "software": "Gitea 1.22.6",
+      "test": "Muse route-review experiment (packet muse-exp-gitea-20261104)",
+      "passed": 6,
+      "total": 6,
+      "provenance": "REAL_MODEL",
+      "note": "6 Muse route-review calls; no contract changes proposed; compiler candidate preserved 6/6 under non-regression gate"
+    },
+    {
+      "software": "Vikunja v2.4.0",
+      "test": "Muse route experiment after blocker fixes (packet muse-exp-routes-20261104b)",
+      "passed": 18,
+      "total": 19,
+      "provenance": "REAL_MODEL",
+      "note": "1 Muse call on the sole remaining divergent route (GET /projects); no contract change proposed - remaining gap is reference-default entity seeding, not a route contract"
     }
   ],
   "submission": {
