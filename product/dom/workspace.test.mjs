@@ -116,6 +116,20 @@ test('navigation is slim and the retired showroom route lands home', () => {
   } finally { window.happyDOM.abort(); }
 });
 
+test('compare shows the second software rebuild panel honestly', () => {
+  const window = workspace();
+  try {
+    const doc = window.document;
+    doc.querySelector('[data-action="reports"]').click();
+    doc.querySelector('[data-action="compare"]').click();
+    const text = doc.querySelector('#content').textContent;
+    assert.match(text, /Software 1/);
+    assert.match(text, /Software 2 \u00b7 Vikunja v2\.4\.0 rebuild/);
+    assert.match(text, /nothing is simulated/i);
+    assert.equal(doc.querySelector('[data-action="engine-run"]'), null);
+  } finally { window.happyDOM.abort(); }
+});
+
 test('historical research is explicitly separated from live and NON_AI results', () => {
   const window = workspace();
   try {

@@ -408,9 +408,27 @@ function outcomeBanner() {
 }
 function compareView() {
   const v = state.verification; const rec = engineState.record;
-  const left = v?.evaluation ? `<div class="scoreline"><strong>${v.evaluation.passed} passed</strong><span>${v.evaluation.failed} failed</span><span>${v.evaluation.indeterminate} indeterminate</span><span>${v.evaluation.total} total</span></div>` : '<p>No verification for the selected run yet. Complete a run, then return here.</p>';
-  const right = rec?.public_conformance ? `<p>Local engine public ladder: <strong>${rec.public_conformance.passed}/${rec.public_conformance.total}</strong></p>${rec.public_conformance.divergences.length ? `<ul class="scope-list">${rec.public_conformance.divergences.map(d => `<li>${esc(d)}</li>`).join('')}</ul>` : '<p>No divergences on the public ladder.</p>'}` : '<p>No local-engine run in this tab. Start one from Home (NON_AI) to compare its public-ladder result here.</p>';
-  return `<section class="single-page"><h1>Compare</h1><p>Side-by-side from genuine backend data only. Held-out and sealed cases are never shown.</p>${outcomeBanner()}<div class="compare-grid"><section><h2>Reference vs candidate (fixture verification)</h2>${left}${v?.repair ? `<p>Selected candidate: ${esc(v.repair.selected_version)} · ${esc(v.repair.verdict.replaceAll('_', ' '))}</p>` : ''}</section><section><h2>Candidate (local engine)</h2>${right}</section></div><div class="response-actions"><button class="pill-btn" data-action="candidate">${icon('search')} Candidate preview</button><button class="pill-btn" data-action="verification">${icon('list-checks')} Verification</button></div></section>`;
+  const orchCandidate = state.orch?.workspace?.candidate;
+  const left = v?.evaluation
+    ? `<div class="scoreline"><strong>${v.evaluation.passed} passed</strong><span>${v.evaluation.failed} failed</span><span>${v.evaluation.indeterminate} indeterminate</span><span>${v.evaluation.total} total</span></div>${orchCandidate ? `<p>Candidate <code>${esc(orchCandidate.candidate_id)}</code> \u00b7 ${orchCandidate.routes.length} generated routes. Open Candidate preview for the exact JSON the engine built.</p>` : ''}${v?.repair ? `<p>Selected candidate: ${esc(v.repair.selected_version)} \u00b7 ${esc(v.repair.verdict.replaceAll('_', ' '))}</p>` : ''}`
+    : `<p>No completed investigation is selected yet.</p><p>Run one real job from the workspace first: choose a supported target, confirm its scope, start the run, then return here.</p><button class="pill-btn primary" type="button" data-action="library">${icon('folder-open')} Open Your work</button>`;
+  let right: string;
+  if (rec?.status === 'completed' && rec.public_conformance) {
+    right = `<p>Vikunja rebuild finished. Public-ladder conformance: <strong>${rec.public_conformance.passed}/${rec.public_conformance.total}</strong></p>${rec.public_conformance.divergences.length ? `<p>Divergences:</p><ul class="scope-list">${rec.public_conformance.divergences.map(d => `<li>${esc(d)}</li>`).join('')}</ul>` : '<p>No divergences on the public ladder.</p>'}<p>Compiled routes: ${rec.compiled ? rec.compiled.routes.map(esc).join(' \u00b7 ') : '-'}</p><div class="response-actions"><a class="pill-btn" href="${engineCandidateUrl(rec.id)}" download>${icon('download')} Download candidate spec</a><button class="pill-btn" type="button" data-action="engine-run">${icon('play')} Run again</button></div>`;
+  } else if (rec?.status === 'running') {
+    right = `<p>Rebuilding Vikunja now \u00b7 stage: <strong>${esc(rec.stage)}</strong>. This panel updates itself.</p>`;
+  } else if (rec?.status === 'failed') {
+    right = `<p>That rebuild failed: ${esc(rec.error || 'unknown error')}</p><button class="pill-btn primary" type="button" data-action="engine-run">${icon('play')} Run again</button>`;
+  } else if (engineState.status === 'hosted') {
+    right = `<p>On this hosted page the rebuild engine runs on your own machine, so no run can start here and nothing is simulated.</p><p>Open this app locally with <code>python scripts/investigation_engine.py</code> running, then this button rebuilds Vikunja for real: probe \u2192 compile \u2192 public conformance.</p>`;
+  } else if (engineState.status === 'unavailable') {
+    right = `<p>The local rebuild engine is not running yet.</p><p>Start <code>python scripts/investigation_engine.py</code>, then check again.</p><button class="pill-btn" type="button" data-action="engine-check">${icon('refresh-cw')} Check again</button>`;
+  } else if (engineState.status === 'unknown') {
+    right = `<p>Checking for the local rebuild engine\u2026</p><button class="pill-btn" type="button" data-action="engine-check">${icon('refresh-cw')} Check again</button>`;
+  } else {
+    right = `<p>Rebuild Vikunja v2.4.0 from behavior: probe a fresh reference, compile the evidence, then score the candidate on the public ladder. No model is called (NON_AI).</p><button class="pill-btn primary" type="button" data-action="engine-run">${icon('play')} Run Vikunja rebuild</button>`;
+  }
+  return `<section class="single-page"><h1>Compare</h1><p>Two real rebuilds, side by side. Held-out and sealed cases are never shown.</p>${outcomeBanner()}<div class="compare-grid"><section><h2>Software 1 \u00b7 selected investigation</h2>${left}</section><section><h2>Software 2 \u00b7 Vikunja v2.4.0 rebuild</h2>${right}</section></div><div class="response-actions"><button class="pill-btn" data-action="candidate">${icon('search')} Candidate preview</button><button class="pill-btn" data-action="verification">${icon('list-checks')} Verification</button></div></section>`;
 }
 
 function scoreboardHtml() {
