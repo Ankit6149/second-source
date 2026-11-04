@@ -1,17 +1,17 @@
-# Muse hybrid packet — Vikunja frozen + extended (PREPARED, NOT EXECUTED)
+# Muse hybrid packet â€” Vikunja frozen + extended (PREPARED, NOT EXECUTED)
 
-Status: **PREPARED ONLY. Do not execute without a fresh owner packet.**
+Status: **EXECUTED 2026-11-04 under packet muse-hybrid-20261104 (cap $2.00, max 10 calls). Result: 8 per-route Muse calls, durable receipts; public-conformance gate rejected every edit (gated candidate = compiler NON_AI 6/6 frozen / 0/6 extended); raw Muse candidate evaluated once: 6/6 frozen / 0/6 extended. No improvement over the compiler claimed. Records: `.runs/vikunja-model/muse_hybrid_20261104/result.json` + `raw_ungated_eval.json` (local, uncommitted).**
 No model call has been made under this packet. No score is claimed.
-Prepared by Agent H (independent QA) as a Gate A–F follow-up.
+Prepared by Agent H (independent QA) as a Gate Aâ€“F follow-up.
 
 ## Goal
 
 One Muse (REAL_MODEL) hybrid arm, decomposed per route, targeting
-**≥5/6 on the frozen Vikunja suite AND ≥5/6 on the new frozen extended
+**â‰¥5/6 on the frozen Vikunja suite AND â‰¥5/6 on the new frozen extended
 suite**. Compiler (NON_AI) 6/6 remains a control, never relabeled as a
 model result. Anything below 5/6 on either suite is reported as-is.
 
-## Frozen material (freeze before any prompt use — done)
+## Frozen material (freeze before any prompt use â€” done)
 
 | Suite | File | SHA-256 |
 |---|---|---|
@@ -27,28 +27,28 @@ invalidates comparisons. Prompts are built ONLY from
 
 ## Ordered execution (only after owner authorization)
 
-- **S0 — Compiler baseline first ($0, NON_AI).** Compile from public
+- **S0 â€” Compiler baseline first ($0, NON_AI).** Compile from public
   observations (`evidence_compiler.compile_spec`), serve via the generic
   interpreter, and score the compiler candidate differentially on BOTH
   suites with fresh reference + fresh candidate instances (evaluator-only
   runner importing `vikunja_benchmark` canonicalization; frozen files
   unedited). Record both baselines. *Not yet run in this preparation:
-  no Vikunja reference server/binary is present in this checkout — S0
+  no Vikunja reference server/binary is present in this checkout â€” S0
   is a hard precondition, not an optional step.*
-- **S1 — Freeze + provenance split.** Freeze template/method/path
+- **S1 â€” Freeze + provenance split.** Freeze template/method/path
   (`COMPILED_FROZEN_FIELDS`); model may decide only
-  `REPAIR_EDITABLE_FIELDS` (≤8 edits). Templates are non-emittable.
-- **S2 — Per-route subtasks.** One route per Muse call via
+  `REPAIR_EDITABLE_FIELDS` (â‰¤8 edits). Templates are non-emittable.
+- **S2 â€” Per-route subtasks.** One route per Muse call via
   `ModelGateway`/`MetaProvider` (never bare HTTP), each with light public
   observations + field inventory for that route only. Monolithic
   single-call spec authoring is prohibited (measured 2/6 cap).
-- **S3 — Public-conformance gate per edit.** Before/after diff on the
+- **S3 â€” Public-conformance gate per edit.** Before/after diff on the
   PUBLIC ladder only; any edit increasing divergences is rejected.
-- **S4 — Bounded repair.** ≤8 edits, ≤1 repair call, same gate.
-- **S5 — Single final evaluation.** Each suite evaluated ONCE, fresh
+- **S4 â€” Bounded repair.** â‰¤8 edits, â‰¤1 repair call, same gate.
+- **S5 â€” Single final evaluation.** Each suite evaluated ONCE, fresh
   instances, evaluator-only. No iterative tuning against either suite.
 
-## Receipt durability (at call completion — mandatory)
+## Receipt durability (at call completion â€” mandatory)
 
 Before dispatch: journal `{seq, call_id, stage, model, prompt_version,
 reservation}`. Immediately on completion (success OR failure, before
@@ -59,7 +59,7 @@ outside the run directory as witness. A crash loses at most the
 in-flight call, booked uncertain. (Fixes the lost Meta receipts defect;
 reuses `ModelGateway` reserve/commit + `DiscoveryJournal` machinery.)
 
-## Owner fields — must be filled before execution
+## Owner fields â€” must be filled before execution
 
 - `packet_id`: ______________________
 - `max_spend_usd` (hard cap): ______________________

@@ -1,8 +1,8 @@
-﻿# Submission draft â€” Meta Global AI Developer Hackathon (Indie)
+# Submission draft â€” Meta Global AI Developer Hackathon (Indie)
 
 **Status: DRAFT for owner review. Not submitted. No portal receipt exists.**
 Deadline: **Nov 4, 9:00 PM ET** â€” https://cerebralvalley.ai/e/meta-ai-developer-hackathon/hackathon/submit
-Final `main` SHA: `1e09d15` (`main` at `1e09d15`).
+Final `main` SHA: enter the live `main` HEAD at submit time (post-PR#48: `f559140` or later).
 Production: https://second-source-alpha.vercel.app/ â€” routes `/`, `/evidence/`, `/console/`, `/app/`, `/lab/` verified signed-out with 0 console errors.
 
 ## Final measured scorecard (change only with a receipt)
@@ -18,6 +18,7 @@ Production: https://second-source-alpha.vercel.app/ â€” routes `/`, `/evide
 | Oracle control (Vikunja) | NON_AI / runtime-supplied | 6/6 | Hand-written oracle via generic interpreter. Never a model result. |
 | Historical ledger | REAL_MODEL / model-authored | 14/25 | Muse Spark 1.3, frozen 25-case suite. Not comparable to Vikunja. |
 | Meta Vikunja C_grounded | REAL_MODEL / model-authored | 2/6 | EXECUTED: 3 calls total for packet, digests matched, cases 1, 3. Record `.runs/vikunja-model/meta_arms_result.json`. Receipts lost to a driver crash; spend reservation-capped at $0.50. |
+| Muse hybrid per-route (packet muse-hybrid-20261104) | REAL_MODEL / model-authored | Raw 6/6 frozen, 0/6 extended | EXECUTED 2026-11-04: 8 per-route calls (~$0.19 total across attempts incl. provider-failure bookings), durable fsync receipts in `.runs/vikunja-model/muse_hybrid_20261104/`. Public-conformance gate rejected every edit (gated candidate = compiler NON_AI 6/6); raw candidate evaluated once scored 6/6 frozen / 0/6 extended. No improvement over compiler claimed on either suite. |
 | Meta Vikunja D_active | REAL_MODEL / model-authored | 1/6 | EXECUTED: case 3 only; model selected probes D1, D4, D5, D6, D7; 22 probe observations. Same packet/receipt note as C. |
 | Compiled evidence | EVIDENCE_COMPILED (NON_AI) / evidence-compiled | 6/6 | Deterministic transcription of the 20 public observations (`scripts/evidence_compiler.py`); status-mutation control 2/6. Never a model result; Gemma C stays 2/6. |
 | Browser / motion | NON_AI slice / evidence-compiled | Bounded pass | `browser-slice/`: spring-drag fit from observations only, held-out drag RMSE 1.054px and 1.741px, adversarial variants detected. In-app execution unavailable; one owned fixture only. |
