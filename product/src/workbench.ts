@@ -57,10 +57,10 @@ export const SCOREBOARD: readonly ScoreTarget[] = [
     { method: 'AI + our software (Muse hybrid)', provenance: 'REAL_MODEL', frozen: '6/6', extended: '6/6', status: 'Scored; gate rejected edits' },
     { method: 'Our software alone (compiler)', provenance: 'NON_AI', frozen: '6/6', extended: '6/6', status: 'Scored; zero model calls' } ] },
   { target: 'File Browser v2.63.23', rows: [
-    { method: 'Our software alone (compiler)', provenance: 'NON_AI', frozen: '7/7', extended: 'n/a', status: 'Scored' },
-    { method: 'AI arms', provenance: 'REAL_MODEL', frozen: 'unmeasured', extended: 'unmeasured', status: 'Not run; needs packet' } ] },
-  { target: 'Gitea', rows: [
-    { method: 'All methods', provenance: 'NON_AI', frozen: 'unmeasured', extended: 'unmeasured', status: 'Deferred; documented decision' } ] },
+    { method: 'AI alone (Muse)', provenance: 'REAL_MODEL', frozen: '3/7', extended: 'unmeasured', status: 'Scored - cross-app packet' },
+    { method: 'Our software alone (compiler)', provenance: 'NON_AI', frozen: '7/7', extended: 'n/a', status: 'Scored' } ] },
+  { target: 'Gitea 1.22.6', rows: [
+    { method: 'Our software alone (compiler)', provenance: 'NON_AI', frozen: '6/6 public cases', extended: 'sealed, not run', status: 'Scored - first contact 2/6, generic fix measured after' } ] },
 ];
 
 export const OUTCOME_LABEL: Record<RunOutcome, string> = {
