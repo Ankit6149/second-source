@@ -3,21 +3,125 @@
   "codebase": "github.com/Ankit6149/second-source",
   "commit": "7daf368fccd1417772f6a278bc59bfc930286a76",
   "production": "https://second-source-alpha.vercel.app/",
-  "provenance_labels": ["REAL_MODEL", "NON_AI"],
-  "results": [
-    {"software": "Owned HTTP task-workflow v1", "test": "full UI job, independent verification", "passed": 30, "total": 30, "provenance": "NON_AI", "video": "demos/software-tests/http/http.webm"},
-    {"software": "Owned ledger (CLI)", "test": "full UI job, independent verification", "passed": 22, "total": 25, "provenance": "NON_AI", "video": "demos/software-tests/ledger/ledger.webm"},
-    {"software": "Owned ledger (CLI)", "test": "genuine model candidate, sealed 25-case (recorded)", "passed": 14, "total": 25, "provenance": "REAL_MODEL", "note": "provider attestation incomplete"},
-    {"software": "Vikunja v2.4.0", "test": "frozen held-out, compiler", "passed": 6, "total": 6, "provenance": "NON_AI"},
-    {"software": "Vikunja v2.4.0", "test": "extended frozen suite, compiler", "passed": 6, "total": 6, "provenance": "NON_AI"},
-    {"software": "Vikunja v2.4.0", "test": "live engine rebuild, public ladder", "passed": 11, "total": 19, "provenance": "NON_AI", "video": "demos/software-tests/vikunja/vikunja.webm"},
-    {"software": "Vikunja v2.4.0", "test": "Muse coverage-grounded alone (recorded)", "passed": 2, "total": 6, "provenance": "REAL_MODEL"},
-    {"software": "Vikunja v2.4.0", "test": "Muse active probing alone (recorded)", "passed": 1, "total": 6, "provenance": "REAL_MODEL"},
-    {"software": "Vikunja v2.4.0", "test": "Muse hybrid raw candidate, single post-gate evaluation (frozen + extended)", "passed": 12, "total": 12, "provenance": "REAL_MODEL", "note": "deployable gated candidate is the compiler; no improvement claimed"},
-    {"software": "File Browser v2.63.23", "test": "differential cases + mutated control", "passed": 7, "total": 7, "provenance": "NON_AI", "video": "demos/software-tests/filebrowser/filebrowser.webm"},
-    {"software": "Browser/motion (Flowboard spring)", "test": "held-out drag/scroll evaluation", "verdict": "PASS", "trajectory_rmse_px": 2.505, "rmse_threshold_px": 8, "layout_max_diff_px": 0, "provenance": "NON_AI", "video": "demos/software-tests/motion/motion.webm"},
-    {"software": "Gitea 1.22.6", "test": "first contact: probe, compile, differential cases", "passed": 2, "total": 6, "provenance": "NON_AI", "note": "route templates do not generalize entity names; error-boundary routes not compiled"},
-    {"software": "Gitea 1.22.6", "test": "after generic route generalization fix, same 6 public differential cases (engine inv-5e0d2dd1925d)", "passed": 6, "total": 6, "provenance": "NON_AI", "note": "public conformance only; sealed held-out set (sha 492ffa05) not run; compiler now templates observed username/entity-name path segments, candidate resolves name-addressed entities, and the authenticated /user surface compiles so the unauthenticated boundary returns 401"}
+  "provenance_labels": [
+    "REAL_MODEL",
+    "NON_AI"
   ],
-  "submission": {"portal_submitted": false, "receipt": null, "note": "video upload and portal submission are owner actions"}
+  "results": [
+    {
+      "software": "Owned HTTP task-workflow v1",
+      "test": "full UI job, independent verification",
+      "passed": 30,
+      "total": 30,
+      "provenance": "NON_AI",
+      "video": "demos/software-tests/http/http.webm"
+    },
+    {
+      "software": "Owned ledger (CLI)",
+      "test": "full UI job, independent verification",
+      "passed": 22,
+      "total": 25,
+      "provenance": "NON_AI",
+      "video": "demos/software-tests/ledger/ledger.webm"
+    },
+    {
+      "software": "Owned ledger (CLI)",
+      "test": "genuine model candidate, sealed 25-case (recorded)",
+      "passed": 14,
+      "total": 25,
+      "provenance": "REAL_MODEL",
+      "note": "provider attestation incomplete"
+    },
+    {
+      "software": "Vikunja v2.4.0",
+      "test": "frozen held-out, compiler",
+      "passed": 6,
+      "total": 6,
+      "provenance": "NON_AI"
+    },
+    {
+      "software": "Vikunja v2.4.0",
+      "test": "extended frozen suite, compiler",
+      "passed": 6,
+      "total": 6,
+      "provenance": "NON_AI"
+    },
+    {
+      "software": "Vikunja v2.4.0",
+      "test": "live engine rebuild, public ladder",
+      "passed": 11,
+      "total": 19,
+      "provenance": "NON_AI",
+      "video": "demos/software-tests/vikunja/vikunja.webm"
+    },
+    {
+      "software": "Vikunja v2.4.0",
+      "test": "Muse coverage-grounded alone (recorded)",
+      "passed": 2,
+      "total": 6,
+      "provenance": "REAL_MODEL"
+    },
+    {
+      "software": "Vikunja v2.4.0",
+      "test": "Muse active probing alone (recorded)",
+      "passed": 1,
+      "total": 6,
+      "provenance": "REAL_MODEL"
+    },
+    {
+      "software": "Vikunja v2.4.0",
+      "test": "Muse hybrid raw candidate, single post-gate evaluation (frozen + extended)",
+      "passed": 12,
+      "total": 12,
+      "provenance": "REAL_MODEL",
+      "note": "deployable gated candidate is the compiler; no improvement claimed"
+    },
+    {
+      "software": "File Browser v2.63.23",
+      "test": "differential cases + mutated control",
+      "passed": 7,
+      "total": 7,
+      "provenance": "NON_AI",
+      "video": "demos/software-tests/filebrowser/filebrowser.webm"
+    },
+    {
+      "software": "Browser/motion (Flowboard spring)",
+      "test": "held-out drag/scroll evaluation",
+      "verdict": "PASS",
+      "trajectory_rmse_px": 2.505,
+      "rmse_threshold_px": 8,
+      "layout_max_diff_px": 0,
+      "provenance": "NON_AI",
+      "video": "demos/software-tests/motion/motion.webm"
+    },
+    {
+      "software": "Gitea 1.22.6",
+      "test": "first contact: probe, compile, differential cases",
+      "passed": 2,
+      "total": 6,
+      "provenance": "NON_AI",
+      "note": "route templates do not generalize entity names; error-boundary routes not compiled"
+    },
+    {
+      "software": "Gitea 1.22.6",
+      "test": "after generic route generalization fix, same 6 public differential cases (engine inv-5e0d2dd1925d)",
+      "passed": 6,
+      "total": 6,
+      "provenance": "NON_AI",
+      "note": "public conformance only; sealed held-out set (sha 492ffa05) not run; compiler now templates observed username/entity-name path segments, candidate resolves name-addressed entities, and the authenticated /user surface compiles so the unauthenticated boundary returns 401"
+    },
+    {
+      "software": "Vikunja v2.4.0",
+      "test": "Muse in-pipeline repair of public-ladder divergences (packet muse-in-pipeline-20261104)",
+      "passed": 11,
+      "total": 19,
+      "provenance": "REAL_MODEL",
+      "note": "3 Muse calls, $0.053 recorded; every proposed repair regressed the candidate (11->2) and was rejected by the public-conformance gate; deployable candidate remains the NON_AI compiler at 11/19. Public cases only; held-out never in prompts. Receipts: .runs/muse-in-pipeline-20261104/"
+    }
+  ],
+  "submission": {
+    "portal_submitted": false,
+    "receipt": null,
+    "note": "video upload and portal submission are owner actions"
+  }
 }

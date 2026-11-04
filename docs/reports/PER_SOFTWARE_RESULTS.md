@@ -104,3 +104,18 @@ denominator and difficulty; rows are never averaged.
   Gitea held-out set was **not** run, so no held-out improvement is
   claimed. Regression check after the fix: File Browser 7/7, Vikunja
   public ladder unchanged at 11/19.
+
+### 7. Muse inside the pipeline - Vikunja public ladder repair (4 Nov 2026)
+- Packet `muse-in-pipeline-20261104`: max 3 calls / $0.50 ceiling; actual
+  3 calls, **$0.053** recorded (16,467 input / 7,635 output tokens).
+  Receipts: `.runs/muse-in-pipeline-20261104/receipts.jsonl`.
+- Compiler baseline on the public ladder: **11/19** (8 divergent routes).
+- Muse received only the divergent routes' contracts and public
+  divergence diffs (held-out data never in prompts) and proposed bounded
+  contract repairs in 3 rounds. Every round's edits regressed the
+  candidate to **2/19** when composed, so the public-conformance gate
+  rejected all of them. Final candidate: compiler, **11/19** unchanged.
+- Interpretation (measured, not spun): whole-route contract rewrites are
+  too blunt - Muse changed route kinds/access beyond the divergent
+  behavior. The gate did its job; Muse added no deployable improvement
+  in this configuration, and that is the recorded result.
