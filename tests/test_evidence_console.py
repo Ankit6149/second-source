@@ -15,10 +15,10 @@ def test_public_research_status_is_historical_and_not_live_inference():
     # Main landing explains the product; historical figures belong in the
     # reports, not as frozen marketing prose.
     home = (root / "web/index.html").read_text(encoding="utf-8")
-    assert "Rebuild the behavior." in home
+    assert "What if software could" in home
     assert "19/19" in home
     assert 'href="./reports/"' in home
-    assert "No live execution here" in home
+    assert "NO LIVE EXECUTION" in home
     assert "NON_AI" in home
     assert "Both real attempts stopped before admission" not in home
 
