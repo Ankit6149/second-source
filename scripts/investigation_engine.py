@@ -27,6 +27,7 @@ API:  GET  /engine/v1/health
 from __future__ import annotations
 
 import copy
+import os
 import subprocess
 import hashlib
 import json
@@ -36,6 +37,7 @@ import threading
 import time
 import uuid
 from pathlib import Path
+from typing import Literal
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import evidence_compiler  # noqa: E402
@@ -461,20 +463,59 @@ def run_investigation(inv_id: str) -> None:
         _set(rec, stage="checking_public_conformance")
         conf = hybrid.public_conformance(spec, ref_base, _next_port())
         _check_cancelled(rec)
-        _set(rec, public_conformance={
-            "passed": conf["public_passed"], "total": conf["public_total"],
-            "divergences": [d["action"] for d in conf["divergences"]]},
+        selected = spec
+        model_summary = {"called": False, "mode": "none",
+                         "reason": "Deterministic NON_AI compiler only."}
+        if rec.get("model_mode") == "muse-repair":
+            # This optional, explicit paid stage uses ONLY public evidence.
+            # Never feed withheld evaluation cases or reference source to Muse.
+            from muse_pipeline_repair import attempt_muse_public_repair
+            _set(rec, stage="muse_public_repair")
+            RUNS.mkdir(parents=True, exist_ok=True)
+            audit_file = RUNS / f"{rec['id']}-muse-private-receipts.jsonl"
+
+            def persist_model_receipt(kind: str, payload: dict) -> None:
+                line = json.dumps({"kind": kind, **payload}, default=str) + "\n"
+                fd = os.open(audit_file, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+                with os.fdopen(fd, "a", encoding="utf-8") as stream:
+                    stream.write(line)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+
+            def measure_on_fresh_reference(candidate_spec: dict) -> dict:
+                _check_cancelled(rec)
+                probe_proc = probe_dir = None
+                try:
+                    probe_proc, probe_dir, fresh_base = mx.start_reference(_next_port())
+                    return hybrid.public_conformance(candidate_spec, fresh_base, _next_port())
+                finally:
+                    if probe_proc is not None:
+                        mx.stop_reference(probe_proc, probe_dir)
+
+            selected, conf, model_summary = attempt_muse_public_repair(
+                compiled=spec, observations=observations, baseline=conf,
+                measure=measure_on_fresh_reference,
+                api_key=os.environ.get("MODEL_API_KEY", ""),
+                record_audit=persist_model_receipt,
+                cancelled=lambda: bool(rec["_cancel"].is_set()))
+            _check_cancelled(rec)
+        accepted = bool(model_summary.get("accepted"))
+        if accepted:
+            _set(rec, compiled={
+                "routes": [f"{r['method']} {r['path']}"
+                           for r in selected.get("routes", [])],
+                "provenance": "REAL_MODEL_ASSISTED",
+                "label": "Muse-edited, public-gated candidate"})
+        _set(rec, _spec=selected,
+            public_conformance={
+                "passed": conf["public_passed"], "total": conf["public_total"],
+                "divergences": [d["action"] for d in conf["divergences"]]},
             held_out={
                 "status": "not_run_by_engine",
                 "reason": "Held-out scoring is evaluator-side only "
                           "(scripts/vikunja_benchmark.py --mode evaluate); "
                           "the engine never imports the held-out cases."},
-            model={"called": False,
-                   "reason": "This engine runs the deterministic "
-                             "NON_AI pipeline. Model-authored "
-                             "results (GEMMA_TEST hybrid 3/6) are "
-                             "recorded evidence, replayed in the "
-                             "Lab, not generated here."},
+            model=model_summary,
             status="completed", stage="completed")
     except _Cancelled:
         _set(rec, status="cancelled", stage="cancelled")
@@ -502,6 +543,8 @@ def public_view(rec: dict) -> dict:
 class CreateInvestigation(BaseModel):
     model_config = ConfigDict(extra="forbid")
     target: str = Field(min_length=1, max_length=64)
+    # Paid inference never starts unless the operator explicitly requests it.
+    model_mode: Literal["none", "muse-repair"] = "none"
 
 
 def _valid_inv_id(inv_id: str) -> bool:
@@ -535,7 +578,9 @@ async def _guard(request: Request, call_next):
 @app.get("/engine/v1/health")
 def health():
     return {"ok": True, "engine": ENGINE_VERSION,
-            "bind": "127.0.0.1", "model_calls": False}
+            "bind": "127.0.0.1",
+            "model_calls": os.environ.get("SECOND_SOURCE_ALLOW_MUSE_REPAIR") == "true"
+            and bool(os.environ.get("MODEL_API_KEY"))}
 
 
 @app.get("/engine/v1/targets")
@@ -567,6 +612,13 @@ def create(body: CreateInvestigation,
                default=None, alias="Idempotency-Key")):
     if body.target not in TARGETS:
         raise HTTPException(400, f"unknown target; supported: {', '.join(TARGETS)}")
+    if body.model_mode == "muse-repair":
+        if body.target != TARGET_ID:
+            raise HTTPException(422, "Muse repair is only supported for the Vikunja local adapter")
+        if os.environ.get("SECOND_SOURCE_ALLOW_MUSE_REPAIR") != "true":
+            raise HTTPException(409, "Local Muse repair is disabled by the operator")
+        if not os.environ.get("MODEL_API_KEY"):
+            raise HTTPException(503, "Local Meta model credential is not configured")
     key = idempotency_key.strip() if idempotency_key else None
     if idempotency_key is not None and (
             not key or len(key) > MAX_IDEMPOTENCY_KEY_LEN):
@@ -579,8 +631,8 @@ def create(body: CreateInvestigation,
         inv_id = "inv-" + uuid.uuid4().hex[:12]
         rec = {"id": inv_id, "target": body.target, "status": "running",
                "stage": "queued", "created_at": int(time.time()),
-               "provenance": "NON_AI", "cancel_requested": False,
-               "_cancel": threading.Event()}
+               "provenance": "NON_AI", "model_mode": body.model_mode,
+               "cancel_requested": False, "_cancel": threading.Event()}
         INVESTIGATIONS[inv_id] = rec
         if key is not None:
             _IDEMPOTENCY[key] = inv_id
@@ -641,7 +693,7 @@ def main() -> int:
     port = 8765
     if "--port" in sys.argv:
         port = int(sys.argv[sys.argv.index("--port") + 1])
-    print(f"engine on http://127.0.0.1:{port} (localhost only, NON_AI)")
+    print(f"engine on http://127.0.0.1:{port} (localhost only, default NON_AI; optional explicit Muse repair)")
     uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
     return 0
 
