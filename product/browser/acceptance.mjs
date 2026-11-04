@@ -284,7 +284,7 @@ try {
   const second = await other.newPage(); await second.goto(origin);
   await second.getByText('Available here: owned ledger and HTTP task-workflow controls.', { exact: false }).waitFor();
   await second.getByRole('button', { name: 'Toggle navigation' }).click();
-  await second.getByRole('button', { name: 'Your work' }).click();
+  await second.getByRole('button', { name: 'Investigations', exact: true }).click();
   assert.match(await second.locator('#content').innerText(), /No investigations yet/);
   assert.doesNotMatch(await second.locator('#content').innerText(), /Real browser fixture acceptance/);
   const forbidden = await second.evaluate(async ({ id, accessToken }) => {
