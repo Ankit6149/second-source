@@ -173,6 +173,18 @@ def compile_spec(observations, source_hash=""):
         if validate:
             route["validate"] = validate
 
+        # Duplicate-create contract: same create repeated and the
+        # reference answered 5xx; record the identity field generically.
+        if kind == "compiled_create":
+            succ_req = (first.get("request") or {}).get("data") or first.get("request") or {}
+            for err in errors:
+                ereq = (err.get("request") or {}).get("data") or err.get("request") or {}
+                shared = [k for k, v in succ_req.items() if isinstance(v, str) and ereq.get(k) == v]
+                if err["status"] >= 500 and shared:
+                    route["duplicate_field"] = shared[0]
+                    route["duplicate_status"] = err["status"]
+                    route["duplicate_body"] = err.get("body")
+                    break
         # Per-route forbidden body: error shapes differ per operation
         # on real systems; the route's own observed 403 wins.
         for err in errors:

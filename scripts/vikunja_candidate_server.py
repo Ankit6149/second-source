@@ -2,9 +2,9 @@
 
 Executes a candidate SPEC (JSON) authored by a model (or, for plumbing
 validation only, a hand-written NON_AI oracle). The interpreter contains
-no Vikunja-specific behavior: every externally observable decision —
+no Vikunja-specific behavior: every externally observable decision Ã¢â‚¬â€
 routes, methods, success statuses, validation, permissions, state
-transitions — comes from the spec. State is in-memory, per-process.
+transitions Ã¢â‚¬â€ comes from the spec. State is in-memory, per-process.
 
 Spec shape:
 {
@@ -180,6 +180,8 @@ class Candidate:
         if access == "any_auth":
             return None
         perm = self.shares.get(parent_id, {}).get(username)
+        if perm is not None and route["method"] == "GET":
+            return None  # a share on the parent grants reads of children
         if access == "shared_read" and perm is not None:
             return None
         if access == "shared_write" and perm is not None and perm >= 1:
@@ -214,6 +216,15 @@ class Candidate:
                 err = self._compiled_access(route, username, parent_id)
                 if err:
                     return err
+            dup_field = route.get("duplicate_field")
+            if dup_field:
+                payload = body or {}
+                if isinstance(payload.get("data"), dict):
+                    payload = payload["data"]
+                want = payload.get(dup_field)
+                if want is not None and any(
+                        e.get(dup_field) == want for e in store.values()):
+                    return route.get("duplicate_status", 500), route.get("duplicate_body")
             ctx["index"] = sum(1 for e in store.values()
                                 if e.get("_parent") == parent_id) + 1
             ctx["entity_id"] = self._id()
@@ -250,7 +261,7 @@ class Candidate:
             for entity in store.values():
                 if parent_id is not None and entity.get("_parent") != parent_id:
                     continue
-                err = self._compiled_access(route, username, entity.get("_parent", entity.get("id")))
+                err = self._compiled_access(route, username, entity.get("_parent") or entity.get("id"))
                 if err and entity.get("_owner") != username:
                     continue
                 out = {k: v for k, v in entity.items()
@@ -259,6 +270,10 @@ class Candidate:
                 for key, value in overlay.items():
                     out[key] = self._fill_template(value, ctx_e)
                 items.append(out)
+            if route.get("access") == "owner" and items == [] and store:
+                if not any(e.get("_owner") == username for e in store.values()):
+                    fb = route.get("forbidden_body")
+                    return (403, fb) if fb is not None else self._forbidden()
             return status, items
         # Item routes resolve the entity by the trailing path param.
         entity = store.get(parent_id) if parent_id is not None else None
@@ -499,3 +514,4 @@ def serve(spec_path, port):
 
 if __name__ == "__main__":
     serve(sys.argv[1], int(sys.argv[2]))
+
