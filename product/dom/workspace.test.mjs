@@ -107,7 +107,7 @@ test('navigation is slim and the retired showroom route lands home', () => {
   try {
     const doc = window.document;
     const nav = [...doc.querySelectorAll('.side-nav .nav-item')].map(n => n.textContent.trim());
-    assert.deepEqual(nav, ['Overview', 'Investigations', 'Reports', 'Experiments', 'Settings']);
+    assert.deepEqual(nav, ['Investigations', 'Experiments', 'Reports', 'Settings']);
     assert.doesNotMatch(doc.querySelector('#content').textContent, /component showroom/i);
     assert.match(doc.querySelector('#content').textContent, /Learn the rules a screen cannot show/);
   } finally { window.happyDOM.abort(); }

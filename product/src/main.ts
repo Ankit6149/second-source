@@ -168,7 +168,7 @@ function renderHome() {
       <button class="pill-btn primary" type="button" data-action="select-target">${icon("flask-conical")} New investigation</button>
       <button class="pill-btn" type="button" data-action="reports">${icon("file-text")} View reports</button>
     </div>
-    <p class="home-rule"><strong>REAL_MODEL 14/25</strong> Historical Muse ledger result · 11 failures recorded · not a live model call. <button class="pill-btn quiet" type="button" data-action="research">See evidence</button></p>
+    <p class="home-rule"><strong>Input → working → output.</strong> Describe a target, follow the real run, inspect the candidate and its proof. <button class="pill-btn quiet" type="button" data-action="research">See evidence</button></p>
     <p class="home-note">${esc(available)}</p>
   </section>`;
 }
@@ -247,7 +247,7 @@ function render() {
   el('topAccountLabel').textContent = state.session ? 'Account' : 'Sign in';
   el('topAccountButton').setAttribute('aria-label', state.session ? 'Open account window' : 'Open sign-in window');
   el('connectionLabel').textContent = !auth ? 'Sign-in not configured' : !apiOrigin ? (state.session ? 'Signed in \u00b7 backend offline' : 'Backend offline') : state.session ? 'Signed in · NON_AI only' : 'Sign in to start';
-  el('topName').textContent = state.view === 'library' ? 'Investigations' : state.view === 'compare' ? 'Experiments' : state.view === 'reports' ? 'Reports' : state.view === 'settings' ? 'Settings' : state.selected?.title || 'Second Source';
+  el('topName').textContent = state.view === 'home' ? 'New investigation' : state.view === 'library' ? 'Investigations' : state.view === 'compare' ? 'Experiments' : state.view === 'reports' ? 'Reports' : state.view === 'settings' ? 'Settings' : state.selected?.title || 'Second Source';
   el('topBackButton').hidden = state.view === 'home';
   document.querySelectorAll<HTMLButtonElement>('.side-nav [data-action]').forEach(button => {
     const view = button.dataset.action === 'experiments' ? 'compare' : button.dataset.action;

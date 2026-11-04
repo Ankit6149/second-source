@@ -286,6 +286,37 @@ class Candidate:
                 exemplar = {}
             overlay = {k: v for k, v in exemplar.items()
                        if v is None or isinstance(v, (dict, list))}
+            # Model-proposed default seeding (gated experiment surface):
+            # route.seed_defaults lists exemplar titles the reference
+            # provides by default. Seed unseen ones for this user and
+            # present seeded/created items in exemplar order.
+            seed_titles = route.get("seed_defaults")
+            if isinstance(seed_titles, list) and isinstance(template, list):
+                known = {e.get("title") or e.get("name") for e in store.values()}
+                for item in template:
+                    if not isinstance(item, dict):
+                        continue
+                    label = item.get("title") or item.get("name")
+                    if label in seed_titles and label not in known:
+                        seed = self._fill_template(item, ctx)
+                        if isinstance(seed, dict):
+                            seed["id"] = self._id()
+                            link_key = (route.get("collection") or "")[:-1] + "_id"
+                            def _link(o):
+                                if isinstance(o, dict):
+                                    for k2, v2 in o.items():
+                                        if k2 == link_key and isinstance(v2, int):
+                                            o[k2] = seed["id"]
+                                        else:
+                                            _link(v2)
+                                elif isinstance(o, list):
+                                    for v2 in o:
+                                        _link(v2)
+                            _link(seed)
+                            seed["_parent"] = None
+                            seed["_owner"] = username
+                            store[seed["id"]] = seed
+                            known.add(label)
             items = []
             filtered_out = 0
             for entity in store.values():
@@ -299,6 +330,9 @@ class Candidate:
                        if not k.startswith("_")}
                 ctx_e = dict(ctx, entity=entity)
                 for key, value in overlay.items():
+                    if isinstance(value, (dict, list)) and \
+                            out.get(key) not in (None, "", [], {}):
+                        continue  # entity's own nested state wins
                     out[key] = self._shape_fill(value, ctx_e, entity)
                 exemplar_tok = exemplar if isinstance(exemplar, dict) else {}
                 for key, value in exemplar_tok.items():
@@ -320,6 +354,14 @@ class Candidate:
                 if m:
                     field, want = m.group(1), m.group(2) == "true"
                     items = [i for i in items if i.get(field) is want]
+            if isinstance(seed_titles, list) and isinstance(template, list):
+                order = {}
+                for item in template:
+                    if isinstance(item, dict):
+                        label = item.get("title") or item.get("name")
+                        if label is not None and label not in order:
+                            order[label] = len(order)
+                items.sort(key=lambda i: order.get(i.get("title") or i.get("name"), 999))
             return status, items
         # Item routes resolve the entity by the trailing path param.
         entity = store.get(parent_id) if parent_id is not None else None
