@@ -77,7 +77,7 @@ class PublicPreview(unittest.TestCase):
 
     def test_static_package_reuses_canonical_console_and_only_public_files(self):
         output = build()
-        expected = {"index.html", "styles.css", "release.css", "script.js", "console/index.html", "evidence/index.html", "lab/index.html", "handoff/index.html"}
+        expected = {"index.html", "styles.css", "release.css", "script.js", "console/index.html", "evidence/index.html", "lab/index.html", "challenge/index.html", "handoff/index.html"}
         expected.update("assets/" + name for name in ASSETS)
         actual = {path.relative_to(output).as_posix() for path in output.rglob("*") if path.is_file()}
         self.assertEqual(actual, expected)
@@ -97,6 +97,21 @@ class PublicPreview(unittest.TestCase):
             self.assertEqual(len(choices), 2)
             self.assertIn(correct, choices)
             self.assertEqual(len(set(choices)), 2)
+
+    def test_challenge_is_recorded_public_evidence_not_faux_model_run(self):
+        html = (ROOT / "challenge/index.html").read_text(encoding="utf-8")
+        self.assertIn("INTERACTIVE RECORDED REPLAY", html)
+        self.assertIn("no live AI calls", html)
+        self.assertIn("14 / 25", html)
+        self.assertIn("provider attestation is incomplete", html)
+        self.assertIn("duplicate_label", html)
+        self.assertIn("invalid_amount", html)
+        self.assertIn("The reference returns only ok and id", html)
+        self.assertIn('const cases=[', html)
+        self.assertIn('role="group" aria-label="Predict reference behavior"', html)
+        with urlopen(self.origin + "/challenge/") as response:
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
 
     def test_lab_no_js_fallback_states_recorded_scores_and_pending_genuine_http(self):
         html = (ROOT / "lab/index.html").read_text(encoding="utf-8")

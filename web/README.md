@@ -1,8 +1,9 @@
 # Second Source public research preview
 
-A static landing page and an actual local evidence viewer. The landing and
+A static landing page and an actual local evidence viewer. The landing, interactive recorded black-box challenge at `/challenge/`, and
 viewer make no account, model, backend, database, telemetry or external font
-request. The optional workspace can contact its configured identity and API
+request. The challenge replays public owned-ledger probes and labels the genuine Meta
+candidate as recorded; no model execution or sealed case is exposed. The optional workspace can contact its configured identity and API
 services; it remains unconfigured by default.
 The landing experiment is illustrative; the console distinguishes historical
 operator-reported real attempts, NON_AI controls and unverified local imports.

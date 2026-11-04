@@ -4,6 +4,8 @@
 
 **From an observable black box to a separately implemented, evidence-tested substitute.**
 
+**Start here:** [Take the 60-second black-box challenge](https://second-source-alpha.vercel.app/challenge/) — predict a hidden software rule, then compare the recorded genuine Meta candidate with the observable reference. This is a replay, not a live model call.
+
 [Why it exists](#why-not-just-ask-ai-to-copy-a-website) · [How it works](#how-second-source-works) · [Live capabilities](#what-works-today) · [Try it locally](#try-it-locally) · [Architecture](#system-architecture)
 
 [![Tests](https://github.com/Ankit6149/second-source/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/Ankit6149/second-source/actions/workflows/test.yml)
