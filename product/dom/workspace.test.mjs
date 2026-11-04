@@ -137,8 +137,8 @@ test('compare shows the second software rebuild panel honestly', () => {
   const window = workspace();
   try {
     const doc = window.document;
-    doc.querySelector('[data-action="reports"]').click();
-    doc.querySelector('[data-action="compare"]').click();
+    doc.querySelector('.side-nav [data-action="reports"]').click();
+    doc.querySelector('.side-nav [data-action="experiments"]').click();
     const text = doc.querySelector('#content').textContent;
     assert.match(text, /OWNED HTTP TASK WORKFLOW/);
     assert.match(text, /VIKUNJA V2\.4\.0/);
