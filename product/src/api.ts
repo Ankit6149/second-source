@@ -26,6 +26,17 @@ const identifier = (value: string) => {
   return encodeURIComponent(value);
 };
 
+export interface OrchestrationArtifact { artifact_id: string; sha256: string; size_bytes: number; media_type: string; kind: string; name: string; created_at: string }
+export interface OrchestrationRoute { method: string; path_template: string; kind: string }
+export interface OrchestrationWorkspace {
+  investigation_id: string;
+  candidate: { candidate_id: string; source_observations_sha256: string; provenance: 'NON_AI'; routes: OrchestrationRoute[] } | null;
+  verification: { passed: number; failed: number; indeterminate: number; total: number; origin: 'mock'; real: false } | null;
+  report: { report_id: string; stop_reason: string } | null;
+  artifacts: OrchestrationArtifact[];
+}
+export interface OrchestrationEvent { event_id: number; event_type: string; stage: string | null; created_at: string; status: string; provenance: string; artifact_refs: string[]; detail: string | null }
+
 export class Api {
   constructor(private origin: string, private token: () => string | null, private transport: typeof fetch = (...args) => fetch(...args)) {}
   private async read(response: Response, maximum: number): Promise<Uint8Array> {
@@ -93,7 +104,13 @@ export class Api {
   orchAuthorize(id: string, revision: number, scopeDigest: string) { return this.json<{ investigation_id: string; revision: number; scope_digest: string }>(`/v1/orchestration/investigations/${identifier(id)}/authorize`, { method: 'POST', body: JSON.stringify({ expected_revision: revision, scope_digest: scopeDigest }) }, true); }
   orchEnqueue(id: string, key: string) { return this.json<{ job_id: string; status: string; revision: number }>(`/v1/orchestration/investigations/${identifier(id)}/jobs`, { method: 'POST', headers: { 'Idempotency-Key': key }, body: JSON.stringify({}) }, true); }
   orchExecute(jobId: string) { return this.json<{ job_id: string; status: string; stage: string | null }>(`/v1/orchestration/jobs/${identifier(jobId)}/execute`, { method: 'POST', body: JSON.stringify({}) }, true); }
-  orchEvents(id: string) { return this.json<{ items: { event_id: number; event_type: string; stage: string | null }[] }>(`/v1/orchestration/investigations/${identifier(id)}/events?limit=100`); }
+  orchEvents(id: string) { return this.json<{ items: OrchestrationEvent[] }>(`/v1/orchestration/investigations/${identifier(id)}/events?limit=100`); }
+  orchWorkspace(id: string) { return this.json<OrchestrationWorkspace>(`/v1/orchestration/investigations/${identifier(id)}/workspace`); }
+  async orchArtifact(id: string, artifactId: string) {
+    if (!/^art-[a-f0-9]{16}$/.test(artifactId)) throw new Error('Invalid artifact identity');
+    const bytes = await this.request(`/v1/orchestration/investigations/${identifier(id)}/artifacts/${artifactId}/content`, {}, false, 8_000_000);
+    return new Blob([bytes.buffer as ArrayBuffer], { type: 'application/octet-stream' });
+  }
   verification(id: string) { return this.json<Verification>(`/v1/runs/${identifier(id)}/verification`); }
   report(id: string) { return this.json<Record<string, unknown>>(`/v1/runs/${identifier(id)}/report`); }
   async export(id: string) { const bytes = await this.request(`/v1/runs/${identifier(id)}/export.zip`, {}, false, 8_000_000); return new Blob([bytes.buffer as ArrayBuffer], { type: 'application/zip' }); }
