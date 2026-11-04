@@ -119,3 +119,19 @@ denominator and difficulty; rows are never averaged.
   too blunt - Muse changed route kinds/access beyond the divergent
   behavior. The gate did its job; Muse added no deployable improvement
   in this configuration, and that is the recorded result.
+
+### 8. Muse route-level experiment repairs - Vikunja (4 Nov 2026)
+- Packet `muse-exp-routes-20261104`: Muse worked inside the experiment,
+  one divergent public-ladder route per call. Actual use: **5 calls**,
+  **$0.031** recorded (7,620 input / 5,098 output tokens). Receipts:
+  `.runs/muse-exp-routes-20261104/receipts.jsonl`.
+- Compiler baseline remained **11/19**. Muse returned the compiled
+  contract unchanged for `GET /projects/{pid}/tasks`, `GET /projects`,
+  `GET /tasks/{tid}`, and `GET /user`; the concrete `/projects/999999`
+  action has no separate candidate route. Its only proposed change, a
+  validation edit to `POST /tasks/{tid}`, regressed the composed
+  candidate to **2/19** and was rejected by the identical public ladder.
+- Result: **no deployable improvement**. The remaining divergences are
+  primarily candidate-interpreter/state semantics that the permitted
+  route-contract fields cannot express; this is now the precise blocker,
+  rather than a claim that Muse was not used.

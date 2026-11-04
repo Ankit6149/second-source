@@ -117,6 +117,14 @@
       "total": 19,
       "provenance": "REAL_MODEL",
       "note": "3 Muse calls, $0.053 recorded; every proposed repair regressed the candidate (11->2) and was rejected by the public-conformance gate; deployable candidate remains the NON_AI compiler at 11/19. Public cases only; held-out never in prompts. Receipts: .runs/muse-in-pipeline-20261104/"
+    },
+    {
+      "software": "Vikunja v2.4.0",
+      "test": "Muse route-level experiment repairs (packet muse-exp-routes-20261104)",
+      "passed": 11,
+      "total": 19,
+      "provenance": "REAL_MODEL",
+      "note": "5 Muse calls, $0.031 recorded; compiler baseline 11/19. Four routes produced no contract change; one validation edit regressed the candidate to 2/19 and was rejected. No deployable improvement. Public ladder only; held-out never in prompts. Receipts: .runs/muse-exp-routes-20261104/"
     }
   ],
   "submission": {
