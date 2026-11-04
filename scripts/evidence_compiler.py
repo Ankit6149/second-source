@@ -263,7 +263,51 @@ def compile_spec(observations, source_hash=""):
             route["access"] = "shared_write"
         else:
             route["access"] = "owner" if owner_ok else "any_auth"
+        # Shared-list evidence: an observed list containing entities
+        # owned by a different user proves cross-user visibility,
+        # whatever the per-actor status inference suggested.
+        if kind == "compiled_list":
+            for o in successes:
+                uname = spec["users"].get(str(o.get("as")))
+                body = o.get("body")
+                if not uname or not isinstance(body, list):
+                    continue
+                for it in body:
+                    if not isinstance(it, dict):
+                        continue
+                    ow = it.get("owner")
+                    owname = ow.get("username") if isinstance(ow, dict) else ow if isinstance(ow, str) else None
+                    if owname and owname != uname:
+                        route["access"] = "shared_read"
         route["access_source"] = "inferred_from_actor_outcomes"
+        # Default-entity seeding (generic): list exemplar items whose
+        # label no observed create request ever produced are entities
+        # the reference provides by default (e.g. starter projects).
+        # The candidate seeds exactly those, in exemplar order. This
+        # matches the rule Muse proposed in the recorded seed
+        # experiment; here it is derived from public evidence alone.
+        if kind == "compiled_list" and isinstance(template, list):
+            created_labels = set()
+            for o in observations:
+                req = o.get("request") or {}
+                if isinstance(req, dict):
+                    for k in ("title", "name"):
+                        if isinstance(req.get(k), str):
+                            created_labels.add(req[k])
+            # Defaults exist from the start: read the earliest list
+            # response, not the richest (later lists accumulate
+            # probe-created entities).
+            first_body = first.get('body') if isinstance(first.get('body'), list) else template
+            seeds = []
+            for item in first_body:
+                if isinstance(item, dict):
+                    label = item.get("title") or item.get("name")
+                    if isinstance(label, str) and label                             and label not in created_labels                             and label not in seeds:
+                        seeds.append(label)
+            has_create = any(m2 in ("PUT", "POST") and p2.rstrip("/").endswith("/" + collection)
+                             for (m2, p2) in routes_obs)
+            if seeds and has_create:
+                route["seed_defaults"] = seeds
         spec["routes"].append(route)
         spec["provenance"]["claims"][f"{method} {path}"] = {
             "template": "observed", "access": route["access_source"]}

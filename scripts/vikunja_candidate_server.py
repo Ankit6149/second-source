@@ -305,8 +305,10 @@ class Candidate:
                             def _link(o):
                                 if isinstance(o, dict):
                                     for k2, v2 in o.items():
-                                        if k2 == link_key and isinstance(v2, int):
+                                        if k2 == link_key and (isinstance(v2, int) or (isinstance(v2, str) and v2.startswith("<path:"))):
                                             o[k2] = seed["id"]
+                                        elif isinstance(v2, str) and v2.startswith("<path:"):
+                                            o[k2] = self._id()
                                         else:
                                             _link(v2)
                                 elif isinstance(o, list):
