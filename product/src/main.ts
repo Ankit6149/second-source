@@ -1,6 +1,7 @@
 ﻿import './fonts.css';
 import './design.css';
 import './product.css';
+import './workspace.css';
 import { createIcons, PanelLeft, PanelLeftClose, SquarePen, FolderOpen, SwatchBook, ChevronUp, ArrowUp, ShieldCheck, FileText, ListChecks, Download, CircleHelp, X, Play, Square, RefreshCw, Clock, Check, AlertTriangle, LogIn, LogOut, Link, FlaskConical, MessageSquare, ExternalLink, Search, GitBranch, Puzzle, Plus } from 'lucide';
 import type { Session } from '@supabase/supabase-js';
 import { auth, observeSession, signIn, signOut } from './auth';
@@ -86,7 +87,7 @@ function setError(error: unknown) { state.error = describe(error); render(); }
 function account() {
   const signedIn = Boolean(state.session);
   const email = state.session?.user?.email;
-  const info = !auth ? 'Sign-in is not configured for this deployment. Public research remains accessible.'
+  const info = !auth ? 'Sign-in is not available on this deployment (not configured). Public research remains accessible.'
     : !apiOrigin ? 'Google sign-in is available, but saved investigations require a connected backend that is not deployed here.'
     : 'Your account grants access only to authorized targets supplied by the connected service.';
   const action = signedIn
