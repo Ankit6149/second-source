@@ -30,6 +30,26 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 10px;
 .drawer .close{position:absolute;top:16px;right:16px;width:38px;height:38px;border-radius:50%;border:1px solid #c9d4cc;background:#fff;cursor:pointer;font-size:18px}
 .scrim{position:fixed;inset:0;background:rgba(38,54,43,.28);opacity:0;pointer-events:none;transition:opacity .28s;z-index:40}
 .scrim.open{opacity:1;pointer-events:auto}
+
+/* n8n-style node canvas */
+.canvas-wrap{position:relative;border:1px solid #c9d4cc;border-radius:16px;background:#f4f8f4 radial-gradient(#c3d4c6 1px,transparent 1.2px);background-size:22px 22px;overflow:hidden;height:560px;margin:14px 0 6px;cursor:grab}
+.canvas-wrap:active{cursor:grabbing}
+.canvas-world{position:absolute;left:0;top:0;width:1240px;height:540px;transform-origin:0 0}
+.canvas-world svg{position:absolute;inset:0;width:1240px;height:540px;pointer-events:none}
+.canvas-world svg path{fill:none;stroke:#7fa98c;stroke-width:2}
+.canvas-world svg path.gate{stroke:#c98a2d;stroke-dasharray:6 5}
+.node{position:absolute;width:168px;background:#fff;border:1.5px solid #9db8a4;border-radius:13px;padding:10px 12px;box-shadow:0 3px 10px rgba(30,60,40,.10);cursor:pointer;text-align:left;font:inherit}
+.node:hover{outline:2px solid #57a773}
+.node b{display:block;font-size:14.5px;color:#14351f}
+.node span{font-size:12px;color:#4c6653;line-height:1.35;display:block}
+.node .tag{position:absolute;top:-9px;right:10px;font-size:9.5px}
+.node.model{border-color:#d9a84e;background:#fffaf0}
+.node.judge{border-color:#7d9cc4;background:#f4f8ff}
+.node .port{position:absolute;top:50%;width:11px;height:11px;border-radius:50%;background:#fff;border:2.5px solid #2e7d4f;transform:translateY(-50%)}
+.node .port.in{left:-7px}.node .port.out{right:-7px}
+.canvas-tools{position:absolute;right:12px;bottom:12px;display:flex;gap:6px;z-index:5}
+.canvas-tools button{width:36px;height:36px;border-radius:9px;border:1px solid #b7c9bb;background:#fff;font-size:17px;cursor:pointer}
+.canvas-hint{font-size:12.5px;color:#5a7263}
 @media (prefers-reduced-motion:reduce){.drawer,.scrim{transition:none}}
 </style></head>
 <body>
@@ -56,6 +76,26 @@ measured, what is honestly limited, and where it goes next. Click each stage.</p
 <span class="flowloop"><b>Repair loop:</b> public divergences go back to <b>3 · Reason</b> — Muse proposes, the gate re-measures, worse candidates are discarded. <b>Side channel:</b> the independent evaluator (frozen + held-out suites) scores the frozen candidate only; its cases never enter prompts.</span>
 </div>
 <div class="panel" id="panel" aria-live="polite"></div>
+
+
+<h2 style="margin-top:34px">The system as a node canvas</h2>
+<p style="max-width:72ch">Like a workflow builder: each node is a real component, each wire a real data flow. Drag to pan, zoom with the controls, click any node for why it is built this way, what it solves, and the small things.</p>
+<div class="canvas-wrap" id="canvasWrap">
+ <div class="canvas-world" id="canvasWorld">
+  <svg id="wires" viewBox="0 0 1240 540" aria-hidden="true"></svg>
+  <button class="node" style="left:16px;top:216px" data-node="target" data-why data-title="Authorized target" data-built="Nothing runs without an authorized, pinned reference: Vikunja v2.4.0, File Browser v2.63.23, Gitea 1.22.6, owned fixtures, or a bounded browser-motion target." data-solves="Scope is explicit before any probing, so results are reproducible and the authorization boundary is part of the evidence." data-small="Reference versions are pinned and recorded with every result||Local references run on loopback only; the engine never reaches arbitrary URLs"><b>Authorized target</b><span>pinned reference, declared scope</span><i class="port out"></i></button>
+  <button class="node" style="left:216px;top:216px" data-node="observe" data-why data-title="Observe — public probes" data-built="A public action ladder runs against the real reference: creates, reads, updates, shares, filters, and deliberate errors (empty titles, missing parents, wrong actors)." data-solves="Every later claim traces to an observed request/response pair, not to documentation or guessing." data-small="Actors matter: the same call is replayed as owner, other user, and anonymous||Error responses are evidence too (400/403/404 contracts are compiled, not discarded)"><b>Observe</b><span>public probes on the real system</span><i class="port in"></i><i class="port out"></i></button>
+  <button class="node" style="left:416px;top:216px" data-node="compile" data-why data-title="Evidence compiler — NON_AI" data-built="Observations compile into a behavioral spec: routes, templates from the richest response, validation and error contracts, access inference, and default-entity seeding derived from the earliest list response." data-solves="Observed facts become immutable. The candidate cannot hallucinate constants, and Muse cannot overwrite what was seen." data-small="Ids, timestamps and people are tokenized (entity, ts, creator) so candidates generalize||Seed defaults = list items no observed request created — the rule Muse first identified"><b>Evidence compiler</b><span>observations → behavioral spec</span><i class="port in"></i><i class="port out"></i></button>
+  <button class="node model" style="left:416px;top:36px" data-node="muse" data-why data-title="Meta Muse Spark 1.3 — gated reasoning" data-built="Muse enters only here: route-level reviews and bounded repairs over public evidence, inside owner-approved packets with call and dollar caps. Every call writes a durable receipt before anything else happens." data-solves="AI judgment is applied exactly where observation runs out — and is measurable, including when the gate rejects it (whole-route rewrites: 11 → 2, rejected; seed rule: 18/19 → 19/19, accepted)." data-small="Max 1 call / $0.50 in the live product path (opt-in muse-repair)||Provider failures are recorded unscored, never as zeros"><b>Muse · gated</b><span>hypotheses + bounded repairs</span><i class="port out"></i></button>
+  <button class="node" style="left:616px;top:216px" data-node="candidate" data-why data-title="Candidate interpreter" data-built="One generic interpreter executes any compiled spec: entity stores, sharing, filters, validation, error bodies, seeded defaults. No per-app code exists in it." data-solves="The same machinery rebuilt Vikunja, File Browser and Gitea — which is what makes cross-target scores meaningful." data-small="Seeded entities link their nested views to the new id, token paths included||Full-replace updates, encoded filter expressions, richest-exemplar shapes"><b>Candidate</b><span>generic interpreter runs the spec</span><i class="port in"></i><i class="port out"></i></button>
+  <button class="node judge" style="left:816px;top:356px" data-node="evaluator" data-why data-title="Independent evaluator" data-built="Frozen and held-out suites live here and only here. They are hashed, sealed before model work, and never imported by the engine or shown to Muse." data-solves="The system cannot grade its own homework or tune itself to hidden tests; improvements and regressions come from the same measurement." data-small="Identical sequences on both sides, canonicalized outputs (ids/clocks normalized)||A mutated control candidate must fail — and does"><b>Independent evaluator</b><span>frozen + held-out, sealed</span><i class="port out"></i></button>
+  <button class="node" style="left:816px;top:216px" data-node="verify" data-why data-title="Verify — differential scoring" data-built="The identical public ladder replays on a FRESH reference and on the candidate; canonicalized outputs compare field-by-field. Freshness matters: replaying on the probed reference fabricates divergences (found and fixed)." data-solves="Divergences are real behavioral differences with the exact field shown — the input to honest repair and honest reporting." data-small="Baseline is always measured on a fresh reference||Divergence actions are listed, never rounded into a percentage alone"><b>Verify</b><span>fresh reference vs candidate</span><i class="port in"></i><i class="port out"></i></button>
+  <button class="node" style="left:1016px;top:216px" data-node="deliver" data-why data-title="Deliver — code + report" data-built="The user receives the runnable candidate, the evidence ledger, verification results, and a per-investigation technical report separating OBSERVED, INFERRED, UNKNOWN and CONTRADICTED claims." data-solves="The output is auditable software, not a demo: every number in the report links back to a recorded run." data-small="ZIP exports are hash-checked and tested to run||Reports keep denominators and provenance labels on every score"><b>Deliver</b><span>candidate ZIP + research report</span><i class="port in"></i></button>
+  <button class="node" style="left:1016px;top:36px" data-node="product" data-why data-title="Hosted product" data-built="Vercel frontend, Render API, Supabase Auth/Postgres/Storage. Sign-in (Google) is a modal; investigations, persisted events, verification and exports run through the real backend. Bounded NON_AI execution is enabled and labeled." data-solves="Judges and users run the journey without a terminal, and every number they see traces to a recorded run." data-small="Degraded boot: live 200 / ready 503 instead of hanging when misconfigured||Service keys never reach the browser; DB role is schema-scoped"><b>Hosted product</b><span>app · API · auth · storage</span><i class="port out"></i></button>
+ </div>
+ <div class="canvas-tools"><button id="zoomOut" aria-label="Zoom out">−</button><button id="zoomReset" aria-label="Reset view">⌂</button><button id="zoomIn" aria-label="Zoom in">+</button></div>
+</div>
+<p class="canvas-hint">Dashed amber wire = gated Muse path. Blue node = sealed evaluator (scores only, never feeds back). Drag to pan · buttons zoom · click a node for details.</p>
 
 <h2 style="margin-top:30px">What problem this solves</h2>
 <div class="grid">
@@ -95,7 +135,7 @@ events and reports work end-to-end today.</p></div>
 <h2>Measured results (provenance never merged)</h2>
 <table>
 <tr><th>Target</th><th>Muse alone</th><th>Second Source</th><th>Note</th></tr>
-<tr><td>Vikunja v2.4.0</td><td>2/6, 1/6</td><td><strong>18/19</strong> public ladder · 6/6 + 6/6 frozen/extended</td><td>one divergence: default projects</td></tr>
+<tr><td>Vikunja v2.4.0</td><td>2/6, 1/6</td><td><strong>19/19</strong> public ladder · 6/6 + 6/6 frozen/extended</td><td>zero divergences (fresh-reference verified)</td></tr>
 <tr><td>File Browser v2.63.23</td><td>3/7</td><td><strong>7/7</strong></td><td>Muse review preserved 7/7</td></tr>
 <tr><td>Gitea 1.22.6</td><td>provider failures, unscored</td><td><strong>6/6</strong> public (was 2/6)</td><td>held-out sealed, not run</td></tr>
 <tr><td>Owned ledger (sealed 25)</td><td><strong>14/25</strong></td><td>22/25 compiler control</td><td>genuine Muse candidate</td></tr>
@@ -207,5 +247,25 @@ document.querySelectorAll('[data-why]').forEach(el=>{
 document.getElementById('drawerClose').addEventListener('click',closeCard);
 scrim.addEventListener('click',closeCard);
 addEventListener('keydown',e=>{ if(e.key==='Escape') closeCard(); });
+</script>
+
+<script>
+(() => {
+  const world = document.getElementById('canvasWorld'), wrap = document.getElementById('canvasWrap'), svg = document.getElementById('wires');
+  const pos = id => { const n = world.querySelector(`[data-node="${id}"]`); return {x: n.offsetLeft, y: n.offsetTop, w: n.offsetWidth, h: n.offsetHeight}; };
+  const wire = (a, b, cls) => { const A = pos(a), B = pos(b); const x1 = A.x + A.w, y1 = A.y + A.h / 2, x2 = B.x, y2 = B.y + B.h / 2; const dx = Math.max(40, (x2 - x1) / 2); const path = document.createElementNS('http://www.w3.org/2000/svg', 'path'); path.setAttribute('d', `M${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`); if (cls) path.setAttribute('class', cls); svg.appendChild(path); };
+  const drop = (a, b, cls) => { const A = pos(a), B = pos(b); const x1 = A.x + A.w / 2, y1 = A.y + A.h, x2 = B.x + B.w / 2, y2 = B.y; const path = document.createElementNS('http://www.w3.org/2000/svg', 'path'); path.setAttribute('d', `M${x1} ${y1} C ${x1} ${y1 + 60}, ${x2} ${y2 - 60}, ${x2} ${y2}`); if (cls) path.setAttribute('class', cls); svg.appendChild(path); };
+  wire('target', 'observe'); wire('observe', 'compile'); wire('compile', 'candidate'); wire('candidate', 'verify'); wire('verify', 'deliver');
+  drop('muse', 'candidate', 'gate'); drop('evaluator', 'verify'); drop('product', 'deliver');
+  let scale = .82, tx = 8, ty = 8, drag = null, moved = false;
+  const apply = () => world.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`; apply();
+  document.getElementById('zoomIn').onclick = () => { scale = Math.min(1.5, scale + .12); apply(); };
+  document.getElementById('zoomOut').onclick = () => { scale = Math.max(.45, scale - .12); apply(); };
+  document.getElementById('zoomReset').onclick = () => { scale = .82; tx = 8; ty = 8; apply(); };
+  wrap.addEventListener('pointerdown', e => { drag = {x: e.clientX - tx, y: e.clientY - ty}; moved = false; });
+  wrap.addEventListener('pointermove', e => { if (!drag) return; tx = e.clientX - drag.x; ty = e.clientY - drag.y; moved = true; apply(); });
+  addEventListener('pointerup', () => setTimeout(() => drag = null, 0));
+  world.querySelectorAll('.node').forEach(n => n.addEventListener('click', e => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true));
+})();
 </script>
 </body></html>
