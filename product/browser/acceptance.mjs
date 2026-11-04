@@ -359,6 +359,9 @@ try {
   const reverseOwner = await app.evaluate(async ({ id, accessToken }) => (await fetch(`https://backend.test/v1/runs/${id}/report`, { headers: { Authorization: `Bearer ${accessToken}` } })).status,
     { id: mobileG4RunId, accessToken: token });
   assert.equal(reverseOwner, 404, 'first owner cannot read the second owner HTTP report');
+  // The two synthetic identities share one real pre-auth rate bucket.
+  // Leave headroom before another mutation sequence; never bypass limits.
+  await waitForTestRateHeadroom();
   await second.locator('.topbar [data-action="new"]').click();
   await second.locator('#promptInput').fill('Mobile ledger fixture'); await second.locator('#promptInput').press('Enter');
   await second.getByRole('button', { name: 'Choose a supported target' }).click();
