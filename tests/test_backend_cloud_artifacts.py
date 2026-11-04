@@ -296,6 +296,26 @@ def test_explicit_http_transport_constructor_is_offline_and_credentials_are_serv
     assert "FAKE_SERVER_SECRET" not in repr(response)
 
 
+def test_modern_storage_secret_uses_apikey_header_without_bearer(monkeypatch):
+    connection = FakeConnection(FakeResponse())
+    monkeypatch.setattr(cloud.http.client, "HTTPSConnection", lambda *a, **k: connection)
+    synthetic = "sb_secret_" + "x" * 40
+    transport = cloud.SupabaseHTTPTransport(access_token=synthetic, api_key=synthetic)
+    key = "v1/" + "a" * 64 + "/" + "b" * 64 + "/report/report.json"
+    transport.request("GET",
+        cloud.PROJECT_ORIGIN + "/storage/v1/object/authenticated/" + cloud.PRIVATE_BUCKET + "/" + key,
+        headers={}, body=None, max_response_bytes=100, timeout_seconds=1,
+        follow_redirects=False)
+    sent = connection.requests[0][3]
+    assert sent["apikey"] == synthetic
+    assert "Authorization" not in sent
+    assert connection.closed
+    with pytest.raises(BackendError):
+        cloud.SupabaseHTTPTransport(access_token=synthetic, api_key="sb_secret_other")
+    with pytest.raises(BackendError):
+        cloud.SupabaseHTTPTransport(access_token="sb_publishable_unprivileged", api_key="sb_publishable_unprivileged")
+
+
 @pytest.mark.parametrize("fault", ["host", "redirect_enabled", "header", "upsert", "truncated", "oversized", "duplicate_length", "compressed"])
 def test_http_transport_enforces_fixed_target_no_redirect_bounds_and_redacts(monkeypatch, fault):
     headers = [("Content-Length", "2")]
