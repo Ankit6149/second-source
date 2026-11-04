@@ -147,6 +147,38 @@ class PublicPreview(unittest.TestCase):
         self.assertNotIn("LIVE_MODEL", text)
         self.assertNotIn("gemma", text.lower())
 
+    def test_architecture_shows_working_core_and_full_goal(self):
+        """Interactive architecture must not mix implemented and planned nodes."""
+        source = (ROOT / "architecture/index.html").read_text(encoding="utf-8")
+        for identifier in (
+            'id="arch-present"', 'id="arch-future"', 'id="arch-canvas"',
+            'id="arch-nodes"', 'id="arch-inspector"', 'id="arch-zoom-in"',
+            'id="arch-fit"',
+        ):
+            self.assertIn(identifier, source)
+        self.assertIn("From an authorized link to a verified rebuild", source)
+        self.assertIn("Meta Muse Spark 1.3", source)
+        self.assertIn("server-side Meta Model API", source)
+        self.assertIn("bounded NON_AI", source)
+        self.assertIn("localhost", source)
+        self.assertIn("not shipped", source.lower())
+        self.assertNotIn("Hosted execution is off", source)
+        self.assertNotIn("One divergence left", source)
+        scripts = re.findall(r"<script>\s*([\s\S]+?)</script>", source)
+        self.assertEqual(len(scripts), 1)
+        import shutil
+        import subprocess
+        node = shutil.which("node")
+        if node:
+            import tempfile
+            with tempfile.TemporaryDirectory() as temp:
+                filename = Path(temp) / "architecture.js"
+                filename.write_text(scripts[0], encoding="utf-8")
+                proc = subprocess.run(
+                    [node, "--check", str(filename)], text=True,
+                    capture_output=True, timeout=20)
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+
     def test_vercel_publishes_only_built_site(self):
         config = json.loads((ROOT.parent / "vercel.json").read_text(encoding="utf-8"))
         self.assertEqual(config["buildCommand"], "python3 web/build.py --with-app")
