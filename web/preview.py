@@ -37,12 +37,14 @@ class PreviewHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         path = unquote(urlsplit(self.path).path)
-        legacy = {"evidence": "/reports/", "challenge": "/reports/",
+        legacy = {"evidence": "/reports/",
                   "lab": "/experiments/", "console": "/app/", "handoff": "/app/"}
         if any(path in {f"/{route}", f"/{route}/", f"/{route}/index.html"} for route in legacy):
             route = path.strip("/").split("/")[0]
             self._redirect(legacy[route])
             return
+        elif path in {"/challenge", "/challenge/", "/challenge/index.html"}:
+            self.public_file = ROOT / "challenge" / "index.html"
         elif path in {"/reports", "/reports/", "/reports/index.html"}:
             self.public_file = ROOT / "reports" / "index.html"
         elif path in {"/experiments", "/experiments/", "/experiments/index.html"}:

@@ -96,7 +96,7 @@ class PublicPreview(unittest.TestCase):
 
     def test_retired_routes_redirect_to_current_destination(self):
         output = build()
-        for route, destination in (("evidence", "/reports/"), ("challenge", "/reports/"),
+        for route, destination in (("evidence", "/reports/"),
                                    ("lab", "/experiments/"), ("console", "/app/"), ("handoff", "/app/")):
             stub = (output / route / "index.html").read_text(encoding="utf-8")
             self.assertIn(destination, stub)
@@ -107,10 +107,24 @@ class PublicPreview(unittest.TestCase):
                 if destination != "/app/" or exc.code != 503:
                     raise
 
+    def test_challenge_serves_nine_round_prediction_game(self):
+        output = build()
+        source = (ROOT / "challenge/index.html").read_text(encoding="utf-8")
+        packaged = (output / "challenge/index.html").read_text(encoding="utf-8")
+        self.assertEqual(source, packaged)
+        self.assertIn("Nine rounds a screenshot cannot answer", packaged)
+        self.assertIn("no live AI calls", packaged)
+        self.assertIn("provider attestation is incomplete", packaged)
+        self.assertIn("duplicate_label", packaged)
+        self.assertIn('role="group" aria-label="Predict reference behavior"', packaged)
+        with urlopen(self.origin + "/challenge/") as response:
+            self.assertEqual(response.status, 200)
+            self.assertIn(b"Nine rounds a screenshot cannot answer", response.read())
+
     def test_no_public_judge_lab_routes_or_hidden_reference_data(self):
         config = json.loads((ROOT.parent / "vercel.json").read_text(encoding="utf-8"))
         redirects = {item["source"]: item["destination"] for item in config["redirects"]}
-        self.assertEqual(redirects["/challenge/"], "/reports/")
+        self.assertNotIn("/challenge/", redirects)
         self.assertEqual(redirects["/lab/"], "/experiments/")
         self.assertEqual(redirects["/evidence/"], "/reports/")
         for page in ("index.html", "reports/index.html", "experiments/index.html"):

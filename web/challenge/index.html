@@ -4,202 +4,161 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#101b17">
-<meta name="description" content="A 60-second, evidence-backed Second Source challenge: predict hidden software behavior, then compare an observed reference with a genuine recorded Meta candidate.">
-<title>The Black-Box Challenge — Second Source</title>
+<meta name="description" content="The Second Source prediction challenge: 9 rounds across 4 real programs. Predict what the software does, then see what the reference and our rebuild actually did. Recorded responses, no live AI calls.">
+<title>The Prediction Challenge — Second Source</title>
+<link rel="stylesheet" href="../styles.css">
+<link rel="stylesheet" href="../release.css">
 <style>
 @font-face{font-family:Manrope;src:url(../assets/manrope.ttf) format("truetype");font-display:swap}
-:root{--forest:#101b17;--forest2:#17251d;--cream:#f7f8f3;--ink:#1d2a23;--sub:#4f6557;--line:#dce5db;--mint:#bcefb7;--accent:#328052;--warn:#ac442e;--mono:ui-monospace,SFMono-Regular,Consolas,monospace}
-*{box-sizing:border-box}
-html{scroll-behavior:smooth}
-body{margin:0;background:var(--cream);color:var(--ink);font:15px/1.65 Manrope,system-ui,sans-serif}
-a{color:inherit}
-button{font:inherit}
-:focus-visible{outline:3px solid #62be81;outline-offset:3px}
-.skip{position:absolute;left:-9999px}.skip:focus{left:16px;top:16px;background:#fff;padding:8px 12px;z-index:5}
-.container{width:min(1140px,calc(100% - 48px));margin:auto}
-nav{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:22px 0}
-.brand{font-weight:850;font-size:18px;letter-spacing:-.07em;text-decoration:none;color:#fff}
-.brand i{display:inline-block;width:18px;height:18px;vertical-align:middle;border:4px solid var(--mint);border-radius:50%;margin-right:11px}
-.brand span{color:var(--mint)}
-.navlinks{display:flex;gap:25px;color:#cdd9cf;font-size:13px}.navlinks a{text-underline-offset:5px;text-decoration-color:#6c8873}
-.hero{background:var(--forest);color:white;position:relative;overflow:hidden}
-.hero:before{content:"";position:absolute;inset:-100px -80px auto auto;width:600px;height:600px;border:1px solid #597d643c;border-radius:50%;box-shadow:0 0 0 95px #7baa850c,0 0 0 210px #7baa8508;pointer-events:none}
-.hero-content{padding:76px 0 84px;max-width:830px;position:relative}
-.kicker{font-size:11px;letter-spacing:.19em;font-weight:850;color:var(--mint)}
-h1{font-size:clamp(40px,6vw,72px);letter-spacing:-.065em;line-height:1.07;margin:19px 0 22px}
-h1 em{color:var(--mint);font-style:normal}
-.hero p{font-size:17px;max-width:660px;color:#cad9cd;margin:0}
-.hero-label{display:flex;align-items:center;gap:10px;margin-top:28px;flex-wrap:wrap;color:#9ebda6;font-size:11px;letter-spacing:.05em}
-.hero-label b{font-weight:800;color:var(--mint);padding:6px 10px;border:1px solid #51715d;border-radius:4px}
-main{padding:62px 0 90px}
-.intro{display:flex;justify-content:space-between;align-items:end;gap:24px;margin-bottom:26px}
-.eyebrow{font-size:11px;font-weight:850;color:var(--accent);letter-spacing:.15em}
-h2{font-size:clamp(27px,3.4vw,41px);letter-spacing:-.055em;line-height:1.2;margin:8px 0}
-.intro p{color:var(--sub);max-width:520px;margin:0}
-.progress{font:750 12px var(--mono);color:var(--sub);white-space:nowrap;padding-bottom:5px}
-.progress strong{font-size:20px;color:var(--ink)}
-.workbench{border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 24px 65px #182b1a0b;background:white;display:grid;grid-template-columns:minmax(270px,.84fr) minmax(0,1.16fr)}
-.left{background:#eef3ed;padding:34px 30px;border-right:1px solid var(--line)}
-.right{padding:34px 36px;min-width:0}
-.panel-label{font-size:11px;font-weight:900;letter-spacing:.11em;color:#587063;text-transform:uppercase}
-.reference-title{font-size:25px;letter-spacing:-.05em;line-height:1.2;margin:19px 0 12px}
-.reference-sub{font-size:13px;color:var(--sub);margin:0 0 18px}
-.terminal{background:#172820;border:1px solid #263a2e;color:#deefdd;border-radius:12px;overflow:hidden}
-.term-head{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #3b5645;padding:11px 15px;font:700 10px var(--mono);letter-spacing:.08em;color:#89b998}
-.term-body{padding:17px;font:12px/1.9 var(--mono);overflow-x:auto;white-space:pre}
-.prompt{color:#a2ebae}.muted{color:#a3b8a7}
-.hint{border-top:1px solid #d6e1d5;margin-top:24px;padding-top:21px;font-size:13px;color:#53675b}
-.hint strong{color:var(--ink)}
-.stepnav{display:flex;gap:7px;margin:18px 0}
-.stepnav button{border:1px solid #cfdecf;background:#fff;border-radius:999px;width:34px;height:34px;font:800 13px var(--mono);color:#53705a;cursor:pointer}
-.stepnav button[aria-current="step"]{background:var(--forest);color:var(--mint);border-color:var(--forest)}
-.stepnav button[aria-label]:hover{border-color:var(--accent)}
-.counter{font:800 11px var(--mono);color:var(--accent);letter-spacing:.1em}
-.question{font-size:clamp(24px,2.8vw,33px);line-height:1.3;font-weight:850;letter-spacing:-.045em;margin:12px 0 10px;color:#1b2d22}
-.context{font-size:14px;color:var(--sub);margin:0 0 20px}
-.options{display:grid;gap:9px;margin-bottom:20px}
-.choice{display:flex;align-items:center;gap:12px;text-align:left;border:1px solid var(--line);border-radius:10px;background:white;color:var(--ink);padding:13px 16px;cursor:pointer;font-size:14px;font-weight:750}
-.choice:before{content:"";width:18px;height:18px;border-radius:50%;border:2px solid #afbeaf;flex-shrink:0}
-.choice:hover{border-color:#77b98a;background:#f8fcf6}
-.choice.selected{border-color:var(--accent);background:#edf7ee}
-.choice.selected:before{background:var(--accent);box-shadow:inset 0 0 0 4px white;border-color:var(--accent)}
-.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.primary,.secondary{border-radius:999px;padding:12px 20px;font-size:13px;font-weight:900;cursor:pointer}
-.primary{color:#0e2115;background:var(--mint);border:1px solid var(--mint)}
-.primary:hover:not(:disabled){background:#a5eaa7}
-.primary:disabled{opacity:.38;cursor:not-allowed}
-.secondary{background:transparent;border:1px solid #cbd8cc;color:#2d4a36}
-.result{border-top:1px solid var(--line);margin-top:25px;padding-top:22px;display:none}
-.result.open{display:block;animation:rise .22s ease-out}
-@keyframes rise{from{opacity:.35;transform:translateY(7px)}to{opacity:1;transform:none}}
-.result h3{font-size:20px;letter-spacing:-.04em;margin:0 0 7px}
-.result p{color:var(--sub);font-size:13px;margin:0 0 15px}
-.compare{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.compare > div{background:#f4f8f3;border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
-.compare > div:last-child{background:#fff4ef;border-color:#f1d6c9}
-.compare small{display:block;color:#4c6754;font-weight:900;font-size:10px;letter-spacing:.09em;margin-bottom:10px}
-.compare > div:last-child small{color:#96513d}
-.compare pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.7 var(--mono);margin:0;color:#26372b}
-.insight{margin-top:15px;background:#f4f8f3;padding:13px 16px;border-left:3px solid var(--accent);font-size:13px}
-.insight b{color:var(--ink)}
-.confidence{font-size:12px;color:var(--sub);margin-top:15px}
-.summary{padding-top:60px}
-.summary h2{margin-bottom:20px}
-.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
-.metric{border:1px solid var(--line);background:white;border-radius:13px;padding:24px}
-.metric strong{display:block;font-size:31px;line-height:1.3;letter-spacing:-.06em}
-.metric span{font-size:12px;color:var(--sub)}
-.disclosure{padding:19px 22px;background:#e9f1e8;border:1px solid #d2e1d2;border-radius:12px;font-size:13px;color:#435a49}
-.links{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
-.links a{padding:11px 17px;border:1px solid #b8cdb9;border-radius:999px;text-decoration:none;font-weight:850;font-size:13px}
-.links a:first-child{background:var(--forest);color:white;border-color:var(--forest)}
-footer{background:var(--forest);color:#b5c7b8;padding:25px 0;font-size:12px}
-footer .container{display:flex;justify-content:space-between;gap:15px;flex-wrap:wrap}
-footer a{color:var(--mint)}
-@media(max-width:790px){.workbench{grid-template-columns:1fr}.left{border-right:0;border-bottom:1px solid var(--line)}.right,.left{padding:25px}.hero-content{padding:48px 0 59px}.compare{grid-template-columns:1fr}.metrics{grid-template-columns:1fr}.intro{align-items:start;flex-direction:column}.navlinks{gap:12px}}
-@media(max-width:460px){.container{width:min(100% - 30px,1140px)}nav{padding:15px 0}.navlinks{font-size:11px}.question{font-size:24px}.hero p{font-size:15px}}
-@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+:root{--forest:#101b17;--cream:#f7f8f3;--ink:#1d2a23;--sub:#4f6557;--line:#dce5db;--mint:#bcefb7;--accent:#328052;--warn:#ac442e;--mono:ui-monospace,SFMono-Regular,Consolas,monospace}
+.chal{max-width:880px;margin:0 auto;padding:28px 20px 64px;font:15px/1.65 Manrope,system-ui,sans-serif;color:var(--ink)}
+.chal h1{font-size:32px;letter-spacing:-.03em;line-height:1.15;margin:10px 0 8px}
+.chal .lede{color:var(--sub);max-width:640px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:22px 0}
+.step{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.step b{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.progress{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:18px 0 8px;font-weight:700}
+.bar{height:8px;background:#e3eadf;border-radius:99px;overflow:hidden;margin-bottom:18px}
+.bar span{display:block;height:100%;background:var(--accent);width:0;transition:width .4s ease}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px}
+.act{font-size:11px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;color:var(--accent)}
+.setup{background:var(--cream);border:1px dashed var(--line);border-radius:10px;padding:10px 14px;margin:12px 0;color:var(--sub)}
+.setup strong{color:var(--ink)}
+.question{font-size:20px;font-weight:800;letter-spacing:-.01em;margin:8px 0 14px}
+.options{display:grid;gap:10px}
+.options button{text-align:left;padding:13px 16px;border-radius:12px;border:1.5px solid var(--line);background:#fff;cursor:pointer;font-weight:600}
+.options button:hover{border-color:var(--accent)}
+.options button[disabled]{cursor:default;opacity:.85}
+.options button.right{border-color:var(--accent);background:#eaf6ec}
+.options button.wrong{border-color:var(--warn);background:#fbeeea}
+.reveal{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.reveal div{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--cream)}
+.reveal small{font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--sub)}
+.reveal pre{font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;margin:8px 0 0}
+.verdict{margin-top:14px;font-weight:700}
+.verdict.match{color:var(--accent)} .verdict.differ{color:var(--warn)}
+.why{color:var(--sub);margin-top:6px}
+.next{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap}
+.btn{display:inline-block;padding:11px 18px;border-radius:99px;border:1.5px solid var(--accent);background:var(--accent);color:#fff;font-weight:700;text-decoration:none;cursor:pointer}
+.btn.ghost{background:#fff;color:var(--accent)}
+.final{text-align:center;padding:30px 10px}
+.final .score{font-size:44px;font-weight:900;letter-spacing:-.03em}
+@media(max-width:640px){.steps,.reveal{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-<a class="skip" href="#main">Skip to challenge</a>
-<div class="hero"><div class="container">
-<nav aria-label="Site"><a class="brand" href="../"><i aria-hidden="true"></i>second<span>source.</span></a>
-<div class="navlinks"><a href="../lab/">Reconstruction lab</a><a href="../evidence/">Evidence report</a></div></nav>
-<div class="hero-content">
-<div class="kicker">A 60-SECOND EXPERIMENT / SECOND SOURCE</div>
-<h1>The software still works.<br><em>The rules are missing.</em></h1>
-<p>Imagine replacing an undocumented tool. You can observe what it does, but you cannot read its source. Would you know which rules to rebuild?</p>
-<div class="hero-label"><b>INTERACTIVE RECORDED REPLAY</b><span>Owned ledger fixture · genuine Meta candidate · no live AI calls</span></div>
-</div></div></div>
-<main id="main"><div class="container">
-<div class="intro"><div><div class="eyebrow">01 / THE INVESTIGATION</div><h2>Three questions a screenshot cannot answer.</h2><p>Predict the reference behavior, then reveal the recorded result and what Meta Muse actually reconstructed. These are public example probes, not the sealed evaluation cases.</p></div><div class="progress"><strong id="step-count">01</strong> / 03</div></div>
-<div class="workbench">
-<aside class="left">
-<div class="panel-label">The observable black box</div>
-<h3 class="reference-title">An owned ledger program.</h3>
-<p class="reference-sub">It supports add, list, total and remove. The agent cannot see the reference implementation.</p>
-<div class="terminal"><div class="term-head"><span>PUBLIC OBSERVATION</span><span>JSONL / CLI</span></div><div class="term-body"><span class="prompt">$</span> add {label:"Milk",amount:2}
-<span class="muted">↳</span> {"ok":true,"id":"1"}</div></div>
-<div class="hint"><strong>What don't we know yet?</strong> Whether labels ignore case, where numeric boundaries lie, and whether outputs follow exactly the same schema. An implementation can look correct on the first example and still fail elsewhere.</div>
-<div class="stepnav" role="group" aria-label="Choose question">
-<button type="button" data-step="0" aria-label="Question 1" aria-current="step">1</button>
-<button type="button" data-step="1" aria-label="Question 2">2</button>
-<button type="button" data-step="2" aria-label="Question 3">3</button>
-</div>
-</aside>
-<section class="right" aria-labelledby="question">
-<div class="counter" id="case-label">EXPERIMENT 01 / STATE RULE</div>
-<h3 class="question" id="question">Does adding "MILK" after "Milk" create another entry?</h3>
-<p class="context" id="context">The interface never tells you whether labels are case-sensitive.</p>
-<div class="options" id="options" role="group" aria-label="Predict reference behavior"></div>
-<div class="actions">
-<button class="primary" type="button" id="reveal" disabled>Reveal observed behavior</button>
-<button class="secondary" type="button" id="next" hidden>Next question →</button>
-</div>
-<div class="result" id="result" aria-live="polite" tabindex="-1">
-<h3 id="result-title">What the experiment revealed</h3>
-<p id="result-intro"></p>
-<div class="compare"><div><small>REFERENCE · OBSERVED</small><pre id="observed"></pre></div><div><small>META CANDIDATE · RECORDED</small><pre id="candidate"></pre></div></div>
-<div class="insight" id="insight"></div>
-<div class="confidence" id="prediction"></div>
-</div>
-</section>
-</div>
-<section class="summary" aria-label="Measured evidence">
-<div class="eyebrow">02 / WHAT THE EVALUATOR FOUND</div>
-<h2>Not a screenshot comparison. An independent behavioral test.</h2>
-<div class="metrics">
-<div class="metric"><strong>14 / 25</strong><span>Genuine Meta Muse Spark 1.3 candidate · independent sealed suite</span></div>
-<div class="metric"><strong>9 + 2</strong><span>Schema + error mismatches in that genuine candidate</span></div>
-<div class="metric"><strong>0</strong><span>Genuine model repair improvements claimed here</span></div>
-</div>
-<div class="disclosure"><strong>Provenance:</strong> These are recorded public reference/candidate probes and the independently reported genuine Meta result. The candidate was an admitted bounded declarative specification, not recovered source code. The historical provider attestation is incomplete; an offline pinned-source replay reproduced 14/25. This page runs no target, model or evaluator. Deterministic NON_AI controls and separate Vikunja experiments are not included in this score. The sealed cases never enter the interactive page.</div>
-<div class="links"><a href="../lab/">Explore the full reconstruction lab</a><a href="../evidence/">Inspect evidence and limitations</a><a href="https://github.com/Ankit6149/second-source/blob/main/docs/JUDGE_EVIDENCE_G3.md">Read the research record</a></div>
-</section>
-</div></main>
-<footer><div class="container"><span>SECOND SOURCE / EVIDENCE BEFORE CLAIMS</span><span><a href="../">Home</a> · <a href="https://github.com/Ankit6149/second-source">GitHub</a></span></div></footer>
+<header class="site-header" id="header"><div class="container nav-wrap">
+  <a class="wordmark" href="../" aria-label="Second Source home"><span class="wordmark-icon" aria-hidden="true"><span></span></span><span>second<span class="word-light">source</span><span class="word-dot">.</span></span></a>
+  <nav class="desktop-nav" aria-label="Main navigation"><a href="../#approach">The idea</a><a href="../#method">The method</a><a href="./" aria-current="page">Prediction challenge</a><a href="../evidence/">Evidence</a><a href="../lab/">Research lab</a><a href="../app/">Open app</a></nav>
+  <div class="nav-actions"><a class="nav-link" href="https://github.com/Ankit6149/second-source" target="_blank" rel="noopener noreferrer">GitHub</a><a class="pill-button nav-cta" href="../app/">Open app</a></div>
+</div></header>
+
+<main class="chal">
+  <p class="act">Interactive recorded replay · no live AI calls</p>
+  <h1>The Prediction Challenge</h1>
+  <p class="lede">Nine rounds a screenshot cannot answer. Four real programs — a ledger, Vikunja, File Browser, and Gitea — plus one motion test. Every response below was recorded from a real run; our rebuild is shown next to the reference, including where it differs.</p>
+
+  <div class="steps">
+    <div class="step"><b>Step 1</b>Read what has happened so far.</div>
+    <div class="step"><b>Step 2</b>Predict what happens next.</div>
+    <div class="step"><b>Step 3</b>See what the reference did — and what our rebuild did.</div>
+  </div>
+
+  <div class="progress"><span id="roundLabel">Round 1 of 9</span><span id="scoreLabel">Score 0</span></div>
+  <div class="bar"><span id="barFill"></span></div>
+
+  <section class="card" id="card">
+    <p class="act" id="actLabel"></p>
+    <div class="setup" id="setup"></div>
+    <p class="question" id="question"></p>
+    <div class="options" id="options" role="group" aria-label="Predict reference behavior"></div>
+    <div id="reveal" hidden>
+      <div class="reveal">
+        <div><small>Reference · recorded</small><pre id="refOut"></pre></div>
+        <div><small>Our rebuild · recorded</small><pre id="candOut"></pre></div>
+      </div>
+      <p class="verdict" id="verdict"></p>
+      <p class="why" id="why"></p>
+    </div>
+    <div class="next">
+      <button class="btn" id="nextBtn" hidden>Next round</button>
+    </div>
+  </section>
+
+  <section class="card final" id="finalCard" hidden>
+    <p class="act">Challenge complete</p>
+    <p class="score" id="finalScore"></p>
+    <p id="finalText"></p>
+    <div class="next" style="justify-content:center">
+      <a class="btn" href="../app/">Open the app and run a real investigation</a>
+      <a class="btn ghost" href="https://github.com/Ankit6149/second-source/blob/main/docs/reports/SECOND_SOURCE_FINAL_REPORT.md">Read the full technical report</a>
+      <a class="btn ghost" href="../">Back to home</a>
+    </div>
+  </section>
+
+  <p class="why" style="margin-top:18px">Provenance: recorded public reference/candidate probes and independently scored runs. The ledger candidate is a genuine Meta Muse Spark 1.3 recording (14/25 on its sealed suite; provider attestation is incomplete). Vikunja, File Browser, and Gitea rebuilds are deterministic NON_AI candidates. Nothing here runs a model in your browser.</p>
+</main>
+
 <script>
-(function(){
 "use strict";
-const cases=[
- {kind:"EXPERIMENT 01 / STATE RULE",q:'Does adding "MILK" after "Milk" create another entry?',ctx:"The interface never tells you whether labels are case-sensitive.",options:["Yes — a new entry","No — it is rejected as a duplicate"],correct:1,ref:'add Milk → {"ok":true,"id":"1"}\nadd MILK → duplicate_label',cand:"add Milk → accepted\nadd MILK → accepted",result:"The reference rejects the second addition. Its uniqueness rule is case-insensitive.",insight:"The Meta-generated candidate had unique_casefold:false. It missed this rule and accepted the duplicate."},
- {kind:"EXPERIMENT 02 / INPUT BOUNDARY",q:"Will the reference accept an entry with amount 500?",ctx:"The initial successful amount of 2 does not reveal the upper limit.",options:["Yes — 500 is allowed","No — 500 exceeds the allowed range"],correct:1,ref:"add {amount:500}\n→ invalid_amount",cand:"add {amount:500}\n→ accepted",result:"The reference rejects amount 500. Recorded public probes establish an upper bound of 100.",insight:"The Meta-generated candidate guessed a limit of 1,000,000; the recorded reference allowed at most 100."},
- {kind:"EXPERIMENT 03 / OUTPUT CONTRACT",q:"Should an add response include the submitted label and amount?",ctx:"Even when both implementations add an entry, an API consumer may depend on the exact response shape.",options:["Yes — return the full entry","No — return only the success flag and ID"],correct:1,ref:'{"ok":true,"id":"1"}',cand:'{"ok":true,"id":"1",\n "label":"Milk","amount":2}',result:"The reference returns only ok and id. Extra fields are a schema mismatch.",insight:"The candidate's plausible extra fields failed behavioral fidelity despite looking helpful."}
+const ROUNDS = [
+ {act:"Act 1 · The ledger — state rules", setup:"The program already accepted: <strong>add Milk, amount 2</strong>. Its rules are not written anywhere you can see.", q:"You add “MILK” (capital letters), amount 2. What happens?", options:["A second entry is created","It is rejected as a duplicate","Both entries are merged"], correct:1, ref:'add Milk → {"ok":true,"id":"1"}\nadd MILK → duplicate_label', cand:'add Milk → accepted\nadd MILK → accepted', match:false, why:"Labels are case-insensitive in the reference. The genuine Muse candidate missed this and accepted both — one of its recorded failures."},
+ {act:"Act 1 · The ledger — limits", setup:"Amounts of 2 and 50 were accepted earlier.", q:"You add an entry with amount 500. What happens?", options:["Accepted — any amount works","Rejected — 500 is over the limit","Accepted, but stored as 100"], correct:1, ref:"add {amount:500}\n→ invalid_amount", cand:"add {amount:500}\n→ accepted", match:false, why:"There is a hidden upper bound. Guessing limits is where reconstruction without evidence fails."},
+ {act:"Act 1 · The ledger — reply shape", setup:"An add just succeeded.", q:"What does the success reply contain?", options:["The full entry: id, label and amount","Only ok and the new id","Only the word “added”"], correct:1, ref:'{"ok":true,"id":"1"}', cand:'{"ok":true,"id":"1",\n "label":"Milk","amount":2}', match:false, why:"Programs that consume this API depend on the exact shape. Extra fields are a difference, even when the action “works”."},
+ {act:"Act 2 · Vikunja — permissions", setup:"Ana owns a project and shares it with Bob as <strong>read-only</strong>.", q:"Bob tries to create a task in Ana’s project. What happens?", options:["The task is created","Forbidden — read-only means no creating","The task is created but hidden"], correct:1, ref:"POST /projects/{id}/tasks (Bob)\n→ 403 Forbidden", cand:"→ 403 Forbidden", match:true, why:"Our rebuild matched this. Permission rules were observed, not assumed."},
+ {act:"Act 2 · Vikunja — where rebuilds differ", setup:"Same shared project. It contains tasks.", q:"Bob opens the shared project’s task list. What does our rebuild return?", options:["The same list as the reference","An error / empty result — this is a known divergence","Only tasks Bob created"], correct:1, ref:"GET /projects/{id}/tasks (Bob)\n→ 200, tasks listed", cand:"→ failed (recorded divergence\non the public ladder)", match:false, why:"Honest result: on the 19-step public ladder our rebuild scores 11/19, and read-after-share is exactly where it differs. We show it instead of hiding it."},
+ {act:"Act 3 · File Browser — admin rules", setup:"Bob is a normal (non-admin) user and is signed in.", q:"Bob tries to create a new user account. What happens?", options:["User created","Forbidden — only admins can","Created, but disabled"], correct:1, ref:"POST /users (Bob) → 403", cand:"→ 403", match:true, why:"Matched. This is one of the 7 differential cases our rebuild passes (7/7)."},
+ {act:"Act 3 · File Browser — duplicates", setup:"An admin creates a username that already exists.", q:"What does the program reply?", options:["201 — a second account","409 Conflict","500 — an error contract"], correct:2, ref:"POST /users (duplicate)\n→ 500", cand:"→ 500", match:true, why:"Odd, but observed: the reference answers 500. A faithful rebuild copies the contract, not what “should” happen."},
+ {act:"Act 4 · Gitea — a brand-new test", setup:"Our rebuild was built from watching Gitea create a repo named <strong>ss-demo</strong>. It has never been tested on Gitea before.", q:"You ask the rebuild for a different repo it created, “ss-case”. What happens?", options:["200 — it finds the repo","404 — it only learned the literal name it saw","It creates the repo on the fly"], correct:1, ref:"GET /repos/ssadmin/ss-case\n→ 200", cand:"→ 404", match:false, why:"First-ever Gitea test: 2/6. The rebuild memorized the name from the evidence instead of learning the pattern. That failure is recorded in our report, not edited away."},
+ {act:"Act 4 · Motion — the spring test", setup:"A card is flicked 150px and let go. The reference card overshoots, then settles.", q:"What does our rebuilt card do?", options:["Stops dead, no overshoot","Overshoots and settles like the original","Keeps sliding forever"], correct:1, ref:"trajectory: overshoot, settles\n(layout difference 0px)", cand:"trajectory RMSE 2.505px\n(threshold 8px) → PASS", match:true, why:"Motion is behavior too. The rebuild was scored on held-out drags it was never fitted to."}
 ];
-let step=0, selected=-1, revealed=false;
-const byId=(id)=>document.getElementById(id);
-const buttons=[...document.querySelectorAll("[data-step]")];
-function render(){
- const d=cases[step];selected=-1;revealed=false;
- byId("step-count").textContent=String(step+1).padStart(2,"0");
- byId("case-label").textContent=d.kind;
- byId("question").textContent=d.q;
- byId("context").textContent=d.ctx;
- const list=byId("options");list.replaceChildren();
- d.options.forEach((label,index)=>{const b=document.createElement("button");b.type="button";b.className="choice";b.textContent=label;b.setAttribute("aria-pressed","false");b.onclick=()=>{selected=index;[...list.children].forEach((node,i)=>{node.classList.toggle("selected",i===index);node.setAttribute("aria-pressed",String(i===index))});byId("reveal").disabled=false};list.append(b)});
- byId("reveal").hidden=false;byId("reveal").disabled=true;byId("next").hidden=true;
- byId("next").textContent=step===2?"Restart the challenge ↻":"Next question →";
- byId("result").classList.remove("open");
- buttons.forEach((b,i)=>{if(i===step)b.setAttribute("aria-current","step");else b.removeAttribute("aria-current")});
+let step = 0, score = 0, picked = -1;
+const $ = id => document.getElementById(id);
+function render() {
+  const r = ROUNDS[step];
+  $("actLabel").textContent = r.act;
+  $("setup").innerHTML = "<strong>So far:</strong> " + r.setup;
+  $("question").textContent = r.q;
+  $("roundLabel").textContent = "Round " + (step + 1) + " of " + ROUNDS.length;
+  $("scoreLabel").textContent = "Score " + score;
+  $("barFill").style.width = (step / ROUNDS.length * 100) + "%";
+  $("reveal").hidden = true; $("nextBtn").hidden = true;
+  const box = $("options"); box.innerHTML = "";
+  r.options.forEach((text, i) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = text;
+    b.onclick = () => pick(i);
+    box.appendChild(b);
+  });
 }
-byId("reveal").onclick=()=>{
- if(selected<0||revealed)return;
- const d=cases[step];revealed=true;
- byId("result-title").textContent="What the experiment revealed";
- byId("result-intro").textContent=d.result;
- byId("observed").textContent=d.ref;
- byId("candidate").textContent=d.cand;
- byId("insight").textContent=d.insight;
- byId("prediction").textContent=selected===d.correct?"Your prediction matched the recorded reference.":"Your prediction differed from the recorded reference. That uncertainty is why we experiment.";
- byId("result").classList.add("open");
- byId("reveal").hidden=true;byId("next").hidden=false;
- byId("result").focus({preventScroll:true});
+function pick(i) {
+  const r = ROUNDS[step]; picked = i;
+  const buttons = [...$("options").children];
+  buttons.forEach((b, j) => { b.disabled = true; if (j === r.correct) b.classList.add("right"); else if (j === i) b.classList.add("wrong"); });
+  if (i === r.correct) score++;
+  $("scoreLabel").textContent = "Score " + score;
+  $("refOut").textContent = r.ref; $("candOut").textContent = r.cand;
+  const v = $("verdict");
+  v.textContent = (i === r.correct ? "You predicted the reference. " : "Your prediction differed. ") +
+    (r.match ? "Our rebuild matched the reference here." : "Our rebuild differed here — shown on purpose.");
+  v.className = "verdict " + (r.match ? "match" : "differ");
+  $("why").textContent = r.why;
+  $("reveal").hidden = false;
+  $("nextBtn").hidden = false;
+  $("nextBtn").textContent = step === ROUNDS.length - 1 ? "See my result" : "Next round";
+}
+$("nextBtn").onclick = () => {
+  if (step === ROUNDS.length - 1) {
+    $("card").hidden = true; $("finalCard").hidden = false;
+    $("barFill").style.width = "100%";
+    $("roundLabel").textContent = "Done";
+    $("finalScore").textContent = score + " / " + ROUNDS.length;
+    $("finalText").textContent = score >= 7 ? "Strong. You think in evidence, not screenshots — which is exactly how Second Source works." : score >= 4 ? "Good start. The rounds you missed are the ones where guessing replaces observing." : "This is why reconstruction needs evidence: intuition alone misses hidden rules.";
+    return;
+  }
+  step++; render();
 };
-byId("next").onclick=()=>{step=(step+1)%cases.length;render();byId("question").scrollIntoView({behavior:"smooth",block:"center"})};
-buttons.forEach((b,i)=>b.onclick=()=>{step=i;render()});
 render();
-})();
 </script>
 </body>
 </html>
