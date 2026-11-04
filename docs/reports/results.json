@@ -157,6 +157,14 @@
       "total": 19,
       "provenance": "REAL_MODEL",
       "note": "1 Muse call on the sole remaining divergent route (GET /projects); no contract change proposed - remaining gap is reference-default entity seeding, not a route contract"
+    },
+    {
+      "software": "Vikunja v2.4.0",
+      "test": "fixed candidate re-scored on frozen + extended suites (evaluator-side)",
+      "passed": 12,
+      "total": 12,
+      "provenance": "NON_AI",
+      "note": "after interpreter blocker fixes; public ladder 18/19; frozen 6/6 and extended 6/6 both hold, no regression"
     }
   ],
   "submission": {

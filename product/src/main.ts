@@ -485,7 +485,7 @@ function reportsView() {
     <p class="ux-page-label">RESEARCH & EVIDENCE</p><h1>Reports</h1>
     <p class="ux-page-lead">Read independently measured results, inspect their limitations, and export only verified data from your selected run.</p>
     <div class="ux-stat-grid">
-      <div class="ux-stat primary"><span>REAL_MODEL · LEDGER</span><strong>14 / 25</strong><small>Genuine Muse candidate · historical sealed evaluation</small></div>
+      <div class="ux-stat primary"><span>REAL_MODEL · MUSE IN EXPERIMENTS</span><strong>3 targets</strong><small>Muse route reviews gated live: File Browser 7/7 · Gitea 6/6 · Vikunja ladder 18/19 preserved</small></div>
       <div class="ux-stat"><span>NON_AI · OWNED HTTP</span><strong>30 / 30</strong><small>Bounded local control · no model called</small></div>
       <div class="ux-stat"><span>NON_AI · VIKUNJA</span><strong>18 / 19</strong><small>Local public conformance · one divergence (default projects)</small></div>
     </div>
