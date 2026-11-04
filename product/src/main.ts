@@ -13,6 +13,7 @@ import { HISTORICAL_LEDGER, PROVENANCE_META, compiledScoreText, metaArmScoreText
 import { capabilityEnabled, targetCapabilities } from './capabilities';
 import { checkEngine, createEngineInvestigation, getEngineInvestigation, engineCandidateUrl, type EngineInvestigation } from './engine';
 import { SCOREBOARD, SOURCE_OPTIONS, OUTCOME_LABEL, buildManifest, buildReadme, buildReportHtml, buildReportMarkdown, runOutcome, stageIndex } from './workbench';
+import { renderInvestigationWorkspace } from './investigation_workspace';
 
 const icons = { PanelLeft, PanelLeftClose, SquarePen, FolderOpen, SwatchBook, ChevronUp, ArrowUp, ShieldCheck, FileText, ListChecks, Download, CircleHelp, X, Play, Square, RefreshCw, Clock, Check, AlertTriangle, LogIn, LogOut, Link, FlaskConical, MessageSquare, ExternalLink, Search, GitBranch, Puzzle, Plus };
 const icon = (name: string) => `<i data-lucide="${name}" aria-hidden="true"></i>`;
@@ -83,15 +84,25 @@ function closeDialog() { const dialog = el<HTMLDialogElement>('dialog'); if (dia
 function setError(error: unknown) { state.error = describe(error); render(); }
 
 function account() {
-  if (!auth) {
-    showDialog('Sign in', `<p>Sign-in is not configured for this deployment yet.</p><p class="component-note">You can explore the product, but saved investigations require a connected service and an account.</p><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Close</button></div>`);
-  } else if (state.session) {
-    showDialog('Account', `<p>Signed in. Your investigations are scoped to this account.</p><p class="component-note">Signing out clears this browser session. Existing access tokens can remain valid until they expire.</p><div class="dialog-actions"><button class="pill-btn" data-action="sign-out">${icon('log-out')} Sign out</button></div>`);
-  } else {
-    showDialog('Sign in', `<p>Sign in to save investigations and review their results.</p>${apiOrigin ? '' : '<p class="component-note">Account sign-in works here; saved investigations additionally need the connected backend service, which is not deployed on this page yet.</p>'}<div class="dialog-actions"><button class="pill-btn primary" data-action="sign-in">${icon('log-in')} Continue with Google</button></div>`);
-  }
+  const signedIn = Boolean(state.session);
+  const email = state.session?.user?.email;
+  const info = !auth ? 'Sign-in is not configured for this deployment. Public research remains accessible.'
+    : !apiOrigin ? 'Google sign-in is available, but saved investigations require a connected backend that is not deployed here.'
+    : 'Your account grants access only to authorized targets supplied by the connected service.';
+  const action = signedIn
+    ? '<button class="pill-btn" type="button" data-action="sign-out">' + icon('log-out') + ' Sign out</button>'
+    : auth ? '<button class="pill-btn primary auth-google" type="button" data-action="sign-in">' + icon('log-in') + ' Continue with Google</button>'
+    : '<button class="pill-btn" disabled aria-disabled="true">Google sign-in unavailable</button>';
+  const markup = '<div class="auth-window">'
+    + '<div class="auth-kicker">SECOND SOURCE / SECURE ACCESS</div>'
+    + '<p class="auth-lede">' + (signedIn ? 'Your account connects you to authorized investigations.' : 'Sign in to create, resume, and export investigations. Research evidence is public without an account.') + '</p>'
+    + (signedIn ? '<p class="auth-identity">Signed in' + (email ? ' as <strong>' + esc(email) + '</strong>' : '') + '</p>' : '')
+    + '<div class="auth-capabilities"><div><strong>Investigate</strong><span>Authorized reference targets</span></div><div><strong>Inspect</strong><span>Evidence &amp; independent verification</span></div><div><strong>Export</strong><span>Proof bundles &amp; reports</span></div></div>'
+    + '<p class="auth-status-note" role="status">' + esc(info) + '</p>'
+    + '<div class="dialog-actions auth-actions">' + action + '<button class="pill-btn" type="button" data-action="research">View public evidence</button></div>'
+    + '<p class="auth-privacy">Google OAuth is handled by the configured provider; Second Source does not request your Google password. Signing in does not start model inference or authorize a paid action.</p></div>';
+  showDialog(signedIn ? 'Your account' : 'Welcome to Second Source', markup);
 }
-
 function composer() {
   const hint = detectReference(state.draft);
   return `<form class="composer" id="composer"><div id="draftContext"><div class="detection" id="detection" ${hint ? '' : 'hidden'}>${hint ? `${icon('link')} <span><strong>${esc(hint.label)}</strong><br><small>${esc(hint.description)}</small></span>` : ''}</div></div><label class="sr-only" for="promptInput">Describe the software behavior you want to investigate</label><textarea rows="2" id="promptInput" maxlength="4000" placeholder="Ask about a workflow, software, or a reference…">${esc(state.draft)}</textarea><div class="composer-lower"><div class="tool-row"><button class="tool-icon" type="button" disabled title="Attachments are not supported yet" aria-label="Attachments unavailable">${icon('plus')}</button><button class="small-tool" type="button" data-action="select-target">${icon('flask-conical')} Choose a supported target</button></div><div class="send-area"><span class="kbd-help">Shift + Enter for new line</span><button class="send-btn" type="submit" aria-label="Send message">${icon('arrow-up')}</button></div></div></form>`;
