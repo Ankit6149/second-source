@@ -84,15 +84,15 @@ test('excessively long notes are rejected without losing the draft', () => {
   } finally { window.happyDOM.abort(); }
 });
 
-test('signed-out home shows what it does, the REAL_MODEL evidence, and one research action', () => {
+test('signed-out home is the input space: value prop, flow, and one evidence action', () => {
   const window = workspace();
   try {
     const doc = window.document;
     const home = doc.querySelector('.empty-home');
     assert.match(home.textContent, /Follow the evidence/i);
-    assert.match(home.textContent, /REAL_MODEL/);
-    assert.match(home.textContent, /14\/25/);
-    assert.match(home.textContent, /not a live model call/i);
+    assert.match(home.textContent, /Input/);
+    assert.match(home.textContent, /working/);
+    assert.match(home.textContent, /output/i);
     assert.match(home.textContent, /Signed out:/);
     const cta = home.querySelector('[data-action="research"]');
     assert.ok(cta, 'research record is the clear signed-out action');
