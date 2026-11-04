@@ -4,7 +4,7 @@
 
 **From an observable black box to a separately implemented, evidence-tested substitute.**
 
-**Start here:** [Take the 60-second Black-Box Challenge](https://second-source-alpha.vercel.app/challenge/) — predict a hidden rule, reveal the real reference behavior, and compare it with the historically recorded genuine Meta candidate. This is a replay, not a live model call. [Open the product workspace](https://second-source-alpha.vercel.app/app/) to inspect supported controls.
+**Start here:** [Product](https://second-source-alpha.vercel.app/) · [Detailed Reports](https://second-source-alpha.vercel.app/reports/) · [Experiments](https://second-source-alpha.vercel.app/experiments/) · [Open the workspace](https://second-source-alpha.vercel.app/app/). The first-screen behavioral contrast is recorded evidence, not live model inference. Supported local investigations require a connected backend.
 
 [Why it exists](#why-not-just-ask-ai-to-copy-a-website) · [How it works](#how-second-source-works) · [Live capabilities](#what-works-today) · [Try it locally](#try-it-locally) · [Architecture](#system-architecture)
 
@@ -16,7 +16,7 @@
 </div>
 
 > [!IMPORTANT]
-> **Engineering prototype, not a universal cloning service.** The repository has a reproducible **NON_AI** reconstruction/evaluation workflow and recorded **genuine Meta G2 reasoning**. A **genuine Meta-generated G3 candidate was admitted and independently scored 14/25** (9 schema, 2 error mismatches; provider attestation incomplete) - see [judge evidence](docs/JUDGE_EVIDENCE_G3.md). Real-model repair is not yet demonstrated. The public frontend is a static research preview; cloud authentication, storage, deployment, real-model repair, and arbitrary-target reconstruction are **not accepted as live production capabilities**. See [current evidence and release gates](#what-works-today).
+> **Engineering prototype, not a universal cloning service.** The repository has a reproducible **NON_AI** reconstruction/evaluation workflow and recorded **genuine Meta G2 reasoning**. A **genuine Meta-generated G3 candidate was admitted and independently scored 14/25** (9 schema, 2 error mismatches; provider attestation incomplete) - see [judge evidence](docs/JUDGE_EVIDENCE_G3.md). Real-model repair is not yet demonstrated. The public frontend is an interactive research preview; hosted backend execution, durable cloud investigation storage, real-model repair, and arbitrary-target reconstruction are **not accepted as live production capabilities**. See [current evidence and release gates](#what-works-today).
 
 ## The idea
 

@@ -20,12 +20,12 @@ Second Source uses an explicit authorized scope, recorded black-box inputs/outpu
 
 **Never add scores across targets or compare denominators as if they measure identical behaviors.** Provider failures and unscored arms are not zeros. The Meta Vikunja provider gateway lost some original receipts after a driver crash; the stored run record and frozen specs are evidence, not independent billing/provider attestations.
 
-## Three recorded public observations — see /challenge/
+## Three recorded public observations — see the Product landing and Reports
 1. **Case-insensitive uniqueness.** The owned ledger rejects adding `MILK` after `Milk` with `duplicate_label`. The historical genuine Meta candidate accepted it (`unique_casefold:false`).
 2. **Input boundary.** The reference rejects `amount:500` as `invalid_amount`; the candidate guessed a much larger maximum.
 3. **Exact response schema.** The reference's successful `add` returns `{"ok":true,"id":"1"}`; the candidate included extra fields, creating a schema mismatch.
 
-These are public replayable probes, **not** the withheld evaluator cases. The browser challenge and lab show recorded evidence; they do not call a live model or operate the reference.
+These are public replayable probes, **not** the withheld evaluator cases. The landing and Reports show recorded evidence; they do not call a live model or operate the reference.
 
 ## Engineering artifacts delivered
 - Authorized scope and run boundaries; source code from the reference is not passed to the candidate generator.
@@ -33,11 +33,11 @@ These are public replayable probes, **not** the withheld evaluator cases. The br
 - Independent evaluation with versioned evidence, digests and separate runner ownership.
 - Local API/worker lifecycle, events, owner-scoped investigation records and sanitized integrity export.
 - Local deterministic engine for owned Vikunja and fixture control runs.
-- Public evidence viewer, reconstruction lab, Black-Box Challenge and product application preview.
+- Clean public Product landing, detailed Reports, filterable Experiments and a separate application workspace.
 - Frontend reports/exports derived from sanitized backend data, with origin/provenance labels.
 
 ## Honest implementation and release boundaries
-- The hosted public site, challenge and lab are accessible as read-only evidence/product previews. A green frontend deployment **does not establish live hosted authentication, real-model execution, multi-user persistence or general website reconstruction**.
+- The hosted frontend shows historical evidence and a product preview. A green frontend deployment **does not establish live hosted backend execution, real-model inference or general website reconstruction**.
 - The candidate for the genuine ledger experiment is a restricted declarative specification—not arbitrary recovered source code, a cloned website, or production-ready app.
 - The local product can show bounded NON_AI fixture runs. New real Meta inference, feedback-driven model repair, arbitrary URL ingestion and browser/motion execution through the app are not proven.
 - Local event logs contain stage/event/status metadata. They do not expose detailed reference inputs/outputs unless the backend explicitly publishes a safe artifact. The UI must say this.
@@ -50,9 +50,9 @@ These are public replayable probes, **not** the withheld evaluator cases. The br
 This sequence is both more persuasive and more defensible than a wall of scores.
 
 ## Reproduction and evidence entry points
-- [Challenge (recorded public probes)](https://second-source-alpha.vercel.app/challenge/)
-- [Reconstruction Lab (recorded comparisons)](https://second-source-alpha.vercel.app/lab/)
-- [Evidence Report](https://second-source-alpha.vercel.app/evidence/)
+- [Product: recorded reference-versus-candidate comparison](https://second-source-alpha.vercel.app/)
+- [Experiments: model and deterministic control records](https://second-source-alpha.vercel.app/experiments/)
+- [Reports: independent measurements and limits](https://second-source-alpha.vercel.app/reports/)
 - [Genuine Meta ledger audit](JUDGE_EVIDENCE_G3.md)
 - [Vikunja benchmark and scientific limits](BENCHMARK_VIKUNJA.md)
 - [Detailed submission status and gates](HACKATHON_SUBMISSION_RUNBOOK.md)
