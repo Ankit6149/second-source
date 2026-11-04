@@ -138,9 +138,10 @@ async function refreshEngine() {
   engineState.status = await checkEngine() ? 'available' : 'unavailable';
   render();
 }
-async function runEngineInvestigation() {
+function engineTargetLabel(target: string): string { return target === 'filebrowser-v1' ? 'File Browser v2.63.23' : 'Vikunja v2.4.0'; }
+async function runEngineInvestigation(target = 'vikunja-v1') {
   try {
-    engineState.record = await createEngineInvestigation();
+    engineState.record = await createEngineInvestigation(target);
     render();
     window.clearInterval(engineState.poll);
     engineState.poll = window.setInterval(async () => {
@@ -435,9 +436,9 @@ function compareView() {
     : `<p>No completed investigation is selected yet.</p><p>Run one real job from the workspace first: choose a supported target, confirm its scope, start the run, then return here.</p><button class="pill-btn primary" type="button" data-action="library">${icon('folder-open')} Open Your work</button>`;
   let right: string;
   if (rec?.status === 'completed' && rec.public_conformance) {
-    right = `<p>Vikunja rebuild finished. Public-ladder conformance: <strong>${rec.public_conformance.passed}/${rec.public_conformance.total}</strong></p>${rec.public_conformance.divergences.length ? `<p>Divergences:</p><ul class="scope-list">${rec.public_conformance.divergences.map(d => `<li>${esc(d)}</li>`).join('')}</ul>` : '<p>No divergences on the public ladder.</p>'}<p>Compiled routes: ${rec.compiled ? rec.compiled.routes.map(esc).join(' \u00b7 ') : '-'}</p><div class="response-actions"><a class="pill-btn" href="${engineCandidateUrl(rec.id)}" download>${icon('download')} Download candidate spec</a><button class="pill-btn" type="button" data-action="engine-run">${icon('play')} Run again</button></div>`;
+    right = `<p>${esc(engineTargetLabel(rec.target))} rebuild finished. Public-ladder conformance: <strong>${rec.public_conformance.passed}/${rec.public_conformance.total}</strong></p>${rec.public_conformance.divergences.length ? `<p>Divergences:</p><ul class="scope-list">${rec.public_conformance.divergences.map(d => `<li>${esc(d)}</li>`).join('')}</ul>` : '<p>No divergences on the public ladder.</p>'}<p>Compiled routes: ${rec.compiled ? rec.compiled.routes.map(esc).join(' \u00b7 ') : '-'}</p><div class="response-actions"><a class="pill-btn" href="${engineCandidateUrl(rec.id)}" download>${icon('download')} Download candidate spec</a><button class="pill-btn" type="button" data-action="engine-run">${icon('play')} Run again</button></div>`;
   } else if (rec?.status === 'running') {
-    right = `<p>Rebuilding Vikunja now \u00b7 stage: <strong>${esc(rec.stage)}</strong>. This panel updates itself.</p>`;
+    right = `<p>Rebuilding ${esc(engineTargetLabel(rec.target))} now \u00b7 stage: <strong>${esc(rec.stage)}</strong>. This panel updates itself.</p>`;
   } else if (rec?.status === 'failed') {
     right = `<p>That rebuild failed: ${esc(rec.error || 'unknown error')}</p><button class="pill-btn primary" type="button" data-action="engine-run">${icon('play')} Run again</button>`;
   } else if (engineState.status === 'hosted') {
@@ -447,14 +448,14 @@ function compareView() {
   } else if (engineState.status === 'unknown') {
     right = `<p>Checking for the local rebuild engine\u2026</p><button class="pill-btn" type="button" data-action="engine-check">${icon('refresh-cw')} Check again</button>`;
   } else {
-    right = `<p>Rebuild Vikunja v2.4.0 from behavior: probe a fresh reference, compile the evidence, then score the candidate on the public ladder. No model is called (NON_AI).</p><button class="pill-btn primary" type="button" data-action="engine-run">${icon('play')} Run Vikunja rebuild</button>`;
+    right = `<p>Choose a supported reference. The local engine probes, compiles, and evaluates it. These are real NON_AI controls; no model is called.</p><div class="ux-action-row"><button class="pill-btn primary" type="button" data-action="engine-run">${icon('play')} Rebuild Vikunja</button><button class="pill-btn" type="button" data-action="engine-run-fb">${icon('play')} Rebuild File Browser</button></div>`;
   }
   return `<section class="single-page ux-page" aria-label="Experiments">
     <p class="ux-page-label">LIVE LOCAL CONTROLS</p><h1>Experiments</h1>
     <p class="ux-page-lead">Two independently executed software controls. Inspect the actual outcomes side by side; no hidden cases or model inference are shown as a live run.</p>
     <div class="ux-two-panels">
       <section><span class="ux-panels-meta">01 / OWNED HTTP TASK WORKFLOW</span><h2>Selected investigation</h2>${left}</section>
-      <section><span class="ux-panels-meta">02 / VIKUNJA V2.4.0</span><h2>Probe → compile → check</h2>${right}</section>
+      <section><span class="ux-panels-meta">02 / ${esc(engineTargetLabel(rec?.target || "vikunja-v1")).toUpperCase()}</span><h2>Probe → compile → check</h2>${right}</section>
     </div>
     <div class="ux-section"><h2>Inspect what was built</h2><p>Candidate specifications and verification are available only when the real service has returned them.</p>
       <div class="ux-action-row"><button class="pill-btn" data-action="candidate" ${orchCandidate || v?.repair ? "" : "disabled"}>Candidate preview</button><button class="pill-btn" data-action="verification" ${v?.evaluation ? "" : "disabled"}>Verification details</button><button class="pill-btn" data-action="reports">Measured reports</button><a class="pill-btn" target="_blank" rel="noopener noreferrer" href="https://second-source-alpha.vercel.app/experiments/">Explore historical experiments ↗</a></div>
@@ -711,6 +712,7 @@ document.addEventListener('click', event => {
   else if (action === 'refresh') void refresh();
   else if (action === 'engine-check') void refreshEngine();
   else if (action === 'engine-run') void runEngineInvestigation();
+  else if (action === 'engine-run-fb') void runEngineInvestigation('filebrowser-v1');
   else if (action === 'candidate') showCandidate();
   else if (action === 'compare' || action === 'experiments') { state.view = 'compare'; render(); }
   else if (action === 'reports') { state.view = 'reports'; render(); }
