@@ -5,6 +5,20 @@ Deadline: **Nov 4, 9:00 PM ET** Ã¢â‚¬â€ https://cerebralvalley.ai/e/m
 Final `main` SHA: enter the live `main` HEAD at submit time (post-PR#48: `f559140` or later).
 Production: https://second-source-alpha.vercel.app/ Ã¢â‚¬â€ routes `/`, `/evidence/`, `/console/`, `/app/`, `/lab/` verified signed-out with 0 console errors.
 
+## Judge-first entry — the experience before the scorecard
+
+**Lead with the problem, not the model benchmark.** A code generator can copy a screen while missing the hidden rules its users rely on. Second Source begins with a **permitted running black box**, forms testable hypotheses, observes edge cases, constructs an independent bounded candidate, and independently tests what actually matches.
+
+**Judge-facing opening (proposed copy):** "Can you reconstruct software you can operate but cannot inspect? Second Source treats the running application as experimental evidence. Watch it discover what a screenshot never shows, generate a separate behavioral specification using Meta Muse, and check that candidate against an independent evaluator. It reports the errors, too — because the difference between plausible software and compatible software is what the tests reveal."
+
+**Try first:** [60-second black-box challenge](https://second-source-alpha.vercel.app/challenge/) — interactive, recorded public examples only. The judge predicts a case-insensitive duplicate, an input boundary and an output schema; the replay shows reference and genuine Meta candidate responses. No model call or sealed tests run in the browser. Follow it with the [full reconstruction lab](https://second-source-alpha.vercel.app/lab/) and [evidence report](https://second-source-alpha.vercel.app/evidence/).
+
+**Proof, with provenance separated:** The ledger reconstruction was authored by genuine Muse Spark 1.3 and scored **14/25** on its own sealed suite (11 failures; incomplete provider attestation). A separate genuine Muse-assisted Vikunja hybrid scored **6/6 frozen and 6/6 extended**, but the NON_AI evidence compiler also scored 6/6 on both suites, so **no lift over that compiler is claimed**. The HTTP 25/30 → 30/30 improvement is **NON_AI**, not AI self-repair. These benchmarks must never be added together or depicted as comparable.
+
+**Audience promise:** Second Source does not promise arbitrary code recovery, perfect equivalence or fully autonomous site cloning. Its current differentiated result is evidence-linked **behavioral investigation + bounded generation + independent measurement**. Never replace this with an unsupported blanket accuracy number.
+
+**Publication dependency:** The v3 video is recorded locally but still needs a public playback URL, signed-out verification and an actual owner portal submission receipt. This draft is **not a submission confirmation**.
+
 ## Final measured scorecard (change only with a receipt)
 
 | Entry | Label / provenance | Result | Notes |
@@ -99,7 +113,7 @@ pydantic, FastAPI, pytest (backend); Vite/TypeScript (product).
 
 No agent submits. No receipt exists until step 8 completes.
 
-1. Confirm main is at 1e09d15 (1e09d15) and that this draft records that exact SHA. Re-check no placeholder remains.
+1. Fetch the exact live `main` HEAD from GitHub and record that commit in the portal; do not use the older historical SHA printed in prior drafts. Re-check no placeholder remains.
 2. Upload the final demo video publicly (unlisted/public per portal rules); open the link in a signed-out/private window and confirm it plays with readable labels.
 3. Open the repo signed-out: https://github.com/Ankit6149/second-source Ã¢â‚¬â€ confirm it loads, the README path works, and no private `.runs` material is public.
 4. Sign in **as the owner** to https://cerebralvalley.ai/e/meta-ai-developer-hackathon/hackathon/submit before **Nov 4, 9:00 PM ET**.
