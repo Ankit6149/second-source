@@ -25,6 +25,7 @@ def test_seed_contains_only_verified_frozen_scores():
         "muse-active-vikunja": "1/6",
         "compiler-vikunja": "6/6",
         "ledger-real-model-25": "14/25",
+        "muse-hybrid-per-route-vikunja": "6/6",
     }
     by_id = {r["run_id"]: r for r in registry}
     assert by_id["gemma-prior-vikunja"]["provenance"] == "GEMMA_TEST"
@@ -77,7 +78,7 @@ def test_infra_and_model_failures_are_separate():
 def test_filters_and_ablation_views_exclude_unknowns():
     registry = _seed()
     assert len(registry.filter(provenance="GEMMA_TEST")) == 4
-    assert len(registry.filter(provenance="REAL_MODEL", target="vikunja")) == 2
+    assert len(registry.filter(provenance="REAL_MODEL", target="vikunja")) == 3
     assert len(registry.comparison_table(arm="C_grounded")) == 2
     by_prov = {g["group"]: g for g in registry.ablation_view("provenance")}
     assert by_prov["GEMMA_TEST"]["held_out"] == "7/24"
@@ -86,7 +87,7 @@ def test_filters_and_ablation_views_exclude_unknowns():
     # target filter keeps the Vikunja ablation comparable.
     vikunja = {g["group"]: g
                for g in registry.ablation_view("provenance", target="vikunja")}
-    assert vikunja["REAL_MODEL"]["held_out"] == "3/12"
+    assert vikunja["REAL_MODEL"]["held_out"] == "9/18"
 
 
 def test_validation_rejects_invented_or_malformed_runs():
@@ -100,3 +101,4 @@ def test_validation_rejects_invented_or_malformed_runs():
     run["held_out"] = {"passed": 7, "total": 6}
     with pytest.raises(ValueError):
         registry.append(run)
+
