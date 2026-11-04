@@ -22,6 +22,30 @@ MAX_MUSE_SPEND_USD = 0.50
 ALLOWED_EDIT_FIELDS = hybrid.REPAIR_EDITABLE_FIELDS
 FROZEN_FIELDS = {"method", "path", "template"}
 MODEL_NAME = "muse-spark-1.3"
+# Non-strict provider JSON mode + strict local admission below. It constrains
+# the envelope without granting Muse permission to alter frozen templates.
+ROUTE_PATCH_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "route": {
+            "type": "object",
+            "properties": {
+                "method": {"type": "string"},
+                "path": {"type": "string"},
+                "template_unchanged": {"type": "boolean"},
+                "kind": {"type": "string"},
+                "collection": {"type": "string"},
+                "auth": {"type": "boolean"},
+                "status": {"type": "integer"},
+                "access": {"type": "string"},
+                "validate": {"type": "array", "items": {"type": "object"}},
+                "forbidden_body": {"type": "object"},
+            },
+            "required": ["method", "path", "template_unchanged"],
+        },
+    },
+    "required": ["route"],
+}
 
 
 def _select_divergent_route(spec: dict, divergences: list[dict]) -> dict | None:
@@ -152,6 +176,7 @@ def attempt_muse_public_repair(
             response = gateway.generate(ModelRequest(
                 stage="muse_public_repair", prompt_version="muse-public-repair-v1",
                 messages=({"role": "user", "content": prompt},),
+                json_schema=ROUTE_PATCH_SCHEMA,
                 max_output_tokens=2000, reasoning_effort="low"))
             if not response.real or response.provider != "meta-direct":
                 raise ValueError("PROVIDER_NOT_REAL_META")
