@@ -99,7 +99,7 @@ def create_orchestration_router(service: OrchestrationService,
     @router.get("/investigations/{investigation_id}/verification", response_model=VerificationV1)
     def verification(investigation_id: Annotated[str, Path(pattern=_ID)],
                      principal: Principal = Depends(get_principal)):
-        return service.get_workspace(principal, investigation_id).verification
+        return service.get_verification(principal, investigation_id)
 
     @router.get("/investigations/{investigation_id}/export", response_model=ExportV1)
     def export(investigation_id: Annotated[str, Path(pattern=_ID)],
