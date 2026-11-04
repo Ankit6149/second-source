@@ -8,7 +8,7 @@ from urllib.parse import unquote, urlsplit
 from build import app_asset
 
 ROOT = Path(__file__).resolve().parent
-PUBLIC = {"index.html", "styles.css", "release.css", "script.js"}
+PUBLIC = {"index.html", "landing.css", "research.css"}
 ASSETS = {"dm-sans.ttf", "manrope.ttf", "DM-Sans-OFL.txt", "Manrope-OFL.txt"}
 
 
@@ -29,17 +29,24 @@ class PreviewHandler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _redirect(self, target):
+        self.send_response(308)
+        self.send_header("Location", target)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
     def do_GET(self):
         path = unquote(urlsplit(self.path).path)
-        if any(path in {f"/{r}", f"/{r}/", f"/{r}/index.html"} for r in REMOVED):
-            self._stub()
+        legacy = {"evidence": "/reports/", "challenge": "/reports/",
+                  "lab": "/experiments/", "console": "/app/", "handoff": "/app/"}
+        if any(path in {f"/{route}", f"/{route}/", f"/{route}/index.html"} for route in legacy):
+            route = path.strip("/").split("/")[0]
+            self._redirect(legacy[route])
             return
-        elif path in {"/evidence", "/evidence/", "/evidence/index.html"}:
-            self.public_file = ROOT / "evidence" / "index.html"
-        elif path in {"/lab", "/lab/", "/lab/index.html"}:
-            self.public_file = ROOT / "lab" / "index.html"
-        elif path in {"/challenge", "/challenge/", "/challenge/index.html"}:
-            self.public_file = ROOT / "challenge" / "index.html"
+        elif path in {"/reports", "/reports/", "/reports/index.html"}:
+            self.public_file = ROOT / "reports" / "index.html"
+        elif path in {"/experiments", "/experiments/", "/experiments/index.html"}:
+            self.public_file = ROOT / "experiments" / "index.html"
         elif path in {"/app", "/app/"} or app_asset(path.lstrip("/")):
             name = "app/index.html" if path in {"/app", "/app/"} else path.lstrip("/")
             candidate = (ROOT / "dist" / name).resolve()
