@@ -467,7 +467,7 @@ async function mutate(action: string) {
       sessionStorage.setItem('ss-create-pending', JSON.stringify({ key, title, digest: state.target.scope_digest }));
       const created = await api.create(title, state.target.scope, key);
       if (generation !== state.epoch) return;
-      state.selected = created;
+      state.selected = created; state.orch = null;
       try {
         const instruction = (state.messages.join('\n').trim() || title).slice(0, 4000);
         const orch = await api.orchCreate(title, instruction, state.target.target_id, state.target.scope, key);
@@ -475,7 +475,9 @@ async function mutate(action: string) {
         const job = await api.orchEnqueue(orch.investigation_id, (key + '-job'));
         const done = await api.orchExecute(job.job_id);
         const ev = await api.orchEvents(orch.investigation_id);
-        sessionStorage.setItem('ss-orch-investigation', orch.investigation_id);
+        if (state.ownerId) sessionStorage.setItem(linkedOrchestrationKey(state.ownerId, created.investigation_id), orch.investigation_id);
+        state.orch = { id: orch.investigation_id, workspace: null, events: ev.items };
+        void loadOrchestrationEvidence(orch.investigation_id, created.investigation_id, generation);
         toast('Investigation created. Orchestration ' + done.status + ' (' + ev.items.length + ' genuine events). Confirm its scope to continue.');
       } catch (orchError) { toast('Investigation created. Orchestration unavailable: ' + (orchError instanceof Error ? orchError.message : 'unknown error') + '. Confirm its scope to continue.'); }
       if (state.ownerId && !saveNotes(sessionStorage, state.ownerId, created.investigation_id, state.messages)) toast('Notes could not be saved in this tab.');
