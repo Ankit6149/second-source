@@ -1,5 +1,6 @@
 import type { Investigation, Target, Run, RunEvent, Verification } from './api';
 import { runOutcome, OUTCOME_LABEL } from './workbench.ts';
+import { renderOrchestrationEvidence, type OrchestrationEvidenceView } from './orchestration_panel.ts';
 
 export interface WorkspaceView {
   investigation: Investigation;
@@ -9,6 +10,7 @@ export interface WorkspaceView {
   verification: Verification | null;
   notes: string[];
   actionsHtml: string;
+  orchestration?: OrchestrationEvidenceView | null;
 }
 
 const escapeHtml = (v: unknown): string => String(v ?? '').replace(/[&<>"']/g, c =>
@@ -103,6 +105,7 @@ export function renderInvestigationWorkspace(view: WorkspaceView): string {
         ${notes.length ? `<ol class="work-notes">${notes.slice(-30).map(note => `<li>${escapeHtml(note)}</li>`).join('')}</ol>` : '<p class="work-empty">Your notes appear here. The note field below does not send prompts to a model.</p>'}
         <p class="work-small">Notes are private to this browser tab, not persisted by the investigation backend and not AI responses.</p>
       </section>
+      ${renderOrchestrationEvidence(view.orchestration ?? null)}
     </div>
   </section>`;
 }

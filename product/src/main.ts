@@ -6,6 +6,7 @@ import { createIcons, PanelLeft, PanelLeftClose, SquarePen, FolderOpen, SwatchBo
 import type { Session } from '@supabase/supabase-js';
 import { auth, observeSession, signIn, signOut } from './auth';
 import { Api, ApiError, validatedOrigin, type Target, type Investigation, type Run, type RunEvent, type Verification } from './api';
+import type { OrchestrationEvidenceView } from './orchestration_panel';
 import { detectReference } from './reference';
 import { supportedTargets } from './targets';
 import { clearOwnerNotes, loadNotes, saveNotes } from './notes';
@@ -23,12 +24,12 @@ const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as
 const apiOrigin = validatedOrigin(import.meta.env.VITE_API_ORIGIN || '', import.meta.env.DEV);
 const state: {
   session: Session | null; ownerId: string | null; investigations: Investigation[]; targets: Target[]; target: Target | null; selected: Investigation | null;
-  run: Run | null; events: RunEvent[]; verification: Verification | null; messages: string[]; draft: string;
+  run: Run | null; events: RunEvent[]; verification: Verification | null; orch: OrchestrationEvidenceView | null; messages: string[]; draft: string;
   view: 'home' | 'conversation' | 'library' | 'system' | 'compare' | 'reports' | 'settings'; loading: boolean; error: string; pollError: string; uncertain: boolean; actionUncertain: string | null;
   executionError: { runId: string; message: string } | null;
   busy: boolean; executing: boolean; epoch: number;
 } = { session: null, ownerId: null, investigations: [], targets: [], target: null, selected: null, run: null, events: [], verification: null,
-  messages: [], draft: sessionStorage.getItem('ss-product-draft') || '', view: 'home', loading: false, error: '', pollError: '',
+  orch: null, messages: [], draft: sessionStorage.getItem('ss-product-draft') || '', view: 'home', loading: false, error: '', pollError: '',
   uncertain: false, actionUncertain: null, executionError: null, busy: false, executing: false, epoch: 0 };
 const api = new Api(apiOrigin, () => state.session?.access_token || null);
 let pollTimer: number | undefined;
@@ -68,7 +69,7 @@ function describe(error: unknown) {
     if (error.status === 401) {
       ++state.epoch; state.loading = false; state.busy = false; state.executing = false; state.uncertain = false; state.actionUncertain = null;
       state.session = null; state.ownerId = null; state.targets = []; state.target = null; state.investigations = []; state.selected = null;
-      state.run = null; state.verification = null; state.events = []; state.messages = []; state.draft = ''; state.pollError = ''; state.executionError = null; state.view = 'home';
+      state.run = null; state.verification = null; state.events = []; state.orch = null; state.messages = []; state.draft = ''; state.pollError = ''; state.executionError = null; state.view = 'home';
       sessionStorage.removeItem('ss-product-draft'); stopPolling();
     }
     return error.message + (error.correlationId ? ` Reference: ${error.correlationId}` : '');
@@ -204,7 +205,7 @@ function investigationCard() {
 function conversation() {
   if (state.selected) return renderInvestigationWorkspace({
     investigation: state.selected, target: state.target, run: state.run, events: state.events,
-    verification: state.verification, notes: state.messages, actionsHtml: controls(),
+    verification: state.verification, notes: state.messages, actionsHtml: controls(), orchestration: state.orch,
   });
   const messages = state.messages.map(message => `<div class="message user"><div class="bubble">${esc(message)}</div></div>`).join('');
   return `<section class="conversation">${messages}${investigationCard()}</section>`;
@@ -247,16 +248,35 @@ function render() {
   renderIcons();
 }
 
+function linkedOrchestrationKey(owner: string, selectedId: string): string {
+  return `ss-orchestration-link:${owner}:${selectedId}`;
+}
+async function loadOrchestrationEvidence(orchId: string, selectedId: string, generation: number) {
+  if (!state.session || !apiOrigin) return;
+  try {
+    const events = await api.orchEvents(orchId);
+    let workspace = null;
+    try { workspace = await api.orchWorkspace(orchId); }
+    catch (error) {
+      // Older services and incomplete runs cannot provide a workspace. Events remain genuine.
+      if (!(error instanceof ApiError && (error.status === 404 || error.status === 409))) throw error;
+    }
+    if (generation !== state.epoch || state.selected?.investigation_id !== selectedId) return;
+    state.orch = { id: orchId, workspace, events: events.items };
+    render();
+  } catch { /* A disconnected/old service cannot invent candidate evidence. */ }
+}
+
 async function hydrate(session: Session | null) {
   const generation = ++state.epoch;
   const previousUser = state.session?.user.id;
   if (previousUser && previousUser !== session?.user.id) {
-    state.investigations = []; state.targets = []; state.target = null; state.selected = null; state.run = null; state.events = []; state.verification = null;
+    state.investigations = []; state.targets = []; state.target = null; state.selected = null; state.run = null; state.events = []; state.verification = null; state.orch = null;
     state.messages = []; state.draft = ''; state.view = 'home';
   }
   state.session = session; state.ownerId = null; state.error = ''; state.pollError = ''; state.executionError = null; state.executing = false; state.busy = false; state.actionUncertain = null; stopPolling();
   if (!session || !apiOrigin) {
-    state.investigations = []; state.targets = []; state.target = null; state.selected = null; state.run = null; state.events = []; state.verification = null;
+    state.investigations = []; state.targets = []; state.target = null; state.selected = null; state.run = null; state.events = []; state.verification = null; state.orch = null;
     render(); return;
   }
   state.loading = true; render();
@@ -293,6 +313,9 @@ async function openInvestigation(id: string) {
     state.uncertain = !!state.run && sessionStorage.getItem(`ss-execution-uncertain:${state.run.run_id}`) === '1';
     state.actionUncertain = state.run ? sessionStorage.getItem(`ss-action-uncertain:${state.run.run_id}`) : null;
     sessionStorage.setItem('ss-selected-investigation', id); state.view = 'conversation';
+    state.orch = null;
+    const linked = state.ownerId ? sessionStorage.getItem(linkedOrchestrationKey(state.ownerId, id)) : null;
+    if (linked && /^[A-Za-z0-9_-]{1,80}$/.test(linked)) void loadOrchestrationEvidence(linked, id, generation);
     if (state.run) await refresh(false);
   } catch (error) { if (generation === state.epoch) { state.error = describe(error); render(); } }
   finally { if (generation === state.epoch) { state.loading = false; render(); } }
@@ -355,6 +378,15 @@ function capabilityPicker() {
   return `<div class="capability-list" role="group" aria-label="Target capabilities">${groups}</div><h3>Source options</h3><p class="component-note">Source-assisted means source or docs would be available; black-box means behavior only. Only service-backed options can be chosen — the rest stay disabled with their reason.</p><div class="capability-list" role="group" aria-label="Source options">${sources}</div>`;
 }
 function showCandidate() {
+  const actual = state.orch?.workspace?.candidate;
+  if (actual) {
+    showDialog('Exact generated candidate', `<p><strong>NON_AI · SCOPE-DERIVED SPECIFICATION</strong></p>
+      <p>This is the exact declarative JSON returned by the authorized orchestration engine. It contains route descriptions from the approved scope, not recovered application source, live model output or proof of behavioral equivalence.</p>
+      <pre class="scope-json">${esc(JSON.stringify(actual, null, 2))}</pre>
+      <p class="component-note">The legacy source_observations_sha256 field in this scope-only control fingerprints the authorized scope, not actual black-box observations.</p>
+      <div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Close</button></div>`);
+    return;
+  }
   const rec = engineState.record;
   const repair = state.verification?.repair;
   if (rec?.compiled) {
@@ -444,7 +476,7 @@ async function mutate(action: string) {
       sessionStorage.setItem('ss-create-pending', JSON.stringify({ key, title, digest: state.target.scope_digest }));
       const created = await api.create(title, state.target.scope, key);
       if (generation !== state.epoch) return;
-      state.selected = created;
+      state.selected = created; state.orch = null;
       try {
         const instruction = (state.messages.join('\n').trim() || title).slice(0, 4000);
         const orch = await api.orchCreate(title, instruction, state.target.target_id, state.target.scope, key);
@@ -452,7 +484,9 @@ async function mutate(action: string) {
         const job = await api.orchEnqueue(orch.investigation_id, (key + '-job'));
         const done = await api.orchExecute(job.job_id);
         const ev = await api.orchEvents(orch.investigation_id);
-        sessionStorage.setItem('ss-orch-investigation', orch.investigation_id);
+        if (state.ownerId) sessionStorage.setItem(linkedOrchestrationKey(state.ownerId, created.investigation_id), orch.investigation_id);
+        state.orch = { id: orch.investigation_id, workspace: null, events: ev.items };
+        void loadOrchestrationEvidence(orch.investigation_id, created.investigation_id, generation);
         toast('Investigation created. Orchestration ' + done.status + ' (' + ev.items.length + ' genuine events). Confirm its scope to continue.');
       } catch (orchError) { toast('Investigation created. Orchestration unavailable: ' + (orchError instanceof Error ? orchError.message : 'unknown error') + '. Confirm its scope to continue.'); }
       if (state.ownerId && !saveNotes(sessionStorage, state.ownerId, created.investigation_id, state.messages)) toast('Notes could not be saved in this tab.');
@@ -565,6 +599,20 @@ async function showReport() {
   }
   catch (error) { if (generation === state.epoch) setError(error); }
 }
+async function downloadOrchestrationArtifact(artifactId: string) {
+  const evidence = state.orch;
+  const artifact = evidence?.workspace?.artifacts.find(a => a.artifact_id === artifactId);
+  if (!evidence || !artifact || !state.session) return;
+  const generation = state.epoch;
+  try {
+    const blob = await api.orchArtifact(evidence.id, artifactId);
+    if (generation !== state.epoch || state.orch?.id !== evidence.id) return;
+    saveBlob(blob, artifact.name);
+  } catch (error) {
+    if (generation === state.epoch) setError(error);
+  }
+}
+
 async function downloadExport() {
   if (!state.run) return;
   const generation = state.epoch; const runId = state.run.run_id;
@@ -583,7 +631,8 @@ document.addEventListener('click', event => {
   if (target.dataset.investigation) { void openInvestigation(target.dataset.investigation); return; }
   if (target.dataset.suggestion) { state.draft = target.dataset.suggestion; sessionStorage.setItem('ss-product-draft', state.draft); render(); const input = el<HTMLTextAreaElement>('promptInput'); input?.dispatchEvent(new Event('input', { bubbles: true })); input?.focus(); return; }
   const action = target.dataset.action;
-  if (action === 'new') { ++state.epoch; stopPolling(); state.executing = false; state.busy = false; state.view = 'home'; state.selected = null; state.run = null; state.events = []; state.verification = null; state.messages = []; state.pollError = ''; state.executionError = null; state.uncertain = false; state.actionUncertain = null; sessionStorage.removeItem('ss-selected-investigation'); render(); }
+  if (action === 'download-orch-artifact' && target.dataset.artifactId) { void downloadOrchestrationArtifact(target.dataset.artifactId); return; }
+  if (action === 'new') { ++state.epoch; stopPolling(); state.executing = false; state.busy = false; state.view = 'home'; state.selected = null; state.run = null; state.events = []; state.verification = null; state.orch = null; state.messages = []; state.pollError = ''; state.executionError = null; state.uncertain = false; state.actionUncertain = null; sessionStorage.removeItem('ss-selected-investigation'); render(); }
   else if (action === 'library') { state.view = 'library'; render(); }
   else if (action === 'account') account();
   else if (action === 'sign-in') { void signIn().catch(setError); }

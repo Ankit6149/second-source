@@ -66,3 +66,32 @@ dialog:has(.auth-window){width:min(480px,calc(100vw - 32px));padding:28px}
 .work-activity{margin:0;border:0;padding:0;min-width:0}
 .work-activity>summary{font:700 11px var(--mono);color:var(--secondary);padding:0 0 9px;cursor:pointer}
 @media(max-width:600px){.top-account span{display:none}.top-account{width:35px;height:35px;justify-content:center;padding:7px;flex:none}.preview-label{max-width:72px!important;font-size:10px}}
+
+/* Independent, source-backed orchestration artifacts. */
+.orch-inspector{background:var(--soft);border-color:var(--accent)}
+.orch-inspector h3{margin:0 0 8px;font:700 14px/1.4 var(--display)}
+.orch-inspector .work-small{max-width:850px}
+.orch-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.orch-summary>div{display:grid;gap:4px;padding:13px;border-radius:10px;border:1px solid var(--border);background:var(--bg);min-width:0}
+.orch-summary span{font-size:11px;color:var(--secondary)}
+.orch-summary code{font:11px var(--mono);overflow-wrap:anywhere}
+.orch-summary strong{font-size:14px}
+.orch-two-column{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.orch-two-column>div{min-width:0;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px}
+.orch-routes,.orch-events{list-style:none;padding:0;margin:0 0 12px;display:grid;gap:8px;max-height:280px;overflow:auto}
+.orch-routes li{display:flex;justify-content:space-between;align-items:start;gap:10px;border-bottom:1px solid var(--border);padding:8px 0}
+.orch-routes code{font:11px/1.6 var(--mono);overflow-wrap:anywhere}
+.orch-routes span{font-size:10px;color:var(--secondary)}
+.orch-events li{display:flex;gap:11px;border-bottom:1px solid var(--border);padding-bottom:8px}
+.orch-event-id{font:11px var(--mono);color:var(--secondary)}
+.orch-events li>div{display:grid;gap:2px;min-width:0}
+.orch-events strong{font-size:12px;overflow-wrap:anywhere}
+.orch-events small{font-size:10px;color:var(--secondary);line-height:1.5;overflow-wrap:anywhere}
+.orch-checks{margin:0;font-size:13px}
+.orch-checks strong{font:700 18px var(--display)}
+.orch-downloads ul{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+.orch-downloads li{display:flex;justify-content:space-between;gap:14px;align-items:center;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 13px}
+.orch-downloads li>div{min-width:0;display:grid;gap:4px}
+.orch-downloads strong{font-size:12px}
+.orch-downloads small{font:10px/1.5 var(--mono);color:var(--secondary);overflow-wrap:anywhere}
+@media(max-width:720px){.orch-summary{grid-template-columns:1fr}.orch-two-column{grid-template-columns:1fr}.orch-downloads li{align-items:start}}
