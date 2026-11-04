@@ -57,7 +57,7 @@ test('clean home keeps note editing but no prefilled AI-sounding suggestions', (
   const window = workspace();
   try {
     const doc = window.document;
-    assert.match(doc.querySelector('h1').textContent, /Learn the rules a screen cannot show/);
+    assert.match(doc.querySelector('h1').textContent, /Rebuild the behavior\. Prove the result\./);
     assert.equal(doc.querySelectorAll('[data-suggestion]').length, 0);
     const input = doc.querySelector('#promptInput');
     assert.match(input.placeholder, /Quick note/);
@@ -89,7 +89,8 @@ test('signed-out home is clean: headline and primary actions only', () => {
   try {
     const doc = window.document;
     const home = doc.querySelector('.empty-home');
-    assert.match(home.textContent, /Learn the rules a screen cannot show/);
+    assert.match(home.textContent, /Rebuild the behavior\. Prove the result\./);
+    assert.match(home.textContent, /authorized link to a verified, runnable replacement/);
     assert.ok(home.querySelector('[data-action="select-target"]'), 'new investigation action');
     assert.ok(home.querySelector('[data-action="reports"]'), 'view reports action');
     assert.doesNotMatch(home.textContent, /Signed out:/);
@@ -104,7 +105,7 @@ test('navigation is slim and the retired showroom route lands home', () => {
     const nav = [...doc.querySelectorAll('.side-nav .nav-item')].map(n => n.textContent.trim());
     assert.deepEqual(nav, ['Investigations', 'Experiments', 'Reports', 'Settings']);
     assert.doesNotMatch(doc.querySelector('#content').textContent, /component showroom/i);
-    assert.match(doc.querySelector('#content').textContent, /Learn the rules a screen cannot show/);
+    assert.match(doc.querySelector('#content').textContent, /Rebuild the behavior\. Prove the result\./);
   } finally { window.happyDOM.abort(); }
 });
 
@@ -123,7 +124,7 @@ test('Reports and Experiments navigation preserves a real back path', () => {
     back.click();
     assert.match(doc.querySelector('#content').textContent, /Research record/);
     back.click();
-    assert.match(doc.querySelector('#content').textContent, /Learn the rules a screen cannot show/);
+    assert.match(doc.querySelector('#content').textContent, /Rebuild the behavior\. Prove the result\./);
     assert.equal(back.hidden, true);
   } finally { window.happyDOM.abort(); }
 });
