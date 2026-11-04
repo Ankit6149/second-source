@@ -47,6 +47,24 @@ export function runOutcome(status: string | null | undefined, evaluation: { pass
   return 'needs-attention';
 }
 
+/** Measured comparison scoreboard: same target, three ways. Scores are
+ * recorded frozen results; unmeasured cells stay explicit, never zero. */
+export interface ScoreRow { method: string; provenance: string; frozen: string; extended: string; status: string }
+export interface ScoreTarget { target: string; rows: ScoreRow[] }
+export const SCOREBOARD: readonly ScoreTarget[] = [
+  { target: 'Vikunja v2.4.0', rows: [
+    { method: 'AI alone (Muse grounded)', provenance: 'REAL_MODEL', frozen: '2/6', extended: 'unmeasured', status: 'Scored' },
+    { method: 'AI alone (Gemma grounded)', provenance: 'GEMMA_TEST', frozen: '2/6', extended: 'unmeasured', status: 'Scored' },
+    { method: 'AI + our software (Muse hybrid)', provenance: 'REAL_MODEL', frozen: '6/6', extended: '6/6', status: 'Scored; gate rejected edits' },
+    { method: 'AI + our software (Gemma hybrid)', provenance: 'GEMMA_TEST', frozen: '3/6', extended: 'unmeasured', status: 'Scored' },
+    { method: 'Our software alone (compiler)', provenance: 'NON_AI', frozen: '6/6', extended: '6/6', status: 'Scored; zero model calls' } ] },
+  { target: 'File Browser v2.63.23', rows: [
+    { method: 'Our software alone (compiler)', provenance: 'NON_AI', frozen: '7/7', extended: 'n/a', status: 'Scored' },
+    { method: 'AI arms', provenance: 'REAL_MODEL', frozen: 'unmeasured', extended: 'unmeasured', status: 'Not run; needs packet' } ] },
+  { target: 'Gitea', rows: [
+    { method: 'All methods', provenance: 'NON_AI', frozen: 'unmeasured', extended: 'unmeasured', status: 'Deferred; documented decision' } ] },
+];
+
 export const OUTCOME_LABEL: Record<RunOutcome, string> = {
   'not-started': 'Not started', queued: 'Queued', running: 'Running', passed: 'Passed',
   partial: 'Partial — some cases failed or indeterminate', failed: 'Failed', cancelled: 'Cancelled', 'needs-attention': 'Needs attention',

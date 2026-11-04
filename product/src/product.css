@@ -51,3 +51,12 @@ dialog p,dialog li{color:var(--secondary);line-height:1.7}
   .pill-btn,.small-tool,.suggestion,.icon-button,.send-btn,.new-btn{transition:transform 160ms ease,background-color 160ms ease,border-color 160ms ease}
   .pill-btn:active:not(:disabled),.small-tool:active:not(:disabled),.suggestion:active:not(:disabled),.icon-button:active:not(:disabled),.send-btn:active:not(:disabled),.new-btn:active:not(:disabled){transform:scale(.97)}
 }
+
+.score-card{border:1px solid var(--border);border-radius:14px;padding:16px;margin:14px 0}
+.score-rows{display:grid;gap:8px;margin-top:10px}
+.score-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:8px 0;border-top:1px solid var(--border)}
+.score-row:first-child{border-top:0}
+.score-method{font-weight:650;min-width:230px}
+.score-num{color:var(--secondary)}
+.score-num strong{color:var(--accent)}
+.score-status{color:var(--secondary);font-size:13px}
