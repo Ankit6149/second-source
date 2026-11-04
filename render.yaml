@@ -38,10 +38,27 @@ services:
       - key: SECOND_SOURCE_ENGINE_PUBLIC
         value: 'true'
       - key: SECOND_SOURCE_PUBLIC_ORIGINS
-        value: 'https://second-source-alpha.vercel.app'
+        value: 'https://second-source-alpha.vercel.app,https://second-source-app.onrender.com'
       - key: SECOND_SOURCE_ALLOW_MUSE_REPAIR
         value: 'true'
       - key: SECOND_SOURCE_MAX_SPEND_USD
         value: '15'
       - key: MODEL_API_KEY
+        sync: false
+  - type: static
+    name: second-source-app
+    buildCommand: cd product && npm ci && npm run build
+    buildFilter:
+      paths:
+        - product/**
+    staticPublishPath: product/dist
+    autoDeployTrigger: "off"
+    envVars:
+      - key: VITE_ENGINE_URL
+        value: 'https://second-source-engine.onrender.com'
+      - key: VITE_API_ORIGIN
+        value: 'https://second-source-api.onrender.com'
+      - key: VITE_SUPABASE_URL
+        value: 'https://jpqcqqbzriizxhigvjki.supabase.co'
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
         sync: false
