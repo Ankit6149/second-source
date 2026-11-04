@@ -30,7 +30,8 @@ test('workspace shows only actual backend event progression and counts', () => {
   ];
   const html = renderInvestigationWorkspace(view);
   assert.match(html, /22<\/strong><span>Passed/);
-  assert.match(html, /data-action="verification"/, 'completed evaluated run exposes the real verification control');
+  assert.doesNotMatch(html, /data-action="verification"/, 'a summary score alone must not unlock the detailed verification window');
+  assert.match(html, /data-action="report"/, 'completed run exposes the sanitized report action');
   assert.match(html, /3<\/strong><span>Failed/);
   assert.match(html, /NON_AI fixture/);
   assert.ok(html.indexOf('#1') < html.indexOf('#3'));
@@ -63,6 +64,8 @@ test('candidate lineage exposes digests and evaluated rounds without private sou
   }};
   const html=renderInvestigationWorkspace(view);
   assert.match(html,/Candidate round 1/);
+  assert.match(html,/data-action="verification"/, 'real detailed verification enables its action');
+  assert.match(html,/data-action="candidate"/, 'real candidate lineage enables its preview');
   assert.match(html,/Candidate round 2/);
   assert.match(html,/4\/5 passed/);
   assert.match(html,/Selected: v2/);
