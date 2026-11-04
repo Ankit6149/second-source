@@ -212,7 +212,7 @@ class OrchestrationService:
     @staticmethod
     def _store_artifact(c, inv_id, job_id, kind, name, media_type, content: bytes):
         sha = hashlib.sha256(content).hexdigest()
-        artifact_id = "art-" + sha[:16]
+        artifact_id = "art-" + hashlib.sha256((inv_id + ":" + kind + ":" + sha).encode()).hexdigest()[:16]
         c.execute("INSERT OR IGNORE INTO orch_artifacts VALUES(?,?,?,?,?,?,?,?,?,?)",
                   (artifact_id, inv_id, job_id, kind, name, media_type, sha,
                    len(content), content, _now()))
@@ -254,6 +254,13 @@ class OrchestrationService:
             return WorkspaceV1(investigation_id=investigation_id, candidate=candidate,
                                verification=report.evaluation if report else None,
                                report=report, artifacts=artifacts)
+
+    def get_verification(self, principal, investigation_id) -> VerificationV1:
+        """Return 409 until the evaluator record is durably available."""
+        workspace = self.get_workspace(principal, investigation_id)
+        if workspace.verification is None:
+            _err("VERIFICATION_NOT_READY", "Verification is not available yet", 409)
+        return workspace.verification
 
     def get_export(self, principal, investigation_id) -> ExportV1:
         with self.store.transaction() as c:
