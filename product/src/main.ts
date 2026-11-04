@@ -689,6 +689,13 @@ async function downloadExport() {
 document.addEventListener('click', event => {
   const target = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-action],[data-investigation],[data-suggestion],[data-target-id]') : null;
   if (!target) return;
+  // A mobile navigation choice should reveal its destination immediately,
+  // without leaving the sidebar overlay covering the newly rendered view.
+  if (sidebarMedia.matches && target.closest('.side-nav, #history')) {
+    el('shell').classList.remove('mobile-open');
+    syncSidebar();
+    el('main').focus();
+  }
   if (target.dataset.targetId) {
     const chosen = state.targets.find(item => item.target_id === target.dataset.targetId);
     if (chosen && !state.selected) { state.target = chosen; reviewScope(); }
