@@ -37,6 +37,12 @@ try {
         $env:SECOND_SOURCE_ALLOW_MUSE_REPAIR = "false"
     }
 
+    # Never leave the old non-AI engine serving port 8765 while the new UI
+    # appears to promise Muse mode. Fail visibly instead of silently racing.
+    $occupied = Get-NetTCPConnection -LocalAddress "127.0.0.1" -LocalPort 8765 -State Listen -ErrorAction SilentlyContinue
+    if ($occupied) {
+        throw "Port 8765 is already in use. Stop the old local engine before running this branch."
+    }
     Write-Host "Starting local Python engine..."
     Start-Process -FilePath "python" -ArgumentList @("scripts/investigation_engine.py") -WorkingDirectory $root
     Remove-Item Env:MODEL_API_KEY -ErrorAction SilentlyContinue
