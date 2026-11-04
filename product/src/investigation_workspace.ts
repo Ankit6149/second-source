@@ -1,5 +1,5 @@
 import type { Investigation, Target, Run, RunEvent, Verification } from './api';
-import { runOutcome, OUTCOME_LABEL } from './workbench';
+import { runOutcome, OUTCOME_LABEL } from './workbench.ts';
 
 export interface WorkspaceView {
   investigation: Investigation;
