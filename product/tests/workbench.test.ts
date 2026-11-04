@@ -48,5 +48,9 @@ test('scoreboard separates AI, hybrid and NON_AI per target', () => {
   assert.ok(methods.some(m => m.startsWith('Our software alone')));
   assert.ok(vik.rows.every(r => ['REAL_MODEL', 'NON_AI'].includes(r.provenance))); assert.ok(vik.rows.every(r => !/gemma/i.test(r.method)));
   const fb = SCOREBOARD.find(t => t.target.startsWith('File Browser'))!;
-  assert.equal(fb.rows[0].frozen, '7/7');
+  assert.equal(fb.rows[0].provenance, 'REAL_MODEL');
+  assert.equal(fb.rows[0].frozen, '3/7');
+  assert.equal(fb.rows[1].frozen, '7/7');
+  const gt = SCOREBOARD.find(t => t.target.startsWith('Gitea'))!;
+  assert.match(gt.rows[0].frozen, /6\/6/);
 });

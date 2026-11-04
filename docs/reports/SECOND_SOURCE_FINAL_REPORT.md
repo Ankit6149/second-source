@@ -3,7 +3,7 @@
 **Project:** Second Source — evidence-first software reconstruction
 **Competition:** Meta Global AI Developer Hackathon (Indie track)
 **Report date:** 4 November 2026
-**Codebase:** `github.com/Ankit6149/second-source` at `7daf368fccd1417772f6a278bc59bfc930286a76`
+**Codebase:** `github.com/Ankit6149/second-source` at `a0c8bdd` (main, 4 Nov 2026)
 **Production:** https://second-source-alpha.vercel.app/ (`/`, `/app/`)
 
 ---
@@ -20,16 +20,31 @@ every result carries a provenance label that is never merged or relabeled:
 - **NON_AI** — deterministic evidence compilation, zero model calls.
 - **Recorded** — a historical result replayed as evidence, never presented as a live run.
 
-Headline outcomes:
+Headline outcomes (current, 4 Nov 2026):
 
-- The deterministic compiler reaches **6/6** on the frozen Vikunja suite and
-  **6/6** on a separately frozen extended suite, and **7/7** on File Browser.
-- Genuine Muse evidence exists and is preserved: **14/25** on the owned ledger,
-  **2/6** (grounded) and **1/6** (active) on Vikunja, and a per-route hybrid
-  whose raw candidate scored **6/6 + 6/6** in a single post-gate evaluation
-  while the deployable gated candidate remained the compiler (Section 6).
-- On a first-ever test of **Gitea 1.22.6**, the same pipeline scored **2/6** —
-  reported with its divergences, not hidden (Section 7.6).
+- **Vikunja, end-to-end through the product engine:** public ladder
+  **19/19** (was 11/19). The last divergences were a measurement
+  artifact (ladder replayed on an already-probed reference, duplicating
+  a project) plus missing default-project seeding - the rule Muse
+  identified in its recorded seed experiment, now derived generically
+  from public evidence by the compiler. Frozen suite **6/6** and
+  extended suite **6/6** still hold - no regression.
+- **Muse has worked inside the experiments on every API target**
+  (REAL_MODEL, receipted, gated): route reviews preserved File Browser
+  **7/7** (2 calls) and Gitea **6/6** (6 calls); on Vikunja's fixed
+  baseline it reviewed the last divergent route (1 call, no contract
+  change - correctly, since that gap is default-entity seeding).
+  Earlier genuine Muse results remain in the register: **14/25** on
+  the owned ledger, **2/6** grounded / **1/6** active on Vikunja,
+  **3/7** on File Browser, and a hybrid raw candidate at **6/6 + 6/6**
+  whose edits the gate rejected (deployable = compiler, honest tie).
+- **Cross-target breadth:** File Browser **7/7**, Gitea **2/6 -> 6/6**
+  after a generic route-generalization fix, owned HTTP workflow
+  **30/30**, owned ledger **22/25** (compiler control).
+- **Hosted product:** frontend and backend live; `/health/ready` 200;
+  signed-in investigation flow (create, authorize, queue, events)
+  verified in production. Hosted execution remains deliberately
+  disabled rather than mocked.
 - The browser/motion slice passes its held-out evaluation: trajectory RMSE
   **2.505px** against an 8px threshold, layout difference **0px**.
 

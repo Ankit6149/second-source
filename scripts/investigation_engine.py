@@ -473,7 +473,16 @@ def run_investigation(inv_id: str) -> None:
             "label": "NON_AI"}, _spec=spec)
         _check_cancelled(rec)
         _set(rec, stage="checking_public_conformance")
-        conf = hybrid.public_conformance(spec, ref_base, _next_port())
+        # Measure on a FRESH reference: replaying the ladder on the
+        # already-probed reference would create duplicate entities
+        # (e.g. a second project) and fabricate divergences.
+        probe_proc = probe_dir = None
+        try:
+            probe_proc, probe_dir, fresh_base = mx.start_reference(_next_port())
+            conf = hybrid.public_conformance(spec, fresh_base, _next_port())
+        finally:
+            if probe_proc is not None:
+                mx.stop_reference(probe_proc, probe_dir)
         _check_cancelled(rec)
         selected = spec
         model_summary = {"called": False, "mode": "none",

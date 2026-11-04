@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Second Source — Architecture Map</title>
+<style>
+  :root { --ink:#26362b; --mut:#5c6f63; --line:#c9d4cc; --bg:#f7f5ef; --card:#fffdf8;
+          --accent:#2e6f4e; --model:#7a4fa3; --warn:#9a6a1f; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Georgia,'Times New Roman',serif; background:var(--bg); color:var(--ink); }
+  main { max-width:1060px; margin:0 auto; padding:40px 28px 56px; }
+  h1 { font-size:30px; margin:0 0 6px; font-weight:600; }
+  .sub { color:var(--mut); font-size:16px; margin:0 0 26px; max-width:760px; line-height:1.5; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:22px; margin-bottom:22px; }
+  h2 { font-size:19px; margin:0 0 12px; }
+  p, li { font-size:15px; line-height:1.55; }
+  ul { margin:6px 0 0 18px; padding:0; }
+  svg { width:100%; height:auto; display:block; }
+  .legend { display:flex; gap:18px; flex-wrap:wrap; font-size:13.5px; color:var(--mut); margin-top:10px; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; vertical-align:-1px; }
+  table { width:100%; border-collapse:collapse; font-size:14.5px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); }
+  th { color:var(--mut); font-weight:600; }
+  .pill { font-size:12px; border:1px solid var(--line); border-radius:999px; padding:1px 8px; white-space:nowrap; }
+  footer { color:var(--mut); font-size:13px; line-height:1.6; }
+  a { color:var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Second Source — Architecture Map</h1>
+  <p class="sub">How an authorized software target becomes a verified, independent
+  reconstruction: real observation, evidence compilation, Muse reasoning under a
+  safety gate, independent evaluation, and a professional report. Every box below
+  exists and runs today; labels state exactly what is hosted, local, or recorded.</p>
+
+  <div class="card">
+    <h2>System map</h2>
+    <svg viewBox="0 0 1020 560" role="img" aria-label="Second Source architecture diagram">
+      <defs>
+        <marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+          <path d="M0,0 L7,3 L0,6 Z" fill="#819186"></path>
+        </marker>
+      </defs>
+      <!-- user -->
+      <rect x="20" y="30" width="170" height="64" rx="10" fill="#eef4ee" stroke="#819186"/>
+      <text x="105" y="57" text-anchor="middle" font-size="15" font-weight="bold">User / Judge</text>
+      <text x="105" y="77" text-anchor="middle" font-size="12" fill="#5c6f63">instruction + target</text>
+      <!-- frontend -->
+      <rect x="250" y="30" width="220" height="64" rx="10" fill="#eef4ee" stroke="#819186"/>
+      <text x="360" y="52" text-anchor="middle" font-size="15" font-weight="bold">Web App (Vercel)</text>
+      <text x="360" y="70" text-anchor="middle" font-size="12" fill="#5c6f63">chat · scope approval · compare</text>
+      <text x="360" y="86" text-anchor="middle" font-size="12" fill="#5c6f63">reports · challenge · exports</text>
+      <!-- backend -->
+      <rect x="530" y="30" width="220" height="64" rx="10" fill="#eef4ee" stroke="#819186"/>
+      <text x="640" y="52" text-anchor="middle" font-size="15" font-weight="bold">Backend API (Render)</text>
+      <text x="640" y="70" text-anchor="middle" font-size="12" fill="#5c6f63">investigations · runs · events</text>
+      <text x="640" y="86" text-anchor="middle" font-size="12" fill="#5c6f63">/health/ready = 200 (live)</text>
+      <!-- supabase -->
+      <rect x="810" y="30" width="190" height="64" rx="10" fill="#eef4ee" stroke="#819186"/>
+      <text x="905" y="52" text-anchor="middle" font-size="15" font-weight="bold">Supabase</text>
+      <text x="905" y="70" text-anchor="middle" font-size="12" fill="#5c6f63">Google Auth · Postgres</text>
+      <text x="905" y="86" text-anchor="middle" font-size="12" fill="#5c6f63">private Storage · RLS role</text>
+      <!-- engine -->
+      <rect x="250" y="170" width="500" height="120" rx="10" fill="#fdf6ec" stroke="#c9a86a"/>
+      <text x="500" y="195" text-anchor="middle" font-size="15" font-weight="bold">Investigation Engine (local, real execution)</text>
+      <text x="500" y="217" text-anchor="middle" font-size="12.5">1 · Probe the real target API — record inputs, outputs, errors</text>
+      <text x="500" y="237" text-anchor="middle" font-size="12.5">2 · Evidence compiler (NON_AI) → behavioral specification</text>
+      <text x="500" y="257" text-anchor="middle" font-size="12.5">3 · Candidate server executes the spec independently</text>
+      <text x="500" y="277" text-anchor="middle" font-size="12.5">4 · Independent evaluator: same cases, both sides, field-by-field</text>
+      <!-- muse -->
+      <rect x="810" y="170" width="190" height="120" rx="10" fill="#f3eef9" stroke="#a98cc9"/>
+      <text x="905" y="195" text-anchor="middle" font-size="15" font-weight="bold" fill="#5b3a80">Meta Muse Spark 1.3</text>
+      <text x="905" y="217" text-anchor="middle" font-size="12">hypotheses · route repair</text>
+      <text x="905" y="235" text-anchor="middle" font-size="12">bounded packets · receipts</text>
+      <text x="905" y="253" text-anchor="middle" font-size="12">REAL_MODEL label</text>
+      <text x="905" y="271" text-anchor="middle" font-size="12">public-conformance gate</text>
+      <!-- targets -->
+      <rect x="20" y="360" width="230" height="90" rx="10" fill="#eef4ee" stroke="#819186"/>
+      <text x="135" y="385" text-anchor="middle" font-size="14" font-weight="bold">Professional targets</text>
+      <text x="135" y="405" text-anchor="middle" font-size="12">Vikunja v2.4.0 · File Browser</text>
+      <text x="135" y="421" text-anchor="middle" font-size="12">v2.63.23 · Gitea 1.22.6</text>
+      <text x="135" y="437" text-anchor="middle" font-size="12">owned HTTP + ledger fixtures</text>
+      <!-- motion -->
+      <rect x="290" y="360" width="220" height="90" rx="10" fill="#eef4ee" stroke="#819186"/>
+      <text x="400" y="385" text-anchor="middle" font-size="14" font-weight="bold">Browser / motion slice</text>
+      <text x="400" y="405" text-anchor="middle" font-size="12">drag · spring physics · layout</text>
+      <text x="400" y="421" text-anchor="middle" font-size="12">held-out: RMSE 2.505px (≤8px)</text>
+      <text x="400" y="437" text-anchor="middle" font-size="12">layout difference 0px · PASS</text>
+      <!-- delivery -->
+      <rect x="550" y="360" width="200" height="90" rx="10" fill="#eef4ee" stroke="#819186"/>
+      <text x="650" y="385" text-anchor="middle" font-size="14" font-weight="bold">Delivery</text>
+      <text x="650" y="405" text-anchor="middle" font-size="12">candidate spec · verification</text>
+      <text x="650" y="421" text-anchor="middle" font-size="12">technical report · exports</text>
+      <text x="650" y="437" text-anchor="middle" font-size="12">provenance on every number</text>
+      <!-- honesty -->
+      <rect x="790" y="360" width="210" height="90" rx="10" fill="#fbf0f0" stroke="#c98c8c"/>
+      <text x="895" y="385" text-anchor="middle" font-size="14" font-weight="bold">Stated limits</text>
+      <text x="895" y="405" text-anchor="middle" font-size="12">hosted execution: off (no mock)</text>
+      <text x="895" y="421" text-anchor="middle" font-size="12">engine runs locally today</text>
+      <text x="895" y="437" text-anchor="middle" font-size="12">held-out sets stay sealed</text>
+      <!-- arrows -->
+      <g stroke="#819186" stroke-width="1.6" fill="none">
+        <path d="M190 62 L246 62" marker-end="url(#ar)"/>
+        <path d="M470 62 L526 62" marker-end="url(#ar)"/>
+        <path d="M750 62 L806 62" marker-end="url(#ar)"/>
+        <path d="M360 94 L420 166" marker-end="url(#ar)"/>
+        <path d="M806 200 L754 215" marker-end="url(#ar)"/>
+        <path d="M905 290 L905 356" marker-end="url(#ar)"/>
+        <path d="M250 250 L170 356" marker-end="url(#ar)"/>
+        <path d="M420 290 L410 356" marker-end="url(#ar)"/>
+        <path d="M640 290 L650 356" marker-end="url(#ar)"/>
+      </g>
+      <text x="500" y="530" text-anchor="middle" font-size="12.5" fill="#5c6f63">Observe → Compile → Construct → Verify → Compare → Deliver · observed facts are never overwritten without a gated, measured reason</text>
+    </svg>
+    <div class="legend">
+      <span><span class="dot" style="background:#2e6f4e"></span>Hosted &amp; live</span>
+      <span><span class="dot" style="background:#c9a86a"></span>Local real execution</span>
+      <span><span class="dot" style="background:#7a4fa3"></span>Meta Muse (REAL_MODEL)</span>
+      <span><span class="dot" style="background:#c98c8c"></span>Explicit limitations</span>
+    </div>
+  </div>
+</main>
+</body>
+</html>

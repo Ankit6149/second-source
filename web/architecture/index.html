@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture — Second Source</title>
+<link rel="stylesheet" href="../research.css">
+<style>
+.flow{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.step{flex:1 1 140px;text-align:left;border:1px solid var(--line,#c9d4cc);background:#fffdf8;border-radius:12px;padding:12px;cursor:pointer;font:inherit}
+.step strong{display:block;font-size:15px;margin-bottom:4px}
+.step span{font-size:12.5px;color:#5c6f63}
+.step[aria-pressed="true"]{outline:2px solid #2e6f4e;background:#eef4ee}
+.panel{border:1px solid var(--line,#c9d4cc);border-radius:12px;padding:18px;background:#fffdf8;min-height:120px}
+.panel h3{margin:0 0 8px}.panel p{margin:0;line-height:1.6}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin:14px 0}
+.box{border:1px solid var(--line,#c9d4cc);border-radius:12px;padding:16px;background:#fffdf8}
+.box h3{margin:0 0 8px;font-size:16px}.box p,.box li{font-size:14px;line-height:1.55}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 10px;border-bottom:1px solid #ddd;text-align:left;font-size:13.5px}
+.tag{font-size:11.5px;border:1px solid #c9d4cc;border-radius:999px;padding:1px 8px;white-space:nowrap}
+[data-why]{cursor:pointer}
+[data-why]:hover{outline:2px solid #b7c9bb}
+.drawer{position:fixed;top:0;right:0;height:100dvh;width:min(430px,94vw);background:#fffdf8;border-left:1px solid #c9d4cc;box-shadow:-18px 0 44px rgba(38,54,43,.16);transform:translateX(105%);transition:transform .28s ease;z-index:50;padding:26px;overflow:auto}
+.drawer.open{transform:none}
+.drawer h2{font-size:21px;margin:0 42px 14px 0}
+.drawer h3{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#2e6f4e;margin:20px 0 6px}
+.drawer p{font-size:15px;line-height:1.65;margin:0}
+.drawer .close{position:absolute;top:16px;right:16px;width:38px;height:38px;border-radius:50%;border:1px solid #c9d4cc;background:#fff;cursor:pointer;font-size:18px}
+.scrim{position:fixed;inset:0;background:rgba(38,54,43,.28);opacity:0;pointer-events:none;transition:opacity .28s;z-index:40}
+.scrim.open{opacity:1;pointer-events:auto}
+@media (prefers-reduced-motion:reduce){.drawer,.scrim{transition:none}}
+</style></head>
+<body>
+<a class="skip" href="#main">Skip to architecture</a>
+<header class="masthead">
+<div class="top"><a class="logo" href="../" aria-label="Second Source home">second<span>source.</span></a>
+<nav aria-label="Primary"><a href="../">Product</a><a href="../reports/">Reports</a><a href="../experiments/">Experiments</a><a href="./" aria-current="page">Architecture</a></nav>
+<a class="open" href="../app/">Open app ↗</a></div>
+<h1>How Second Source works</h1>
+<p>An interactive map of the whole system: the problem it solves, how a target
+becomes a verified reconstruction, where Meta Muse does real work, what is
+measured, what is honestly limited, and where it goes next. Click each stage.</p>
+</header>
+<main id="main">
+
+<h2>The pipeline — click a stage</h2>
+<div class="flow" role="group" aria-label="Pipeline stages">
+<button class="step" data-step="0" aria-pressed="true"><strong>1 · Observe</strong><span>probe the real API</span></button>
+<button class="step" data-step="1" aria-pressed="false"><strong>2 · Compile</strong><span>evidence → spec</span></button>
+<button class="step" data-step="2" aria-pressed="false"><strong>3 · Reason</strong><span>Muse, gated</span></button>
+<button class="step" data-step="3" aria-pressed="false"><strong>4 · Construct</strong><span>candidate runs</span></button>
+<button class="step" data-step="4" aria-pressed="false"><strong>5 · Verify</strong><span>independent check</span></button>
+<button class="step" data-step="5" aria-pressed="false"><strong>6 · Deliver</strong><span>code + report</span></button>
+</div>
+<div class="panel" id="panel" aria-live="polite"></div>
+
+<h2 style="margin-top:30px">What problem this solves</h2>
+<div class="grid">
+<div class="box"><h3>The problem</h3><p>Software outlives its documentation and
+sometimes its source. Rebuilding it by hand — or asking an AI to guess it —
+produces something that <em>looks</em> right and behaves wrong. Our own
+measurements: Muse rebuilding from scratch scored 1–2 of 6 on real behavior.</p></div>
+<div class="box"><h3>The idea</h3><p>Don't guess. <strong>Observe</strong> the real
+system's behavior, write down only what was seen, let the AI reason about what
+remains unknown, then <strong>prove</strong> the rebuild matches by running the
+same cases against both.</p></div>
+<div class="box"><h3>Why it matters</h3><p>Legacy migration, vendor lock-in,
+lost-source recovery, and auditing all need the same thing: a replacement you
+can <em>verify</em>, with evidence for every claim — not a confident demo.</p></div>
+</div>
+
+<h2>Who does what</h2>
+<div class="grid">
+<div class="box"><h3>Evidence compile data-why data-title="Evidence compiler — the notebook" data-small="Every observed response is tokenized: ids become &lt;entity:id&gt;, timestamps &lt;ts&gt;, people &lt;creator&gt;, indices &lt;identifier&gt;||Templates come from the richest observed response, not the first — later responses populate fields that start null||Unknown behavior is written down as unknown; denominators (6, 7, 19, 25) are always shown next to scores||Observed fields are immutable: a model edit that touches them is stripped mechanically before it can run" data-built="Early experiments asked the AI model to recreate everything from scratch. It kept corrupting facts that were already known — exact timestamps, default values, error codes — and scored 1–2 of 6. So we removed fact-keeping from the model entirely and gave it to a deterministic compiler." data-solves="Observed behavior can no longer be hallucinated away. Every constant in the candidate traces to a real recorded response, which is what makes the final verification meaningful."> <span class="tag">NON_AI</span></h3>
+<p style="color:#2e6f4e;font-size:13px">Click for why, what it solves, and the small things →</p><p>The notebook. Transcribes observed facts — routes, shapes, validation,
+permissions, state — into a behavioral specification. It never reasons and
+its scores are never reported as AI scores.</p></div>
+<div class="box"><h3>Meta Muse Spark 1. data-why data-title="Meta Muse Spark 1.3 — reasoning under a gate" data-small="Calls happen only inside owner-approved packets with a call cap and a dollar ceiling (e.g. 3 calls / $0.50)||A receipt is appended and fsynced the moment each call finishes — after an earlier crash lost receipts, nothing is kept only in memory||Provider failures are recorded as unscored, never as zero||Templates, methods and paths are restored after every model reply, whatever the model returns||Today’s route reviews: File Browser 2 calls, Gitea 6 calls, Vikunja 1 call — $0.031 of recorded spend on the earlier packet" data-built="A reconstruction system that only transcribes can never handle behavior nobody observed. Muse is built in for exactly that residue: competing hypotheses, missing rules, repair proposals. But its edits are bounded (contract fields only) and every one must pass the identical independent check, because ungated model edits repeatedly regressed working behavior in our measurements." data-solves="The AI contributes judgment where evidence runs out, without being able to silently break what evidence already proved. Rejected proposals are kept on record, so the contribution is measurable — including when it is zero."> <span class="tag">REAL_MODEL</span></h3>
+<p>The brain. Proposes hypotheses and bounded repairs for what observation
+didn't settle, inside capped, receipted packets. Every proposal must pass
+the same independent check or it is rejected — several have been.</p></div>
+<div class="box"><h3>Independent evaluato data-why data-title="Independent evaluator — the inside judge" data-small="Held-out suites are frozen before model work and hashed (the Gitea held-out set’s SHA is recorded and it has never been run)||Identical action sequences run on both sides; outputs are canonicalized so real ids and clocks don’t create false differences||A checker bug we found (candidate port-reuse race) was fixed and the affected result re-measured before being reported||Negative controls exist: a deliberately mutated candidate must fail (File Browser control)" data-built="Self-graded AI output is not evidence. The evaluator was built as a separate component that runs identical case sequences against the reference and the candidate and compares canonicalized outputs field-by-field. Held-out suites are sealed before any model work and never enter prompts." data-solves="Scores a judge can trust: improvements, ties and failures are all produced by the same measurement, so the system cannot grade its own homework or tune itself to the hidden tests."></h3>
+<p>The judge inside the system. Runs identical cases against reference and
+candidate and compares field-by-field. Held-out suites stay sealed and are
+never shown to the model.</p></div>
+<div class="box"><h3>Hosted produc data-why data-title="Hosted product — a real front door" data-small="Sign-in is a compact modal; the chat stays plain language while scope, stages and events live in Compare, Reports and Settings||If the backend is misconfigured it now answers honestly (live 200 / ready 503) instead of hanging — that failure mode was found in production logs and fixed||The storage key never reaches the browser; the database role can touch only its own schema||Retired pages redirect instead of 404ing, so old links judges may hold still land somewhere true" data-built="Research machinery alone is not a product. The hosted layer (Vercel, Render, Supabase) exists so a non-engineer can sign in with Google, describe an investigation in plain language, approve its scope, and watch persisted, real progress — with the same honest labels everywhere." data-solves="Anyone can try the journey without a terminal, and every number a visitor sees traces back to a recorded run instead of a marketing claim."> <span class="tag">LIVE</span></h3>
+<p>Vercel frontend, Render API (<code>/health/ready</code> 200), Supabase
+Auth/Postgres/Storage. Sign-in, investigations, authorization, persisted
+events and reports work end-to-end today.</p></div>
+</div>
+
+<h2>Measured results (provenance never merged)</h2>
+<table>
+<tr><th>Target</th><th>Muse alone</th><th>Second Source</th><th>Note</th></tr>
+<tr><td>Vikunja v2.4.0</td><td>2/6, 1/6</td><td><strong>18/19</strong> public ladder · 6/6 + 6/6 frozen/extended</td><td>one divergence: default projects</td></tr>
+<tr><td>File Browser v2.63.23</td><td>3/7</td><td><strong>7/7</strong></td><td>Muse review preserved 7/7</td></tr>
+<tr><td>Gitea 1.22.6</td><td>provider failures, unscored</td><td><strong>6/6</strong> public (was 2/6)</td><td>held-out sealed, not run</td></tr>
+<tr><td>Owned ledger (sealed 25)</td><td><strong>14/25</strong></td><td>22/25 compiler control</td><td>genuine Muse candidate</td></tr>
+<tr><td>Owned HTTP workflow</td><td>—</td><td><strong>30/30</strong></td><td>full UI job</td></tr>
+<tr><td>Browser motion / physics</td><td>—</td><td><strong>PASS</strong> · RMSE 2.505px (limit 8px)</td><td>layout difference 0px</td></tr>
+</table>
+
+<h2 style="margin-top:30px">The cases — click any case</h2>
+<div class="grid">
+<div class="box" data-why data-title="Vikunja v2.4.0 — the deep case" data-built="Chosen first because it is real, professional, self-hostable software with projects, tasks, sharing, validation and permissions — rich enough to expose every weakness. It got the full treatment: frozen held-out suite, a separate extended suite, a public ladder, and every model arm (prior-only, grounded, active, hybrid, in-pipeline)." data-solves="It became the reference measurement for the whole project: where Muse helps, where transcription wins, and exactly which interpreter semantics (update-replace, filters, 403/404 contracts) separate 11/19 from 18/19." data-small="Frozen suite frozen before model work; the public ladder (19 cases) is the only part models ever see||Read-after-share divergence was a real find: sharing changes what a list returns, not just who may call it||The last divergence is named, not rounded away: reference default projects (Inbox) are not seeded by the candidate||Muse arms measured: grounded 2/6, active 1/6, hybrid raw 6/6 with all edits gate-rejected — reported as a tie"><h3>Vikunja v2.4.0 — task management</h3><p>It became the reference measurement for the whole project: where Muse helps, where transcription wins, and exactly which interpreter semantics (update-replace, filters, 403/404 contracts) separate 11/19 from 18/19.</p><p style="color:#2e6f4e;font-size:13px">Click for why, what it solves, and the small things →</p></div>
+<div class="box" data-why data-title="File Browser v2.63.23 — the generalization case" data-built="Added to prove the pipeline is not Vikunja-shaped. Authentication, tokens, user management, permissions and duplicate contracts exercise different machinery (raw X-Auth headers, what/which user payloads, admin flags) through the identical compiler and candidate interpreter." data-solves="It showed the architecture travels: 7/7 including a deliberately mutated control candidate that must fail — and it gave Muse a second, independent target (3/7 alone; 7/7 preserved under Muse route review)." data-small="A mutated control (wrong login status) is scored as a case, so a candidate that always agrees cannot pass||Duplicate-user contract (409 vs silent success) is exactly the kind of edge transcription captures and guessing misses||Muse route review on the fixed pipeline: 2 calls, no changes proposed, 7/7 preserved"><h3>File Browser v2.63.23 — files & users</h3><p>It showed the architecture travels: 7/7 including a deliberately mutated control candidate that must fail — and it gave Muse a second, independent target (3/7 alone; 7/7 preserved under Muse route review).</p><p style="color:#2e6f4e;font-size:13px">Click for why, what it solves, and the small things →</p></div>
+<div class="box" data-why data-title="Gitea 1.22.6 — the first-contact case" data-built="A large, real open-source platform none of the machinery was built for, adopted late and deliberately unchosen by prior work. Bounded to version, repositories, issues and the auth boundary; downloaded, run locally and probed through its real API." data-solves="First contact scored 2/6 and exposed a genuine generalization bug (literal repo names in route templates). The generic fix — templating owner/entity-name segments, name-addressed lookup, error-boundary compilation — moved it to 6/6 and improved every target, which is what a first-contact case is for." data-small="The sealed Gitea held-out set (SHA recorded) has never been run; the 6/6 claim is public-cases only and says so||Unauthenticated /user must answer 401, not 404 — an error-boundary contract now compiled from observation||Muse route review after the fix: 6 calls, no changes, 6/6 preserved"><h3>Gitea 1.22.6 — code hosting</h3><p>First contact scored 2/6 and exposed a genuine generalization bug (literal repo names in route templates). The generic fix — templating owner/entity-name segments, name-addressed lookup, error-boundary compilation — moved it to 6/6 and improved every target, which is what a first-contact case is for.</p><p style="color:#2e6f4e;font-size:13px">Click for why, what it solves, and the small things →</p></div>
+<div class="box" data-why data-title="Owned ledger — where Muse scored its headline" data-built="A small owned CLI target with a sealed 25-case suite, built so a genuine model candidate could be produced and independently scored early, with provider attestation limits stated. It produced the strongest Muse-alone result in the project." data-solves="It anchors the Muse side of the comparison honestly: Muse 14/25 against a 22/25 deterministic verification baseline — capability demonstrated, ceiling visible, neither hidden." data-small="Provider attestation is incomplete, so the result is labeled REAL_MODEL with that limitation attached||The suite stays sealed; the score has never been re-run into a better number||This result no longer headlines the product alone — it sits in the register beside the newer cross-target Muse experiments"><h3>Owned ledger — CLI fixture (sealed 25)</h3><p>It anchors the Muse side of the comparison honestly: Muse 14/25 against a 22/25 deterministic verification baseline — capability demonstrated, ceiling visible, neither hidden.</p><p style="color:#2e6f4e;font-size:13px">Click for why, what it solves, and the small things →</p></div>
+<div class="box" data-why data-title="Owned HTTP workflow — the product-flow case" data-built="An owned HTTP target driven through the actual product UI: a user starts the job, watches real execution, and receives verification (30/30) plus artifacts. It exists to prove the user-to-code-and-report journey, not just the evaluator." data-solves="It is the one flow a judge can repeat end-to-end in the app today (locally), from instruction to downloadable result, with persisted events at every stage." data-small="Events are real execution records with sequence numbers, not simulated progress||The exported bundle is checked to run, not just to download||Hosted execution remains off rather than mock-labeled; this flow runs against the local backend/engine"><h3>Owned HTTP task workflow (30 cases)</h3><p>It is the one flow a judge can repeat end-to-end in the app today (locally), from instruction to downloadable result, with persisted events at every stage.</p><p style="color:#2e6f4e;font-size:13px">Click for why, what it solves, and the small things →</p></div>
+<div class="box" data-why data-title="Browser / motion — the physics case" data-built="APIs are not the whole vision. This slice captures a real drag interaction: pointer trajectories, spring overshoot and settle, and layout geometry, then rebuilds the interaction and compares it on a fresh held-out evaluation." data-solves="It proves the evidence model extends past REST: trajectory RMSE 2.505px against an 8px threshold and 0px layout difference, with the same observed/inferred discipline." data-small="Reference and candidate are recorded separately at readable pace (see the demo videos)||Overshoot and settle behavior are scored, not just final position||No general Canvas/WebGL claim is made — this slice is the measured boundary of current support"><h3>Browser motion — spring physics slice</h3><p>It proves the evidence model extends past REST: trajectory RMSE 2.505px against an 8px threshold and 0px layout difference, with the same observed/inferred discipline.</p><p style="color:#2e6f4e;font-size:13px">Click for why, what it solves, and the small things →</p></div>
+</div>
+<h2 style="margin-top:30px">Honest limits</h2>
+<div class="grid">
+<div class="box"><h3>Hosted execution is off</h3><p>On the hosted backend you can
+sign in, create, authorize and track investigations; the execution step returns
+an explicit “disabled” rather than a simulated run. We refused to ship a mock
+labeled as real. The genuine engine runs locally today.</p></div>
+<div class="box"><h3>Muse hasn't beaten the notebook — yet</h3><p>Where behavior
+was already observed, transcription wins. Muse's current tool surface (route
+contracts) can't express state/interpreter changes; its rejected edits are
+recorded, not hidden.</p></div>
+<div class="box"><h3>One divergence left</h3><p>Vikunja's reference lists per-user
+default projects (Inbox) that the candidate does not seed. Documented, not
+papered over.</p></div>
+</div>
+
+<h2>Future goals</h2>
+<div class="grid">
+<div class="box"><h3>1 · Muse in the loop, live</h3><p>One orchestrated workflow —
+hypothesis → experiment selection → synthesis → verification → repair — running
+inside the product, with Muse proposing candidate <em>code</em> changes, not
+just route contracts.</p></div>
+<div class="box"><h3>2 · Hosted real execution</h3><p>A secure worker that runs the
+engine for reachable targets, so the full journey completes on the website for
+any visitor, with the same honest labels.</p></div>
+<div class="box"><h3>3 · Spec → real source code</h3><p>Generate ordinary, runnable
+source files from the behavioral specification, verified by the same evaluator —
+“AI builds the software,” with proof it matches.</p></div>
+<div class="box"><h3>4 · More surfaces</h3><p>Deeper browser/UI reconstruction
+(DOM, layout, interaction state) beyond the current motion slice, each with its
+own independent fidelity measures.</p></div>
+</div>
+
+<p style="margin-top:26px"><a href="../reports/">Read the measured reports →</a> ·
+<a href="../experiments/">Explore the experiments →</a> ·
+<a href="../app/">Open the app →</a></p>
+</main>
+<script>
+const STAGES = [
+ ["Observe — touch the real thing","The engine calls the authorized target's real API: creates projects, tasks, repositories and issues; deliberately sends wrong passwords, empty titles and unauthorized requests. Every input, output, status and error is recorded verbatim. Nothing is inferred yet, and no target source code is read."],
+ ["Compile — the notebook (NON_AI)","A deterministic compiler turns observations into a versioned behavioral specification: resources, routes, response shapes, validation, permissions, state rules. Dynamic values become tokens (<entity:id>, <ts>, <creator>). Observed facts are immutable from here on."],
+ ["Reason — Muse under a gate (REAL_MODEL)","Muse receives only what observation left unsettled — divergent routes, competing explanations — in bounded, paid-packet calls with durable receipts. It may edit only contract fields; templates, methods and paths are restored mechanically. Held-out evaluation data is never in a prompt."],
+ ["Construct — an independent candidate","A candidate server executes the specification as its own implementation — its own state, users and storage. It shares no code with the reference; if the spec is wrong, the candidate is visibly wrong."],
+ ["Verify — the independent check","Identical case sequences run against reference and candidate; outputs are canonicalized (real ids and timestamps become tokens) and compared field-by-field. Any Muse edit is kept only if this score strictly improves or, on perfect baselines, does not regress. Failures are reported, never hidden."],
+ ["Deliver — proof, not promises","The user receives the candidate specification, the verification record with every divergence, and a technical report linking each claim to its evidence, with provenance labels (REAL_MODEL / NON_AI) kept separate forever."]];
+const panel = document.getElementById('panel');
+function show(i){ panel.innerHTML = '<h3>'+STAGES[i][0]+'</h3><p>'+STAGES[i][1]+'</p>';
+  document.querySelectorAll('.step').forEach((b,j)=>b.setAttribute('aria-pressed', String(i===j))); }
+const SMALL=[
+"Probes include abuse cases on purpose: wrong passwords, empty titles, other users' data, nonexistent ids (project 999999)||Actor is recorded per observation (alice / bob / anonymous) because permissions are behavior too||The probe ladder is public by design — it is the training-visible half of the measurement",
+"The spec is versioned (CandidateV1) and content-addressed, so any result can be reproduced from its exact input||Generic route generalization was learned from Gitea: owner and entity-name path segments become templates instead of staying literal||Error observations compile too: a seen 404/403 body becomes the candidate's missing-resource contract",
+"One route per call, never a whole-application rewrite — the one time we tried whole-route rewrites, the score fell 11 → 2 and the gate rejected everything||Every edit lists what it changed; unchanged routes are reported as unchanged, not silently passed over||Spending stops at the packet ceiling even mid-experiment",
+"The candidate keeps its own users, tokens and entity store; registering in the candidate never touches the reference||Update semantics were reverse-engineered from divergences: full replace, identity and date fields preserved, other literals reset||Fully access-filtered lists must answer 403, not an empty 200 — a small status code that once hid a permission bug",
+"Canonical tokens: <task-1>, <project-3>, <ts>, <pos> — assigned by first appearance, separately per side||Scores are strict: one wrong field fails the case, which is why 18/19 still names its last divergence||Frozen (6) and extended (6) Vikunja suites were re-scored after the interpreter fixes: still 6/6 and 6/6",
+"Downloads include the candidate spec, verification record and report — the ZIP is checked to actually run, not just to exist||Every number carries its provenance label and packet/run id back to raw receipts||Unknown and unmeasured are displayed as words, never converted to zero"];
+const WHY=[["Why observe first","AI asked to rebuild from memory guesses constants, defaults and error codes — we measured 1–2 of 6. Real probes give the system ground truth that cannot be hallucinated.","It removes invention from the foundation: every later claim links to something the target actually did."],
+["Why a deterministic compiler","When the model regenerated whole contracts, it corrupted already-correct facts. Separating transcription (compiler) from reasoning (model) protects observed facts mechanically, not by hoping the prompt works.","Correct behavior survives every repair attempt, and failures localize to reasoning instead of fact loss."],
+["Why gate Muse's edits","Ungated model repairs regressed the candidate in repeated measurements (route rewrites dropped a public score from 11 to 2). A hard public-conformance gate makes model contribution measurable and reversible.","AI can help without silently shipping damage; when it adds nothing, the system says so."],
+["Why an independent candidate","If the reconstruction shares code or state with the reference, comparison proves nothing. A separate server executing only the spec exposes every wrong inference as a visible behavior difference.","Fidelity becomes falsifiable — the candidate passes because it behaves the same, not because it is the same."],
+["Why canonical comparison","Real ids, timestamps and tokens differ on every run, so naive diffing drowns signal in noise. Canonicalization maps them to stable tokens, leaving only true behavioral differences.","Divergences point at real rule differences (like update semantics), which is what made the 11→18/19 improvement possible."],
+["Why provenance-labeled delivery","A single blended score would hide whether AI, transcription, or a human produced the result. Keeping REAL_MODEL and NON_AI labels separate on every number preserves the audit trail.","Judges and users can see exactly what the AI contributed — the core question of this hackathon."]];
+document.querySelectorAll('.step').forEach(b=>b.addEventListener('click',()=>{ show(+b.dataset.step);
+  const w=WHY[+b.dataset.step];
+  openCard({dataset:{title:STAGES[+b.dataset.step][0], built:w[1], solves:w[2], small:SMALL[+b.dataset.step]}}); }));
+show(0);
+</script>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true" aria-label="Why this component">
+  <button class="close" id="drawerClose" aria-label="Close explanation">×</button>
+  <h2 id="drawerTitle"></h2>
+  <h3>Why we built it this way</h3><p id="drawerWhy"></p>
+  <h3>What it solves</h3><p id="drawerSolves"></p>
+  <h3>The small things</h3><ul id="drawerSmall" style="margin:0 0 0 18px;padding:0"></ul>
+</aside>
+<script>
+const drawer=document.getElementById('drawer'), scrim=document.getElementById('scrim');
+function openCard(el){
+  document.getElementById('drawerTitle').textContent=el.dataset.title;
+  document.getElementById('drawerWhy').textContent=el.dataset.built;
+  document.getElementById('drawerSolves').textContent=el.dataset.solves;
+  document.getElementById('drawerSmall').innerHTML=(el.dataset.small||'').split('||').filter(Boolean).map(s=>'<li style="font-size:14px;line-height:1.55;margin-bottom:6px">'+s+'</li>').join('');
+  drawer.classList.add('open'); scrim.classList.add('open');
+  drawer.setAttribute('aria-hidden','false');
+  document.getElementById('drawerClose').focus();
+}
+function closeCard(){ drawer.classList.remove('open'); scrim.classList.remove('open');
+  drawer.setAttribute('aria-hidden','true'); }
+document.querySelectorAll('[data-why]').forEach(el=>{
+  el.setAttribute('tabindex','0'); el.setAttribute('role','button');
+  el.addEventListener('click',()=>openCard(el));
+  el.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openCard(el);} });
+});
+document.getElementById('drawerClose').addEventListener('click',closeCard);
+scrim.addEventListener('click',closeCard);
+addEventListener('keydown',e=>{ if(e.key==='Escape') closeCard(); });
+</script>
+</body></html>

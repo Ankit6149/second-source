@@ -141,7 +141,8 @@ class Candidate:
             return req.get(value["$input"], value.get("default"))
         if isinstance(value, str):
             if value == "<entity:id>":
-                return ctx.get("entity_id")
+                return ctx.get("entity_id") or \
+                    (ctx.get("creator") or {}).get("id")
             if value == "<new_id>":
                 return self._id()
             if value == "<ts>":
@@ -167,6 +168,22 @@ class Candidate:
         if isinstance(value, list):
             return [self._fill_template(v, ctx) for v in value]
         return value
+
+    def _shape_fill(self, value, ctx_e, entity):
+        if isinstance(value, str) and value.startswith("<"):
+            if value == "<creator>":
+                alias = entity.get("_owner")
+                uname = self.spec.get("users", {}).get(alias, alias)
+                rec = self.users.get(uname, {})
+                return {"id": rec.get("id", 1), "name": "",
+                        "username": uname,
+                        "created": "2026-01-01T00:00:00Z",
+                        "updated": "2026-01-01T00:00:00Z"}
+            if value == "<identifier>":
+                return f"#{entity.get('index', 1)}"
+            if value == "<entity:id>":
+                return entity.get("id")
+        return self._fill_template(value, ctx_e)
 
     def _compiled_access(self, route, username, parent_id):
         access = route.get("access", "owner")
@@ -199,7 +216,8 @@ class Candidate:
                            "username": user,
                            "created": "2026-01-01T00:00:00Z",
                            "updated": "2026-01-01T00:00:00Z"},
-               "request": body or {}, "params": params, "entity": {}}
+               "request": body or {}, "params": params, "entity": {},
+               "query": getattr(self, "_query", "")}
         parent_raw = params.get("pid") or params.get("tid")
         if parent_raw is None:
             # Generic fallback: a single numeric path param (e.g. {id})
@@ -243,6 +261,9 @@ class Candidate:
             if isinstance(entity, dict):
                 entity["_parent"] = parent_id
                 entity["_owner"] = username
+                import copy as _copy
+                entity["_initial"] = _copy.deepcopy(
+                    {k: v for k, v in entity.items() if not k.startswith("_")})
                 store[entity.get("id")] = entity
                 if parent_id is None:
                     self._owners[entity.get("id")] = username
@@ -250,6 +271,12 @@ class Candidate:
                             if not k.startswith("_")} \
                 if isinstance(entity, dict) else entity
         if kind == "compiled_list":
+            if parent_id is not None and not any(
+                    e.get("id") == parent_id or e.get("_parent") == parent_id
+                    for s in self.stores.values() for e in s.values()) \
+                    and parent_id not in self._owners:
+                fb = route.get("not_found_body")
+                return (404, fb) if fb is not None else self._not_found()
             # Route-shape overlay: fields the list response itself
             # carries as null/object/empty differ per route from the
             # create shape; the observed list exemplar decides.
@@ -259,23 +286,84 @@ class Candidate:
                 exemplar = {}
             overlay = {k: v for k, v in exemplar.items()
                        if v is None or isinstance(v, (dict, list))}
+            # Model-proposed default seeding (gated experiment surface):
+            # route.seed_defaults lists exemplar titles the reference
+            # provides by default. Seed unseen ones for this user and
+            # present seeded/created items in exemplar order.
+            seed_titles = route.get("seed_defaults")
+            if isinstance(seed_titles, list) and isinstance(template, list):
+                known = {e.get("title") or e.get("name") for e in store.values()}
+                for item in template:
+                    if not isinstance(item, dict):
+                        continue
+                    label = item.get("title") or item.get("name")
+                    if label in seed_titles and label not in known:
+                        seed = self._fill_template(item, ctx)
+                        if isinstance(seed, dict):
+                            seed["id"] = self._id()
+                            link_key = (route.get("collection") or "")[:-1] + "_id"
+                            def _link(o):
+                                if isinstance(o, dict):
+                                    for k2, v2 in o.items():
+                                        if k2 == link_key and (isinstance(v2, int) or (isinstance(v2, str) and v2.startswith("<path:"))):
+                                            o[k2] = seed["id"]
+                                        elif isinstance(v2, str) and v2.startswith("<path:"):
+                                            o[k2] = self._id()
+                                        else:
+                                            _link(v2)
+                                elif isinstance(o, list):
+                                    for v2 in o:
+                                        _link(v2)
+                            _link(seed)
+                            seed["_parent"] = None
+                            seed["_owner"] = username
+                            store[seed["id"]] = seed
+                            known.add(label)
             items = []
+            filtered_out = 0
             for entity in store.values():
                 if parent_id is not None and entity.get("_parent") != parent_id:
                     continue
                 err = self._compiled_access(route, username, entity.get("_parent") or entity.get("id"))
                 if err and entity.get("_owner") != username:
+                    filtered_out += 1
                     continue
                 out = {k: v for k, v in entity.items()
                        if not k.startswith("_")}
                 ctx_e = dict(ctx, entity=entity)
                 for key, value in overlay.items():
-                    out[key] = self._fill_template(value, ctx_e)
+                    if isinstance(value, (dict, list)) and \
+                            out.get(key) not in (None, "", [], {}):
+                        continue  # entity's own nested state wins
+                    out[key] = self._shape_fill(value, ctx_e, entity)
+                exemplar_tok = exemplar if isinstance(exemplar, dict) else {}
+                for key, value in exemplar_tok.items():
+                    if isinstance(value, str) and value.startswith("<") \
+                            and out.get(key) in (None, ""):
+                        out[key] = self._shape_fill(value, ctx_e, entity)
                 items.append(out)
-            if route.get("access") == "owner" and items == [] and store:
-                if not any(e.get("_owner") == username for e in store.values()):
+            if items == [] and store:
+                owns_any = any(e.get("_owner") == username for e in store.values())
+                if not owns_any and (route.get("access") == "owner" or filtered_out):
                     fb = route.get("forbidden_body")
                     return (403, fb) if fb is not None else self._forbidden()
+            # Boolean query filters (e.g. ?filter=done%20%3D%20false):
+            # generic field = true/false filtering over stored entities.
+            query = ctx.get("query") or ""
+            if "filter=" in query:
+                import re as _re
+                m = _re.search(r"([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(true|false)", query)
+                if m:
+                    field, want = m.group(1), m.group(2) == "true"
+                    items = [i for i in items if i.get(field) is want]
+            if isinstance(seed_titles, list) and isinstance(template, list):
+                order = {}
+                for item in template:
+                    if isinstance(item, dict):
+                        label = item.get("title") or item.get("name")
+                        if label is not None and label not in order:
+                            order[label] = len(order)
+                items.sort(key=lambda i: order.get(i.get("title") or i.get("name"), 999))
             return status, items
         # Item routes resolve the entity by the trailing path param.
         entity = store.get(parent_id) if parent_id is not None else None
@@ -307,7 +395,10 @@ class Candidate:
                 ctx_e = dict(ctx, entity=entity)
                 for key, value in template.items():
                     if value is None or isinstance(value, (dict, list)):
-                        out[key] = self._fill_template(value, ctx_e)
+                        out[key] = self._shape_fill(value, ctx_e, entity)
+                    elif isinstance(value, str) and value.startswith("<") \
+                            and out.get(key) in (None, ""):
+                        out[key] = self._shape_fill(value, ctx_e, entity)
             return status, out
         if kind == "compiled_share":
             target = (body or {}).get("username")
@@ -319,6 +410,35 @@ class Candidate:
             return status, out
         if kind == "compiled_update":
             prev_done_at = entity.get("done_at")
+            raw_template = route.get("template")
+            if isinstance(raw_template, dict):
+                keep = {k: entity.get(k)
+                        for k in ("_parent", "_owner", "_initial", "id")}
+                filled_old = self._fill_template(
+                    raw_template, dict(ctx, entity=entity))
+                fresh = {}
+                for k, raw in raw_template.items():
+                    if isinstance(raw, (dict, list)) or \
+                            (isinstance(raw, str) and raw.startswith("<")):
+                        fresh[k] = entity.get(k) if entity.get(k) not in (None, "") \
+                            else filled_old.get(k)
+                    elif isinstance(raw, bool):
+                        fresh[k] = False
+                    elif isinstance(raw, (int, float)):
+                        fresh[k] = 0
+                    elif isinstance(raw, str) and (
+                            raw.endswith("Z") or k.endswith(("_at", "_date"))
+                            or k in ("created", "updated")):
+                        fresh[k] = entity.get(k)
+                    elif isinstance(raw, str) and k in ("title", "name"):
+                        fresh[k] = entity.get(k)
+                    elif isinstance(raw, str):
+                        fresh[k] = ""
+                    else:
+                        fresh[k] = None
+                entity.clear()
+                entity.update(fresh)
+                entity.update(keep)
             for key, value in (body or {}).items():
                 entity[key] = value
             ctx["entity"] = entity
@@ -411,6 +531,8 @@ class Candidate:
             return err
         kind = route.get("kind")
         if isinstance(kind, str) and kind.startswith("compiled"):
+            from urllib.parse import unquote_plus as _uq
+            self._query = _uq(raw_path.split("?", 1)[1]) if "?" in raw_path else ""
             return self._compiled(route, params, body, user, username)
         pid = int(params["pid"]) if "pid" in params else None
         tid = int(params["tid"]) if "tid" in params else None

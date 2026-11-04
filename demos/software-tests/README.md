@@ -25,3 +25,9 @@ Notes:
 - Motion numbers come from a fresh `browser-slice-v2/evaluate.mjs` run held
   out from fitting (drag 150px, scrolls 0/150/450/750); see
   `browser-slice-v2/verdict.json`.
+
+## UI recordings (4 Nov 2026, raw, readable pace)
+- ui-vikunja.webm / ui-filebrowser.webm / ui-gitea.webm: the product's Experiments page running real local-engine rebuilds (Vikunja 18/19, File Browser 7/7, Gitea 6/6).
+- ui-motion-physics.webm: reference vs candidate spring-drag in the browser/motion slice.
+- ui-chat.webm: typing a real instruction in the product chat; the app asks for sign-in before starting an authorized investigation.
+Recorded with product/browser/record_showcase.mjs and record_chat.mjs against the local engine on this machine.

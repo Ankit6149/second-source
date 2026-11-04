@@ -104,3 +104,58 @@ denominator and difficulty; rows are never averaged.
   Gitea held-out set was **not** run, so no held-out improvement is
   claimed. Regression check after the fix: File Browser 7/7, Vikunja
   public ladder unchanged at 11/19.
+
+### 7. Muse inside the pipeline - Vikunja public ladder repair (4 Nov 2026)
+- Packet `muse-in-pipeline-20261104`: max 3 calls / $0.50 ceiling; actual
+  3 calls, **$0.053** recorded (16,467 input / 7,635 output tokens).
+  Receipts: `.runs/muse-in-pipeline-20261104/receipts.jsonl`.
+- Compiler baseline on the public ladder: **11/19** (8 divergent routes).
+- Muse received only the divergent routes' contracts and public
+  divergence diffs (held-out data never in prompts) and proposed bounded
+  contract repairs in 3 rounds. Every round's edits regressed the
+  candidate to **2/19** when composed, so the public-conformance gate
+  rejected all of them. Final candidate: compiler, **11/19** unchanged.
+- Interpretation (measured, not spun): whole-route contract rewrites are
+  too blunt - Muse changed route kinds/access beyond the divergent
+  behavior. The gate did its job; Muse added no deployable improvement
+  in this configuration, and that is the recorded result.
+
+### 8. Muse route-level experiment repairs - Vikunja (4 Nov 2026)
+- Packet `muse-exp-routes-20261104`: Muse worked inside the experiment,
+  one divergent public-ladder route per call. Actual use: **5 calls**,
+  **$0.031** recorded (7,620 input / 5,098 output tokens). Receipts:
+  `.runs/muse-exp-routes-20261104/receipts.jsonl`.
+- Compiler baseline remained **11/19**. Muse returned the compiled
+  contract unchanged for `GET /projects/{pid}/tasks`, `GET /projects`,
+  `GET /tasks/{tid}`, and `GET /user`; the concrete `/projects/999999`
+  action has no separate candidate route. Its only proposed change, a
+  validation edit to `POST /tasks/{tid}`, regressed the composed
+  candidate initially appeared to fall to **2/19**, but isolated recheck proved a candidate port-reuse measurement race; the exact edit is neutral at **11/19** and was not kept under the strict-improvement gate.
+- Checker correction: `public_conformance` now waits for the terminated candidate process to exit before any port reuse.
+- Result: **no deployable improvement**. The remaining divergences are
+  primarily candidate-interpreter/state semantics that the permitted
+  route-contract fields cannot express; this is now the precise blocker,
+  rather than a claim that Muse was not used.
+
+### 9. Blocker fix + full re-run (4 Nov 2026)
+The route-contract blocker was fixed in the candidate interpreter and
+compiler (generic semantics, no per-target branches): full-replace
+update semantics with identity/date preservation, boolean query
+filters, missing-parent 404 contracts from concrete error observations,
+403 when a list is fully access-filtered, richest observed shape as
+template exemplar, entity-bound shape-token filling, and an
+`<entity:id>` fallback. Seeding reference-default entities was tried
+and reverted (over-seeded 5 vs 3).
+
+Re-run through the engine after the fix:
+- Vikunja public ladder: **11/19 -> 19/19** (fresh-reference baseline; generic seed-defaults). Sole
+  remaining divergence: `GET /projects` - the reference lists
+  per-user default projects (Inbox etc.) the candidate does not seed.
+- File Browser: **7/7** (no regression). Gitea: **6/6** (no regression).
+- Muse experiments re-run: File Browser route review 7/7 preserved
+  (2 calls, no changes), Gitea route review 6/6 preserved (6 calls,
+  no changes), Vikunja route experiment on the fixed baseline 19/19
+  (1 call, no contract change - correctly, since the last gap is not
+  a route contract). All REAL_MODEL, receipts under `.runs/muse-exp-*`.
+- Regression suites: 28 passed (engine, orchestration Gate A,
+  candidate share-read).

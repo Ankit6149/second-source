@@ -71,7 +71,7 @@ try {
   }, { accessToken: token, userId: owner });
   const page = await context.newPage();
   await page.goto(origin);
-  await page.getByText('Available here: owned ledger and HTTP task-workflow NON_AI fixtures.', { exact: false }).waitFor({ timeout: 30000 });
+  await page.getByText('Available here: owned ledger and HTTP task-workflow controls.', { exact: false }).waitFor({ timeout: 30000 });
   console.log('LOCAL DEMO: synthetic identity, temporary fake Storage, no model calls. Close the window to stop.');
   if (smoke || record) {
     if (record) {

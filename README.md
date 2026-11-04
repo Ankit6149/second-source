@@ -142,8 +142,8 @@ Its first candidate format is a **restricted, declarative specification**, not a
 | Browser / motion slice | **Bounded demonstration** | Chromium capture → spring-physics fit from observations only → candidate passes held-out 140px drag at 1.05px trajectory RMSE; adversarial variants detected (`browser-slice/`). One owned fixture; no general website reconstruction claimed |
 | Bounded mock candidate repair | **Implemented on [PR #18](https://github.com/Ankit6149/second-source/pull/18); pending integration** | Frozen-context retries and versioned evidence; **not** real feedback-conditioned synthesis or real-model repair |
 | Durable local API and worker | **Implemented** | Owner-scoped local SQLite lifecycle, cancellation/fencing, mock execution, sanitized export |
-| Cloud backend and storage | **Source integrated, not live accepted** | Auth/PostgreSQL/Storage/Render/Railway preparation on [merged PR #19](https://github.com/Ankit6149/second-source/pull/19); live migrations, credentials, and hosted acceptance pending |
-| Public website and evidence viewer | **Static preview implementation** | [Merged PR #20](https://github.com/Ankit6149/second-source/pull/20); browser-local viewer, not authenticated cloud investigation UI |
+| Cloud backend and storage | **Live** | Render API `second-source-api.onrender.com` (`/health/ready` 200), Supabase Postgres + Auth (Google) + Storage; signed-in create/authorize/queue/events verified in production. Hosted execution stays disabled (only a mock executor exists there) |
+| Public website and app | **Live** | https://second-source-alpha.vercel.app/ (`/`, `/app/`, `/reports/`, `/experiments/`, `/challenge/`, `/architecture/`): sign-in, investigations, experiments, reports |
 | E2B / Daytona sandbox | **Gated integration work** | Interface and fake tests exist; production sandbox execution is not enabled |
 
 > [!NOTE]
@@ -170,6 +170,20 @@ python -m pytest -q
 
 # Observe, generate and evaluate the owned fixture with a mock provider.
 python -m second_source.reconstruct --mode mock
+
+# --- The real product UI, locally (input -> working -> output) ---
+# Terminal 1: the local investigation engine (real probes, compile, conformance)
+python scripts/investigation_engine.py --port 8765
+# Terminal 2: the app
+cd product && npm install && npm run dev   # open the printed local URL
+# In the app: New investigation -> pick Vikunja / File Browser / Gitea ->
+# describe what to investigate -> watch real observations, the compiled
+# candidate, public-conformance score, and download the report/evidence ZIP.
+# References: Vikunja/File Browser are started by the engine/operator locally;
+# Gitea must be running at 127.0.0.1:3000, File Browser at 127.0.0.1:3471.
+# Optional Muse gated route repair (paid, off by default):
+#   set MODEL_API_KEY and SECOND_SOURCE_ALLOW_MUSE_REPAIR=1, or run
+#   scripts/start-local-muse.ps1 — then choose model_mode "muse-repair".
 
 # Or exercise the local durable API → worker → evaluator workflow.
 python -m second_source.backend --data-dir ../second-source-operator-data mock
@@ -248,7 +262,7 @@ flowchart TB
     class U,G2,SPEC neutral;
 ~~~
 
-**Deployed vs proposed:** the CLI and local mock backend are implemented. Vercel hosts only the public frontend when independently deployed; the Render/Supabase cloud backend is prepared in source but has not passed live deployment acceptance. E2B is a proposed isolated execution provider, with Daytona as an alternative, **not an active fallback currently running**. Genuine Meta model dispatch is controlled separately by exact-input approval and spending limits.
+**Deployed vs proposed (updated 4 Nov 2026):** Vercel hosts the public frontend (https://second-source-alpha.vercel.app/) and the Render/Supabase cloud backend IS deployed and passed live acceptance today: https://second-source-api.onrender.com/health/ready returns 200, and a signed-in production investigation (create, authorize, queue, persisted events) was executed end-to-end (main `a0c8bdd`). Hosted *execution* remains deliberately disabled (honest 409, no mock presented as real); the genuine reconstruction engine runs locally. The Muse-led inference loop is demonstrated in recorded, receipted experiments and one in-pipeline packet, not yet as live UI inference - that integration is the top post-submission priority. E2B is a proposed isolated execution provider, with Daytona as an alternative, **not an active fallback currently running**. Genuine Meta model dispatch is controlled separately by exact-input approval and spending limits.
 
 ## Where this could go
 

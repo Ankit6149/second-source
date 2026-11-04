@@ -167,7 +167,7 @@ function renderHome() {
       <button class="pill-btn primary" type="button" data-action="select-target">${icon("flask-conical")} New investigation</button>
       <button class="pill-btn" type="button" data-action="reports">${icon("file-text")} View reports</button>
     </div>
-    <p class="home-rule"><strong>REAL_MODEL 14/25</strong> Historical Muse ledger result · 11 failures recorded · not a live model call. <button class="pill-btn quiet" type="button" data-action="research">See evidence</button></p>
+    <p class="home-rule"><strong>Input → working → output.</strong> Describe a target, follow the real run, inspect the candidate and its proof. <button class="pill-btn quiet" type="button" data-action="research">See evidence</button></p>
     <p class="home-note">${esc(available)}</p>
   </section>`;
 }
@@ -246,7 +246,7 @@ function render() {
   el('topAccountLabel').textContent = state.session ? 'Account' : 'Sign in';
   el('topAccountButton').setAttribute('aria-label', state.session ? 'Open account window' : 'Open sign-in window');
   el('connectionLabel').textContent = !auth ? 'Sign-in not configured' : !apiOrigin ? (state.session ? 'Signed in \u00b7 backend offline' : 'Backend offline') : state.session ? 'Signed in · NON_AI only' : 'Sign in to start';
-  el('topName').textContent = state.view === 'library' ? 'Investigations' : state.view === 'compare' ? 'Experiments' : state.view === 'reports' ? 'Reports' : state.view === 'settings' ? 'Settings' : state.selected?.title || 'Second Source';
+  el('topName').textContent = state.view === 'home' ? 'New investigation' : state.view === 'library' ? 'Investigations' : state.view === 'compare' ? 'Experiments' : state.view === 'reports' ? 'Reports' : state.view === 'settings' ? 'Settings' : state.selected?.title || 'Second Source';
   el('topBackButton').hidden = state.view === 'home';
   document.querySelectorAll<HTMLButtonElement>('.side-nav [data-action]').forEach(button => {
     const view = button.dataset.action === 'experiments' ? 'compare' : button.dataset.action;
@@ -484,9 +484,9 @@ function reportsView() {
     <p class="ux-page-label">RESEARCH & EVIDENCE</p><h1>Reports</h1>
     <p class="ux-page-lead">Read independently measured results, inspect their limitations, and export only verified data from your selected run.</p>
     <div class="ux-stat-grid">
-      <div class="ux-stat primary"><span>REAL_MODEL · LEDGER</span><strong>14 / 25</strong><small>Genuine Muse candidate · historical sealed evaluation</small></div>
+      <div class="ux-stat primary"><span>REAL_MODEL · MUSE IN EXPERIMENTS</span><strong>3 targets</strong><small>Muse route reviews gated live: File Browser 7/7 · Gitea 6/6 · Vikunja ladder 19/19 after seed fix</small></div>
       <div class="ux-stat"><span>NON_AI · OWNED HTTP</span><strong>30 / 30</strong><small>Bounded local control · no model called</small></div>
-      <div class="ux-stat"><span>NON_AI · VIKUNJA</span><strong>11 / 19</strong><small>Local public conformance · eight divergences</small></div>
+      <div class="ux-stat"><span>NON_AI · VIKUNJA</span><strong>19 / 19</strong><small>Local public conformance · fresh-reference verified, zero divergences</small></div>
     </div>
     <section class="ux-section"><h2>Research record</h2><p>A detailed external report documents methodologies, actual failures, comparison tables and reproducibility. Scores from unrelated suites are never combined.</p>
       <div class="ux-action-row"><a class="pill-btn primary" target="_blank" rel="noopener noreferrer" href="https://second-source-alpha.vercel.app/reports/">Open detailed reports ↗</a><button class="pill-btn" type="button" data-action="research">Muse ledger evidence</button><button class="pill-btn" type="button" data-action="experiments">Experiments & comparison</button></div>
