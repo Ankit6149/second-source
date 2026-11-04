@@ -16,7 +16,7 @@ export function observeSession(callback: (session: Session | null) => void): voi
 }
 
 export async function signIn(): Promise<void> {
-  if (!auth) throw new Error('Sign-in is not configured yet.');
+  if (!auth) throw new Error('Sign-in is not configured; local features work without it.');
   const { error } = await auth.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } });
   if (error) throw new Error('Sign-in could not be started. Check the configured provider.');
 }

@@ -14,7 +14,7 @@ import { clearOwnerNotes, loadNotes, saveNotes } from './notes';
 import { acceptsRunRevision, executionDefinitelyRefused, outcomeConfirmed, pollFailureMessage, pollRetryDelay } from './polling';
 import { HISTORICAL_LEDGER, PROVENANCE_META, compiledScoreText, metaArmScoreText, provenanceClass, vikunjaRecord, type EvidenceProvenance } from './evidence';
 import { capabilityEnabled, targetCapabilities } from './capabilities';
-import { checkEngine, createEngineInvestigation, getEngineInvestigation, engineCandidateUrl, engineReportUrl, type EngineInvestigation } from './engine';
+import { createEngineInvestigation, getEngineHealth, requestAssist, requestCapture, getEngineInvestigation, engineCandidateUrl, engineReportUrl, type CaptureResult, type EngineHealth, type EngineInvestigation } from './engine';
 import { SCOREBOARD, SOURCE_OPTIONS, OUTCOME_LABEL, buildManifest, buildReadme, buildReportHtml, buildReportMarkdown, runOutcome, stageIndex } from './workbench';
 import { renderInvestigationWorkspace } from './investigation_workspace';
 
@@ -28,14 +28,14 @@ const state: {
   run: Run | null; events: RunEvent[]; verification: Verification | null; orch: OrchestrationEvidenceView | null; messages: string[]; draft: string;
   view: 'home' | 'conversation' | 'library' | 'system' | 'compare' | 'reports' | 'settings'; loading: boolean; error: string; pollError: string; uncertain: boolean; actionUncertain: string | null;
   executionError: { runId: string; message: string } | null;
-  busy: boolean; executing: boolean; epoch: number;
+  busy: boolean; executing: boolean; epoch: number; muse: { pending: boolean; replies: Record<number, { text: string; cost: number | null }> };
 } = { session: null, ownerId: null, investigations: [], targets: [], target: null, selected: null, run: null, events: [], verification: null,
   orch: null, messages: [], draft: sessionStorage.getItem('ss-product-draft') || '', view: 'home', loading: false, error: '', pollError: '',
-  uncertain: false, actionUncertain: null, executionError: null, busy: false, executing: false, epoch: 0 };
+  uncertain: false, actionUncertain: null, executionError: null, busy: false, executing: false, epoch: 0, muse: { pending: false, replies: {} } };
 const api = new Api(apiOrigin, () => state.session?.access_token || null);
 let pollTimer: number | undefined;
-const engineState: { status: 'unknown' | 'available' | 'unavailable' | 'hosted'; record: EngineInvestigation | null; poll: number | undefined } =
-  { status: 'unknown', record: null, poll: undefined };
+const engineState: { status: 'unknown' | 'available' | 'unavailable' | 'hosted'; record: EngineInvestigation | null; poll: number | undefined; health: EngineHealth | null; pendingTarget: string | null } =
+  { status: 'unknown', record: null, poll: undefined, health: null, pendingTarget: null };
 let currentDialogReturn: HTMLElement | null = null;
 let renderedRunId: string | undefined;
 
@@ -88,7 +88,7 @@ function setError(error: unknown) { state.error = describe(error); render(); }
 
 function account() {
   if (!auth) {
-    showDialog('Sign in', `<p>Sign-in is not available on this deployment yet.</p><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Close</button></div>`, 'signin');
+    showDialog('Sign in', `<p>Sign-in is not available on this local deployment (it isn't configured). Chat, rebuilds, and link capture all work without it.</p><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Close</button></div>`, 'signin');
   } else if (state.session) {
     showDialog('Account', `<p>You are signed in.</p><div class="dialog-actions"><button class="pill-btn" data-action="sign-out">${icon('log-out')} Sign out</button></div>`, 'signin');
   } else {
@@ -98,9 +98,23 @@ function account() {
 
 function composer() {
   const hint = detectReference(state.draft);
-  return `<form class="composer" id="composer"><div id="draftContext"><div class="detection" id="detection" ${hint ? '' : 'hidden'}>${hint ? `${icon('link')} <span><strong>${esc(hint.label)}</strong><br><small>${esc(hint.description)}</small></span>` : ''}</div></div><label class="sr-only" for="promptInput">Private workspace notes</label><textarea rows="2" id="promptInput" maxlength="4000" placeholder="${state.selected ? 'Add a note for this investigation…' : 'Quick note (saved in this tab, not sent to AI)…'}">${esc(state.draft)}</textarea><div class="composer-lower"><div class="tool-row"><button class="tool-icon" type="button" disabled title="Attachments are not supported yet" aria-label="Attachments unavailable">${icon('plus')}</button><button class="small-tool" type="button" data-action="select-target">${icon('flask-conical')} Choose a supported target</button></div><div class="send-area"><span class="kbd-help">Shift + Enter for new line</span><button class="send-btn" type="submit" aria-label="Send message">${icon('arrow-up')}</button></div></div></form>`;
+  return `<form class="composer" id="composer"><div id="draftContext"><div class="detection" id="detection" ${hint ? '' : 'hidden'}>${hint ? `${icon('link')} <span><strong>${esc(hint.label)}</strong><br><small>${esc(hint.description)}</small></span>` : ''}</div></div><label class="sr-only" for="promptInput">Private workspace notes</label><textarea rows="2" id="promptInput" maxlength="4000" placeholder="${state.selected ? 'Add a note for this investigation…' : museOffered() ? 'Ask anything — Muse answers here (app key).' : 'Quick note (saved in this tab, not sent to AI)…'}">${esc(state.draft)}</textarea><div class="composer-lower"><div class="tool-row"><button class="tool-icon" type="button" data-action="capture-link" title="Observe a public link" aria-label="Observe a public link">${icon('link')}</button><button class="small-tool" type="button" data-action="select-target">${icon('flask-conical')} Choose a supported target</button></div><div class="send-area"><span class="kbd-help">Shift + Enter for new line</span><button class="send-btn" type="submit" aria-label="Send message">${icon('arrow-up')}</button></div></div></form>`;
 }
 
+function museOffered(): boolean { return engineState.health?.model_calls === true; }
+function spendText(): string {
+  const s = engineState.health?.spend;
+  return s ? `$${s.used_usd.toFixed(2)} of $${s.cap_usd.toFixed(2)} session AI budget used` : 'session AI budget unavailable';
+}
+function museReceiptHtml(rec: EngineInvestigation): string {
+  const r = rec.model?.receipt;
+  if (!r) return '';
+  return ` Receipt ${esc(r.response_id || 'n/a')} \u00b7 in=${esc(r.input_tokens ?? '?')} out=${esc(r.output_tokens ?? '?')} \u00b7 ~$${esc(r.estimated_cost_usd ?? '?')}.`;
+}
+function museConsentDialog(target: 'vikunja-v1' | 'pocketbase-v1') {
+  const confirm = target === 'pocketbase-v1' ? 'engine-confirm-pb-muse' : 'engine-confirm-muse';
+  showDialog('Authorize one genuine Muse call', `<p>Second Source will probe your local ${esc(engineTargetLabel(target))} reference, compile a NON_AI candidate, and may send PUBLIC, sanitized behavioral evidence to Meta Muse Spark 1.3 for one bounded route repair. The call is limited to an estimated $0.50, with no automatic retries. Only a strictly improved public replay admits an edit; held-out tests remain isolated.</p><p>AI runs on this app's server key (${esc(spendText())}); you never enter or see a key. A deterministic no-model run stays available.</p><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Cancel</button><button class="pill-btn primary" data-action="${confirm}">Authorize Muse call</button></div>`, 'muse-consent');
+}
 function enginePanel() {
   const rec = engineState.record;
   let body = '';
@@ -111,19 +125,22 @@ function enginePanel() {
   } else if (engineState.status === 'unavailable') {
     body = `<p class="component-note">Local engine not running. Start it with <code>python scripts/investigation_engine.py</code>, then check again. Nothing is faked while it is offline: no run can be started from here.</p><button class="pill-btn" data-action="engine-check">${icon('refresh-cw')} Check again</button>`;
   } else if (!rec) {
-    body = `<p>Choose a real local workflow against the disposable Vikunja reference. The default is a zero-model-call reconstruction. The opt-in Muse path calls the real Meta API once, proposes a bounded route repair, and retains it only if fresh public conformance improves.</p><div class="ux-action-row"><button class="pill-btn primary" data-action="engine-run">${icon('play')} Run deterministic baseline</button><button class="pill-btn" data-action="engine-run-muse">${icon('sparkles')} Attempt Muse repair (max $0.50)</button></div><p class="component-note">Muse requires a local operator key and explicit enablement. Provider failures or rejected model edits are reported, not scored as success. No held-out tests enter model context.</p>`;
+    const offered = museOffered();
+    body = offered
+      ? `<p>Muse works on every rebuild here, paid from the app's server key (${esc(spendText())}). One bounded call per run (max $0.50), kept only if fresh public conformance improves.</p><div class="ux-action-row"><button class="pill-btn primary" data-action="engine-run">${icon('sparkles')} Rebuild Vikunja</button><button class="pill-btn" data-action="engine-run-pb">${icon('sparkles')} Rebuild PocketBase</button></div><div class="ux-action-row"><button class="pill-btn" type="button" data-action="capture-link">${icon('link')} Observe a link</button></div><p class="component-note">No held-out tests enter model context. Provider failures or rejected edits are reported, not scored as success.</p>`
+      : `<p>Muse is not enabled on the local engine (operator key or enablement missing), so only deterministic no-model runs are offered here.</p><div class="ux-action-row"><button class="pill-btn primary" data-action="engine-run">${icon('play')} Run deterministic baseline</button><button class="pill-btn" type="button" data-action="engine-run-pb">${icon('play')} Rebuild PocketBase (no model)</button></div><div class="ux-action-row"><button class="pill-btn" type="button" data-action="capture-link">${icon('link')} Observe a link</button></div><p class="component-note">Start the operator launcher with Muse enabled to unlock AI-assisted rebuilds.</p>`;
   } else if (rec.status === 'running') {
-    body = `<p>Running… stage: <strong>${esc(rec.stage)}</strong> (investigation ${esc(rec.id)}). This page refreshes itself; do not start another run meanwhile.</p>`;
+    body = `<p>${rec.stage === 'muse_public_repair' ? '<strong>Muse is working on your rebuild…</strong> ' : ''}Running… stage: <strong>${esc(rec.stage)}</strong> (investigation ${esc(rec.id)}). This page refreshes itself; do not start another run meanwhile.</p>`;
   } else if (rec.status === 'failed') {
     body = `<p class="component-note">Investigation ${esc(rec.id)} failed: ${esc(rec.error || 'unknown error')}</p><button class="pill-btn" data-action="engine-run">${icon('play')} Run again</button>`;
   } else {
-    body = `<p>Investigation <strong>${esc(rec.id)}</strong> completed against a fresh local reference.</p>${rec.model?.mode === 'muse-public-repair' ? `<p class="component-note"><strong>Meta Muse:</strong> ${esc(rec.model.outcome || 'not verified')} · ${rec.model.called ? 'genuine call attempted' : 'no model call'} · ${rec.model.accepted ? 'model change admitted by public gate' : 'compiler candidate retained'}.${rec.model.gate_attempted ? ` Gate: ${rec.model.gate_baseline?.passed}/${rec.model.gate_baseline?.total} → ${rec.model.gate_attempted.passed}/${rec.model.gate_attempted.total} (public-only).` : ''}</p>` : ''}
-      <div class="artifact"><div class="artifact-top"><div class="artifact-symbol">${icon('file-text')}</div><div><strong>Vikunja v2.4.0 · ${esc(rec.compiled?.label || 'EVIDENCE_COMPILED (NON_AI)')}</strong><small>${rec.observations ? `${rec.observations.count} observations · ${esc(rec.observations.sha256.slice(0, 19))}…` : ''}</small></div><span class="artifact-tag">completed</span></div>
+    body = `<p>Investigation <strong>${esc(rec.id)}</strong> completed against a fresh local reference.</p>${rec.model?.mode === 'muse-public-repair' ? `<p class="component-note"><strong>Meta Muse:</strong> ${esc(rec.model.outcome || 'not verified')} · ${rec.model.called ? 'genuine call attempted' : 'no model call'} · ${rec.model.accepted ? 'model change admitted by public gate' : 'compiler candidate retained'}.${rec.model.gate_attempted ? ` Gate: ${rec.model.gate_baseline?.passed}/${rec.model.gate_baseline?.total} → ${rec.model.gate_attempted.passed}/${rec.model.gate_attempted.total} (public-only).` : ''}${museReceiptHtml(rec)}</p>` : ''}
+      <div class="artifact"><div class="artifact-top"><div class="artifact-symbol">${icon('file-text')}</div><div><strong>${esc(engineTargetLabel(rec.target))} · ${esc(rec.compiled?.label || 'EVIDENCE_COMPILED (NON_AI)')}</strong><small>${rec.observations ? `${rec.observations.count} observations · ${esc(rec.observations.sha256.slice(0, 19))}…` : ''}</small></div><span class="artifact-tag">completed</span></div>
       <div class="artifact-bottom">Compiled routes: ${rec.compiled ? rec.compiled.routes.map(esc).join(' · ') : '—'}<br>Public-ladder conformance: <strong>${rec.public_conformance ? `${rec.public_conformance.passed}/${rec.public_conformance.total}` : '—'}</strong> (stateful public probe sequence; not the held-out score). Held-out: not run by the engine — evaluator-side only.</div></div>
       <div class="response-actions"><a class="pill-btn" href="${engineCandidateUrl(rec.id)}" download>${icon('download')} Download candidate spec</a><a class="pill-btn" href="${engineReportUrl(rec.id)}" download>${icon('file-text')} Download measured report</a><button class="pill-btn" data-action="engine-run">${icon('play')} Run again</button></div>`;
   }
   const heading = engineState.status === 'hosted' ? 'Local engine — not running on this hosted page' : engineState.status === 'unavailable' ? 'Local engine — not running' : engineState.status === 'unknown' ? 'Local engine — checking…' : 'Live local engine';
-  return `<section class="single-page engine-panel"><h2>${heading}</h2><p class="component-note">Local-only execution (127.0.0.1:8765). Deterministic NON_AI reconstruction is the default; an explicitly approved Muse public-repair run may call the genuine Meta Model API once. The hosted backend remains separate.</p>${body}</section>`;
+  return `<section class="single-page engine-panel"><h2>${heading}</h2><p class="component-note">Local-only execution (127.0.0.1:8765). Muse-assisted rebuilds run first when the engine offers them; deterministic no-model runs stay available. AI spend comes from the app's server key within a session budget. The hosted backend remains separate.</p>${body}</section>`;
 }
 async function refreshEngine() {
   // Never probe a visitor's localhost from a hosted page: the engine
@@ -135,11 +152,17 @@ async function refreshEngine() {
     render();
     return;
   }
-  engineState.status = await checkEngine() ? 'available' : 'unavailable';
+  const health = await getEngineHealth();
+  engineState.health = health;
+  engineState.status = health && health.ok ? 'available' : 'unavailable';
   render();
 }
-function engineTargetLabel(target: string): string { return target === 'filebrowser-v1' ? 'File Browser v2.63.23' : target === 'gitea-v1' ? 'Gitea 1.22.6' : 'Vikunja v2.4.0'; }
-async function runEngineInvestigation(target = 'vikunja-v1', modelMode: 'none' | 'muse-repair' = 'none') {
+function engineTargetLabel(target: string): string { return target === 'filebrowser-v1' ? 'File Browser v2.63.23' : target === 'gitea-v1' ? 'Gitea 1.22.6' : target === 'pocketbase-v1' ? 'PocketBase v0.28.4' : 'Vikunja v2.4.0'; }
+async function runEngineInvestigation(target = 'vikunja-v1', modelMode: 'none' | 'muse-repair' = 'none', settled = false) {
+  if (!settled && modelMode === 'none' && museOffered() && (engineState.health?.muse_repair_targets || []).includes(target)) {
+    if (localStorage.getItem('ss-muse-always') === '1') modelMode = 'muse-repair';
+    else { museBlanketConsent(target); return; }
+  }
   try {
     engineState.record = await createEngineInvestigation(target, modelMode);
     render();
@@ -213,7 +236,12 @@ function conversation() {
     investigation: state.selected, target: state.target, run: state.run, events: state.events,
     verification: state.verification, notes: state.messages, actionsHtml: controls(), orchestration: state.orch,
   });
-  const messages = state.messages.map(message => `<div class="message user"><div class="bubble">${esc(message)}</div></div>`).join('');
+  const messages = state.messages.map((message, i) => {
+    const r = state.muse.replies[i];
+    const reply = r ? `<div class="message assistant"><div class="bubble"><span class="prov-pill prov-model-authored">Muse</span> ${esc(r.text)}${r.cost !== null && r.cost !== undefined ? `<br><small>via app key · ~$${esc(r.cost)}</small>` : ''}<br><button class="pill-btn quiet" type="button" data-action="experiments">Open live rebuilds</button></div></div>` : '';
+    const working = state.muse.pending && i === state.messages.length - 1 && !r ? `<div class="message assistant"><div class="bubble"><span class="prov-pill prov-model-authored">Muse</span> <em>Muse is working…</em></div></div>` : '';
+    return `<div class="message user"><div class="bubble">${esc(message)}</div></div>` + reply + working;
+  }).join('');
   return `<section class="conversation">${messages}${investigationCard()}</section>`;
 }
 function library() {
@@ -445,19 +473,21 @@ function compareView() {
     : `<p>No completed investigation is selected yet.</p><p>Run one real job from the workspace first: choose a supported target, confirm its scope, start the run, then return here.</p><button class="pill-btn primary" type="button" data-action="library">${icon('folder-open')} Open Your work</button>`;
   let right: string;
   if (rec?.status === 'completed' && rec.public_conformance) {
-    right = `<p>${esc(engineTargetLabel(rec.target))} rebuild finished. Public-ladder conformance: <strong>${rec.public_conformance.passed}/${rec.public_conformance.total}</strong></p>${rec.public_conformance.divergences.length ? `<p>Divergences:</p><ul class="scope-list">${rec.public_conformance.divergences.map(d => `<li>${esc(d)}</li>`).join('')}</ul>` : '<p>No divergences on the public ladder.</p>'}${rec.model?.mode === 'muse-public-repair' ? `<p><strong>Meta Muse stage:</strong> ${esc(rec.model.outcome || 'unverified')} · ${rec.model.called ? 'model called' : 'no call'} · ${rec.model.accepted ? 'public-gated change accepted' : 'compiler retained'}. No held-out tests used.</p>` : ''}<p>Compiled routes: ${rec.compiled ? rec.compiled.routes.map(esc).join(' \u00b7 ') : '-'}</p><div class="response-actions"><a class="pill-btn" href="${engineCandidateUrl(rec.id)}" download>${icon('download')} Download candidate spec</a><a class="pill-btn" href="${engineReportUrl(rec.id)}" download>${icon('file-text')} Download measured report</a><button class="pill-btn" type="button" data-action="engine-run">${icon('play')} Run again</button></div>`;
+    right = `<p>${esc(engineTargetLabel(rec.target))} rebuild finished. Public-ladder conformance: <strong>${rec.public_conformance.passed}/${rec.public_conformance.total}</strong></p>${rec.public_conformance.divergences.length ? `<p>Divergences:</p><ul class="scope-list">${rec.public_conformance.divergences.map(d => `<li>${esc(d)}</li>`).join('')}</ul>` : '<p>No divergences on the public ladder.</p>'}${rec.model?.mode === 'muse-public-repair' ? `<p><strong>Meta Muse stage:</strong> ${esc(rec.model.outcome || 'unverified')} · ${rec.model.called ? 'model called' : 'no call'} · ${rec.model.accepted ? 'public-gated change accepted' : 'compiler retained'}. No held-out tests used.${museReceiptHtml(rec)}</p>` : ''}<p>Compiled routes: ${rec.compiled ? rec.compiled.routes.map(esc).join(' \u00b7 ') : '-'}</p><div class="response-actions"><a class="pill-btn" href="${engineCandidateUrl(rec.id)}" download>${icon('download')} Download candidate spec</a><a class="pill-btn" href="${engineReportUrl(rec.id)}" download>${icon('file-text')} Download measured report</a><button class="pill-btn" type="button" data-action="engine-run">${icon('play')} Run again</button></div>`;
   } else if (rec?.status === 'running') {
-    right = `<p>Rebuilding ${esc(engineTargetLabel(rec.target))} now \u00b7 stage: <strong>${esc(rec.stage)}</strong>. This panel updates itself.</p>`;
+    right = `<p>${rec.stage === 'muse_public_repair' ? '<strong>Muse is working…</strong> ' : ''}Rebuilding ${esc(engineTargetLabel(rec.target))} now \u00b7 stage: <strong>${esc(rec.stage)}</strong>. This panel updates itself.</p>`;
   } else if (rec?.status === 'failed') {
     right = `<p>That rebuild failed: ${esc(rec.error || 'unknown error')}</p><button class="pill-btn primary" type="button" data-action="engine-run">${icon('play')} Run again</button>`;
   } else if (engineState.status === 'hosted') {
-    right = `<p>On this hosted page the rebuild engine runs on your own machine, so no run can start here and nothing is simulated.</p><p>Open this app locally with <code>python scripts/investigation_engine.py</code> running, then this button rebuilds Vikunja for real: probe \u2192 compile \u2192 public conformance.</p>`;
+    right = `<p>On this hosted page the rebuild engine runs on your own machine, so no run can start here and nothing is simulated.</p><p>Open this app locally with <code>python scripts/investigation_engine.py</code> running, then these buttons rebuild Vikunja or PocketBase for real: probe \u2192 compile \u2192 public conformance.</p>`;
   } else if (engineState.status === 'unavailable') {
     right = `<p>The local rebuild engine is not running yet.</p><p>Start <code>python scripts/investigation_engine.py</code>, then check again.</p><button class="pill-btn" type="button" data-action="engine-check">${icon('refresh-cw')} Check again</button>`;
   } else if (engineState.status === 'unknown') {
     right = `<p>Checking for the local rebuild engine\u2026</p><button class="pill-btn" type="button" data-action="engine-check">${icon('refresh-cw')} Check again</button>`;
   } else {
-    right = `<p>Choose a supported reference. The local engine probes, compiles, and evaluates it. These are real NON_AI controls; no model is called.</p><div class="ux-action-row"><button class="pill-btn primary" type="button" data-action="engine-run">${icon('play')} Rebuild Vikunja</button><button class="pill-btn" type="button" data-action="engine-run-fb">${icon('play')} Rebuild File Browser</button><button class="pill-btn" type="button" data-action="engine-run-gitea">${icon('play')} Rebuild Gitea</button><button class="pill-btn" type="button" data-action="engine-run-muse">${icon('sparkles')} Muse-assisted Vikunja (max $0.50)</button></div>`;
+    right = museOffered()
+      ? `<p>Muse works on every rebuild here, paid from the app's server key (${esc(spendText())}). File Browser and Gitea run deterministic controls; Vikunja and PocketBase get one bounded Muse call each.</p><div class="ux-action-row"><button class="pill-btn primary" type="button" data-action="engine-run">${icon('sparkles')} Rebuild Vikunja</button><button class="pill-btn" type="button" data-action="engine-run-pb">${icon('sparkles')} Rebuild PocketBase</button><button class="pill-btn" type="button" data-action="engine-run-fb">${icon('play')} Rebuild File Browser</button><button class="pill-btn" type="button" data-action="engine-run-gitea">${icon('play')} Rebuild Gitea</button></div><div class="ux-action-row"><button class="pill-btn" type="button" data-action="capture-link">${icon('link')} Observe a link</button></div>`
+      : `<p>Choose a supported reference. The local engine probes, compiles, and evaluates it. Muse is not enabled on this engine, so these are real NON_AI controls; no model is called.</p><div class="ux-action-row"><button class="pill-btn primary" type="button" data-action="engine-run">${icon('play')} Rebuild Vikunja</button><button class="pill-btn" type="button" data-action="engine-run-pb">${icon('play')} Rebuild PocketBase</button><button class="pill-btn" type="button" data-action="engine-run-fb">${icon('play')} Rebuild File Browser</button><button class="pill-btn" type="button" data-action="engine-run-gitea">${icon('play')} Rebuild Gitea</button></div><div class="ux-action-row"><button class="pill-btn" type="button" data-action="capture-link">${icon('link')} Observe a link</button></div>`;
   }
   return `<section class="single-page ux-page" aria-label="Experiments">
     <p class="ux-page-label">LIVE LOCAL CONTROLS</p><h1>Experiments</h1>
@@ -481,7 +511,7 @@ function reportsView() {
     <p class="ux-page-label">RESEARCH & EVIDENCE</p><h1>Reports</h1>
     <p class="ux-page-lead">Read independently measured results, inspect their limitations, and export only verified data from your selected run.</p>
     <div class="ux-stat-grid">
-      <div class="ux-stat primary"><span>REAL_MODEL · MUSE IN EXPERIMENTS</span><strong>3 targets</strong><small>Muse route reviews gated live: File Browser 7/7 · Gitea 6/6 · Vikunja ladder 19/19 after seed fix</small></div>
+      <div class="ux-stat primary"><span>REAL_MODEL · MUSE IN EXPERIMENTS</span><strong>4 targets</strong><small>Muse route reviews gated live: File Browser 7/7 · Gitea 6/6 · Vikunja ladder 19/19 \u00b7 PocketBase live in engine</small></div>
       <div class="ux-stat"><span>NON_AI · OWNED HTTP</span><strong>30 / 30</strong><small>Bounded local control · no model called</small></div>
       <div class="ux-stat"><span>NON_AI · VIKUNJA</span><strong>19 / 19</strong><small>Local public conformance · fresh-reference verified, zero divergences</small></div>
     </div>
@@ -520,7 +550,7 @@ function chooseTarget() {
     showDialog('Choose what to investigate', `<p>No supported fixture target is available from this backend right now. Capability status is still shown honestly below; recorded evidence remains available from Research record.</p>${capabilityPicker()}<div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Close</button></div>`);
     return;
   }
-  showDialog('Choose what to investigate', `<p>Pick a supported owned fixture. Browser / motion is listed only to state its boundary — it cannot be selected. Both fixtures run without AI inference (NON_AI).</p>${capabilityPicker()}<div class="target-options">${state.targets.map(target => `<button class="list-row" type="button" data-target-id="${esc(target.target_id)}">${icon('flask-conical')}<span class="row-main"><strong>${esc(target.label)}</strong><small>${target.target_id === 'owned-ledger-v1' ? 'CLI / fixtures · ledger · 25-case suite' : 'API / professional · loopback HTTP tasks · 30-case suite'} · NON_AI${target.execution_enabled ? '' : ' · execution unavailable'}</small></span></button>`).join('')}</div><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Cancel</button></div>`);
+  showDialog('Choose what to investigate', `<p>Pick a supported owned fixture. Browser / motion is listed only to state its boundary — it cannot be selected. These two hosted fixtures run without AI inference (NON_AI). For Muse-assisted runs, use the live local engine in Experiments.</p>${capabilityPicker()}<div class="target-options">${state.targets.map(target => `<button class="list-row" type="button" data-target-id="${esc(target.target_id)}">${icon('flask-conical')}<span class="row-main"><strong>${esc(target.label)}</strong><small>${target.target_id === 'owned-ledger-v1' ? 'CLI / fixtures · ledger · 25-case suite' : 'API / professional · loopback HTTP tasks · 30-case suite'} · NON_AI${target.execution_enabled ? '' : ' · execution unavailable'}</small></span></button>`).join('')}</div><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Cancel</button></div>`);
 }
 function reviewScope() {
   if (!state.session) { account(); return; }
@@ -728,10 +758,18 @@ document.addEventListener('click', event => {
   else if (action === 'refresh') void refresh();
   else if (action === 'engine-check') void refreshEngine();
   else if (action === 'engine-run') void runEngineInvestigation();
-  else if (action === 'engine-run-muse') showDialog('Authorize one genuine Muse call', '<p>Second Source will probe your local Vikunja reference, compile a NON_AI candidate, and may send PUBLIC, sanitized behavioral evidence to Meta Muse Spark 1.3 for one bounded route repair. The call is limited to an estimated $0.50, with no automatic retries. Only a strictly improved public replay admits an edit; held-out tests remain isolated.</p><p>This requires the operator to configure MODEL_API_KEY and SECOND_SOURCE_ALLOW_MUSE_REPAIR=true locally.</p><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Cancel</button><button class="pill-btn primary" data-action="engine-confirm-muse">Authorize Muse call</button></div>', 'muse-consent');
+  else if (action === 'engine-run-muse') void runEngineInvestigation('vikunja-v1');
   else if (action === 'engine-confirm-muse') { closeDialog(); void runEngineInvestigation('vikunja-v1', 'muse-repair'); }
+  else if (action === 'engine-run-pb-muse') void runEngineInvestigation('pocketbase-v1');
+  else if (action === 'engine-confirm-pb-muse') { closeDialog(); void runEngineInvestigation('pocketbase-v1', 'muse-repair'); }
   else if (action === 'engine-run-fb') void runEngineInvestigation('filebrowser-v1');
   else if (action === 'engine-run-gitea') void runEngineInvestigation('gitea-v1');
+  else if (action === 'engine-run-pb') void runEngineInvestigation('pocketbase-v1');
+  else if (action === 'capture-link') captureDialog();
+  else if (action === 'capture-confirm') void doCapture();
+  else if (action === 'engine-always') { closeDialog(); try { localStorage.setItem('ss-muse-always', '1'); } catch { /* private mode */ } void runEngineInvestigation(engineState.pendingTarget || 'vikunja-v1', 'muse-repair', true); }
+  else if (action === 'engine-once') { closeDialog(); void runEngineInvestigation(engineState.pendingTarget || 'vikunja-v1', 'muse-repair', true); }
+  else if (action === 'engine-never') { closeDialog(); void runEngineInvestigation(engineState.pendingTarget || 'vikunja-v1', 'none', true); }
   else if (action === 'candidate') showCandidate();
   else if (action === 'compare' || action === 'experiments') { state.view = 'compare'; render(); }
   else if (action === 'reports') { state.view = 'reports'; render(); }
@@ -751,6 +789,54 @@ document.addEventListener('click', event => {
   else if (action === 'sample-toast') toast('Component example');
   else if (action === 'sample-dialog') showDialog('Dialog example', '<p>This is a component example.</p><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Close</button></div>');
 });
+function museContext(index: number): string {
+  const parts: string[] = [];
+  const t = engineState.record ? engineTargetLabel(engineState.record.target) : (state.target ? state.target.label : '');
+  if (t) parts.push(`Local target in view: ${t}.`);
+  if (index > 0) {
+    const prev = state.messages[index - 1];
+    const prevReply = state.muse.replies[index - 1];
+    if (prev) parts.push(`Previous user note: ${prev.slice(0, 500)}`);
+    if (prevReply) parts.push(`Previous Muse reply: ${prevReply.text.slice(0, 500)}`);
+  }
+  return parts.join('\n');
+}
+async function museAnswer(index: number, text: string) {
+  if (!museOffered() || engineState.status !== 'available') return;
+  state.muse.pending = true; render();
+  try {
+    const res = await requestAssist(text, museContext(index));
+    state.muse.replies[index] = { text: res.reply, cost: res.receipt?.estimated_cost_usd ?? null };
+  } catch (error) {
+    state.muse.replies[index] = { text: `Muse could not answer (${error instanceof Error ? error.message : 'unknown error'}). Your note is still saved in this tab.`, cost: null };
+  } finally {
+    state.muse.pending = false; render();
+  }
+}
+function museBlanketConsent(target: string) {
+  engineState.pendingTarget = target;
+  showDialog('Muse works on every rebuild', `<p>Rebuilds always use Muse when the engine offers it: one bounded call (max $0.50), kept only if fresh public conformance improves. Spend comes from the app's server key (${esc(spendText())}).</p><div class="dialog-actions"><button class="pill-btn" data-action="engine-never">${icon('play')} Just deterministic</button><button class="pill-btn" data-action="engine-once">${icon('sparkles')} Muse this once</button><button class="pill-btn primary" data-action="engine-always">${icon('check')} Always use Muse</button></div>`, 'muse-always');
+}
+function captureDialog() {
+  showDialog('Observe a public link', `<p>Fetch one public page (GET only, 256KB cap, no logins) and inspect what it exposes. Rebuilds stay limited to the four local engine targets — a link is observed, never rebuilt.</p><p><input id="captureUrl" type="url" inputmode="url" placeholder="https://example.com" maxlength="2048" style="width:100%"></p><label class="check-row"><input type="checkbox" id="capturePermission"> I have permission to fetch this public link.</label><label class="check-row"><input type="checkbox" id="captureSummarize" checked> Ask Muse to summarize it (~$0.01, app key).</label><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Cancel</button><button class="pill-btn primary" data-action="capture-confirm">Capture</button></div>`, 'capture-link');
+}
+async function doCapture() {
+  const url = (document.getElementById('captureUrl') as HTMLInputElement | null)?.value.trim() || '';
+  const permission = (document.getElementById('capturePermission') as HTMLInputElement | null)?.checked === true;
+  const summarize = (document.getElementById('captureSummarize') as HTMLInputElement | null)?.checked !== false;
+  if (!url) { toast('Enter a link first.'); return; }
+  if (!permission) { toast('Confirm you have permission to fetch that link.'); return; }
+  if (engineState.status === 'hosted' || engineState.status === 'unknown') { toast('Start the local engine first.'); return; }
+  showDialog('Observing link', `<p role="status">Contacting ${esc(url)}…</p>`, 'capture-link');
+  try {
+    const res: CaptureResult = await requestCapture(url, true, summarize);
+    const s = res.surface;
+    const surface = s.kind === 'json' ? `JSON surface: ${esc(((s.keys as string[] | undefined) || []).join(', ') || `${s.array_len ?? 0} items`)}` : s.kind === 'html' ? `Page “${esc(s.title || 'untitled')}”: ${esc(s.forms)} forms · ${esc(s.links)} links · ${esc(s.inputs)} inputs` : 'Non-HTML, non-JSON content.';
+    showDialog('Link observed', `<p><strong>${esc(res.host)}</strong> · HTTP ${esc(res.status)} · ${esc(res.size_bytes)} bytes.</p><p>${surface}</p>${res.summary ? `<p><span class="prov-pill prov-model-authored">Muse</span> ${esc(res.summary)}</p>` : summarize ? '<p class="component-note">Muse summary unavailable (AI off, capped, or failed); the observed surface above still stands.</p>' : ''}<p class="component-note">${esc(res.note)}</p><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Close</button></div>`, 'capture-link');
+  } catch (error) {
+    showDialog('Link refused', `<p>${esc(error instanceof Error ? error.message : 'unknown error')}</p><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Close</button></div>`, 'capture-link');
+  }
+}
 document.addEventListener('submit', event => {
   if (!(event.target instanceof HTMLFormElement) || event.target.id !== 'composer') return;
   event.preventDefault(); const input = el<HTMLTextAreaElement>('promptInput'); const text = input.value.trim(); if (!text) { input.focus(); return; }
@@ -758,8 +844,9 @@ document.addEventListener('submit', event => {
     state.error = text.length > 4000 ? 'Keep each note within 4,000 characters.' : 'This tab can hold up to 100 notes. Start a new investigation to continue.';
     render(); input.focus(); return;
   }
-  state.error = ''; state.messages.push(text); state.draft = ''; sessionStorage.removeItem('ss-product-draft'); state.view = 'conversation';
+  state.error = ''; const myIndex = state.messages.length; state.messages.push(text); state.draft = ''; sessionStorage.removeItem('ss-product-draft'); state.view = 'conversation';
   if (state.ownerId && state.selected && !saveNotes(sessionStorage, state.ownerId, state.selected.investigation_id, state.messages)) toast('Notes could not be saved in this tab.');
+  void museAnswer(myIndex, text);
   render();
   el<HTMLTextAreaElement>('promptInput').focus(); el('scrollArea').scrollTop = el('scrollArea').scrollHeight;
 });
