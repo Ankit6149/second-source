@@ -76,7 +76,7 @@ add("MILK", 3)
 <script>
 (() => {
  const cases = {
-  duplicate:{title:'“Milk” and “MILK” aren\\'t different.',context:'The observed ledger rejects case-insensitive duplicates; the historical model candidate did not.',reference:'add("Milk", 2) → accepted\\nadd("MILK", 3)\\n→ duplicate_label',candidate:'add("Milk", 2) → accepted\\nadd("MILK", 3)\\n→ accepted (mismatch)'},
+  duplicate:{title:"“Milk” and “MILK” aren't different.",context:'The observed ledger rejects case-insensitive duplicates; the historical model candidate did not.',reference:'add("Milk", 2) → accepted\\nadd("MILK", 3)\\n→ duplicate_label',candidate:'add("Milk", 2) → accepted\\nadd("MILK", 3)\\n→ accepted (mismatch)'},
   limit:{title:'A limit you cannot see.',context:'An amount of 500 is invalid in the reference. The model inferred the wrong numeric boundary.',reference:'add("Item", 500)\\n→ invalid_amount',candidate:'add("Item", 500)\\n→ accepted (mismatch)'},
   schema:{title:'Even extra data can be wrong.',context:'The reference returns a precise success schema. The candidate included additional fields.',reference:'{"ok":true,"id":"1"}',candidate:'{"ok":true,"id":"1",\\n "label":"Milk","amount":2}'}
  };
