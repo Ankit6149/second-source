@@ -4,7 +4,7 @@
 
 **From an observable black box to a separately implemented, evidence-tested substitute.**
 
-**Start here:** [Open Second Source](https://second-source-alpha.vercel.app/app/) — predict a hidden software rule, then compare the recorded genuine Meta candidate with the observable reference. This is a replay, not a live model call.
+**Start here:** [Take the 60-second Black-Box Challenge](https://second-source-alpha.vercel.app/challenge/) — predict a hidden rule, reveal the real reference behavior, and compare it with the historically recorded genuine Meta candidate. This is a replay, not a live model call. [Open the product workspace](https://second-source-alpha.vercel.app/app/) to inspect supported controls.
 
 [Why it exists](#why-not-just-ask-ai-to-copy-a-website) · [How it works](#how-second-source-works) · [Live capabilities](#what-works-today) · [Try it locally](#try-it-locally) · [Architecture](#system-architecture)
 
