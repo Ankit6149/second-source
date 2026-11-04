@@ -67,7 +67,7 @@ export function renderInvestigationWorkspace(view: WorkspaceView): string {
         <h1>${escapeHtml(item.title)}</h1>
         <p>${escapeHtml(target?.label || 'Supported target not connected')} · ${escapeHtml(item.status)} scope · Candidate origin: <strong>NON_AI fixture</strong></p>
       </div>
-      <div class="work-status"><span class="work-status-label">ACTUAL BACKEND STATE</span><strong>${escapeHtml(run?.status || 'Not started')}</strong><small>${escapeHtml(OUTCOME_LABEL[outcome])}</small></div>
+      <div class="work-status"><span class="work-status-label">ACTUAL BACKEND STATE</span><strong>${escapeHtml(run?.status || 'Not started')}</strong><span class="artifact-tag">${escapeHtml(run?.status || 'not started')}</span><small>${escapeHtml(OUTCOME_LABEL[outcome])}</small></div>
     </div>
     <div class="work-context" aria-label="Investigation boundaries">
       <div><span>Approved scope digest</span><code title="${escapeHtml(item.scope_digest)}">${escapeHtml(item.scope_digest.slice(0,20))}…</code></div>
@@ -90,7 +90,7 @@ export function renderInvestigationWorkspace(view: WorkspaceView): string {
       <section class="work-panel work-wide" aria-label="Independent verification">
         <div class="work-panel-head"><div><span class="work-eyebrow">03 / EVALUATION</span><h2>Independent verification</h2></div><span class="work-tag">NON_AI · RECORDED BY SERVICE</span></div>
         ${countView}
-        <div class="work-action-row"><button type="button" class="pill-btn" data-action="verification">View verification details</button><button type="button" class="pill-btn" data-action="compare">Compare results</button><button type="button" class="pill-btn" data-action="reports">Reports &amp; exports</button></div>
+        <div class="work-action-row">${evaluation ? '<button type="button" class="pill-btn" data-action="verification">View verification details</button>' : '<span class="work-small">Verification controls appear after the service reports a completed evaluation.</span>'}<button type="button" class="pill-btn" data-action="compare">Compare results</button><button type="button" class="pill-btn" data-action="reports">Reports &amp; exports</button></div>
       </section>
       <section class="work-panel" aria-label="Generated candidate status">
         <div class="work-panel-head"><div><span class="work-eyebrow">04 / OUTPUT</span><h2>Candidate &amp; lineage</h2></div><span class="work-tag">SCOPE-BOUND</span></div>
