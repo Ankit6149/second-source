@@ -346,13 +346,22 @@ class OrchestrationService:
                         "- Structural verification checks the candidate spec only; it is not behavioral equivalence with the reference.",
                         "- No model (REAL_MODEL) reasoning ran in this job; recorded model evidence lives in the research record, not here.",
                     ]
+                    candidate_bytes = canonical(candidate.model_dump(mode="python"))
+                    report_bytes = "\n".join(lines).encode()
+                    readme_bytes = (b"Second Source NON_AI proof bundle. File digests are listed in "
+                                    b"manifest.json; its own digest is supplied by the artifact API.\n")
                     report_ref = self._store_artifact(
                         c, inv_id, job_id, "report", "report.md", "text/markdown",
-                        "\n".join(lines).encode())
+                        report_bytes)
                     manifest = {
                         "candidate_id": candidate.candidate_id, "provenance": "NON_AI",
                         "evaluator": "structural-v1", "verification": verification.model_dump(mode="json"),
                         "scope_digest": inv_row["scope_digest"],
+                        "file_sha256": {
+                            "candidate.json": hashlib.sha256(candidate_bytes).hexdigest(),
+                            "report.md": hashlib.sha256(report_bytes).hexdigest(),
+                            "README.txt": hashlib.sha256(readme_bytes).hexdigest(),
+                        },
                         "limitations": ["structural_only", "no_live_probing", "no_model_reasoning"],
                     }
                     self._store_artifact(c, inv_id, job_id, "manifest", "manifest.json",
@@ -364,10 +373,10 @@ class OrchestrationService:
                     buf = io.BytesIO()
                     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
                         for name, data in (
-                            ("candidate.json", canonical(candidate.model_dump(mode="python"))),
-                            ("report.md", "\n".join(lines).encode()),
+                            ("candidate.json", candidate_bytes),
+                            ("report.md", report_bytes),
                             ("manifest.json", canonical(manifest)),
-                            ("README.txt", b"Second Source NON_AI proof bundle. Verify hashes against manifest.json.\n"),
+                            ("README.txt", readme_bytes),
                         ):
                             info = zipfile.ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0))
                             info.external_attr = 0o644 << 16
