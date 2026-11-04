@@ -298,6 +298,9 @@ try {
       { id: g4RunId, accessToken: otherToken, suffix });
     assert.equal(status, 404, 'second owner cannot read the HTTP run or its artifacts');
   }
+  // Do not drive the next authenticated mutation burst into the production-like
+  // shared rate bucket accumulated during the previous owner acceptance.
+  await waitForTestRateHeadroom(10);
   await second.locator('.topbar [data-action="new"]').click();
   await second.getByRole('button', { name: 'Choose a supported target' }).click();
   await second.locator('[data-target-id="owned-ledger-v1"]').click();
@@ -318,6 +321,7 @@ try {
     assert.match(cancellationActivity.join(' '), /Run cancelled/);
   }
   assert.match(await second.locator('#content').innerText(), /cancelled/i, 'durable cancellation remains visible');
+  await waitForTestRateHeadroom(10);
   await second.getByRole('button', { name: 'Queue a new mock run' }).click();
   await second.getByText('queued', { exact: true }).waitFor();
   assert.equal(await second.locator('details.activity').count(), 0, 'a new queued run must not display the prior run activity');
