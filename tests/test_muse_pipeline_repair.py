@@ -137,3 +137,22 @@ def test_paid_mode_requires_explicit_server_opt_in(monkeypatch):
                           json={"target": "vikunja-v1", "model_mode": "muse-repair"})
     assert admitted.status_code == 200
     assert admitted.json()["model_mode"] == "muse-repair"
+
+
+def test_local_candidate_remains_downloadable_after_restart(monkeypatch, tmp_path):
+    from fastapi.testclient import TestClient
+    import investigation_engine as engine
+    monkeypatch.setattr(engine, "RUNS", tmp_path)
+    inv_id = "inv-a1b2c3d4e5f6"
+    spec = {"users": {}, "routes": [{"method": "GET", "path": "/projects"}]}
+    rec = {"id": inv_id, "target": "vikunja-v1", "status": "completed",
+           "compiled": {"provenance": "EVIDENCE_COMPILED"}, "_spec": spec}
+    engine._persist_completed_record(rec)
+    assert (tmp_path / f"{inv_id}-candidate.json").is_file()
+    assert not (tmp_path / f"{inv_id}.json").read_text().count('"_spec"')
+    client = TestClient(engine.app)
+    saved = client.get(f"/engine/v1/investigations/{inv_id}")
+    assert saved.status_code == 200
+    assert saved.json()["candidate_artifact"]["size_bytes"] > 0
+    candidate = client.get(f"/engine/v1/investigations/{inv_id}/candidate")
+    assert candidate.status_code == 200 and candidate.json() == spec
