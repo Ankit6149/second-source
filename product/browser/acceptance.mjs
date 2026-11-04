@@ -134,7 +134,7 @@ try {
   }
   const desktop = await context({ viewport: { width: 1440, height: 900 } });
   const page = await desktop.newPage();
-  await page.goto(origin); await page.getByRole('heading', { name: /understand how software really works/i }).waitFor();
+  await page.goto(origin); await page.getByRole('heading', { name: /learn the rules a screen cannot show/i }).waitFor();
   await page.screenshot({ path: path.join(output, 'desktop-home.png') });
   assert.equal(await page.locator('#scrollArea').evaluate((el) => el.contains(document.querySelector('#composer'))), false);
   await page.keyboard.press('Tab'); assert.equal(await page.evaluate(() => document.activeElement?.className), 'skip-link');
@@ -153,7 +153,7 @@ try {
 
   const mobile = await context({ ...devices['iPhone 13'], defaultBrowserType: undefined });
   const phone = await mobile.newPage(); await phone.goto(origin);
-  await phone.getByRole('heading', { name: /understand how software really works/i }).waitFor();
+  await phone.getByRole('heading', { name: /learn the rules a screen cannot show/i }).waitFor();
   await phone.screenshot({ path: path.join(output, 'mobile-home.png') });
   assert.equal(await phone.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'no horizontal page overflow');
   assert.equal(await phone.locator('#sidebar').evaluate(el => el.inert), true, 'closed mobile navigation cannot receive focus');
@@ -173,7 +173,7 @@ try {
 
   const switching = await context({ viewport: { width: 1280, height: 800 } }, { userId: owner, accessToken: token });
   const switchPage = await switching.newPage(); await switchPage.goto(origin);
-  await switchPage.getByText('Available here: owned ledger and HTTP task-workflow NON_AI fixtures.', { exact: false }).waitFor();
+  await switchPage.getByText('Available here: owned ledger and HTTP task-workflow controls.', { exact: false }).waitFor();
   await switchPage.locator('#promptInput').fill('Private stale list marker'); await switchPage.locator('#promptInput').press('Enter');
   await switchPage.getByRole('button', { name: 'Choose a supported target' }).click(); await switchPage.locator('[data-target-id="owned-ledger-v1"]').click(); await switchPage.locator('#scopeConsent').check();
   holdList = true; await switchPage.getByRole('button', { name: 'Create investigation' }).click();
@@ -193,7 +193,7 @@ try {
   app.on('requestfailed', request => console.error('Browser request failed:', new URL(request.url()).origin, request.failure()?.errorText));
   app.on('console', message => { if (message.type() === 'error') console.error('Browser console:', message.text()); });
   await app.goto(origin);
-  try { await app.getByText('Available here: owned ledger and HTTP task-workflow NON_AI fixtures.', { exact: false }).waitFor({ timeout: 15000 }); }
+  try { await app.getByText('Available here: owned ledger and HTTP task-workflow controls.', { exact: false }).waitFor({ timeout: 15000 }); }
   catch (error) { console.error('Workspace state:', (await app.locator('body').innerText()).slice(0, 1600)); throw error; }
   await app.locator('#promptInput').fill('Real browser fixture acceptance'); await app.locator('#promptInput').press('Enter');
   await app.getByRole('button', { name: 'Choose a supported target' }).click();
@@ -282,7 +282,7 @@ try {
 
   const other = await context({ ...devices['iPhone 13'], defaultBrowserType: undefined }, { userId: otherOwner, accessToken: otherToken });
   const second = await other.newPage(); await second.goto(origin);
-  await second.getByText('Available here: owned ledger and HTTP task-workflow NON_AI fixtures.', { exact: false }).waitFor();
+  await second.getByText('Available here: owned ledger and HTTP task-workflow controls.', { exact: false }).waitFor();
   await second.getByRole('button', { name: 'Toggle navigation' }).click();
   await second.getByRole('button', { name: 'Your work' }).click();
   assert.match(await second.locator('#content').innerText(), /No investigations yet/);
