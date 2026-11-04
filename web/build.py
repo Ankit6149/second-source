@@ -18,7 +18,7 @@ def build(include_app=False):
     destination = ROOT / "dist"
     if destination.is_symlink() or any((destination / name).is_symlink() for name in ("app", "app/assets", "app/fonts")):
         raise ValueError("Build output may not contain linked directories.")
-    allowed = {"index.html", "styles.css", "release.css", "script.js", "console/index.html", "evidence/index.html", "lab/index.html", "challenge/index.html", "handoff/index.html"}
+    allowed = {"index.html", "landing.css", "research.css", "reports/index.html", "experiments/index.html", "console/index.html", "evidence/index.html", "lab/index.html", "challenge/index.html", "handoff/index.html"}
     REDIRECTS = ("console", "handoff")
     STUB = "<!doctype html><meta charset=\"utf-8\"><title>Second Source</title><meta http-equiv=\"refresh\" content=\"0; url=/app/\"><link rel=\"canonical\" href=\"/app/\"><p>This page has moved into the app. <a href=\"/app/\">Open Second Source</a>.</p><script>location.replace('/app/')</script>"
     allowed.update("assets/" + name for name in ASSETS)
@@ -33,18 +33,20 @@ def build(include_app=False):
                     raise ValueError("Generated application output may not be a symlink.")
                 path.unlink()
     destination.mkdir(exist_ok=True)
-    for name in ("index.html", "styles.css", "release.css", "script.js"):
+    for name in ("index.html", "landing.css", "research.css"):
         shutil.copyfile(ROOT / name, destination / name)
-    (destination / "console").mkdir(exist_ok=True)
-    (destination / "console" / "index.html").write_text(STUB, encoding="utf-8")
-    (destination / "evidence").mkdir(exist_ok=True)
-    shutil.copyfile(ROOT / "evidence" / "index.html", destination / "evidence" / "index.html")
-    (destination / "lab").mkdir(exist_ok=True)
-    shutil.copyfile(ROOT / "lab" / "index.html", destination / "lab" / "index.html")
-    (destination / "challenge").mkdir(exist_ok=True)
-    shutil.copyfile(ROOT / "challenge" / "index.html", destination / "challenge" / "index.html")
-    (destination / "handoff").mkdir(exist_ok=True)
-    (destination / "handoff" / "index.html").write_text(STUB, encoding="utf-8")
+    for route in ("reports", "experiments"):
+        (destination / route).mkdir(exist_ok=True)
+        shutil.copyfile(ROOT / route / "index.html", destination / route / "index.html")
+    for route, target in (("evidence", "/reports/"), ("challenge", "/reports/"),
+                          ("lab", "/experiments/"), ("console", "/app/"), ("handoff", "/app/")):
+        (destination / route).mkdir(exist_ok=True)
+        (destination / route / "index.html").write_text(
+            '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url='
+            + target + '"><link rel="canonical" href="' + target
+            + '"><p>This page moved. <a href="' + target + '">Continue to current page</a></p>',
+            encoding="utf-8"
+        )
     (destination / "assets").mkdir(exist_ok=True)
     for name in ASSETS:
         shutil.copyfile(ROOT / "assets" / name, destination / "assets" / name)
