@@ -1,56 +1,60 @@
-# Second Source — 3-minute judge video recording package
-**Version: 4 November 2026 | Target: 170–175 seconds, never over 180.**
-This is a production and recording guide, not a claim that a new video has been recorded. The existing v3 recording is documented locally at `.runs/submission-v3/second-source-v3.mp4` (170.02 seconds); it has not been independently opened, visually approved or publicly hosted in this review.
+# Second Source — final three-minute recording guide
+**Release alignment: 4 November 2026 · merged main `fa4bd9662aad2d79d35caeab4a0b40c88e603d40` (verify final SHA before upload).**
 
-## Before pressing Record — mandatory gate
-- Confirm the current production SHA and open `/`, `/challenge/`, `/lab/`, `/evidence/`, and `/app/` signed-out in a private window.
-- Review PR changes and keep REAL_MODEL / EVIDENCE_COMPILED / NON_AI labels always visible.
-- If using the local application, run the **actual** local backend or deterministic engine, and confirm one full investigation succeeds before recording. Do not present a historical replay as live execution. If backend is unavailable, use the recorded lab as a labeled fallback, not a staged animation pretending to run.
-- Use 1920×1080 at 30fps, ≥16px screen text at final export, a clean browser profile, 125–150% page zoom when necessary, and high-quality narration/captions. Hide secrets, private identifiers, desktop notifications and keys.
-- Keep a copy of the candidate and report bundle *outside the public repository*. Do not reveal sealed gold cases.
+## Non-negotiable provenance and recording conditions
+- Public landing: https://second-source-alpha.vercel.app/ . App: https://second-source-alpha.vercel.app/app/ .
+- Retired `/challenge/`, `/lab/`, `/evidence/`, `/console/`, and `/handoff/` now redirect to `/app/`. **Do not navigate to them in the video.** The landing includes recorded behavior contrasts; the application exposes research evidence in Reports, with Compare as a two-software bench.
+- A **locally served app with its working local services** is required to show new saved investigations and the actual NON_AI Vikunja rebuild. The hosted site itself is a frontend preview and must not be presented as a deployed end-to-end backend.
+- Both actual local jobs are deterministic **NON_AI** work. Their success is distinct from the **historical genuine Muse Spark 1.3** experiments. No live Meta model inference is triggered by the application.
+- Genuine ledger research: Muse candidate **14/25** on its separate sealed suite; provider attestation incomplete. The Vikunja local engine's **11/19 public conformance** is **not a held-out score** and is not a model score. The owned HTTP fixture's **30/30** is a NON_AI control using prior evidence, not AI learning or a new AI repair.
+- Record in 1920×1080 at 30 fps, readable text, with no credentials, private identities, internal gold cases, or source/keys visible. Prefer a short real sequence to long decorative animation.
+- Previously documented video v3: `.runs/submission-v3/second-source-v3.mp4`, 170.02 seconds. Its current visual relevance, public hosting and playback have not been independently verified. **Do not imply it is already uploaded or submitted.**
 
-## Shot list / final voiceover
-**00:00–00:15 · Question: what does the software really do?** (Landing → Black-Box Challenge)
-Narration: “A coding agent can copy a screen. But what if the rules behind that screen are missing? Second Source starts with software we’re authorized to observe and treats behavior as evidence.”
+## Recording shots, on-screen actions and voiceover
 
-**00:15–00:42 · The 27-second surprise** (Challenge: add Milk then MILK, reveal; amount boundary, reveal; response schema, reveal)
-Narration: “The two applications look identical. Yet the reference rejects a case-insensitive duplicate, rejects a hidden limit, and returns a precise response shape. A generated implementation can miss all three. Here are the actual recorded differences.”
+### 00:00–00:18 · The hook (public landing)
+**Screen:** Open `/`. Show the hero and the recorded reference/candidate contrast.
 
-**00:42–01:07 · The research method** (Lab timeline → public hypothesis/experiment and genuine ledger evidence)
-Narration: “With Meta Muse Spark 1.3, we used evidence-linked hypotheses and controlled experiments to infer an independent behavioral specification. A separate evaluator then challenged the candidate on withheld cases.”
+**Narration:** “Most tools can build software that looks right. Second Source asks a harder question: does it behave the same? Screenshots miss the rules that emerge only when you test the running system.”
 
-**01:07–01:27 · Do not conceal failures** (Evidence report on 14/25 with 9 schema + 2 error mismatches)
-Narration: “The genuine Meta ledger candidate passed fourteen of twenty-five tests. Eleven failures revealed exactly what it had guessed incorrectly. We report those failures rather than claim a perfect clone.”
+### 00:18–00:42 · A concrete surprise (public landing's recorded comparison)
+**Screen:** Highlight `Milk` then `MILK`, the `amount 500` boundary, and the strict JSON response schema; visibly label recorded reference and candidate.
 
-**01:27–02:02 · The real product workflow** (App account modal → supported target → authorized scope → execution workbench → real persisted events, if local acceptance succeeds)
-Narration: “Here is the product boundary. We choose an explicitly supported target, review its authorization scope, and inspect the real persisted execution stages. This local run is a deterministic, non-AI control—not a new Muse call. Nothing is fabricated if the engine or service is unavailable.”
-*Fallback if the run cannot be established:* show the existing recorded laboratory reconstruction with a visible RECORDED REPLAY label and say “This is a recorded evidence viewer; the hosted app is not running the model live.”
+**Narration:** “One label repeated with different capitalization gets rejected. A seemingly valid amount crosses an invisible limit. And an API can be wrong even when it returns extra fields. Our recorded reference and generated candidate disagreed on all three.”
 
-**02:02–02:30 · What was learned** (Reports scoreboard showing each provenance separately and candidate/version evidence)
-Narration: “On Vikunja, the Muse-assisted hybrid matched six of six frozen and extended cases. So did our evidence compiler without model calls. That makes the engineering result interesting—but it does not prove the model improved on the compiler. We preserve this distinction.”
+### 00:42–01:08 · Genuine Meta method (app → Reports)
+**Screen:** Show the historical Muse Spark 1.3 evidence, the candidate-versus-reference difference, and its provenance label. Do not open retired routes.
 
-**02:30–02:48 · Artifact and verification** (Candidate preview/lineage, report export, digests, link to proof)
-Narration: “The deliverable is not simply a plausible candidate. It includes the tested behavior, failures, provenance, candidate identity, unknowns, and an integrity-verifiable report. The evaluator stays independent.”
+**Narration:** “Using Meta Muse Spark 1.3, we used recorded observations and discriminating tests to construct a separate behavioral candidate. An independent withheld suite measured it: fourteen of twenty-five passed, and eleven failures exposed the limits of what it inferred.”
 
-**02:48–03:00 · Close: why it matters** (Logo and concrete use case, GitHub, challenge)
-Narration: “For teams maintaining undocumented systems, trustworthy reconstruction needs more than generation. Second Source helps turn observation into accountable, testable evidence. Try the Black-Box Challenge and examine the results.”
+### 01:08–01:42 · First real local job (local app, owned HTTP)
+**Screen:** Start the locally served app in a pre-verified authorized test session. Choose **Owned HTTP task-workflow**, confirm scope, authorize, queue and execute. Show backend event timeline and **30/30** verification.
 
-## Recording flow and timing
-| Scene | Live route / asset | Interaction rule |
-|---|---|---|
-| Landing hook | `/` → `/challenge/` | Scroll only enough to understand the proposition; avoid extended abstract hero animations. |
-| Recorded behavior challenge | `/challenge/` | Actually click choices and Reveal; no faked typing. |
-| Genuine Meta results | `/lab/` and `/evidence/` | Keep 14/25 result, provider limits and recorded labels visible. |
-| Product workflow | `/app/` (prefer verified local connected run) | Sign-in modal is application-level. Only show real target selection and persisted stage events. |
-| Measured scorecard | App Reports or dossier | Do not conflate Muse 6/6 with NON_AI 6/6; no claimed lift. |
-| Output | Real available sanitized export | Never replace a missing artifact with invented source-code screenshots. |
+**Narration:** “Now this is an actual local job, not a replay: explicit scope approval, persisted execution stages, a generated candidate, and a measured result. This control is deterministic and non-AI. We label it that way rather than borrowing the Meta score.”
 
-## Final quality gate
-- The rendered MP4 is ≤180 seconds; vocals audible; text readable on a phone; labels remain visible.
-- No fake AI live run, no false 100% Meta accuracy, no “autonomous website cloning” claim.
-- Every score is paired with its origin and own denominator.
-- Video URL publicly viewable when signed out; no login/account needed to play.
-- Final public repository SHA and demo URLs agree with the submission.
-- Human owner submits once through the organizer portal and saves the receipt.
+### 01:42–02:08 · What it actually built (local candidate inspector)
+**Screen:** Show the generated **two-route CandidateV1** declarative JSON, event references, artifacts and the report / verifiable ZIP.
 
-If the existing 170.02-second v3 video already meets this gate, publishing it is higher priority than re-recording. Only record a new cut if it clearly improves the first thirty seconds or fixes a substantive problem.
+**Narration:** “The workbench shows the artifact it really constructed, its exact routes, version identity and integrity evidence. It doesn't pretend to have recovered the original source code.”
+
+### 02:08–02:34 · Second real software (Reports → Compare → Run Vikunja rebuild)
+**Screen:** In the locally served app, open Reports → Compare, activate **Run Vikunja rebuild**. Show the actual probe/compile sequence and **11/19 public conformance**, divergences, compiled routes and candidate download. Preserve the side-by-side first software panel.
+
+**Narration:** “Compare can also rebuild a second authorized reference, Vikunja, through the real local probe-and-compile pipeline. It matched eleven of nineteen public conformance checks. We keep mismatches visible—and don't confuse public checks with a hidden evaluation.”
+
+### 02:34–02:48 · Independent research limits (Reports evidence)
+**Screen:** Show genuine Muse and deterministic results side by side, origin labels legible.
+
+**Narration:** “On the frozen Vikunja research suite, the Muse-assisted path tied our non-AI evidence compiler. We cannot claim a measured improvement from the model there. That distinction matters.”
+
+### 02:48–03:00 · Closing
+**Screen:** Landing/app titles, GitHub link, candidate + proof bundle callout.
+
+**Narration:** “Second Source turns black-box behavior into observations, testable candidates, and proof of what does—and doesn't—match. See the app and examine the evidence.”
+
+## Recording acceptance gate
+1. Use the local environment for the **actual** two-job operations; do not record synthetic outcomes as if remote production jobs. Show genuine test output and keep provenance labels visible.
+2. The final MP4 is **180 seconds or shorter**, audio clear, readable on mobile, and reviewed from beginning to end.
+3. Open the **public video URL signed-out** and verify playback. The local MP4 file path is not a shareable link.
+4. Confirm the final public release SHA and the two live routes, especially redirects; use only working URLs in submission fields.
+5. Submit through https://cerebralvalley.ai/e/meta-ai-developer-hackathon/hackathon/submit by **4 November 2026, 9:00 PM ET (5 November, 7:30 AM IST)**. Save the owner-side submission receipt. No receipt means **not submitted**.
