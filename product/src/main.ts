@@ -83,12 +83,12 @@ function closeDialog() { const dialog = el<HTMLDialogElement>('dialog'); if (dia
 function setError(error: unknown) { state.error = describe(error); render(); }
 
 function account() {
-  if (!apiOrigin || !auth) {
-    showDialog('Sign in', `<p>Sign-in and the backend are not configured for this deployment yet.</p><p class="component-note">You can explore the product, but saved investigations require a connected service and an account.</p><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Close</button></div>`);
+  if (!auth) {
+    showDialog('Sign in', `<p>Sign-in is not configured for this deployment yet.</p><p class="component-note">You can explore the product, but saved investigations require a connected service and an account.</p><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Close</button></div>`);
   } else if (state.session) {
     showDialog('Account', `<p>Signed in. Your investigations are scoped to this account.</p><p class="component-note">Signing out clears this browser session. Existing access tokens can remain valid until they expire.</p><div class="dialog-actions"><button class="pill-btn" data-action="sign-out">${icon('log-out')} Sign out</button></div>`);
   } else {
-    showDialog('Sign in', `<p>Sign in to save investigations and review their results.</p><div class="dialog-actions"><button class="pill-btn primary" data-action="sign-in">${icon('log-in')} Continue with Google</button></div>`);
+    showDialog('Sign in', `<p>Sign in to save investigations and review their results.</p>${apiOrigin ? '' : '<p class="component-note">Account sign-in works here; saved investigations additionally need the connected backend service, which is not deployed on this page yet.</p>'}<div class="dialog-actions"><button class="pill-btn primary" data-action="sign-in">${icon('log-in')} Continue with Google</button></div>`);
   }
 }
 
@@ -201,7 +201,7 @@ function render() {
   const statusText = state.run ? `Run ${state.run.status.replaceAll('_', ' ')}${state.run.stage ? `, stage ${state.run.stage}` : ''}.` : state.loading ? 'Loading investigations.' : '';
   if (el('liveStatus').textContent !== statusText) el('liveStatus').textContent = statusText;
   el('accountState').textContent = state.session ? 'Signed in' : 'Not signed in';
-  el('connectionLabel').textContent = !apiOrigin || !auth ? 'Service not configured' : state.session ? 'Signed in · NON_AI only' : 'Sign in to start';
+  el('connectionLabel').textContent = !auth ? 'Sign-in not configured' : !apiOrigin ? (state.session ? 'Signed in \u00b7 backend offline' : 'Backend offline') : state.session ? 'Signed in · NON_AI only' : 'Sign in to start';
   el('topName').textContent = state.view === 'library' ? 'Your work' : state.view === 'system' ? 'Component showroom' : state.selected?.title || 'Second Source';
   el('history').innerHTML = state.investigations.slice(0, 12).map(item => `<button class="history-item ${item.investigation_id === state.selected?.investigation_id ? 'active' : ''}" data-investigation="${esc(item.investigation_id)}">${icon('message-square')}<span class="history-title">${esc(item.title)}</span></button>`).join('');
   const message = state.error ? `<div class="inline-note error" role="alert">${icon('alert-triangle')}<span>${esc(state.error)}</span>${state.selected && state.session ? '<button class="pill-btn quiet" data-action="refresh">Check status</button>' : ''}<button class="quiet-dismiss" data-action="dismiss-error" aria-label="Dismiss error">Ã—</button></div>` : '';
