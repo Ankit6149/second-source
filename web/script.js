@@ -80,10 +80,11 @@
     });
     visibility.observe(hero);
   }
+  // Concept examples are projections of the product roadmap, not live API/model output.
   var examples = [
-    { input: 'ledger add --label "Moss"', result: 'created: 001', question: 'Does every valid label create a new record?', status: 'One observation. Multiple possible rules.' },
-    { input: 'ledger add --label "moss"', result: 'duplicate_label', question: 'Are labels compared without case sensitivity?', status: 'A hypothesis worth challenging.' },
-    { input: 'ledger remove --id 999', result: 'not_found', question: 'Does the response depend on earlier state?', status: 'Stateful behavior needs a sequence test.' }
+    { input: 'https://your-owned-api.example', result: 'Independent API + compatibility tests', question: 'Do validation, access control and state still behave the same?', status: 'Planned general link workflow · bounded API reconstruction works locally' },
+    { input: 'https://your-authorized-app.example', result: 'Independent interface + interaction tests', question: 'Will the forms, navigation and behavior survive a rebuild?', status: 'Planned multimodal web-app reconstruction · not shipped yet' },
+    { input: './your-legacy-cli --help', result: 'Runnable CLI + regression checks', question: 'Do commands, flags, errors and output formats still match?', status: 'Planned general CLI support · owned bounded fixtures demonstrated' }
   ];
   var choices = Array.from(document.querySelectorAll('[data-case]'));
   function select(index) {
