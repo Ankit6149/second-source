@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { SOURCE_OPTIONS, buildManifest, buildReadme, buildReportHtml, buildReportMarkdown, runOutcome, stageIndex } from '../src/workbench.ts';
+import { SCOREBOARD, SOURCE_OPTIONS, buildManifest, buildReadme, buildReportHtml, buildReportMarkdown, runOutcome, stageIndex } from '../src/workbench.ts';
 
 test('source catalog labels assisted vs black-box and gates availability', () => {
   const url = SOURCE_OPTIONS.find(s => s.id === 'url')!;
@@ -38,4 +38,15 @@ test('report builders use only supplied report data', () => {
   assert.match(buildReadme(report, meta), /3\/4 passed/);
   const empty = buildReportMarkdown({ origin: 'mock', real: false }, meta);
   assert.match(empty, /counts unavailable/);
+});
+
+test('scoreboard separates AI, hybrid and NON_AI per target', () => {
+  const vik = SCOREBOARD.find(t => t.target.startsWith('Vikunja'))!;
+  const methods = vik.rows.map(r => r.method);
+  assert.ok(methods.some(m => m.startsWith('AI alone')));
+  assert.ok(methods.some(m => m.startsWith('AI + our software')));
+  assert.ok(methods.some(m => m.startsWith('Our software alone')));
+  assert.ok(vik.rows.every(r => ['REAL_MODEL', 'GEMMA_TEST', 'NON_AI'].includes(r.provenance)));
+  const fb = SCOREBOARD.find(t => t.target.startsWith('File Browser'))!;
+  assert.equal(fb.rows[0].frozen, '7/7');
 });
