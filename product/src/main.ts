@@ -158,7 +158,6 @@ async function runEngineInvestigation(target = 'vikunja-v1', modelMode: 'none' |
 }
 
 function renderHome() {
-  const available = state.session ? (state.target ? (state.targets.length > 1 ? "Available here: owned ledger and HTTP task-workflow controls." : "Available here: owned ledger control.") : "Connected service has no supported target.") : "Signed out: reports and experiments remain public; sign in to save a connected investigation.";
   return `<section class="empty-home calm-home" aria-label="Start a new investigation">
     <div class="ux-page-label">SECOND SOURCE / WORKSPACE</div>
     <h1>Learn the rules a screen cannot show.</h1>
@@ -167,8 +166,6 @@ function renderHome() {
       <button class="pill-btn primary" type="button" data-action="select-target">${icon("flask-conical")} New investigation</button>
       <button class="pill-btn" type="button" data-action="reports">${icon("file-text")} View reports</button>
     </div>
-    <p class="home-rule"><strong>Input → working → output.</strong> Describe a target, follow the real run, inspect the candidate and its proof. <button class="pill-btn quiet" type="button" data-action="research">See evidence</button></p>
-    <p class="home-note">${esc(available)}</p>
   </section>`;
 }
 function controls() {

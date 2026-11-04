@@ -84,21 +84,16 @@ test('excessively long notes are rejected without losing the draft', () => {
   } finally { window.happyDOM.abort(); }
 });
 
-test('signed-out home is the input space: value prop, flow, and one evidence action', () => {
+test('signed-out home is clean: headline and primary actions only', () => {
   const window = workspace();
   try {
     const doc = window.document;
     const home = doc.querySelector('.empty-home');
-    assert.match(home.textContent, /Follow the evidence/i);
-    assert.match(home.textContent, /Input/);
-    assert.match(home.textContent, /working/);
-    assert.match(home.textContent, /output/i);
-    assert.match(home.textContent, /Signed out:/);
-    const cta = home.querySelector('[data-action="research"]');
-    assert.ok(cta, 'research record is the clear signed-out action');
-    cta.click();
-    assert.equal(doc.querySelector('dialog').open, true);
-    assert.match(doc.querySelector('dialog').textContent, /14 passed/);
+    assert.match(home.textContent, /Learn the rules a screen cannot show/);
+    assert.ok(home.querySelector('[data-action="select-target"]'), 'new investigation action');
+    assert.ok(home.querySelector('[data-action="reports"]'), 'view reports action');
+    assert.doesNotMatch(home.textContent, /Signed out:/);
+    assert.doesNotMatch(home.textContent, /working \u2192 output/);
   } finally { window.happyDOM.abort(); }
 });
 
@@ -151,6 +146,7 @@ test('historical research is explicitly separated from live and NON_AI results',
   const window = workspace();
   try {
     const doc = window.document;
+    doc.querySelector('.side-nav [data-action="reports"]').click();
     doc.querySelector('[data-action="research"]').click();
     const dialog = doc.querySelector('dialog');
     assert.equal(dialog.open, true);
