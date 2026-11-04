@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#10271c">
+<meta name="description" content="Measured Second Source reconstruction reports: genuine Meta Muse experiments, deterministic controls, reproducibility and limitations.">
+<title>Reports — Second Source</title>
+<link rel="stylesheet" href="../research.css"></head>
+<body>
+<a class="skip" href="#main">Skip to reports</a>
+<header class="masthead">
+ <div class="wrap">
+  <div class="top"><a class="logo" href="../" aria-label="Second Source home">second<span>source.</span></a>
+   <nav aria-label="Primary"><a href="../">Product</a><a href="./" aria-current="page">Reports</a><a href="../experiments/">Experiments</a></nav>
+   <a class="open" href="../app/">Open app ↗</a></div>
+  <a class="back" href="../">← Back to product</a>
+  <div class="hero"><div class="eyebrow">Research / Verified results</div>
+   <h1>Proof, not just a<br>plausible reconstruction.</h1>
+   <p>Every candidate is judged on what it actually reproduced, what it missed, and where the evidence stops. These reports preserve separate results for genuine Meta models and deterministic controls.</p>
+   <div class="hero-actions"><a class="btn primary" href="#ledger">Read the Muse report</a><a class="btn" href="../experiments/">Explore experiments</a></div></div>
+ </div>
+</header>
+<main id="main">
+ <section class="section" id="ledger"><div class="wrap">
+  <div class="section-head"><div><div class="eyebrow">01 / Genuine Meta model</div><h2>Owned ledger — Muse Spark 1.3</h2></div>
+  <p>A bounded, model-authored declarative candidate. Scored by an independent evaluator on a frozen 25-case suite.</p></div>
+  <div class="metrics">
+   <div class="metric feature"><small>INDEPENDENT RESULT</small><strong>14 / 25</strong><span>Cases passed on the frozen suite</span></div>
+   <div class="metric"><small>SCHEMA ERRORS</small><strong>9</strong><span>Response-shape mismatches</span></div>
+   <div class="metric"><small>ERROR CONTRACT</small><strong>2</strong><span>Incorrect error outcomes</span></div>
+  </div>
+  <p class="note"><strong>REAL_MODEL / model-authored.</strong> Eleven cases failed. This is not full compatibility, recovered source code, or a fresh model call in the browser. The original provider attestation remains incomplete; pinned-source offline replay reproduced the reported score.</p>
+  <div class="section" style="padding-bottom:0;border:0">
+   <div class="section-head"><div><div class="eyebrow">Observed, not guessed</div><h2>Three examples that exposed hidden rules</h2></div>
+   <p>These are public recorded observations, not private withheld evaluation cases.</p></div>
+   <div class="case-list">
+    <article class="case"><div class="case-top"><strong>Case-insensitive uniqueness</strong><span class="case-num">01 / STATE</span></div>
+     <p>After adding “Milk”, adding “MILK” is a duplicate in the observed reference. The candidate treated labels as case-sensitive.</p>
+     <details><summary>Inspect observed difference</summary><div class="code-cols"><div><small>REFERENCE · RECORDED</small><pre>add("Milk", 2) → {"ok":true,"id":"1"}
+add("MILK", 3) → {"ok":false,"error":"duplicate_label"}</pre></div><div><small>MODEL CANDIDATE · RECORDED</small><pre>add("Milk", 2) → accepted
+add("MILK", 3) → accepted (wrong)</pre></div></div></details></article>
+    <article class="case"><div class="case-top"><strong>The invisible numeric boundary</strong><span class="case-num">02 / VALIDATION</span></div>
+     <p>An amount of 500 violates the reference's observed limit. The candidate inferred a much larger permitted range.</p>
+     <details><summary>Inspect observed difference</summary><div class="code-cols"><div><small>REFERENCE · RECORDED</small><pre>add("Item", 500)
+→ {"ok":false,"error":"invalid_amount"}</pre></div><div><small>MODEL CANDIDATE · RECORDED</small><pre>add("Item", 500)
+→ accepted (wrong limit)</pre></div></div></details></article>
+    <article class="case"><div class="case-top"><strong>Exact success response schema</strong><span class="case-num">03 / CONTRACT</span></div>
+     <p>Returning extra fields changes the API contract. The candidate's response looked helpful but differed from the reference.</p>
+     <details><summary>Inspect observed difference</summary><div class="code-cols"><div><small>REFERENCE · RECORDED</small><pre>{"ok":true,"id":"1"}</pre></div><div><small>MODEL CANDIDATE · RECORDED</small><pre>{"ok":true,"id":"1","label":"Milk","amount":2}</pre></div></div></details></article>
+   </div>
+  </div>
+ </div></section>
+ <section class="section" id="results"><div class="wrap">
+  <div class="section-head"><div><div class="eyebrow">02 / Benchmark register</div><h2>Measured results, separately accounted.</h2></div><p>Different targets and suites have different denominators. Scores cannot be added or interpreted as a single universal accuracy figure.</p></div>
+  <div class="table-wrap"><table>
+   <thead><tr><th>Reference / method</th><th>Origin</th><th>Result</th><th>Interpretation</th></tr></thead>
+   <tbody>
+    <tr><td><strong>Owned ledger / Muse Spark 1.3</strong><br>Sealed frozen suite</td><td><span class="pill">REAL_MODEL</span></td><td><strong>14/25</strong></td><td>Model-authored bounded candidate. 9 schema + 2 error mismatches; attestation incomplete.</td></tr>
+    <tr><td><strong>Vikunja / Muse grounded C</strong><br>Frozen six-case suite</td><td><span class="pill">REAL_MODEL</span></td><td><strong>2/6</strong></td><td>Genuine Meta grounded candidate, partial coverage.</td></tr>
+    <tr><td><strong>Vikunja / Muse active D</strong><br>Frozen six-case suite</td><td><span class="pill">REAL_MODEL</span></td><td><strong>1/6</strong></td><td>Meta model selected additional probes; did not improve the sealed score.</td></tr>
+    <tr><td><strong>Vikunja / Muse-assisted hybrid</strong><br>Frozen and extended suites</td><td><span class="pill">REAL_MODEL</span></td><td><strong>6/6 + 6/6</strong></td><td>Model-assisted raw candidate tied the non-AI compiler. No measured lift over compiler; proposed edits rejected by gate.</td></tr>
+    <tr><td><strong>Vikunja / evidence compiler</strong><br>Frozen and extended suites</td><td><span class="pill control">NON_AI</span></td><td><strong>6/6 + 6/6</strong></td><td>Deterministic transcription of observations, not model reasoning.</td></tr>
+    <tr><td><strong>Owned HTTP workflow / control</strong><br>Bounded repair suite</td><td><span class="pill control">NON_AI</span></td><td><strong>30/30</strong></td><td>Deterministic repair using pre-collected evidence; not AI self-repair.</td></tr>
+    <tr><td><strong>Vikunja / local rebuild</strong><br>Public conformance sequence</td><td><span class="pill control">NON_AI</span></td><td><strong>11/19</strong></td><td>Actual local probe → compile → public check; not held-out verification.</td></tr>
+    <tr><td><strong>File Browser / compiled control</strong><br>Recorded workflow cases</td><td><span class="pill control">NON_AI</span></td><td><strong>7/7</strong></td><td>Separate bounded deterministic target, not proof of Meta reconstruction.</td></tr>
+   </tbody></table></div>
+  <p class="note"><strong>Evidence integrity:</strong> candidate digests and local proof bundles establish consistency of stored artifacts, not external provider signatures. Original Meta Vikunja provider receipts suffered a driver crash. Do not conflate the $0.50 authorization cap with verified billing.</p>
+ </div></section>
+ <section class="section" id="reproduce"><div class="wrap">
+  <div class="section-head"><div><div class="eyebrow">03 / Reproducibility</div><h2>Audit the method and artifacts.</h2></div><p>Detailed source-backed documentation exists in the repository. Private sealed cases and credentials are not public.</p></div>
+  <div class="report-overview"><div>
+   <dl class="kv">
+    <dt>Full technical report</dt><dd><a href="https://github.com/Ankit6149/second-source/blob/main/docs/reports/SECOND_SOURCE_FINAL_REPORT.md">Read the complete methodology, findings and limitations ↗</a></dd>
+    <dt>Machine-readable results</dt><dd><a href="https://github.com/Ankit6149/second-source/blob/main/docs/reports/results.json">Inspect results.json with separate provenance ↗</a></dd>
+    <dt>Research record</dt><dd><a href="https://github.com/Ankit6149/second-source/blob/main/docs/JUDGE_EVIDENCE_G3.md">Genuine Meta ledger evidence and limitations ↗</a></dd>
+    <dt>Professional benchmark</dt><dd><a href="https://github.com/Ankit6149/second-source/blob/main/docs/BENCHMARK_VIKUNJA.md">Vikunja methodology and independent scores ↗</a></dd>
+    <dt>Engine contract</dt><dd><a href="https://github.com/Ankit6149/second-source/blob/main/docs/ENGINE_INTEGRATION_HANDOFF.md">Events, artifacts and owner-scoped endpoints ↗</a></dd>
+    <dt>Code &amp; tests</dt><dd><a href="https://github.com/Ankit6149/second-source">Public repository and acceptance tests ↗</a></dd>
+   </dl>
+  </div><aside><strong>What's not established</strong><p>Arbitrary website cloning, recovered proprietary source, perfect software equivalence, live production inference, a hosted end-to-end backend, or independently attested Meta billing.</p><a class="btn" href="../experiments/">Explore the experiments →</a></aside>
+  </div>
+ </div></section>
+</main>
+<footer><div class="wrap footer-inner"><a class="logo" href="../">second<span>source.</span></a><nav aria-label="Footer"><a href="../">Product</a><a href="../experiments/">Experiments</a><a href="../app/">Workspace</a><a href="https://github.com/Ankit6149/second-source">Source ↗</a></nav></div></footer>
+</body></html>

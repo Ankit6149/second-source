@@ -8,7 +8,7 @@
   <title>Second Source — Investigation workspace</title>
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to conversation</a>
+  <a class="skip-link" href="#main">Skip to workspace</a>
   <div class="shell" id="shell">
     <aside class="sidebar" id="sidebar" aria-label="Workspace navigation">
       <div class="side-head">
@@ -17,9 +17,11 @@
       </div>
       <button class="new-btn" data-action="new" type="button"><i data-lucide="square-pen"></i> New investigation</button>
       <nav class="side-nav" aria-label="Workspace pages">
-        <button class="nav-item" data-action="library" type="button"><i data-lucide="folder-open"></i> Your work</button>
-                        <button class="nav-item" data-action="reports" type="button"><i data-lucide="download"></i> Reports &amp; exports</button>
-        <button class="nav-item" data-action="settings" type="button"><i data-lucide="shield-check"></i> Settings</button>
+        <button class="nav-item" data-action="home" type="button"><i data-lucide="layout-dashboard"></i> Overview</button>
+        <button class="nav-item" data-action="library" type="button"><i data-lucide="folder-open"></i> Investigations</button>
+        <button class="nav-item" data-action="reports" type="button"><i data-lucide="file-text"></i> Reports</button>
+        <button class="nav-item" data-action="experiments" type="button"><i data-lucide="flask-conical"></i> Experiments</button>
+        <button class="nav-item" data-action="settings" type="button"><i data-lucide="settings"></i> Settings</button>
       </nav>
       <p class="side-section-label">Recent</p>
       <div class="history" id="history"></div>
@@ -29,7 +31,7 @@
     </aside>
     <div class="mobile-scrim" id="mobileScrim"></div>
     <div class="main-area">
-      <header class="topbar"><div class="top-left"><button class="icon-button menu-btn" id="toggleSide" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="sidebar"><i data-lucide="panel-left"></i></button><span class="top-name" id="topName">Second Source</span></div><div class="top-right"><span class="preview-label" id="connectionLabel">Checking connection</span><button class="top-account" type="button" id="topAccountButton" data-action="account" aria-haspopup="dialog"><i data-lucide="log-in"></i><span id="topAccountLabel">Sign in</span></button><button class="icon-button" type="button" title="New investigation" aria-label="New investigation" data-action="new"><i data-lucide="square-pen"></i></button></div></header>
+      <header class="topbar"><div class="top-left"><button class="icon-button top-back" type="button" data-action="back" id="topBackButton" aria-label="Back to previous view" hidden><i data-lucide="arrow-left"></i></button><button class="icon-button menu-btn" id="toggleSide" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="sidebar"><i data-lucide="panel-left"></i></button><span class="top-name" id="topName">Second Source</span></div><div class="top-right"><span class="preview-label" id="connectionLabel">Checking connection</span><button class="top-account" type="button" id="topAccountButton" data-action="account" aria-haspopup="dialog"><i data-lucide="log-in"></i><span id="topAccountLabel">Sign in</span></button><button class="icon-button" type="button" title="New investigation" aria-label="New investigation" data-action="new"><i data-lucide="square-pen"></i></button></div></header>
       <main class="main" id="main" tabindex="-1">
         <div class="scroll-area" id="scrollArea"><div class="content" id="content"></div></div>
         <div class="dock" id="dock"><div class="dock-inner" id="dockInner"></div><p class="dock-foot">Only investigate software you own or are authorized to study.</p></div>

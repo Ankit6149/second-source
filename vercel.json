@@ -44,6 +44,36 @@
       "source": "/handoff/",
       "destination": "/app/",
       "permanent": true
+    },
+    {
+      "source": "/challenge",
+      "destination": "/reports/",
+      "permanent": true
+    },
+    {
+      "source": "/challenge/",
+      "destination": "/reports/",
+      "permanent": true
+    },
+    {
+      "source": "/lab",
+      "destination": "/experiments/",
+      "permanent": true
+    },
+    {
+      "source": "/lab/",
+      "destination": "/experiments/",
+      "permanent": true
+    },
+    {
+      "source": "/evidence",
+      "destination": "/reports/",
+      "permanent": true
+    },
+    {
+      "source": "/evidence/",
+      "destination": "/reports/",
+      "permanent": true
     }
   ]
 }

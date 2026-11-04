@@ -3,7 +3,7 @@
 **Status: DRAFT for owner review. Not submitted. No portal receipt exists.**
 Deadline: **Nov 4, 9:00 PM ET** — https://cerebralvalley.ai/e/meta-ai-developer-hackathon/hackathon/submit
 Final `main` SHA: enter the live `main` HEAD at the moment of submission; do not copy an older SHA from this draft.
-Production: https://second-source-alpha.vercel.app/ — `/`, `/challenge/`, `/evidence/`, `/lab/`, and `/app/` were verified reachable signed-out after merge `0b928f1` on 4 November 2026. The hosted backend and live model inference are not accepted as production capabilities.
+**Final public navigation (verify deployed commit before submission):** https://second-source-alpha.vercel.app/ — Product (`/`), Reports (`/reports/`), Experiments (`/experiments/`), Workspace (`/app/`). Retired challenge/lab/evidence routes redirect to these. Hosted backend execution and live model inference remain unverified as production capabilities.
 
 ## Judge-first entry — the experience before the scorecard
 
@@ -11,7 +11,7 @@ Production: https://second-source-alpha.vercel.app/ — `/`, `/challenge/`, `/ev
 
 **Judge-facing opening (proposed copy):** "Can you reconstruct software you can operate but cannot inspect? Second Source treats the running application as experimental evidence. Watch it discover what a screenshot never shows, generate a separate behavioral specification using Meta Muse, and check that candidate against an independent evaluator. It reports the errors, too — because the difference between plausible software and compatible software is what the tests reveal."
 
-**Try first:** [Take the 60-second Black-Box Challenge](https://second-source-alpha.vercel.app/challenge/) — the judge predicts a case-insensitive duplicate, an input boundary and an output schema, then reveals the historically recorded reference and genuine Meta candidate responses. No model call or sealed tests run in the browser. Follow with the [recorded research lab](https://second-source-alpha.vercel.app/lab/), [measured evidence report](https://second-source-alpha.vercel.app/evidence/), and [product workspace](https://second-source-alpha.vercel.app/app/).
+**Try first:** [Product](https://second-source-alpha.vercel.app/), with three clickable recorded differences between reference and model candidate; [Reports](https://second-source-alpha.vercel.app/reports/) with the genuine Muse 14/25 evaluation and failures; [Experiments](https://second-source-alpha.vercel.app/experiments/) with method, origin and uncertainty; then [Workspace](https://second-source-alpha.vercel.app/app/) for actual service-backed NON_AI investigations when the local backend is connected. Nothing is staged as a live model call.
 
 **Proof, with provenance separated:** The ledger reconstruction was authored by genuine Muse Spark 1.3 and scored **14/25** on its own sealed suite (11 failures; incomplete provider attestation). A separate genuine Muse-assisted Vikunja hybrid scored **6/6 frozen and 6/6 extended**, but the NON_AI evidence compiler also scored 6/6 on both suites, so **no lift over that compiler is claimed**. The HTTP 25/30 → 30/30 improvement is **NON_AI**, not AI self-repair. These benchmarks must never be added together or depicted as comparable.
 
