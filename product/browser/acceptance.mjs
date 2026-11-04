@@ -96,7 +96,7 @@ try {
         holdOldPoll = false; oldPollSeen(); await oldPollMayFinish;
         return route.fulfill({ status: 200, headers: { ...cors, 'content-type': 'application/json', 'x-ss-test-response': 'old-poll' }, body: JSON.stringify(queuedSnapshot) });
       }
-      if (req.method() === 'POST' && url.pathname.endsWith('/execute')) {
+      if (req.method() === 'POST' && /^\/v1\/runs\/[^/]+\/execute$/.test(url.pathname)) {
         if (refuseNextExecution) { refuseNextExecution = false; refusedExecutions++; return route.fulfill({ status: 429, headers: cors, body: '{"code":"RATE_LIMITED"}' }); }
         if (holdSyntheticExecution) {
           holdSyntheticExecution = false;
@@ -115,7 +115,7 @@ try {
       const response = await fetch(`http://127.0.0.1:${port}${url.pathname}${url.search}`, {
         method: req.method(), headers, body: req.postDataBuffer() || undefined,
       });
-      if (loseExecutionAck && req.method() === 'POST' && url.pathname.endsWith('/execute')) {
+      if (loseExecutionAck && req.method() === 'POST' && /^\/v1\/runs\/[^/]+\/execute$/.test(url.pathname)) {
         loseExecutionAck = false; lostAcknowledgements++; await response.arrayBuffer(); return route.abort('failed');
       }
       const responseHeaders = Object.fromEntries(response.headers); delete responseHeaders['content-encoding'];
