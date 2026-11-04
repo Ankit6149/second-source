@@ -34,6 +34,7 @@ test('workspace shows only actual backend event progression and counts', () => {
   assert.match(html, /data-action="report"/, 'completed run exposes the sanitized report action');
   assert.match(html, /3<\/strong><span>Failed/);
   assert.match(html, /NON_AI fixture/);
+  assert.match(html, /details class="activity work-activity" open/, 'recorded stages remain visible for audit and browser recovery');
   assert.ok(html.indexOf('#1') < html.indexOf('#3'));
   assert.ok(html.indexOf('#3') < html.indexOf('#5'));
   assert.match(html, /Stage event recorded/);
