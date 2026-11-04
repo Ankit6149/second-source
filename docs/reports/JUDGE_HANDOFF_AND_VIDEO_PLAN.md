@@ -62,11 +62,9 @@ also available inside a live investigation via opt-in `muse-repair`
 
 ## 4A. New Muse local development — pending independent acceptance (5 Nov)
 
-Muse reports a separate local branch, `feat/ai-first-ui-20261105`, with
+Muse has pushed source commit `fb26af6` on `feat/ai-first-ui-20261105`, with
 the browser connected to `http://127.0.0.1:8770` (a separate engine
-from the older process on port 8765). **This branch has not appeared on
-the remote GitHub repository during this review**, so treat these as
-owner-reported local changes, **not merged submission results**.
+from the older process on port 8765). The branch now has a **draft review PR #81**. Source review confirms the PocketBase engine adapter, AI-first UI controls, assist/capture endpoints, server-side key integration, budget ledger and a provider-neutral SAM-compatible CLI adapter. The reported 8/12 PocketBase run and hosted end-to-end claims remain **unverified**, and the branch remains **unmerged**.
 
 | New component | Reported local observation | Verify before promoting to judge evidence |
 |---|---|---|
@@ -74,10 +72,10 @@ owner-reported local changes, **not merged submission results**.
 | Muse-first frontend | AI-assisted rebuild presented as primary when local model gateway is configured, deterministic fallback retained; per-run model receipt ID, token count and cost shown | DOM acceptance; actual provider receipt; admission verdict; signed-out/keyless experience |
 | Server-owned API key | Visitor need not provide or see server `MODEL_API_KEY` | Browser bundle and logs contain no key; check authentication, owner-scoped budgets, throttling and concurrent abuse before public deployment |
 | $15 AI budget | Muse reports local session ledger and HTTP 402 when a session cap is reached; $0 spent at last message | Prove persistence, atomicity, reset behavior, multi-session ceilings and provider spend accounting; **session ceiling ≠ global project credit ceiling** |
-| SAM / vision frontend | Muse reports frontend support for a SAM-compatible screenshot segmentation service, backed by `scripts/vision_scan.py`; motion summaries remain local | Verify actual upload/scan UI, server-only external access, image consent/redaction, segmentation output, browser rendering and fail states with an approved screenshot |
+| SAM / vision extension | Reviewed `scripts/vision_scan.py` and `docs/VISION_SCAN.md`: an opt-in server-side adapter for any SAM-compatible segmentation endpoint, plus local NON_AI motion analysis; **no confirmed frontend segmentation display** | Configure a real SAM provider, verify actual image→regions output and browser UI before including a working SAM segment in the film |
 
 **Important for the video:** this report does not claim SAM or the new
-PocketBase AI-first experience is production-ready. If the local branch
+PocketBase AI-first experience is production-ready. PR #81 still has blocking hosted-release issues: the frontend refuses a remote engine in its current `refreshEngine`, unauthenticated engine endpoints use an untrusted forwarded-IP rate limit, and per-instance spending checks are not atomically reserved across concurrent model calls. If the local branch
 is pushed and passes exact-head tests, record it as a fresh, explicitly
 attributed segment. A real model invocation is valuable to demonstrate,
 but the verifier must still determine whether it improved a candidate.

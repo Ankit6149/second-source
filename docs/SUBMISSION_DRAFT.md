@@ -84,6 +84,12 @@ The demo should make the **end goal visible from the first 15 seconds**, while s
 
 **Use localhost for the strongest supported-target reconstruction.** The public website and hosted executor have a smaller capability surface. No API keys, private receipts, sealed tests or personal local paths should appear in the video.
 
+## Additional Muse source branch — pending verification
+
+[Draft PR #81](https://github.com/Ankit6149/second-source/pull/81) (`fb26af6`) contains an AI-first local workbench, PocketBase reference adapter, server-side Muse assist, permission-gated public-link observation, a $15 estimated-cost ledger and a SAM-compatible segmentation adapter. **This branch is not merged into this submission release yet.** PocketBase **8/12** is an owner-reported local run and must not be added to the verified scoreboard without a fresh-reference receipt.
+
+The SAM adapter currently requires a configured external vision service; it is **not verified as a working frontend segmentation experience**. The proposed public-engine deployment is **not yet authorized**: frontend remote-engine wiring, server-side authentication, spoof-resistant rate limits and atomic spending reservations must be verified before using shared Meta API credits.
+
 ## Scope and limitations
 
 - Software must be owned or explicitly authorized, with action and resource budgets.
