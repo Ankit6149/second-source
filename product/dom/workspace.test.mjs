@@ -30,7 +30,8 @@ test('composer stays outside history and sending creates a local note without a 
     input.dispatchEvent(new window.Event('input', { bubbles: true }));
     composer.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
     assert.match(doc.querySelector('#content').textContent, /Investigate a workflow/);
-    assert.match(doc.querySelector('#content').textContent, /does not yet save conversations or answer follow-up questions/);
+    assert.match(doc.querySelector('#content').textContent, /Sign in, then tell me what you would like to investigate\./);
+    assert.doesNotMatch(doc.querySelector('#content').textContent, /Scope [a-f0-9]{6}|genuine backend events|does not yet save conversations/);
     assert.equal(doc.querySelector('#promptInput'), input);
     assert.equal(input.value, '');
   } finally { window.happyDOM.abort(); }
@@ -42,12 +43,13 @@ test('unconfigured sign-in and target selection explain their unavailable state'
     const doc = window.document;
     doc.querySelector('[data-action="account"]').click();
     assert.equal(doc.querySelector('dialog').open, true);
-    assert.match(doc.querySelector('dialog').textContent, /not configured/i);
+    assert.match(doc.querySelector('dialog').textContent, /not available/i);
+    assert.equal(doc.querySelector('dialog').classList.contains('dialog-signin'), true);
     assert.doesNotMatch(doc.querySelector('dialog').textContent, /signed in/i);
     doc.querySelector('[data-action="close-dialog"]').click();
     doc.querySelector('[data-action="select-target"]').click();
     assert.equal(doc.querySelector('dialog').open, true);
-    assert.match(doc.querySelector('dialog').textContent, /not configured/i);
+    assert.match(doc.querySelector('dialog').textContent, /not available/i);
   } finally { window.happyDOM.abort(); }
 });
 
