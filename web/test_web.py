@@ -132,16 +132,22 @@ class PublicPreview(unittest.TestCase):
             self.assertNotIn("GEMMA_TEST", text)
             self.assertNotIn("Sealed evaluation cases:", text)
 
-    def test_landing_tabs_are_real_accessible_recorded_comparisons(self):
+    def test_landing_future_scenarios_are_interactive_and_honest(self):
         text = (ROOT / "index.html").read_text(encoding="utf-8")
         for case in ("0", "1", "2"):
             self.assertIn(f'data-case="{case}"', text)
-        self.assertIn('aria-label="Choose a simulated test case"', text)
+        self.assertIn('aria-label="Choose a future software reconstruction scenario"', text)
         self.assertIn("aria-pressed", text)
-        self.assertIn("RECORDED REFERENCE BEHAVIOR", text)
-        self.assertIn("No live execution here", text)
+        self.assertIn("END-GOAL CONCEPT", text)
+        self.assertIn("NO LIVE EXECUTION", text)
+        self.assertIn("What if software could", text)
+        self.assertIn("19/19", text)
+        self.assertIn("The full generalized pipeline is a roadmap", text)
         self.assertIn('id="motionToggle"', text)
         self.assertIn("animate-hero", text)
+        script = (ROOT / "script.js").read_text(encoding="utf-8")
+        self.assertIn("Concept examples", script)
+        self.assertIn("Independent API + compatibility tests", script)
         css = (ROOT / "styles.css").read_text(encoding="utf-8") + (ROOT / "release.css").read_text(encoding="utf-8")
         self.assertIn("prefers-reduced-motion", css)
         self.assertNotIn("LIVE_MODEL", text)
