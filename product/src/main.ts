@@ -111,19 +111,19 @@ function enginePanel() {
   } else if (engineState.status === 'unavailable') {
     body = `<p class="component-note">Local engine not running. Start it with <code>python scripts/investigation_engine.py</code>, then check again. Nothing is faked while it is offline: no run can be started from here.</p><button class="pill-btn" data-action="engine-check">${icon('refresh-cw')} Check again</button>`;
   } else if (!rec) {
-    body = `<p>Runs the real deterministic pipeline against a disposable local Vikunja reference: probe → compile → public conformance. No model is called.</p><button class="pill-btn primary" data-action="engine-run">${icon('play')} Run live investigation (NON_AI)</button>`;
+    body = `<p>Choose a real local workflow against the disposable Vikunja reference. The default is a zero-model-call reconstruction. The opt-in Muse path calls the real Meta API once, proposes a bounded route repair, and retains it only if fresh public conformance improves.</p><div class="ux-action-row"><button class="pill-btn primary" data-action="engine-run">${icon('play')} Run deterministic baseline</button><button class="pill-btn" data-action="engine-run-muse">${icon('sparkles')} Attempt Muse repair (max $0.50)</button></div><p class="component-note">Muse requires a local operator key and explicit enablement. Provider failures or rejected model edits are reported, not scored as success. No held-out tests enter model context.</p>`;
   } else if (rec.status === 'running') {
     body = `<p>Running… stage: <strong>${esc(rec.stage)}</strong> (investigation ${esc(rec.id)}). This page refreshes itself; do not start another run meanwhile.</p>`;
   } else if (rec.status === 'failed') {
     body = `<p class="component-note">Investigation ${esc(rec.id)} failed: ${esc(rec.error || 'unknown error')}</p><button class="pill-btn" data-action="engine-run">${icon('play')} Run again</button>`;
   } else {
-    body = `<p>Investigation <strong>${esc(rec.id)}</strong> completed against a fresh local reference.</p>
-      <div class="artifact"><div class="artifact-top"><div class="artifact-symbol">${icon('file-text')}</div><div><strong>Vikunja v2.4.0 · EVIDENCE_COMPILED (NON_AI)</strong><small>${rec.observations ? `${rec.observations.count} observations · ${esc(rec.observations.sha256.slice(0, 19))}…` : ''}</small></div><span class="artifact-tag">completed</span></div>
+    body = `<p>Investigation <strong>${esc(rec.id)}</strong> completed against a fresh local reference.</p>${rec.model?.mode === 'muse-public-repair' ? `<p class="component-note"><strong>Meta Muse:</strong> ${esc(rec.model.outcome || 'not verified')} · ${rec.model.called ? 'genuine call attempted' : 'no model call'} · ${rec.model.accepted ? 'model change admitted by public gate' : 'compiler candidate retained'}.${rec.model.gate_attempted ? ` Gate: ${rec.model.gate_baseline?.passed}/${rec.model.gate_baseline?.total} → ${rec.model.gate_attempted.passed}/${rec.model.gate_attempted.total} (public-only).` : ''}</p>` : ''}
+      <div class="artifact"><div class="artifact-top"><div class="artifact-symbol">${icon('file-text')}</div><div><strong>Vikunja v2.4.0 · ${esc(rec.compiled?.label || 'EVIDENCE_COMPILED (NON_AI)')}</strong><small>${rec.observations ? `${rec.observations.count} observations · ${esc(rec.observations.sha256.slice(0, 19))}…` : ''}</small></div><span class="artifact-tag">completed</span></div>
       <div class="artifact-bottom">Compiled routes: ${rec.compiled ? rec.compiled.routes.map(esc).join(' · ') : '—'}<br>Public-ladder conformance: <strong>${rec.public_conformance ? `${rec.public_conformance.passed}/${rec.public_conformance.total}` : '—'}</strong> (stateful public probe sequence; not the held-out score). Held-out: not run by the engine — evaluator-side only.</div></div>
       <div class="response-actions"><a class="pill-btn" href="${engineCandidateUrl(rec.id)}" download>${icon('download')} Download candidate spec</a><button class="pill-btn" data-action="engine-run">${icon('play')} Run again</button></div>`;
   }
   const heading = engineState.status === 'hosted' ? 'Local engine — not running on this hosted page' : engineState.status === 'unavailable' ? 'Local engine — not running' : engineState.status === 'unknown' ? 'Local engine — checking…' : 'Live local engine';
-  return `<section class="single-page engine-panel"><h2>${heading}</h2><p class="component-note">Local operator service on this machine only (127.0.0.1:8765). It executes the deterministic NON_AI pipeline for real; recorded model results stay evidence in the Lab and are never generated here.</p>${body}</section>`;
+  return `<section class="single-page engine-panel"><h2>${heading}</h2><p class="component-note">Local-only execution (127.0.0.1:8765). Deterministic NON_AI reconstruction is the default; an explicitly approved Muse public-repair run may call the genuine Meta Model API once. The hosted backend remains separate.</p>${body}</section>`;
 }
 async function refreshEngine() {
   // Never probe a visitor's localhost from a hosted page: the engine
@@ -139,9 +139,9 @@ async function refreshEngine() {
   render();
 }
 function engineTargetLabel(target: string): string { return target === 'filebrowser-v1' ? 'File Browser v2.63.23' : target === 'gitea-v1' ? 'Gitea 1.22.6' : 'Vikunja v2.4.0'; }
-async function runEngineInvestigation(target = 'vikunja-v1') {
+async function runEngineInvestigation(target = 'vikunja-v1', modelMode: 'none' | 'muse-repair' = 'none') {
   try {
-    engineState.record = await createEngineInvestigation(target);
+    engineState.record = await createEngineInvestigation(target, modelMode);
     render();
     window.clearInterval(engineState.poll);
     engineState.poll = window.setInterval(async () => {
@@ -152,9 +152,8 @@ async function runEngineInvestigation(target = 'vikunja-v1') {
         render();
       } catch { window.clearInterval(engineState.poll); }
     }, 2000);
-  } catch {
-    engineState.status = 'unavailable';
-    render();
+  } catch (error) {
+    setError(error);
   }
 }
 
@@ -449,7 +448,7 @@ function compareView() {
     : `<p>No completed investigation is selected yet.</p><p>Run one real job from the workspace first: choose a supported target, confirm its scope, start the run, then return here.</p><button class="pill-btn primary" type="button" data-action="library">${icon('folder-open')} Open Your work</button>`;
   let right: string;
   if (rec?.status === 'completed' && rec.public_conformance) {
-    right = `<p>${esc(engineTargetLabel(rec.target))} rebuild finished. Public-ladder conformance: <strong>${rec.public_conformance.passed}/${rec.public_conformance.total}</strong></p>${rec.public_conformance.divergences.length ? `<p>Divergences:</p><ul class="scope-list">${rec.public_conformance.divergences.map(d => `<li>${esc(d)}</li>`).join('')}</ul>` : '<p>No divergences on the public ladder.</p>'}<p>Compiled routes: ${rec.compiled ? rec.compiled.routes.map(esc).join(' \u00b7 ') : '-'}</p><div class="response-actions"><a class="pill-btn" href="${engineCandidateUrl(rec.id)}" download>${icon('download')} Download candidate spec</a><button class="pill-btn" type="button" data-action="engine-run">${icon('play')} Run again</button></div>`;
+    right = `<p>${esc(engineTargetLabel(rec.target))} rebuild finished. Public-ladder conformance: <strong>${rec.public_conformance.passed}/${rec.public_conformance.total}</strong></p>${rec.public_conformance.divergences.length ? `<p>Divergences:</p><ul class="scope-list">${rec.public_conformance.divergences.map(d => `<li>${esc(d)}</li>`).join('')}</ul>` : '<p>No divergences on the public ladder.</p>'}${rec.model?.mode === 'muse-public-repair' ? `<p><strong>Meta Muse stage:</strong> ${esc(rec.model.outcome || 'unverified')} · ${rec.model.called ? 'model called' : 'no call'} · ${rec.model.accepted ? 'public-gated change accepted' : 'compiler retained'}. No held-out tests used.</p>` : ''}<p>Compiled routes: ${rec.compiled ? rec.compiled.routes.map(esc).join(' \u00b7 ') : '-'}</p><div class="response-actions"><a class="pill-btn" href="${engineCandidateUrl(rec.id)}" download>${icon('download')} Download candidate spec</a><button class="pill-btn" type="button" data-action="engine-run">${icon('play')} Run again</button></div>`;
   } else if (rec?.status === 'running') {
     right = `<p>Rebuilding ${esc(engineTargetLabel(rec.target))} now \u00b7 stage: <strong>${esc(rec.stage)}</strong>. This panel updates itself.</p>`;
   } else if (rec?.status === 'failed') {
@@ -461,7 +460,7 @@ function compareView() {
   } else if (engineState.status === 'unknown') {
     right = `<p>Checking for the local rebuild engine\u2026</p><button class="pill-btn" type="button" data-action="engine-check">${icon('refresh-cw')} Check again</button>`;
   } else {
-    right = `<p>Choose a supported reference. The local engine probes, compiles, and evaluates it. These are real NON_AI controls; no model is called.</p><div class="ux-action-row"><button class="pill-btn primary" type="button" data-action="engine-run">${icon('play')} Rebuild Vikunja</button><button class="pill-btn" type="button" data-action="engine-run-fb">${icon('play')} Rebuild File Browser</button><button class="pill-btn" type="button" data-action="engine-run-gitea">${icon('play')} Rebuild Gitea</button></div>`;
+    right = `<p>Choose a supported reference. The local engine probes, compiles, and evaluates it. These are real NON_AI controls; no model is called.</p><div class="ux-action-row"><button class="pill-btn primary" type="button" data-action="engine-run">${icon('play')} Rebuild Vikunja</button><button class="pill-btn" type="button" data-action="engine-run-fb">${icon('play')} Rebuild File Browser</button><button class="pill-btn" type="button" data-action="engine-run-gitea">${icon('play')} Rebuild Gitea</button><button class="pill-btn" type="button" data-action="engine-run-muse">${icon('sparkles')} Muse-assisted Vikunja (max $0.50)</button></div>`;
   }
   return `<section class="single-page ux-page" aria-label="Experiments">
     <p class="ux-page-label">LIVE LOCAL CONTROLS</p><h1>Experiments</h1>
@@ -732,6 +731,8 @@ document.addEventListener('click', event => {
   else if (action === 'refresh') void refresh();
   else if (action === 'engine-check') void refreshEngine();
   else if (action === 'engine-run') void runEngineInvestigation();
+  else if (action === 'engine-run-muse') showDialog('Authorize one genuine Muse call', '<p>Second Source will probe your local Vikunja reference, compile a NON_AI candidate, and may send PUBLIC, sanitized behavioral evidence to Meta Muse Spark 1.3 for one bounded route repair. The call is limited to an estimated $0.50, with no automatic retries. Only a strictly improved public replay admits an edit; held-out tests remain isolated.</p><p>This requires the operator to configure MODEL_API_KEY and SECOND_SOURCE_ALLOW_MUSE_REPAIR=true locally.</p><div class="dialog-actions"><button class="pill-btn" data-action="close-dialog">Cancel</button><button class="pill-btn primary" data-action="engine-confirm-muse">Authorize Muse call</button></div>', 'muse-consent');
+  else if (action === 'engine-confirm-muse') { closeDialog(); void runEngineInvestigation('vikunja-v1', 'muse-repair'); }
   else if (action === 'engine-run-fb') void runEngineInvestigation('filebrowser-v1');
   else if (action === 'engine-run-gitea') void runEngineInvestigation('gitea-v1');
   else if (action === 'candidate') showCandidate();
