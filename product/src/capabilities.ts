@@ -37,7 +37,7 @@ export function resolveBrowserMotionCapability(observationsPresent: boolean): Ta
   }
   return {
     id: 'browser-motion', title: 'Browser / UI / motion', status: 'unavailable',
-    detail: `A bounded browser slice is recorded at ${BROWSER_SLICE_OBSERVATIONS_PATH} (spring-drag trajectory fit; held-out verdict in browser-slice/verdict.json), but it is not wired as a live in-app adapter — browser / motion execution remains unavailable here. Recorded observations can be reviewed as evidence only.`,
+    detail: `A bounded browser slice is recorded at ${BROWSER_SLICE_OBSERVATIONS_PATH} (spring-drag trajectory fit; held-out verdict in browser-slice/verdict.json), but it is not wired as a live in-app adapter — browser / motion execution remains unavailable here. Working options now: Observe a link for pages, scripts/vision_scan.py --motion for physics; recorded observations remain evidence only.`,
     action: null,
   };
 }

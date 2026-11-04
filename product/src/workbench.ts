@@ -17,10 +17,10 @@ export interface SourceOption {
 }
 
 export const SOURCE_OPTIONS: readonly SourceOption[] = [
-  { id: 'url', label: 'Live URL', mode: 'black-box', modeLabel: 'Black-box (behavior only)', detail: 'Observe a running service over HTTP without its source.', available: false, unavailableReason: 'Unavailable — the connected service only advertises owned fixtures; arbitrary URLs are never visited or authorized from this app.' },
-  { id: 'github', label: 'GitHub repository', mode: 'source-assisted', modeLabel: 'Source-assisted (source available)', detail: 'Reconstruct with repository source available as reference material.', available: false, unavailableReason: 'Unavailable — no repository import or source-assisted run is wired to the backend yet.' },
-  { id: 'upload', label: 'Upload files', mode: 'source-assisted', modeLabel: 'Source-assisted (source available)', detail: 'Upload an archive or files to study.', available: false, unavailableReason: 'Unavailable — attachments and uploads are not supported by the backend yet.' },
-  { id: 'docs', label: 'Documentation / spec', mode: 'source-assisted', modeLabel: 'Source-assisted (docs available)', detail: 'Start from API docs or a written specification.', available: false, unavailableReason: 'Unavailable — document ingestion is not wired to the backend yet.' },
+  { id: 'url', label: 'Live URL', mode: 'black-box', modeLabel: 'Black-box (behavior only)', detail: 'Observe a public page over HTTP without its source. Use Observe a link in Experiments or the link button in the composer.', available: true, unavailableReason: null },
+  { id: 'github', label: 'GitHub repository', mode: 'source-assisted', modeLabel: 'Source-assisted (source available)', detail: 'Reconstruct with repository source available as reference material.', available: false, unavailableReason: 'No repository import here yet — paste a raw file link into Observe a link, or paste code into chat for Muse to read.' },
+  { id: 'upload', label: 'Upload files', mode: 'source-assisted', modeLabel: 'Source-assisted (source available)', detail: 'Upload an archive or files to study.', available: false, unavailableReason: 'No file uploads here — paste the file contents into chat and Muse will read them.' },
+  { id: 'docs', label: 'Documentation / spec', mode: 'source-assisted', modeLabel: 'Source-assisted (docs available)', detail: 'Start from API docs or a written specification.', available: false, unavailableReason: 'No document import here — paste the spec text into chat and Muse will work from it.' },
   { id: 'local', label: 'Local fixture', mode: 'black-box', modeLabel: 'Black-box (behavior only)', detail: 'Owned fixtures on this machine, observed by behavior only.', available: true, unavailableReason: null },
   { id: 'recorded', label: 'Recorded evidence', mode: 'black-box', modeLabel: 'Black-box (recorded behavior)', detail: 'Previously recorded investigations and benchmark evidence.', available: true, unavailableReason: null },
 ];
@@ -61,6 +61,9 @@ export const SCOREBOARD: readonly ScoreTarget[] = [
     { method: 'Our software alone (compiler)', provenance: 'NON_AI', frozen: '7/7', extended: 'n/a', status: 'Scored' } ] },
   { target: 'Gitea 1.22.6', rows: [
     { method: 'Our software alone (compiler)', provenance: 'NON_AI', frozen: '6/6 public cases', extended: 'sealed, not run', status: 'Scored - first contact 2/6, generic fix measured after' } ] },
+  { target: 'PocketBase v0.28.4', rows: [
+    { method: 'AI + our software (Muse repair)', provenance: 'REAL_MODEL', frozen: 'unmeasured', extended: 'unmeasured', status: 'Live in engine; run to measure' },
+    { method: 'Our software alone (compiler)', provenance: 'NON_AI', frozen: 'unmeasured', extended: 'unmeasured', status: 'Live in engine; run to measure' } ] },
 ];
 
 export const OUTCOME_LABEL: Record<RunOutcome, string> = {

@@ -5,8 +5,8 @@ import { SCOREBOARD, SOURCE_OPTIONS, buildManifest, buildReadme, buildReportHtml
 test('source catalog labels assisted vs black-box and gates availability', () => {
   const url = SOURCE_OPTIONS.find(s => s.id === 'url')!;
   assert.equal(url.mode, 'black-box');
-  assert.equal(url.available, false);
-  assert.ok(url.unavailableReason?.length);
+  assert.equal(url.available, true);
+  assert.equal(url.unavailableReason, null);
   const github = SOURCE_OPTIONS.find(s => s.id === 'github')!;
   assert.equal(github.mode, 'source-assisted');
   assert.equal(SOURCE_OPTIONS.find(s => s.id === 'local')!.available, true);
