@@ -48,7 +48,7 @@ import vikunja_model_experiment as mx  # noqa: E402
 
 from fastapi import FastAPI, Header, HTTPException, Request  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
-from fastapi.responses import JSONResponse  # noqa: E402
+from fastapi.responses import JSONResponse, PlainTextResponse  # noqa: E402
 from pydantic import BaseModel, ConfigDict, Field  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -698,6 +698,61 @@ def candidate(inv_id: str):
         raise HTTPException(409, "candidate not available")
     return JSONResponse(spec, headers={
         "Content-Disposition": f'attachment; filename="{inv_id}-candidate.json"'})
+
+
+@app.get("/engine/v1/investigations/{inv_id}/report")
+def investigation_report(inv_id: str):
+    """Download a per-run report built from actual persisted measurements."""
+    if not _valid_inv_id(inv_id):
+        raise HTTPException(404, "investigation not found")
+    path = RUNS / f"{inv_id}.json"
+    if not path.is_file():
+        raise HTTPException(409, "report not available until the run finishes")
+    rec = json.loads(path.read_text(encoding="utf-8"))
+    if rec.get("status") != "completed":
+        raise HTTPException(409, "run did not complete; no report claimed")
+    public = rec.get("public_conformance") or {}
+    obs = rec.get("observations") or {}
+    artifact = rec.get("candidate_artifact") or {}
+    model = rec.get("model") or {}
+    lines = [
+        "# Second Source | Local investigation report",
+        "",
+        f"- Investigation: \`{inv_id}\`",
+        f"- Target: \`{rec.get('target', 'unknown')}\`",
+        f"- Candidate origin: \`{artifact.get('provenance', 'not recorded')}\`",
+        f"- Public observations: {obs.get('count', 'unavailable')}",
+        f"- Observation SHA-256: \`{obs.get('sha256', 'unavailable')}\`",
+        f"- Candidate SHA-256: \`{artifact.get('sha256', 'unavailable')}\`",
+        "",
+        "## Public reference-versus-candidate conformance",
+        f"- Matched: **{public.get('passed', 'unavailable')} / {public.get('total', 'unavailable')}**",
+        "- Evaluation: public action ladder; NOT held-out behavioral equivalence.",
+        "",
+        "## Meta model stage",
+        f"- Model invoked: **{'yes' if model.get('called') else 'no'}**",
+        f"- Stage: \`{model.get('mode', 'none')}\`",
+        f"- Outcome: \`{model.get('outcome', 'NON_AI only')}\`",
+        f"- Model change admitted: **{'yes' if model.get('accepted') else 'no'}**",
+        "- A model edit is admitted only if it improves fresh public conformance.",
+        "- Held-out cases were never sent to the model or run by this local engine.",
+        "",
+        "## Public mismatches",
+    ]
+    divergences = public.get("divergences") or []
+    lines.extend(f"- {str(item).replace(chr(10), ' ')[:300]}" for item in divergences[:30])
+    if not divergences:
+        lines.append("- None in the measured public action ladder.")
+    lines += [
+        "",
+        "## Limits",
+        "- Reproduces only the explicitly supported, locally authorized target scope.",
+        "- The candidate is a declarative behavior specification, not recovered source code.",
+        "- No general equivalence, cloud execution, or unseen-target compatibility is claimed.",
+    ]
+    return PlainTextResponse("\n".join(lines) + "\n", media_type="text/markdown",
+                             headers={"Content-Disposition":
+                                      f'attachment; filename="{inv_id}-report.md"'})
 
 
 def main() -> int:
