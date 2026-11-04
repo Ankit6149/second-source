@@ -60,6 +60,28 @@ also available inside a live investigation via opt-in `muse-repair`
   full professional-target pipeline; raw UI test videos per target are
   in `demos/software-tests/`.
 
+## 4A. New Muse local development — pending independent acceptance (5 Nov)
+
+Muse reports a separate local branch, `feat/ai-first-ui-20261105`, with
+the browser connected to `http://127.0.0.1:8770` (a separate engine
+from the older process on port 8765). **This branch has not appeared on
+the remote GitHub repository during this review**, so treat these as
+owner-reported local changes, **not merged submission results**.
+
+| New component | Reported local observation | Verify before promoting to judge evidence |
+|---|---|---|
+| PocketBase target | `pocketbase-v1` supported in a local probe → compile → score run; **8/12**, divergences visible | Push exact commit; inspect the public 12-case ladder and reference reset; repeat locally; keep this distinct from prior **9/9** baseline on another ladder |
+| Muse-first frontend | AI-assisted rebuild presented as primary when local model gateway is configured, deterministic fallback retained; per-run model receipt ID, token count and cost shown | DOM acceptance; actual provider receipt; admission verdict; signed-out/keyless experience |
+| Server-owned API key | Visitor need not provide or see server `MODEL_API_KEY` | Browser bundle and logs contain no key; check authentication, owner-scoped budgets, throttling and concurrent abuse before public deployment |
+| $15 AI budget | Muse reports local session ledger and HTTP 402 when a session cap is reached; $0 spent at last message | Prove persistence, atomicity, reset behavior, multi-session ceilings and provider spend accounting; **session ceiling ≠ global project credit ceiling** |
+| SAM / vision frontend | Muse reports frontend support for a SAM-compatible screenshot segmentation service, backed by `scripts/vision_scan.py`; motion summaries remain local | Verify actual upload/scan UI, server-only external access, image consent/redaction, segmentation output, browser rendering and fail states with an approved screenshot |
+
+**Important for the video:** this report does not claim SAM or the new
+PocketBase AI-first experience is production-ready. If the local branch
+is pushed and passes exact-head tests, record it as a fresh, explicitly
+attributed segment. A real model invocation is valuable to demonstrate,
+but the verifier must still determine whether it improved a candidate.
+
 ## 5. Honest limitations
 
 - Supported targets are pinned and bounded (Vikunja, File Browser,
