@@ -35,10 +35,10 @@ def build(include_app=False):
     destination.mkdir(exist_ok=True)
     for name in ("index.html", "landing.css", "research.css"):
         shutil.copyfile(ROOT / name, destination / name)
-    for route in ("reports", "experiments"):
+    for route in ("reports", "experiments", "challenge"):
         (destination / route).mkdir(exist_ok=True)
         shutil.copyfile(ROOT / route / "index.html", destination / route / "index.html")
-    for route, target in (("evidence", "/reports/"), ("challenge", "/reports/"),
+    for route, target in (("evidence", "/reports/"),
                           ("lab", "/experiments/"), ("console", "/app/"), ("handoff", "/app/")):
         (destination / route).mkdir(exist_ok=True)
         (destination / route / "index.html").write_text(

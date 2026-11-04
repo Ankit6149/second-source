@@ -46,16 +46,6 @@
       "permanent": true
     },
     {
-      "source": "/challenge",
-      "destination": "/reports/",
-      "permanent": true
-    },
-    {
-      "source": "/challenge/",
-      "destination": "/reports/",
-      "permanent": true
-    },
-    {
       "source": "/lab",
       "destination": "/experiments/",
       "permanent": true
