@@ -45,11 +45,11 @@ export async function checkEngine(): Promise<boolean> {
   }
 }
 
-export async function createEngineInvestigation(): Promise<EngineInvestigation> {
+export async function createEngineInvestigation(target = 'vikunja-v1'): Promise<EngineInvestigation> {
   const resp = await engineFetch('/engine/v1/investigations', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ target: 'vikunja-v1' }),
+    body: JSON.stringify({ target }),
   }, 10000);
   if (!resp.ok) throw new Error(`engine returned ${resp.status}`);
   return await resp.json() as EngineInvestigation;

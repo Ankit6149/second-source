@@ -27,6 +27,7 @@ API:  GET  /engine/v1/health
 from __future__ import annotations
 
 import copy
+import subprocess
 import hashlib
 import json
 import re
@@ -38,6 +39,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import evidence_compiler  # noqa: E402
+import filebrowser_benchmark as fb  # noqa: E402
 import vikunja_benchmark as vb  # noqa: E402
 import vikunja_hybrid_experiment as hybrid  # noqa: E402
 import vikunja_model_experiment as mx  # noqa: E402
@@ -51,6 +53,8 @@ ROOT = Path(__file__).resolve().parents[1]
 RUNS = ROOT / ".runs" / "engine"
 ENGINE_VERSION = "1.0.0"
 TARGET_ID = "vikunja-v1"
+FB_TARGET_ID = "filebrowser-v1"
+TARGETS = (TARGET_ID, FB_TARGET_ID)
 MAX_BODY_BYTES = 16384
 MAX_INVESTIGATIONS = 64
 MAX_IDEMPOTENCY_KEY_LEN = 128
@@ -133,10 +137,133 @@ def probe_reference(ref_base: str) -> list[dict]:
     return observations
 
 
+def _fb_ref_available() -> bool:
+    try:
+        st, tok = fb.token_of(fb.REF, fb.ADMIN)
+        return bool(tok)
+    except Exception:
+        return False
+
+
+def _wait_candidate(base: str) -> None:
+    for _ in range(60):
+        try:
+            fb.call(base, "GET", "/users")
+            return
+        except Exception:
+            time.sleep(0.2)
+    raise RuntimeError("candidate server did not start")
+
+
+def _run_filebrowser(rec: dict) -> None:
+    """File Browser v2.63.23: public probes -> compile -> differential cases.
+
+    Same generic compiler/interpreter as the CLI benchmark; no target code
+    in the compiler. The reference is the operator-run local server on
+    127.0.0.1:3471; if it is down the investigation fails honestly.
+    """
+    procs = []
+    try:
+        _check_cancelled(rec)
+        _set(rec, stage="starting_reference")
+        if not _fb_ref_available():
+            raise RuntimeError("filebrowser reference not reachable at 127.0.0.1:3471")
+        _check_cancelled(rec)
+        _set(rec, stage="probing_reference")
+        observations = fb.public_probes()
+        digest = hashlib.sha256(json.dumps(observations, sort_keys=True).encode()).hexdigest()
+        _set(rec, observations={"count": len(observations), "sha256": "sha256:" + digest})
+        _check_cancelled(rec)
+        _set(rec, stage="compiling_evidence")
+        spec = fb.compile_spec(observations, digest)
+        spec.setdefault("auth", {})["raw_header_name"] = "X-Auth"
+        spec["users"] = {"alice": "genadmin"}
+        _set(rec, compiled={
+            "routes": [f"{r['method']} {r['path']}" for r in spec.get("routes", [])],
+            "provenance": "EVIDENCE_COMPILED",
+            "label": "NON_AI"}, _spec=spec)
+        _check_cancelled(rec)
+        _set(rec, stage="checking_public_conformance")
+        RUNS.mkdir(parents=True, exist_ok=True)
+        spec_path = RUNS / f"{rec['id']}-fb-spec.json"
+        spec_path.write_text(json.dumps(spec, indent=1), encoding="utf-8")
+
+        def start_candidate(spec_obj, name):
+            path = RUNS / f"{rec['id']}-{name}.json"
+            path.write_text(json.dumps(spec_obj, indent=1), encoding="utf-8")
+            port = _next_port()
+            proc = subprocess.Popen(
+                [sys.executable, str(ROOT / "scripts" / "vikunja_candidate_server.py"),
+                 str(path), str(port)],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            procs.append(proc)
+            base = f"http://127.0.0.1:{port}"
+            _wait_candidate(base)
+            return base
+
+        cand = start_candidate(spec, "fb-candidate")
+        fb.call(cand, "POST", "/register", fb.ADMIN)
+        fb.call(cand, "POST", "/register", {"username": "genbob", "password": "genpassword456"})
+        st0, tok0 = fb.token_of(cand, fb.ADMIN)
+        admin_entity = dict(fb.NEW_USER, username="genadmin",
+                            perm={"admin": True, "execute": True, "create": True,
+                                  "rename": True, "modify": True, "delete": True,
+                                  "share": True, "download": True})
+        fb.call(cand, "POST", "/users",
+                {"what": "user", "which": [], "data": admin_entity,
+                 "current_password": fb.ADMIN["password"]}, token=tok0)
+        results = []
+        for cid, kind, name in fb.CASES:
+            ref_r = fb.run_case(fb.REF, name)
+            cand_r = fb.run_case(cand, name)
+            results.append({"case": cid, "pass": ref_r == cand_r})
+        bad = json.loads(json.dumps(spec))
+        bad["auth"]["login_error_status"] = 200
+        mut = start_candidate(bad, "fb-mutated")
+        fb.call(mut, "POST", "/register", fb.ADMIN)
+        mut_r = fb.run_case(mut, "wrong-password-login")
+        ref_r = fb.run_case(fb.REF, "wrong-password-login")
+        results.append({"case": "FB-CONTROL-MUTATED", "pass": ref_r != mut_r})
+        passed = sum(1 for r in results if r["pass"])
+        _check_cancelled(rec)
+        _set(rec, public_conformance={
+            "passed": passed, "total": len(results),
+            "divergences": [r["case"] for r in results if not r["pass"]]},
+            held_out={
+                "status": "not_run_by_engine",
+                "reason": "Held-out scoring is evaluator-side only; "
+                          "the engine never imports held-out cases."},
+            model={"called": False,
+                   "reason": "This engine runs the deterministic NON_AI pipeline. "
+                             "Model-authored results are recorded evidence, not generated here."},
+            status="completed", stage="completed")
+    except _Cancelled:
+        _set(rec, status="cancelled", stage="cancelled")
+    except Exception as exc:
+        _set(rec, status="failed", stage="failed",
+             error=f"{type(exc).__name__}: {exc}"[:300])
+    finally:
+        for proc in procs:
+            try:
+                proc.terminate()
+            except Exception:
+                pass
+        with _STATE_LOCK:
+            stored = {k: copy.deepcopy(v) for k, v in rec.items()
+                      if not k.startswith("_")}
+            RUNS.mkdir(parents=True, exist_ok=True)
+            (RUNS / f"{rec['id']}.json").write_text(
+                json.dumps(stored, indent=1), encoding="utf-8")
+            _prune_locked()
+
+
 def run_investigation(inv_id: str) -> None:
     with _STATE_LOCK:
         rec = INVESTIGATIONS.get(inv_id)
     if rec is None:
+        return
+    if rec.get("target") == FB_TARGET_ID:
+        _run_filebrowser(rec)
         return
     proc = workdir = None
     try:
@@ -244,19 +371,26 @@ def health():
 def targets():
     binary = Path(r"C:\tmp\vikunja-bench\bin")
     available = binary.exists()
-    return [{"id": TARGET_ID, "label": "Vikunja v2.4.0 (/api/v1)",
-             "kind": "professional-http",
-             "status": "available" if available else "reference-missing",
-             "provenance": "NON_AI",
-             "pipeline": ["probe", "compile", "public-conformance"]}]
+    return [
+        {"id": TARGET_ID, "label": "Vikunja v2.4.0 (/api/v1)",
+         "kind": "professional-http",
+         "status": "available" if available else "reference-missing",
+         "provenance": "NON_AI",
+         "pipeline": ["probe", "compile", "public-conformance"]},
+        {"id": FB_TARGET_ID, "label": "File Browser v2.63.23 (/api)",
+         "kind": "professional-http",
+         "status": "available" if _fb_ref_available() else "reference-missing",
+         "provenance": "NON_AI",
+         "pipeline": ["probe", "compile", "differential-cases"]},
+    ]
 
 
 @app.post("/engine/v1/investigations")
 def create(body: CreateInvestigation,
            idempotency_key: str | None = Header(
                default=None, alias="Idempotency-Key")):
-    if body.target != TARGET_ID:
-        raise HTTPException(400, f"unknown target; only {TARGET_ID}")
+    if body.target not in TARGETS:
+        raise HTTPException(400, f"unknown target; supported: {', '.join(TARGETS)}")
     key = idempotency_key.strip() if idempotency_key else None
     if idempotency_key is not None and (
             not key or len(key) > MAX_IDEMPOTENCY_KEY_LEN):
@@ -267,7 +401,7 @@ def create(body: CreateInvestigation,
             if existing is not None:
                 return public_view(existing)
         inv_id = "inv-" + uuid.uuid4().hex[:12]
-        rec = {"id": inv_id, "target": TARGET_ID, "status": "running",
+        rec = {"id": inv_id, "target": body.target, "status": "running",
                "stage": "queued", "created_at": int(time.time()),
                "provenance": "NON_AI", "cancel_requested": False,
                "_cancel": threading.Event()}

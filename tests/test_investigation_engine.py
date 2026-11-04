@@ -25,6 +25,10 @@ def test_health_and_targets_contract():
     targets = client.get("/engine/v1/targets").json()
     assert targets[0]["id"] == "vikunja-v1"
     assert targets[0]["provenance"] == "NON_AI"
+    by_id = {t["id"]: t for t in targets}
+    assert by_id["filebrowser-v1"]["label"].startswith("File Browser v2.63.23")
+    assert by_id["filebrowser-v1"]["provenance"] == "NON_AI"
+    assert by_id["filebrowser-v1"]["pipeline"] == ["probe", "compile", "differential-cases"]
 
 
 def test_unknown_target_rejected():

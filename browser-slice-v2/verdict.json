@@ -40,15 +40,15 @@
     "pass": true
   },
   "trajectory": {
-    "rmseCandidatePx": 1.741,
+    "rmseCandidatePx": 2.505,
     "thresholdPx": 8,
     "settlingRefS": 0.567,
-    "settlingCandS": 0.433,
-    "settlingDiffS": 0.134,
+    "settlingCandS": 0.45,
+    "settlingDiffS": 0.117,
     "pass": true
   },
   "overshoot": {
-    "refMinX": -18.51,
+    "refMinX": -18.58,
     "candMinX": -15.97,
     "refPresent": true,
     "candPresent": true,
@@ -98,7 +98,7 @@
   "adversarial": {
     "thresholdRmsePx": 8,
     "wrongSpring": {
-      "rmsePx": 44.349,
+      "rmsePx": 43.297,
       "candMinX": 0,
       "detectedDifferent": true
     },
