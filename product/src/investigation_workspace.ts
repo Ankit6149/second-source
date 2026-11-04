@@ -67,7 +67,7 @@ export function renderInvestigationWorkspace(view: WorkspaceView): string {
         <h1>${escapeHtml(item.title)}</h1>
         <p>${escapeHtml(target?.label || 'Supported target not connected')} · ${escapeHtml(item.status)} scope · Candidate origin: <strong>NON_AI fixture</strong></p>
       </div>
-      <div class="work-status"><span class="work-status-label">ACTUAL BACKEND STATE</span><strong>${escapeHtml(run?.status || 'Not started')}</strong><span class="artifact-tag">${escapeHtml(run?.status || 'not started')}</span><small>${escapeHtml(OUTCOME_LABEL[outcome])}</small></div>
+      <div class="work-status"><span class="work-status-label">ACTUAL BACKEND STATE</span><strong>${run ? `Run: ${escapeHtml(run.status)}` : 'Not started'}</strong><span class="artifact-tag">${escapeHtml(run?.status || 'not started')}</span><small>${escapeHtml(OUTCOME_LABEL[outcome])}</small></div>
     </div>
     <div class="work-context" aria-label="Investigation boundaries">
       <div><span>Approved scope digest</span><code title="${escapeHtml(item.scope_digest)}">${escapeHtml(item.scope_digest.slice(0,20))}…</code></div>
