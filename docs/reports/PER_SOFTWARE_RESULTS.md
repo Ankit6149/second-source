@@ -91,3 +91,16 @@ denominator and difficulty; rows are never averaged.
   match created-entity names into templates, and compile error-boundary
   routes. Recorded here so the improvement, when made, is measurable
   against this baseline.
+- **Follow-up (same day, measured against the baseline above):** the fix
+  was implemented generically in the compiler/candidate - path segments
+  matching observed usernames or created-entity names are templated
+  (`/repos/{owner}/{id}`), name-addressed entities resolve by their
+  observed `name`/`title`, the collection for owner-templated item routes
+  is the nearest literal segment, non-dict list exemplars no longer crash
+  the candidate, and the authenticated `GET /user` surface is probed so
+  the unauthenticated boundary compiles. Re-run through the engine
+  (investigation `inv-5e0d2dd1925d`): **6/6** on the same 6 public
+  differential cases. This is public conformance, NON_AI. The sealed
+  Gitea held-out set was **not** run, so no held-out improvement is
+  claimed. Regression check after the fix: File Browser 7/7, Vikunja
+  public ladder unchanged at 11/19.

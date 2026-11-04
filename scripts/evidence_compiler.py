@@ -88,12 +88,39 @@ def compile_spec(observations, source_hash=""):
     """observations: [{action, as, request, status, body}] in probe order."""
     routes_obs: dict[tuple, list] = {}
     pid = tid = None
+    # Dynamic path segments observed across real systems: actor usernames
+    # (e.g. /repos/<owner>/...) and names of entities created during the
+    # probes (e.g. /repos/<owner>/<repo-name>). Generalize both so a
+    # candidate built from one example works for siblings it creates.
+    _usernames, _entity_names = set(), set()
+    for _o in observations:
+        _b = _o.get("body")
+        if isinstance(_b, dict):
+            if isinstance(_b.get("username"), str) and \
+                    str(_o.get("action", "")).rstrip("/").endswith("/user"):
+                _usernames.add(_b["username"])
+            _req = _o.get("request") or {}
+            if isinstance(_b.get("name"), str) and _req.get("name") == _b["name"]:
+                _entity_names.add(_b["name"])
+
+    def _generalize(path):
+        segs = _segments(path)
+        out = []
+        for seg in segs:
+            if seg in _usernames:
+                out.append("{owner}")
+            elif seg in _entity_names:
+                out.append("{id}")
+            else:
+                out.append(seg)
+        return "/" + "/".join(out)
+
     for obs in observations:
         action = str(obs.get("action", ""))
         if " " not in action:
             continue
         method, path = action.split(" ", 1)
-        path = path.split("?")[0]
+        path = _generalize(path.split("?")[0])
         routes_obs.setdefault((method, path), []).append(obs)
         body = obs.get("body")
         if isinstance(body, dict) and "id" in body:
@@ -143,6 +170,11 @@ def compile_spec(observations, source_hash=""):
         segs = _segments(path)
         is_item = bool(segs and segs[-1].startswith("{"))
         collection = segs[-2] if is_item else (segs[-1] if segs else "")
+        if is_item and collection.startswith("{"):
+            # Name/owner-templated parents (e.g. /repos/{owner}/{id}):
+            # the collection is the nearest literal segment before them.
+            collection = next((s for s in reversed(segs[:-1])
+                               if not s.startswith("{")), collection)
         if segs and segs[-1] == "users" and len(segs) >= 3 and segs[-2].startswith("{"):
             collection = segs[-3]  # share route acts on the parent entity
         root_id = first["body"].get("id") if isinstance(first.get("body"), dict) else None
