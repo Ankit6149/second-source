@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Architecture — Second Source</title>
+<title>Architecture — From an authorized link to a verified rebuild | Second Source</title>
 <link rel="stylesheet" href="../research.css">
 <style>
 .flow{display:flex;gap:0;flex-wrap:wrap;align-items:stretch;margin:18px 0}
@@ -51,6 +51,63 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 10px;
 .canvas-tools button{width:36px;height:36px;border-radius:9px;border:1px solid #b7c9bb;background:#fff;font-size:17px;cursor:pointer}
 .canvas-hint{font-size:12.5px;color:#5a7263}
 @media (prefers-reduced-motion:reduce){.drawer,.scrim{transition:none}}
+
+/* Product architecture explorer — two honest views of one system */
+.arch-board{border:1px solid #bfd5c4;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 13px 44px rgba(22,65,36,.09);margin:22px 0 12px}
+.arch-bar{padding:18px 20px;border-bottom:1px solid #dce8de;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+.arch-bar h2{font-size:20px;letter-spacing:-.035em;margin:0}.arch-bar p{font-size:13px;color:#57705f;margin:3px 0}
+.arch-switch{display:flex;gap:4px;border-radius:10px;padding:4px;background:#edf3ec}
+.arch-switch button{border:0;border-radius:7px;padding:9px 13px;background:transparent;color:#496651;cursor:pointer;font-size:12.5px;font-weight:750}
+.arch-switch button[aria-pressed=true]{background:#fff;box-shadow:0 1px 6px #b5c8b8;color:#1e5633}
+.arch-layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;min-height:570px}
+#arch-canvas{height:570px;position:relative;background-color:#f6faf5;background-image:radial-gradient(#cbdcca 1px,transparent 1px);background-size:21px 21px;overflow:hidden;cursor:grab;touch-action:none}
+#arch-canvas.dragging{cursor:grabbing}
+.arch-label{position:absolute;left:17px;top:14px;z-index:4;padding:7px 10px;border:1px solid #cadacb;background:#ffffffea;border-radius:999px;color:#46724f;letter-spacing:.06em;font-size:10px;font-weight:800;pointer-events:none}
+#arch-world{position:absolute;left:0;top:0;width:1840px;height:590px;transform-origin:0 0}
+.arch-lane{position:absolute;top:35px;height:500px;border:1px dashed #cadecc;border-radius:14px;background:#eff6ef66;pointer-events:none}
+.arch-lane strong{display:block;font-size:10px;letter-spacing:.13em;color:#718e76;margin:15px}
+#arch-edges{position:absolute;left:0;top:0;width:1840px;height:590px;pointer-events:none;overflow:visible}
+#arch-edges path{stroke:#6b9f79;fill:none;stroke-width:2.5}
+#arch-edges path.future{stroke:#91a5b8;stroke-dasharray:7 6}
+#arch-edges path.model{stroke:#be9441}
+#arch-canvas .node{position:absolute;display:block;width:190px;height:105px;background:#fff;border:1.5px solid #bdd3c4;border-radius:14px;box-shadow:0 4px 12px #0e361812;cursor:pointer;padding:12px;text-align:left;transition:box-shadow .15s,background .15s;outline:0}
+#arch-canvas .node:hover,#arch-canvas .node[aria-current=true]{box-shadow:0 7px 22px #0a3f1b24;outline:2px solid #6eb887;outline-offset:1px}
+#arch-canvas .node.model{background:#fff9e8;border-color:#dcbb75}
+#arch-canvas .node.proof{background:#f4f8ff;border-color:#a6c1dd}
+#arch-canvas .node.future{background:#fbfcff;border-color:#b6c7d2}
+#arch-canvas .node .glyph{display:inline-flex;width:27px;height:27px;align-items:center;justify-content:center;background:#e4f3e7;border-radius:8px;color:#267247;font-size:14px;font-weight:800}
+#arch-canvas .node.model .glyph{background:#f6e7c6;color:#8c661d}
+#arch-canvas .node.proof .glyph{background:#e1edfb;color:#35699c}
+#arch-canvas .node .stage{float:right;color:#5e8270;font-size:9px;text-transform:uppercase;font-weight:800;letter-spacing:.05em;padding-top:8px}
+#arch-canvas .node.future .stage{color:#758798}
+#arch-canvas .node b{color:#193a29;display:block;font-size:14px;letter-spacing:-.02em;margin:7px 0 2px}
+#arch-canvas .node small{font-size:11px;display:block;color:#687c6e;line-height:1.32}
+#arch-canvas .node .port{position:absolute;top:53%;width:9px;height:9px;border-radius:50%;border:2px solid #709d79;background:#fff;transform:translateY(-50%)}
+#arch-canvas .node .port.in{left:-6px}#arch-canvas .node .port.out{right:-6px}
+.arch-controls{position:absolute;z-index:5;left:14px;bottom:14px;display:flex;gap:4px;background:#fff;border:1px solid #cedfce;border-radius:11px;padding:5px;box-shadow:0 4px 15px #173e2812}
+.arch-controls button{border:0;border-radius:7px;background:transparent;min-width:35px;height:33px;cursor:pointer;color:#295d3a;font-weight:700}
+.arch-controls button:hover{background:#ecf4ed}
+.arch-help{position:absolute;z-index:3;right:14px;bottom:15px;font-size:11px;color:#597663;background:#ffffffde;padding:7px 10px;border:1px solid #dfebdf;border-radius:8px}
+.arch-inspector{padding:24px;border-left:1px solid #dce8de;background:#fff;overflow-y:auto}
+.arch-inspector .eyebrow{font-size:10px;letter-spacing:.12em;font-weight:800;color:#447b56;text-transform:uppercase}
+.arch-inspector h3{font-size:23px;letter-spacing:-.04em;line-height:1.2;margin:11px 0}
+.arch-inspector p{font-size:13px;color:#52685a;line-height:1.68}
+.arch-inspector h4{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#2b7545;margin:18px 0 4px}
+.arch-inspector .note{font-size:11px;background:#f0f6f0;border:1px solid #dfebdf;color:#4c6d57;border-radius:9px;padding:9px 10px}
+.arch-footer{padding:12px 20px;border-top:1px solid #dce8df;display:flex;flex-wrap:wrap;gap:17px;font-size:11px;color:#5a715f}
+.arch-footer span{display:flex;align-items:center;gap:7px}
+.arch-footer i{display:inline-block;width:10px;height:10px;border-radius:3px;background:#e7f2e7;border:1px solid #a9c9ae}
+.arch-footer i.model{background:#fff0cd;border-color:#dbbc7d}
+.arch-footer i.future{background:#eaf0f8;border-color:#b0c3d2}
+.arch-vision{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin:22px 0 24px}
+.arch-vision article{border:1px solid #d2dfd5;background:#fff;border-radius:13px;padding:17px}
+.arch-vision h3{font-size:17px;margin:3px 0 9px}
+.arch-vision p{font-size:13px;color:#566c5c;line-height:1.6;margin:0}
+.arch-vision a{display:inline-block;color:#236940;font-size:12px;margin-top:9px;font-weight:700}
+@media(max-width:1100px){.arch-layout{grid-template-columns:1fr}.arch-inspector{border-left:0;border-top:1px solid #dce8de}.arch-board{margin-top:17px}}
+@media(max-width:680px){.arch-vision{grid-template-columns:1fr}.arch-help{display:none}#arch-canvas{height:480px}.arch-inspector{padding:19px}}
+@media(prefers-reduced-motion:reduce){#arch-canvas .node{transition:none}}
+
 </style></head>
 <body>
 <a class="skip" href="#main">Skip to architecture</a>
@@ -58,14 +115,13 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 10px;
 <div class="top"><a class="logo" href="../" aria-label="Second Source home">Second Source</a>
 <nav aria-label="Primary"><a href="../">Product</a><a href="../reports/">Reports</a><a href="../experiments/">Experiments</a><a href="./" aria-current="page">Architecture</a><a href="../app/">App</a></nav>
 <a class="open" href="../app/">Open app ↗</a></div>
-<h1>How Second Source works</h1>
-<p>An interactive map of the whole system: the problem it solves, how a target
-becomes a verified reconstruction, where Meta Muse does real work, what is
-measured, what is honestly limited, and where it goes next. Click each stage.</p>
+<h1>From an authorized link to a verified rebuild.</h1>
+<p>Second Source is designed to take software you have permission to study, discover how it behaves, build an independent implementation, and prove which behaviors match. Explore the <strong>working foundation</strong> or switch to the <strong>full end-goal architecture</strong> below. Each node explains its role.</p>
+<p><a class="open" href="../app/">Explore the working app ↗</a> <a href="../reports/">See verified evidence ↗</a></p>
 </header>
 <main id="main">
 
-<h2>How Second Source works — the flow</h2><p style="max-width:70ch">Follow the arrows. Every stage is real: the reference is only ever probed in public, the candidate never sees held-out tests, and Muse may only enter through a gate that rejects anything which makes the score worse. Click any stage for the full story.</p>
+<h2>Reconstruction is more than an investigation</h2><p style="max-width:80ch">The destination is <strong>authorized software in → independent working software out</strong>. The local engine has proven the behavioral reconstruction and verification foundation on supported targets. Arbitrary URL ingestion, general source-code projects and full cloud execution are planned—not yet shipped. Select a stage or explore the connected architecture below.</p>
 <div class="flow" role="group" aria-label="Pipeline stages">
 <button class="step" data-step="0" aria-pressed="true"><strong>1 · Observe</strong><span>probe the real API</span></button>
 <button class="step" data-step="1" aria-pressed="false"><strong>2 · Compile</strong><span>evidence → spec</span></button>
@@ -78,25 +134,25 @@ measured, what is honestly limited, and where it goes next. Click each stage.</p
 <div class="panel" id="panel" aria-live="polite"></div>
 
 
-<h2 style="margin-top:34px">The system as a node canvas</h2>
-<p style="max-width:72ch">Like a workflow builder: each node is a real component, each wire a real data flow. Drag to pan, zoom with the controls, click any node for why it is built this way, what it solves, and the small things.</p>
-<div class="canvas-wrap" id="canvasWrap">
- <div class="canvas-world" id="canvasWorld">
-  <svg id="wires" viewBox="0 0 1240 540" aria-hidden="true"></svg>
-  <button class="node" style="left:16px;top:216px" data-node="target" data-why data-title="Authorized target" data-built="Nothing runs without an authorized, pinned reference: Vikunja v2.4.0, File Browser v2.63.23, Gitea 1.22.6, owned fixtures, or a bounded browser-motion target." data-solves="Scope is explicit before any probing, so results are reproducible and the authorization boundary is part of the evidence." data-small="Reference versions are pinned and recorded with every result||Local references run on loopback only; the engine never reaches arbitrary URLs"><b>Authorized target</b><span>pinned reference, declared scope</span><i class="port out"></i></button>
-  <button class="node" style="left:216px;top:216px" data-node="observe" data-why data-title="Observe — public probes" data-built="A public action ladder runs against the real reference: creates, reads, updates, shares, filters, and deliberate errors (empty titles, missing parents, wrong actors)." data-solves="Every later claim traces to an observed request/response pair, not to documentation or guessing." data-small="Actors matter: the same call is replayed as owner, other user, and anonymous||Error responses are evidence too (400/403/404 contracts are compiled, not discarded)"><b>Observe</b><span>public probes on the real system</span><i class="port in"></i><i class="port out"></i></button>
-  <button class="node" style="left:416px;top:216px" data-node="compile" data-why data-title="Evidence compiler — NON_AI" data-built="Observations compile into a behavioral spec: routes, templates from the richest response, validation and error contracts, access inference, and default-entity seeding derived from the earliest list response." data-solves="Observed facts become immutable. The candidate cannot hallucinate constants, and Muse cannot overwrite what was seen." data-small="Ids, timestamps and people are tokenized (entity, ts, creator) so candidates generalize||Seed defaults = list items no observed request created — the rule Muse first identified"><b>Evidence compiler</b><span>observations → behavioral spec</span><i class="port in"></i><i class="port out"></i></button>
-  <button class="node model" style="left:416px;top:36px" data-node="muse" data-why data-title="Meta Muse Spark 1.3 — gated reasoning" data-built="Muse enters only here: route-level reviews and bounded repairs over public evidence, inside owner-approved packets with call and dollar caps. Every call writes a durable receipt before anything else happens." data-solves="AI judgment is applied exactly where observation runs out — and is measurable, including when the gate rejects it (whole-route rewrites: 11 → 2, rejected; seed rule: 18/19 → 19/19, accepted)." data-small="Max 1 call / $0.50 in the live product path (opt-in muse-repair)||Provider failures are recorded unscored, never as zeros"><b>Muse · gated</b><span>hypotheses + bounded repairs</span><i class="port out"></i></button>
-  <button class="node" style="left:616px;top:216px" data-node="candidate" data-why data-title="Candidate interpreter" data-built="One generic interpreter executes any compiled spec: entity stores, sharing, filters, validation, error bodies, seeded defaults. No per-app code exists in it." data-solves="The same machinery rebuilt Vikunja, File Browser and Gitea — which is what makes cross-target scores meaningful." data-small="Seeded entities link their nested views to the new id, token paths included||Full-replace updates, encoded filter expressions, richest-exemplar shapes"><b>Candidate</b><span>generic interpreter runs the spec</span><i class="port in"></i><i class="port out"></i></button>
-  <button class="node judge" style="left:816px;top:356px" data-node="evaluator" data-why data-title="Independent evaluator" data-built="Frozen and held-out suites live here and only here. They are hashed, sealed before model work, and never imported by the engine or shown to Muse." data-solves="The system cannot grade its own homework or tune itself to hidden tests; improvements and regressions come from the same measurement." data-small="Identical sequences on both sides, canonicalized outputs (ids/clocks normalized)||A mutated control candidate must fail — and does"><b>Independent evaluator</b><span>frozen + held-out, sealed</span><i class="port out"></i></button>
-  <button class="node" style="left:816px;top:216px" data-node="verify" data-why data-title="Verify — differential scoring" data-built="The identical public ladder replays on a FRESH reference and on the candidate; canonicalized outputs compare field-by-field. Freshness matters: replaying on the probed reference fabricates divergences (found and fixed)." data-solves="Divergences are real behavioral differences with the exact field shown — the input to honest repair and honest reporting." data-small="Baseline is always measured on a fresh reference||Divergence actions are listed, never rounded into a percentage alone"><b>Verify</b><span>fresh reference vs candidate</span><i class="port in"></i><i class="port out"></i></button>
-  <button class="node" style="left:1016px;top:216px" data-node="deliver" data-why data-title="Deliver — code + report" data-built="The user receives the runnable candidate, the evidence ledger, verification results, and a per-investigation technical report separating OBSERVED, INFERRED, UNKNOWN and CONTRADICTED claims." data-solves="The output is auditable software, not a demo: every number in the report links back to a recorded run." data-small="ZIP exports are hash-checked and tested to run||Reports keep denominators and provenance labels on every score"><b>Deliver</b><span>candidate ZIP + research report</span><i class="port in"></i></button>
-  <button class="node" style="left:1016px;top:36px" data-node="product" data-why data-title="Hosted product" data-built="Vercel frontend, Render API, Supabase Auth/Postgres/Storage. Sign-in (Google) is a modal; investigations, persisted events, verification and exports run through the real backend. Bounded NON_AI execution is enabled and labeled." data-solves="Judges and users run the journey without a terminal, and every number they see traces to a recorded run." data-small="Degraded boot: live 200 / ready 503 instead of hanging when misconfigured||Service keys never reach the browser; DB role is schema-scoped"><b>Hosted product</b><span>app · API · auth · storage</span><i class="port out"></i></button>
+<div class="arch-board" id="arch-explorer">
+<div class="arch-bar"><div><h2>Explore the architecture</h2><p id="arch-summary">The working core: authorized references, observed behavior, a candidate and independent verification.</p></div>
+<div class="arch-switch" role="group" aria-label="Architecture mode"><button type="button" id="arch-present" aria-pressed="true">Working core</button><button type="button" id="arch-future" aria-pressed="false">End-goal product</button></div></div>
+<div class="arch-layout">
+ <div id="arch-canvas" tabindex="0" aria-label="Interactive software architecture. Click a node for details. Drag the empty background to pan, and use the zoom controls." >
+  <div class="arch-label" id="arch-mode-label">IMPLEMENTED · SUPPORTED TARGETS</div>
+  <div id="arch-world"><svg id="arch-edges" viewBox="0 0 1840 590" aria-hidden="true"></svg><div id="arch-lanes"></div><div id="arch-nodes"></div></div>
+  <div class="arch-controls" role="group" aria-label="Diagram navigation"><button type="button" id="arch-zoom-out" aria-label="Zoom out">−</button><button type="button" id="arch-fit" aria-label="Fit canvas">Fit</button><button type="button" id="arch-zoom-in" aria-label="Zoom in">+</button><button type="button" id="arch-pan-left" aria-label="Pan left">←</button><button type="button" id="arch-pan-right" aria-label="Pan right">→</button></div>
+  <div class="arch-help">Drag to pan · Select any node · Fit to reset</div>
  </div>
- <div class="canvas-tools"><button id="zoomOut" aria-label="Zoom out">−</button><button id="zoomReset" aria-label="Reset view">⌂</button><button id="zoomIn" aria-label="Zoom in">+</button></div>
+ <aside id="arch-inspector" class="arch-inspector" aria-live="polite" aria-label="Selected architecture node details"></aside>
 </div>
-<p class="canvas-hint">Dashed amber wire = gated Muse path. Blue node = sealed evaluator (scores only, never feeds back). Drag to pan · buttons zoom · click a node for details.</p>
-
+<div class="arch-footer"><span><i></i> Measured on supported scope</span><span><i class="model"></i> Meta Muse API · bounded model calls</span><span><i class="future"></i> Planned product capability</span><span>Dashed lines = planned connections</span></div>
+</div>
+<div class="arch-vision" aria-label="How this product expands">
+<article><h3>01 · The working foundation</h3><p>Observe real supported software, compile its behavior, invoke Meta Muse for bounded reasoning when authorized, run an independent candidate, verify and export evidence. The hosted app supports a narrower bounded NON_AI run; the full reference engine runs locally.</p><a href="../app/">Explore the workspace ↗</a></article>
+<article><h3>02 · Source code and visual flows</h3><p>Extend the behavioral engine to authorized links, repositories, uploaded programs, browser interactions and normal generated source-code projects. Secure sandbox builds and separate UI/behavior comparisons remain engineering work.</p><a href="#arch-explorer" id="arch-show-future">Explore planned nodes ↗</a></article>
+<article><h3>03 · Authorized link in, software out</h3><p>The destination: a guided but increasingly autonomous process that learns a reference, generates an independent replacement, tests it, repairs it under budgets and delivers usable code, tests and a migration handoff—without claiming universal equivalence.</p><a href="../reports/">View proof from today's core ↗</a></article>
+</div>
 <h2 style="margin-top:30px">What problem this solves</h2>
 <div class="grid">
 <div class="box"><h3>The problem</h3><p>Software outlives its documentation and
@@ -152,34 +208,25 @@ events and reports work end-to-end today.</p></div>
 <div class="box" data-why data-title="Owned HTTP workflow — the product-flow case" data-built="An owned HTTP target driven through the actual product UI: a user starts the job, watches real execution, and receives verification (30/30) plus artifacts. It exists to prove the user-to-code-and-report journey, not just the evaluator." data-solves="It is the one flow a judge can repeat end-to-end in the app today (locally), from instruction to downloadable result, with persisted events at every stage." data-small="Events are real execution records with sequence numbers, not simulated progress||The exported bundle is checked to run, not just to download||Hosted execution remains off rather than mock-labeled; this flow runs against the local backend/engine"><h3>Owned HTTP task workflow (30 cases)</h3><p>It is the one flow a judge can repeat end-to-end in the app today (locally), from instruction to downloadable result, with persisted events at every stage.</p><p style="color:#2e6f4e;font-size:13px">Click for why, what it solves, and the small things →</p></div>
 <div class="box" data-why data-title="Browser / motion — the physics case" data-built="APIs are not the whole vision. This slice captures a real drag interaction: pointer trajectories, spring overshoot and settle, and layout geometry, then rebuilds the interaction and compares it on a fresh held-out evaluation." data-solves="It proves the evidence model extends past REST: trajectory RMSE 2.505px against an 8px threshold and 0px layout difference, with the same observed/inferred discipline." data-small="Reference and candidate are recorded separately at readable pace (see the demo videos)||Overshoot and settle behavior are scored, not just final position||No general Canvas/WebGL claim is made — this slice is the measured boundary of current support"><h3>Browser motion — spring physics slice</h3><p>It proves the evidence model extends past REST: trajectory RMSE 2.505px against an 8px threshold and 0px layout difference, with the same observed/inferred discipline.</p><p style="color:#2e6f4e;font-size:13px">Click for why, what it solves, and the small things →</p></div>
 </div>
-<h2 style="margin-top:30px">Honest limits</h2>
+<h2 style="margin-top:30px">What works today—and what does not yet</h2>
 <div class="grid">
-<div class="box"><h3>Hosted execution is off</h3><p>On the hosted backend you can
-sign in, create, authorize and track investigations; the execution step returns
-an explicit “disabled” rather than a simulated run. We refused to ship a mock
-labeled as real. The genuine engine runs locally today.</p></div>
-<div class="box"><h3>Muse hasn't beaten the notebook — yet</h3><p>Where behavior
-was already observed, transcription wins. Muse's current tool surface (route
-contracts) can't express state/interpreter changes; its rejected edits are
-recorded, not hidden.</p></div>
-<div class="box"><h3>One divergence left</h3><p>Vikunja's reference lists per-user
-default projects (Inbox) that the candidate does not seed. Documented, not
-papered over.</p></div>
+<div class="box"><h3>Hosted bounded execution</h3><p>The website supports authenticated investigations and a bounded NON_AI backend worker. The full professional-target reconstruction engine is run locally, not in the hosted backend. The website is not a general URL-to-code generator today.</p></div>
+<div class="box"><h3>Meta Model API is connected locally</h3><p>The server-side <code>MODEL_API_KEY</code> is used by the real Meta Muse Spark 1.3 gateway. The opt-in local <code>muse-repair</code> stage has a one-call, $0.50 estimated ceiling and independent public improvement gate; experiment outcomes retain their separate model provenance.</p></div>
+<div class="box"><h3>Bounded, independently measured results</h3><p>Vikunja's fresh-reference public ladder reached <strong>19/19</strong> after the seed-rule discovery and generic compiler correction. File Browser reached <strong>7/7</strong> and Gitea <strong>6/6</strong> on supported public cases. These are subsystem measurements, not complete general-purpose clones.</p></div>
 </div>
-
-<h2>Future goals</h2>
+<h2>What the full autonomous system will add</h2>
 <div class="grid">
-<div class="box"><h3>1 · Muse in the loop, live</h3><p>One orchestrated workflow —
+<div class="box"><h3>1 · Model-directed discovery and repair</h3><p>One orchestrated workflow —
 hypothesis → experiment selection → synthesis → verification → repair — running
 inside the product, with Muse proposing candidate <em>code</em> changes, not
 just route contracts.</p></div>
-<div class="box"><h3>2 · Hosted real execution</h3><p>A secure worker that runs the
+<div class="box"><h3>2 · Secure hosted reconstruction</h3><p>A secure worker that runs the
 engine for reachable targets, so the full journey completes on the website for
 any visitor, with the same honest labels.</p></div>
-<div class="box"><h3>3 · Spec → real source code</h3><p>Generate ordinary, runnable
+<div class="box"><h3>3 · Verified standalone source code</h3><p>Generate ordinary, runnable
 source files from the behavioral specification, verified by the same evaluator —
 “AI builds the software,” with proof it matches.</p></div>
-<div class="box"><h3>4 · More surfaces</h3><p>Deeper browser/UI reconstruction
+<div class="box"><h3>4 · Web, CLI, APIs and richer UI fidelity</h3><p>Deeper browser/UI reconstruction
 (DOM, layout, interaction state) beyond the current motion slice, each with its
 own independent fidelity measures.</p></div>
 </div>
@@ -251,21 +298,78 @@ addEventListener('keydown',e=>{ if(e.key==='Escape') closeCard(); });
 
 <script>
 (() => {
-  const world = document.getElementById('canvasWorld'), wrap = document.getElementById('canvasWrap'), svg = document.getElementById('wires');
-  const pos = id => { const n = world.querySelector(`[data-node="${id}"]`); return {x: n.offsetLeft, y: n.offsetTop, w: n.offsetWidth, h: n.offsetHeight}; };
-  const wire = (a, b, cls) => { const A = pos(a), B = pos(b); const x1 = A.x + A.w, y1 = A.y + A.h / 2, x2 = B.x, y2 = B.y + B.h / 2; const dx = Math.max(40, (x2 - x1) / 2); const path = document.createElementNS('http://www.w3.org/2000/svg', 'path'); path.setAttribute('d', `M${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`); if (cls) path.setAttribute('class', cls); svg.appendChild(path); };
-  const drop = (a, b, cls) => { const A = pos(a), B = pos(b); const x1 = A.x + A.w / 2, y1 = A.y + A.h, x2 = B.x + B.w / 2, y2 = B.y; const path = document.createElementNS('http://www.w3.org/2000/svg', 'path'); path.setAttribute('d', `M${x1} ${y1} C ${x1} ${y1 + 60}, ${x2} ${y2 - 60}, ${x2} ${y2}`); if (cls) path.setAttribute('class', cls); svg.appendChild(path); };
-  wire('target', 'observe'); wire('observe', 'compile'); wire('compile', 'candidate'); wire('candidate', 'verify'); wire('verify', 'deliver');
-  drop('muse', 'candidate', 'gate'); drop('evaluator', 'verify'); drop('product', 'deliver');
-  let scale = .82, tx = 8, ty = 8, drag = null, moved = false;
-  const apply = () => world.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`; apply();
-  document.getElementById('zoomIn').onclick = () => { scale = Math.min(1.5, scale + .12); apply(); };
-  document.getElementById('zoomOut').onclick = () => { scale = Math.max(.45, scale - .12); apply(); };
-  document.getElementById('zoomReset').onclick = () => { scale = .82; tx = 8; ty = 8; apply(); };
-  wrap.addEventListener('pointerdown', e => { drag = {x: e.clientX - tx, y: e.clientY - ty}; moved = false; });
-  wrap.addEventListener('pointermove', e => { if (!drag) return; tx = e.clientX - drag.x; ty = e.clientY - drag.y; moved = true; apply(); });
-  addEventListener('pointerup', () => setTimeout(() => drag = null, 0));
-  world.querySelectorAll('.node').forEach(n => n.addEventListener('click', e => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true));
+"use strict";
+const D={
+ target:["Authorized reference","Pinned API / CLI / owned fixture","↗","Working","normal","Choose a permitted reference and a bounded test scope. Today: pinned professional API targets and owned fixtures.","A supported, authorized reference.","A documented target and scope.","Future: arbitrary authorized URLs, repositories and CLI binaries through reviewed connectors."],
+ observe:["Behavior explorer","Real requests · actors · state","◎","Working","normal","Observe how the reference responds to actual requests, state changes, validation mistakes and permission boundaries. No reference source or sealed tests enter discovery.","Reference plus query budget.","Versioned trace and observed behavioral facts.","Add browser interactions, screenshots and richer state transitions."],
+ compiler:["Evidence compiler","Observations → executable spec","≡","Working","normal","Turn observations into route contracts, response templates and stateful rules. Deterministically derived facts stay protected even when the model proposes changes.","Public reference evidence.","Behavioral specification with traceable provenance.","General intermediate representations for more frameworks and languages."],
+ muse:["Meta Muse Spark 1.3","Server-side Meta Model API","✦","Genuine API","model","A real Meta Model API integration proposes hypotheses and bounded public route repairs. Local muse-repair requires explicit consent and MODEL_API_KEY on the server, caps its estimated spend at $0.50/one call, and only admits strictly improved measured output. Recorded Muse experiments also identified Vikunja's default-project rule.","Sanitized public observations and divergences.","Hypotheses and proposed edits; never an automatically accepted claim.","Broader active experiment planning and generated source-code repair loops."],
+ candidate:["Candidate runtime","Independent behavioral implementation","⌘","Working","normal","An independent generic interpreter executes the evidence-compiled specification with its own routes, state and users. It is a runnable behavioral candidate, not recovered original source.","Compiled behavioral specification.","Candidate API and exportable spec.","Ordinary generated project files and deeper UI implementations."],
+ verify:["Independent verifier","Fresh reference ↔ candidate","✓","Working","proof","Replay the same public cases against a fresh reference and independent candidate. Normalize identifiers and clocks, then compare actual outputs. Frozen evaluators remain separate from model prompts.","Reference and candidate outputs.","Pass counts, differences and a reproducible report.","Sealed multimodal/visual/behavioral evaluations."],
+ deliver:["Candidate + evidence","Report · downloadable artifact","↓","Working","proof","Export the chosen candidate specification and measured investigation report. The hosted bounded worker offers its own export formats; these do not imply full local-target execution in cloud.","Measured candidate and evidence.","Candidate, reports and applicable artifacts.","Source repository, migration tests and deployment handoff."],
+ hosted:["Hosted workspace","Auth · queue · bounded worker","▣","Bounded","normal","The web app provides authentication, persisted investigations, events and a bounded NON_AI worker. It does not reach local software or run an arbitrary link-to-source workflow. The full professional-target engine is local.","Signed-in user and supported scope.","Hosted run state and bounded exports.","Secure hosted jobs with target connectors and isolated workers."],
+ link:["Paste your software link","Authorized URL · repo · CLI","↗","Planned","future","This is the end-goal input experience: give Second Source a program you own or have permission to investigate, not a full specification you wrote manually.","Owned/authorized URL, repository, CLI, or docs.","Reference identity and desired result.","General connector support is not shipped today."],
+ scope:["Permission and safety gate","Ownership · budgets · resets","◇","Planned","future","Before any action, confirm access, allowed probes, data redaction, resource budgets and reset/replay guarantees.","Reference and operator approval.","Safe enforceable investigation policy.","Granular permission scopes and human checkpoints."],
+ browser:["Browser / API observer","DOM · interactions · network","◫","Planned","future","Explore click paths, forms, accessible DOM, state and screenshots; follow network interactions within permission limits. Behavior and visuals must be measured separately.","Approved running software.","Observed UI + API behavior and event timelines.","Browser sidecar and guarded multimodal capture."],
+ planner:["Muse experiment agent","Choose what to test next","✦","Planned","model","The intended agent compares hypotheses, selects discriminating experiments, gathers new evidence and keeps working until the allowed budget or completeness boundary is reached.","Known facts and unresolved behavioral questions.","Targeted new probes and revised hypotheses.","Beyond today's bounded route review and opt-in one-call repair."],
+ synth:["Source-code generator","Project files · tests · structure","{ }","Planned","future","Convert learned behavior into a separate normal source repository, with APIs, state, UI and tests as needed. The current implementation is predominantly an executable behavioral specification.","Verified behavioral specification.","Independent source files, ready to build.","Multiple frameworks and richer app generation."],
+ sandbox:["Isolated execution","Build · test · repair","▤","Planned","future","Build and run generated code in a disposable environment without reference source, private keys or sealed tests. Report compiler/build failures as failures.","Generated source and isolated environment.","A testable, sandboxed candidate.","Cloud and local sandbox backend with kill switch."],
+ score:["Multi-layer verification","Behavior · UI · state","✓","Planned","proof","Check functional correctness, state transitions, interaction behavior and visual similarity independently. Never call a passing API score a complete software rebuild.","Reference and candidate experiments.","Conformance report and unresolved differences.","Continuous compatibility checks after delivery."],
+ publish:["Verified replacement","Usable code · migration suite","⇩","Planned","proof","Deliver ordinary source code, runnable packages, reproducible tests and an evidence-backed migration plan. Release still needs human approval.","Verified generated project.","Software users can review and adapt.","Long-term goal; no promise of universal compatibility."]
+};
+const modes={
+ current:{label:"WORKING CORE · SUPPORTED TARGETS",text:"Bounded references, real observation, an executable candidate, optional genuine Muse reasoning and independent verification.",limit:1450,lanes:[[10,425,"OBSERVE"],[451,445,"REASON + RECONSTRUCT"],[916,450,"VERIFY + DELIVER"]],nodes:[["target",28,240],["observe",246,240],["compiler",478,240],["muse",478,76],["candidate",707,240],["verify",937,240],["deliver",1164,240],["hosted",1164,65]],edges:[["target","observe"],["observe","compiler"],["compiler","candidate"],["muse","candidate","model"],["candidate","verify"],["verify","deliver"],["hosted","deliver"]],initial:"muse"},
+ future:{label:"FUTURE SYSTEM · PLANNED CAPABILITIES",text:"Authorized link in → autonomous discovery → source-code generation → isolated execution → multi-layer verification → usable replacement out.",limit:1840,lanes:[[10,410,"AUTHORIZED INPUT"],[434,451,"DISCOVERY + MUSE"],[900,420,"SYNTHESIS + RUN"],[1342,480,"PROOF + DELIVERY"]],nodes:[["link",24,230],["scope",242,230],["browser",470,75],["planner",470,340],["compiler",700,230],["synth",925,230],["sandbox",1152,230],["score",1380,230],["publish",1611,230]],edges:[["link","scope","future"],["scope","browser","future"],["scope","planner","model"],["browser","compiler","future"],["planner","compiler","model"],["compiler","synth","future"],["synth","sandbox","future"],["sandbox","score","future"],["score","publish","future"],["score","planner","model"]],initial:"link"}};
+const canvas=document.getElementById("arch-canvas"),world=document.getElementById("arch-world"),nodes=document.getElementById("arch-nodes"),edges=document.getElementById("arch-edges"),lanes=document.getElementById("arch-lanes"),info=document.getElementById("arch-inspector");
+let mode="current",scale=.72,tx=13,ty=32,drag=null;
+function text(v){return String(v).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+function apply(){world.style.transform="translate("+tx+"px,"+ty+"px) scale("+scale+")";}
+function fit(){scale=Math.min(.92,Math.max(.33,(canvas.clientWidth-55)/modes[mode].limit));tx=18;ty=Math.max(16,(canvas.clientHeight-550*scale)/2);apply();}
+function inspect(id){
+ const d=D[id];if(!d)return;
+ info.innerHTML='<div class="eyebrow">'+text(d[3])+' / '+(d[4]==="model"?"META MODEL":"COMPONENT")+'</div><h3>'+text(d[0])+'</h3><p>'+text(d[5])+'</p><h4>Receives</h4><p>'+text(d[6])+'</p><h4>Produces</h4><p>'+text(d[7])+'</p><h4>Where this goes</h4><p>'+text(d[8])+'</p><div class="note">'+(d[3]==="Planned"?"Roadmap capability — not available for arbitrary targets yet.":"Capabilities remain bounded to supported, authorized targets.")+'</div>';
+ nodes.querySelectorAll(".node").forEach(function(n){n.setAttribute("aria-current",String(n.dataset.id===id));});
+}
+function point(id){const v=modes[mode].nodes.find(function(n){return n[0]===id;});return v?{x:v[1],y:v[2]}:null;}
+function wire(a,b,type){
+ const A=point(a),B=point(b);if(!A||!B)return;
+ let x1=A.x+190,y1=A.y+52,x2=B.x,y2=B.y+52;
+ let d="";
+ if(x2<x1-75){x1=A.x+95;y1=A.y+105;x2=B.x+95;y2=B.y;d="M"+x1+" "+y1+" C"+x1+" "+(y1+140)+" "+x2+" "+(y2-140)+" "+x2+" "+y2;}
+ else{const dx=Math.max(40,Math.abs(x2-x1)*.42);d="M"+x1+" "+y1+" C"+(x1+dx)+" "+y1+" "+(x2-dx)+" "+y2+" "+x2+" "+y2;}
+ const p=document.createElementNS("http://www.w3.org/2000/svg","path");
+ p.setAttribute("d",d);p.setAttribute("class",type||"");p.setAttribute("marker-end","url(#"+(type==="model"?"ai-arrow":type==="future"?"future-arrow":"core-arrow")+")");
+ edges.appendChild(p);
+}
+function render(next){
+ mode=next;const m=modes[mode];
+ document.getElementById("arch-present").setAttribute("aria-pressed",String(mode==="current"));
+ document.getElementById("arch-future").setAttribute("aria-pressed",String(mode==="future"));
+ document.getElementById("arch-mode-label").textContent=m.label;
+ document.getElementById("arch-summary").textContent=m.text;
+ lanes.innerHTML=m.lanes.map(function(l){return '<div class="arch-lane" style="left:'+l[0]+'px;width:'+l[1]+'px"><strong>'+text(l[2])+'</strong></div>';}).join("");
+ nodes.innerHTML=m.nodes.map(function(n){const d=D[n[0]];return '<button class="node '+text(d[4])+'" type="button" data-id="'+text(n[0])+'" aria-current="false" style="left:'+n[1]+'px;top:'+n[2]+'px" aria-label="Inspect '+text(d[0])+'"><span class="glyph" aria-hidden="true">'+text(d[2])+'</span><span class="stage">'+text(d[3])+'</span><b>'+text(d[0])+'</b><small>'+text(d[1])+'</small><i class="port in" aria-hidden="true"></i><i class="port out" aria-hidden="true"></i></button>';}).join("");
+ edges.innerHTML='<defs><marker id="core-arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0 0 L7 3 L0 6z" fill="#6b9f79"/></marker><marker id="future-arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0 0 L7 3 L0 6z" fill="#91a5b8"/></marker><marker id="ai-arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0 0 L7 3 L0 6z" fill="#be9441"/></marker></defs>';
+ m.edges.forEach(function(e){wire(e[0],e[1],e[2]);});
+ fit();inspect(m.initial);
+}
+nodes.addEventListener("click",function(e){const node=e.target.closest(".node");if(node)inspect(node.dataset.id);});
+document.getElementById("arch-present").onclick=function(){render("current");};
+document.getElementById("arch-future").onclick=function(){render("future");};
+document.getElementById("arch-show-future").onclick=function(e){e.preventDefault();render("future");document.getElementById("arch-explorer").scrollIntoView({behavior:"auto",block:"start"});};
+document.getElementById("arch-zoom-out").onclick=function(){scale=Math.max(.30,scale-.12);apply();};
+document.getElementById("arch-zoom-in").onclick=function(){scale=Math.min(1.55,scale+.12);apply();};
+document.getElementById("arch-fit").onclick=fit;
+document.getElementById("arch-pan-left").onclick=function(){tx+=110;apply();};
+document.getElementById("arch-pan-right").onclick=function(){tx-=110;apply();};
+canvas.addEventListener("pointerdown",function(e){if(e.target.closest("button"))return;drag={x:e.clientX-tx,y:e.clientY-ty,id:e.pointerId};canvas.classList.add("dragging");canvas.setPointerCapture(e.pointerId);});
+canvas.addEventListener("pointermove",function(e){if(!drag||e.pointerId!==drag.id)return;tx=e.clientX-drag.x;ty=e.clientY-drag.y;apply();});
+function stop(e){if(drag&&e.pointerId===drag.id){drag=null;canvas.classList.remove("dragging");}}
+canvas.addEventListener("pointerup",stop);canvas.addEventListener("pointercancel",stop);
+canvas.addEventListener("wheel",function(e){if(!e.ctrlKey&&!e.metaKey)return;e.preventDefault();scale=Math.max(.30,Math.min(1.55,scale+(e.deltaY>0?-.08:.08)));apply();},{passive:false});
+canvas.addEventListener("keydown",function(e){if(e.target!==canvas)return;const moves={ArrowLeft:[80,0],ArrowRight:[-80,0],ArrowUp:[0,80],ArrowDown:[0,-80]};const m=moves[e.key];if(m){e.preventDefault();tx+=m[0];ty+=m[1];apply();}});
+addEventListener("resize",fit);
+render("current");
 })();
 </script>
 </body></html>
