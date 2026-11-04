@@ -3,7 +3,8 @@
   "framework": null,
   "git": {
     "deploymentEnabled": {
-      "integrate/product-completion-20261030": false
+      "integrate/product-completion-20261030": false,
+      "fix/judge-journey-and-architecture-20261105": false
     }
   },
   "buildCommand": "python3 web/build.py --with-app",

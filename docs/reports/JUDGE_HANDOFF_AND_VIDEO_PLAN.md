@@ -60,6 +60,26 @@ also available inside a live investigation via opt-in `muse-repair`
   full professional-target pipeline; raw UI test videos per target are
   in `demos/software-tests/`.
 
+## 4A. New Muse local development — pending independent acceptance (5 Nov)
+
+Muse has pushed source commit `fb26af6` on `feat/ai-first-ui-20261105`, with
+the browser connected to `http://127.0.0.1:8770` (a separate engine
+from the older process on port 8765). The branch now has a **draft review PR #81**. Source review confirms the PocketBase engine adapter, AI-first UI controls, assist/capture endpoints, server-side key integration, budget ledger and a provider-neutral SAM-compatible CLI adapter. The reported 8/12 PocketBase run and hosted end-to-end claims remain **unverified**, and the branch remains **unmerged**.
+
+| New component | Reported local observation | Verify before promoting to judge evidence |
+|---|---|---|
+| PocketBase target | `pocketbase-v1` supported in a local probe → compile → score run; **8/12**, divergences visible | Push exact commit; inspect the public 12-case ladder and reference reset; repeat locally; keep this distinct from prior **9/9** baseline on another ladder |
+| Muse-first frontend | AI-assisted rebuild presented as primary when local model gateway is configured, deterministic fallback retained; per-run model receipt ID, token count and cost shown | DOM acceptance; actual provider receipt; admission verdict; signed-out/keyless experience |
+| Server-owned API key | Visitor need not provide or see server `MODEL_API_KEY` | Browser bundle and logs contain no key; check authentication, owner-scoped budgets, throttling and concurrent abuse before public deployment |
+| $15 AI budget | Muse reports local session ledger and HTTP 402 when a session cap is reached; $0 spent at last message | Prove persistence, atomicity, reset behavior, multi-session ceilings and provider spend accounting; **session ceiling ≠ global project credit ceiling** |
+| SAM / vision extension | Reviewed `scripts/vision_scan.py` and `docs/VISION_SCAN.md`: an opt-in server-side adapter for any SAM-compatible segmentation endpoint, plus local NON_AI motion analysis; **no confirmed frontend segmentation display** | Configure a real SAM provider, verify actual image→regions output and browser UI before including a working SAM segment in the film |
+
+**Important for the video:** this report does not claim SAM or the new
+PocketBase AI-first experience is production-ready. PR #81 still has blocking hosted-release issues: the frontend refuses a remote engine in its current `refreshEngine`, unauthenticated engine endpoints use an untrusted forwarded-IP rate limit, and per-instance spending checks are not atomically reserved across concurrent model calls. If the local branch
+is pushed and passes exact-head tests, record it as a fresh, explicitly
+attributed segment. A real model invocation is valuable to demonstrate,
+but the verifier must still determine whether it improved a candidate.
+
 ## 5. Honest limitations
 
 - Supported targets are pinned and bounded (Vikunja, File Browser,

@@ -132,20 +132,58 @@ class PublicPreview(unittest.TestCase):
             self.assertNotIn("GEMMA_TEST", text)
             self.assertNotIn("Sealed evaluation cases:", text)
 
-    def test_landing_tabs_are_real_accessible_recorded_comparisons(self):
+    def test_landing_future_scenarios_are_interactive_and_honest(self):
         text = (ROOT / "index.html").read_text(encoding="utf-8")
         for case in ("0", "1", "2"):
             self.assertIn(f'data-case="{case}"', text)
-        self.assertIn('aria-label="Choose a simulated test case"', text)
+        self.assertIn('aria-label="Choose a future software reconstruction scenario"', text)
         self.assertIn("aria-pressed", text)
-        self.assertIn("RECORDED REFERENCE BEHAVIOR", text)
-        self.assertIn("No live execution here", text)
+        self.assertIn("END-GOAL CONCEPT", text)
+        self.assertIn("NO LIVE EXECUTION", text)
+        self.assertIn("What if software could", text)
+        self.assertIn("19/19", text)
+        self.assertIn("The full generalized pipeline is a roadmap", text)
         self.assertIn('id="motionToggle"', text)
         self.assertIn("animate-hero", text)
+        script = (ROOT / "script.js").read_text(encoding="utf-8")
+        self.assertIn("Concept examples", script)
+        self.assertIn("Independent API + compatibility tests", script)
         css = (ROOT / "styles.css").read_text(encoding="utf-8") + (ROOT / "release.css").read_text(encoding="utf-8")
         self.assertIn("prefers-reduced-motion", css)
         self.assertNotIn("LIVE_MODEL", text)
         self.assertNotIn("gemma", text.lower())
+
+    def test_architecture_shows_working_core_and_full_goal(self):
+        """Interactive architecture must not mix implemented and planned nodes."""
+        source = (ROOT / "architecture/index.html").read_text(encoding="utf-8")
+        for identifier in (
+            'id="arch-present"', 'id="arch-future"', 'id="arch-canvas"',
+            'id="arch-nodes"', 'id="arch-inspector"', 'id="arch-zoom-in"',
+            'id="arch-fit"',
+        ):
+            self.assertIn(identifier, source)
+        self.assertIn("From an authorized link to a verified rebuild", source)
+        self.assertIn("Meta Muse Spark 1.3", source)
+        self.assertIn("server-side Meta Model API", source)
+        self.assertIn("bounded NON_AI", source)
+        self.assertIn("localhost", source)
+        self.assertIn("not shipped", source.lower())
+        self.assertNotIn("Hosted execution is off", source)
+        self.assertNotIn("One divergence left", source)
+        scripts = re.findall(r"<script>\s*([\s\S]+?)</script>", source)
+        self.assertEqual(len(scripts), 1)
+        import shutil
+        import subprocess
+        node = shutil.which("node")
+        if node:
+            import tempfile
+            with tempfile.TemporaryDirectory() as temp:
+                filename = Path(temp) / "architecture.js"
+                filename.write_text(scripts[0], encoding="utf-8")
+                proc = subprocess.run(
+                    [node, "--check", str(filename)], text=True,
+                    capture_output=True, timeout=20)
+                self.assertEqual(proc.returncode, 0, proc.stderr)
 
     def test_vercel_publishes_only_built_site(self):
         config = json.loads((ROOT.parent / "vercel.json").read_text(encoding="utf-8"))
