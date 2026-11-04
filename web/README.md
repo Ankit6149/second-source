@@ -1,22 +1,26 @@
 # Second Source public research preview
 
-A static landing page and an actual local evidence viewer. The landing, interactive recorded black-box challenge at `/app/`, and
-viewer make no account, model, backend, database, telemetry or external font
-request. The challenge replays public owned-ledger probes and labels the genuine Meta
-candidate as recorded; no model execution or sealed case is exposed. The optional workspace can contact its configured identity and API
-services; it remains unconfigured by default.
-The landing experiment is illustrative; the console distinguishes historical
-operator-reported real attempts, NON_AI controls and unverified local imports.
-No control launches inference or authorizes spending.
+A static landing page, three public **recorded research surfaces** at
+`/challenge/` (60-second black-box prediction), `/evidence/` (measured ledger
+results) and `/lab/` (recorded comparisons), plus the optional product
+workspace at `/app/`.
 
+The three public research surfaces make **no live model calls** and expose no
+sealed evaluation cases, user accounts, or provider secrets. They separate
+REAL_MODEL historical findings from NON_AI deterministic controls. The hosted
+app also must not claim live model inference when no connected engine exists.
+All pages use self-hosted fonts.
+
+Legacy `/console/` and `/handoff/` redirect to `/app/`.
 From the repository root:
 
 ```console
 python web/preview.py
 ```
 
-Open `http://127.0.0.1:8766/`. The same server exposes the canonical
-`demo/index.html` at `/app/`; it does not expose the rest of the repository.
+Open `http://127.0.0.1:8766/`. Public research pages are available
+without the app build. To serve `/app/`, run the combined build command below.
+The server does not expose the rest of the repository.
 Press Ctrl+C to stop it. No dependencies beyond Python 3.11+ are needed.
 
 For an independently hosted static preview:
