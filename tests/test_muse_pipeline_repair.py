@@ -156,3 +156,8 @@ def test_local_candidate_remains_downloadable_after_restart(monkeypatch, tmp_pat
     assert saved.json()["candidate_artifact"]["size_bytes"] > 0
     candidate = client.get(f"/engine/v1/investigations/{inv_id}/candidate")
     assert candidate.status_code == 200 and candidate.json() == spec
+    report = client.get(f"/engine/v1/investigations/{inv_id}/report")
+    assert report.status_code == 200
+    assert "Candidate SHA-256" in report.text
+    assert "NOT held-out" in report.text
+    assert "content-disposition" in report.headers
