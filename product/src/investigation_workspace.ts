@@ -90,12 +90,12 @@ export function renderInvestigationWorkspace(view: WorkspaceView): string {
       <section class="work-panel work-wide" aria-label="Independent verification">
         <div class="work-panel-head"><div><span class="work-eyebrow">03 / EVALUATION</span><h2>Independent verification</h2></div><span class="work-tag">NON_AI · RECORDED BY SERVICE</span></div>
         ${countView}
-        <div class="work-action-row">${verification?.evaluation ? '<button type="button" class="pill-btn" data-action="verification">View verification details</button>' : '<span class="work-small">Detailed verification unlocks when the service returns its verification record.</span>'}<button type="button" class="pill-btn" data-action="compare">Compare results</button>${run?.status === 'completed' ? '<button type="button" class="pill-btn" data-action="report">Open sanitized report</button>' : ''}<button type="button" class="pill-btn" data-action="reports">Reports &amp; exports</button></div>
+        <div class="work-action-row">${verification?.evaluation ? '<button type="button" class="pill-btn" data-action="verification">View verification details</button>' : '<span class="work-small">Detailed verification unlocks when the service returns its verification record.</span>'}<button type="button" class="pill-btn" data-action="compare">Compare results</button>${run?.status === 'completed' ? '<button type="button" class="pill-btn" data-action="report">Open report</button>' : ''}<button type="button" class="pill-btn" data-action="reports">Reports &amp; exports</button></div>
       </section>
       <section class="work-panel" aria-label="Generated candidate status">
         <div class="work-panel-head"><div><span class="work-eyebrow">04 / OUTPUT</span><h2>Candidate &amp; lineage</h2></div><span class="work-tag">SCOPE-BOUND</span></div>
         ${versions}
-        <div class="work-action-row">${repair?.versions.length ? '<button type="button" class="pill-btn" data-action="candidate">Inspect available candidate</button>' : '<span class="work-small">No candidate lineage is exposed for inspection yet.</span>'}${run?.status === 'completed' ? '<button type="button" class="pill-btn" data-action="export">Download integrity bundle</button>' : ''}</div>
+        <div class="work-action-row">${repair?.versions.length ? '<button type="button" class="pill-btn" data-action="candidate">Inspect available candidate</button>' : '<span class="work-small">No candidate lineage is exposed for inspection yet.</span>'}${run?.status === 'completed' ? '<button type="button" class="pill-btn" data-action="export">Download integrity export</button>' : ''}</div>
         <p class="work-small">Private candidate source, sealed evaluator cases and credentials are not exposed by this service. Preview shows only authorized data.</p>
       </section>
       <section class="work-panel" aria-label="Investigation notes">
