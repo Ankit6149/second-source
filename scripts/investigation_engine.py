@@ -27,6 +27,7 @@ API:  GET  /engine/v1/health
 from __future__ import annotations
 
 import copy
+import os
 import subprocess
 import hashlib
 import json
@@ -36,6 +37,7 @@ import threading
 import time
 import uuid
 from pathlib import Path
+from typing import Literal
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import evidence_compiler  # noqa: E402
@@ -46,7 +48,7 @@ import vikunja_model_experiment as mx  # noqa: E402
 
 from fastapi import FastAPI, Header, HTTPException, Request  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
-from fastapi.responses import JSONResponse  # noqa: E402
+from fastapi.responses import JSONResponse, PlainTextResponse  # noqa: E402
 from pydantic import BaseModel, ConfigDict, Field  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -91,6 +93,30 @@ def _check_cancelled(rec: dict) -> None:
     event = rec.get("_cancel")
     if event is not None and event.is_set():
         raise _Cancelled()
+
+
+def _persist_completed_record(rec: dict) -> None:
+    """Durably retain the selected local candidate after engine restarts."""
+    with _STATE_LOCK:
+        RUNS.mkdir(parents=True, exist_ok=True)
+        stored = {k: copy.deepcopy(v) for k, v in rec.items()
+                  if not k.startswith("_")}
+        spec = rec.get("_spec")
+        if spec is not None:
+            raw = json.dumps(spec, indent=1, default=str).encode("utf-8")
+            artifact = RUNS / f"{rec['id']}-candidate.json"
+            with artifact.open("wb") as stream:
+                stream.write(raw)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.chmod(artifact, 0o600)
+            stored["candidate_artifact"] = {
+                "sha256": hashlib.sha256(raw).hexdigest(),
+                "size_bytes": len(raw),
+                "provenance": rec.get("compiled", {}).get("provenance", "UNSPECIFIED")}
+        (RUNS / f"{rec['id']}.json").write_text(
+            json.dumps(stored, indent=1, default=str), encoding="utf-8")
+        _prune_locked()
 
 
 def _prune_locked() -> None:
@@ -314,13 +340,7 @@ def _run_gitea(rec: dict) -> None:
                 proc.terminate()
             except Exception:
                 pass
-        with _STATE_LOCK:
-            stored = {k: copy.deepcopy(v) for k, v in rec.items()
-                      if not k.startswith("_")}
-            RUNS.mkdir(parents=True, exist_ok=True)
-            (RUNS / f"{rec['id']}.json").write_text(
-                json.dumps(stored, indent=1, default=str), encoding="utf-8")
-            _prune_locked()
+        _persist_completed_record(rec)
 
 
 def _run_filebrowser(rec: dict) -> None:
@@ -416,13 +436,7 @@ def _run_filebrowser(rec: dict) -> None:
                 proc.terminate()
             except Exception:
                 pass
-        with _STATE_LOCK:
-            stored = {k: copy.deepcopy(v) for k, v in rec.items()
-                      if not k.startswith("_")}
-            RUNS.mkdir(parents=True, exist_ok=True)
-            (RUNS / f"{rec['id']}.json").write_text(
-                json.dumps(stored, indent=1), encoding="utf-8")
-            _prune_locked()
+        _persist_completed_record(rec)
 
 
 def run_investigation(inv_id: str) -> None:
@@ -461,20 +475,59 @@ def run_investigation(inv_id: str) -> None:
         _set(rec, stage="checking_public_conformance")
         conf = hybrid.public_conformance(spec, ref_base, _next_port())
         _check_cancelled(rec)
-        _set(rec, public_conformance={
-            "passed": conf["public_passed"], "total": conf["public_total"],
-            "divergences": [d["action"] for d in conf["divergences"]]},
+        selected = spec
+        model_summary = {"called": False, "mode": "none",
+                         "reason": "Deterministic NON_AI compiler only."}
+        if rec.get("model_mode") == "muse-repair":
+            # This optional, explicit paid stage uses ONLY public evidence.
+            # Never feed withheld evaluation cases or reference source to Muse.
+            from muse_pipeline_repair import attempt_muse_public_repair
+            _set(rec, stage="muse_public_repair")
+            RUNS.mkdir(parents=True, exist_ok=True)
+            audit_file = RUNS / f"{rec['id']}-muse-private-receipts.jsonl"
+
+            def persist_model_receipt(kind: str, payload: dict) -> None:
+                line = json.dumps({"kind": kind, **payload}, default=str) + "\n"
+                fd = os.open(audit_file, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+                with os.fdopen(fd, "a", encoding="utf-8") as stream:
+                    stream.write(line)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+
+            def measure_on_fresh_reference(candidate_spec: dict) -> dict:
+                _check_cancelled(rec)
+                probe_proc = probe_dir = None
+                try:
+                    probe_proc, probe_dir, fresh_base = mx.start_reference(_next_port())
+                    return hybrid.public_conformance(candidate_spec, fresh_base, _next_port())
+                finally:
+                    if probe_proc is not None:
+                        mx.stop_reference(probe_proc, probe_dir)
+
+            selected, conf, model_summary = attempt_muse_public_repair(
+                compiled=spec, observations=observations, baseline=conf,
+                measure=measure_on_fresh_reference,
+                api_key=os.environ.get("MODEL_API_KEY", ""),
+                record_audit=persist_model_receipt,
+                cancelled=lambda: bool(rec["_cancel"].is_set()))
+            _check_cancelled(rec)
+        accepted = bool(model_summary.get("accepted"))
+        if accepted:
+            _set(rec, compiled={
+                "routes": [f"{r['method']} {r['path']}"
+                           for r in selected.get("routes", [])],
+                "provenance": "REAL_MODEL_ASSISTED",
+                "label": "Muse-edited, public-gated candidate"})
+        _set(rec, _spec=selected,
+            public_conformance={
+                "passed": conf["public_passed"], "total": conf["public_total"],
+                "divergences": [d["action"] for d in conf["divergences"]]},
             held_out={
                 "status": "not_run_by_engine",
                 "reason": "Held-out scoring is evaluator-side only "
                           "(scripts/vikunja_benchmark.py --mode evaluate); "
                           "the engine never imports the held-out cases."},
-            model={"called": False,
-                   "reason": "This engine runs the deterministic "
-                             "NON_AI pipeline. Model-authored "
-                             "results (GEMMA_TEST hybrid 3/6) are "
-                             "recorded evidence, replayed in the "
-                             "Lab, not generated here."},
+            model=model_summary,
             status="completed", stage="completed")
     except _Cancelled:
         _set(rec, status="cancelled", stage="cancelled")
@@ -484,13 +537,7 @@ def run_investigation(inv_id: str) -> None:
     finally:
         if proc is not None:
             mx.stop_reference(proc, workdir)
-        with _STATE_LOCK:
-            stored = {k: copy.deepcopy(v) for k, v in rec.items()
-                      if not k.startswith("_")}
-            RUNS.mkdir(parents=True, exist_ok=True)
-            (RUNS / f"{inv_id}.json").write_text(
-                json.dumps(stored, indent=1), encoding="utf-8")
-            _prune_locked()
+        _persist_completed_record(rec)
 
 
 def public_view(rec: dict) -> dict:
@@ -502,6 +549,8 @@ def public_view(rec: dict) -> dict:
 class CreateInvestigation(BaseModel):
     model_config = ConfigDict(extra="forbid")
     target: str = Field(min_length=1, max_length=64)
+    # Paid inference never starts unless the operator explicitly requests it.
+    model_mode: Literal["none", "muse-repair"] = "none"
 
 
 def _valid_inv_id(inv_id: str) -> bool:
@@ -535,7 +584,9 @@ async def _guard(request: Request, call_next):
 @app.get("/engine/v1/health")
 def health():
     return {"ok": True, "engine": ENGINE_VERSION,
-            "bind": "127.0.0.1", "model_calls": False}
+            "bind": "127.0.0.1",
+            "model_calls": os.environ.get("SECOND_SOURCE_ALLOW_MUSE_REPAIR") == "true"
+            and bool(os.environ.get("MODEL_API_KEY"))}
 
 
 @app.get("/engine/v1/targets")
@@ -567,6 +618,13 @@ def create(body: CreateInvestigation,
                default=None, alias="Idempotency-Key")):
     if body.target not in TARGETS:
         raise HTTPException(400, f"unknown target; supported: {', '.join(TARGETS)}")
+    if body.model_mode == "muse-repair":
+        if body.target != TARGET_ID:
+            raise HTTPException(422, "Muse repair is only supported for the Vikunja local adapter")
+        if os.environ.get("SECOND_SOURCE_ALLOW_MUSE_REPAIR") != "true":
+            raise HTTPException(409, "Local Muse repair is disabled by the operator")
+        if not os.environ.get("MODEL_API_KEY"):
+            raise HTTPException(503, "Local Meta model credential is not configured")
     key = idempotency_key.strip() if idempotency_key else None
     if idempotency_key is not None and (
             not key or len(key) > MAX_IDEMPOTENCY_KEY_LEN):
@@ -579,8 +637,8 @@ def create(body: CreateInvestigation,
         inv_id = "inv-" + uuid.uuid4().hex[:12]
         rec = {"id": inv_id, "target": body.target, "status": "running",
                "stage": "queued", "created_at": int(time.time()),
-               "provenance": "NON_AI", "cancel_requested": False,
-               "_cancel": threading.Event()}
+               "provenance": "NON_AI", "model_mode": body.model_mode,
+               "cancel_requested": False, "_cancel": threading.Event()}
         INVESTIGATIONS[inv_id] = rec
         if key is not None:
             _IDEMPOTENCY[key] = inv_id
@@ -631,9 +689,70 @@ def candidate(inv_id: str):
         rec = INVESTIGATIONS.get(inv_id)
         spec = copy.deepcopy(rec.get("_spec")) if rec else None
     if spec is None:
+        saved = RUNS / f"{inv_id}-candidate.json"
+        if saved.exists():
+            if saved.stat().st_size > 2_000_000:
+                raise HTTPException(409, "candidate artifact exceeds download limit")
+            spec = json.loads(saved.read_text(encoding="utf-8"))
+    if spec is None:
         raise HTTPException(409, "candidate not available")
     return JSONResponse(spec, headers={
         "Content-Disposition": f'attachment; filename="{inv_id}-candidate.json"'})
+
+
+@app.get("/engine/v1/investigations/{inv_id}/report")
+def investigation_report(inv_id: str):
+    """Download a per-run report built from actual persisted measurements."""
+    if not _valid_inv_id(inv_id):
+        raise HTTPException(404, "investigation not found")
+    path = RUNS / f"{inv_id}.json"
+    if not path.is_file():
+        raise HTTPException(409, "report not available until the run finishes")
+    rec = json.loads(path.read_text(encoding="utf-8"))
+    if rec.get("status") != "completed":
+        raise HTTPException(409, "run did not complete; no report claimed")
+    public = rec.get("public_conformance") or {}
+    obs = rec.get("observations") or {}
+    artifact = rec.get("candidate_artifact") or {}
+    model = rec.get("model") or {}
+    lines = [
+        "# Second Source | Local investigation report",
+        "",
+        f"- Investigation: `{inv_id}`",
+        f"- Target: `{rec.get('target', 'unknown')}`",
+        f"- Candidate origin: `{artifact.get('provenance', 'not recorded')}`",
+        f"- Public observations: {obs.get('count', 'unavailable')}",
+        f"- Observation SHA-256: `{obs.get('sha256', 'unavailable')}`",
+        f"- Candidate SHA-256: `{artifact.get('sha256', 'unavailable')}`",
+        "",
+        "## Public reference-versus-candidate conformance",
+        f"- Matched: **{public.get('passed', 'unavailable')} / {public.get('total', 'unavailable')}**",
+        "- Evaluation: public action ladder; NOT held-out behavioral equivalence.",
+        "",
+        "## Meta model stage",
+        f"- Model invoked: **{'yes' if model.get('called') else 'no'}**",
+        f"- Stage: `{model.get('mode', 'none')}`",
+        f"- Outcome: `{model.get('outcome', 'NON_AI only')}`",
+        f"- Model change admitted: **{'yes' if model.get('accepted') else 'no'}**",
+        "- A model edit is admitted only if it improves fresh public conformance.",
+        "- Held-out cases were never sent to the model or run by this local engine.",
+        "",
+        "## Public mismatches",
+    ]
+    divergences = public.get("divergences") or []
+    lines.extend(f"- {str(item).replace(chr(10), ' ')[:300]}" for item in divergences[:30])
+    if not divergences:
+        lines.append("- None in the measured public action ladder.")
+    lines += [
+        "",
+        "## Limits",
+        "- Reproduces only the explicitly supported, locally authorized target scope.",
+        "- The candidate is a declarative behavior specification, not recovered source code.",
+        "- No general equivalence, cloud execution, or unseen-target compatibility is claimed.",
+    ]
+    return PlainTextResponse("\n".join(lines) + "\n", media_type="text/markdown",
+                             headers={"Content-Disposition":
+                                      f'attachment; filename="{inv_id}-report.md"'})
 
 
 def main() -> int:
@@ -641,7 +760,7 @@ def main() -> int:
     port = 8765
     if "--port" in sys.argv:
         port = int(sys.argv[sys.argv.index("--port") + 1])
-    print(f"engine on http://127.0.0.1:{port} (localhost only, NON_AI)")
+    print(f"engine on http://127.0.0.1:{port} (localhost only, default NON_AI; optional explicit Muse repair)")
     uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
     return 0
 

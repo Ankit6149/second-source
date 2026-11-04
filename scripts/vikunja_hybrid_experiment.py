@@ -39,6 +39,7 @@ import copy
 import subprocess
 import sys
 import time
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -414,31 +415,38 @@ def public_conformance(spec: dict, ref_base: str, cand_port: int) -> dict:
     Returns divergence list (public evidence only). Both sides run the
     identical public actions with fresh tokens on fresh state.
     """
-    spec_path = OUT / "spec_H_public_check.json"
-    OUT.mkdir(parents=True, exist_ok=True)
-    spec_path.write_text(json.dumps(spec, indent=1), encoding="utf-8")
-    proc = subprocess.Popen(
-        [sys.executable, str(ROOT / "scripts" / "vikunja_candidate_server.py"),
-         str(spec_path), str(cand_port)],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    try:
-        time.sleep(2)
-        cand_base = f"http://127.0.0.1:{cand_port}/api/v1"
-        ref = vb.canonical_sequence(
-            vb.run_actions(vb.PUBLIC_PROBES, vb.fresh_tokens(ref_base + "/api/v1"),
-                           ref_base + "/api/v1"))
-        got = vb.canonical_sequence(
-            vb.run_actions(vb.PUBLIC_PROBES, vb.fresh_tokens(cand_base), cand_base))
-        divergences = []
-        for i, (r, g) in enumerate(zip(ref, got)):
-            if r != g:
-                divergences.append({"probe_index": i,
-                                    "action": " ".join(vb.PUBLIC_PROBES[i][:2]),
-                                    "reference": r, "candidate": g})
-        return {"public_passed": len(ref) - len(divergences),
-                "public_total": len(ref), "divergences": divergences}
-    finally:
-        proc.terminate()
+    # Use a per-call private specification path. The old global
+    # spec_H_public_check.json could be overwritten by overlapping runs.
+    with tempfile.TemporaryDirectory(prefix="ss-public-") as scratch:
+        spec_path = Path(scratch) / "candidate.json"
+        spec_path.write_text(json.dumps(spec, indent=1), encoding="utf-8")
+        proc = subprocess.Popen(
+            [sys.executable, str(ROOT / "scripts" / "vikunja_candidate_server.py"),
+             str(spec_path), str(cand_port)],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            time.sleep(2)
+            cand_base = f"http://127.0.0.1:{cand_port}/api/v1"
+            ref = vb.canonical_sequence(
+                vb.run_actions(vb.PUBLIC_PROBES, vb.fresh_tokens(ref_base + "/api/v1"),
+                               ref_base + "/api/v1"))
+            got = vb.canonical_sequence(
+                vb.run_actions(vb.PUBLIC_PROBES, vb.fresh_tokens(cand_base), cand_base))
+            divergences = []
+            for i, (r, g) in enumerate(zip(ref, got)):
+                if r != g:
+                    divergences.append({"probe_index": i,
+                                        "action": " ".join(vb.PUBLIC_PROBES[i][:2]),
+                                        "reference": r, "candidate": g})
+            return {"public_passed": len(ref) - len(divergences),
+                    "public_total": len(ref), "divergences": divergences}
+        finally:
+            proc.terminate()
+            try:
+                proc.wait(timeout=8)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=8)
 
 
 def diff_text(divergences, limit=6) -> str:
