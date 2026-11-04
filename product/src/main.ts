@@ -230,12 +230,14 @@ function showroom() {
 let lastRenderedView: typeof state.view | null = null;
 const viewTrail: (typeof state.view)[] = [];
 function render() {
+  const routeChanged = lastRenderedView === null || lastRenderedView !== state.view;
   if (lastRenderedView !== null && lastRenderedView !== state.view) {
     viewTrail.push(lastRenderedView);
     if (viewTrail.length > 12) viewTrail.shift();
   }
   lastRenderedView = state.view;
   const content = el('content');
+  content.dataset.routeChange = String(routeChanged);
   const active = document.activeElement instanceof HTMLElement && content.contains(document.activeElement) ? document.activeElement : null;
   const focusedAction = active?.dataset.action;
   const activityOpen = renderedRunId === state.run?.run_id && !!content.querySelector<HTMLDetailsElement>('details.activity')?.open;
@@ -256,6 +258,7 @@ function render() {
   const polling = state.pollError ? `<div class="inline-note error" role="status">${icon('alert-triangle')}<span>${esc(state.pollError)}</span><button class="pill-btn quiet" data-action="refresh">Check status</button></div>` : '';
   el('content').innerHTML = message + polling + (state.view === 'home' ? renderHome() : state.view === 'conversation' ? conversation() : state.view === 'library' ? library() : state.view === 'compare' ? compareView() : state.view === 'reports' ? reportsView() : state.view === 'settings' ? settingsView() : showroom());
   renderedRunId = state.run?.run_id;
+  if (routeChanged) el('scrollArea').scrollTop = 0;
   const activity = content.querySelector<HTMLDetailsElement>('details.activity'); if (activity && activityOpen) activity.open = true;
   if (focusedAction) {
     const replacement = [...content.querySelectorAll<HTMLButtonElement>('[data-action]')].find(button => button.dataset.action === focusedAction && !button.disabled);
