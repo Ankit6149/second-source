@@ -80,7 +80,7 @@ export function renderInvestigationWorkspace(view: WorkspaceView): string {
         <div class="run-steps">${stages}</div>
         ${run?.error_code ? `<p class="work-error" role="alert">Backend error: ${escapeHtml(run.error_code)}</p>` : ''}
         ${run?.status === 'needs_reconciliation' ? '<p class="work-error" role="status">Execution is uncertain and requires operator reconciliation. No automatic retry.</p>' : ''}
-        <div class="work-action-region">${actionsHtml}</div>
+        <div class="work-action-region">${run?.status === 'completed' ? '<p class="work-small">Execution completed. Review the evidence, inspect available candidate lineage, and export the report below.</p>' : actionsHtml}</div>
       </section>
       <section class="work-panel" aria-label="Observed backend activity">
         <div class="work-panel-head"><div><span class="work-eyebrow">02 / OBSERVATIONS</span><h2>Execution log</h2></div><span class="work-tag">${events.length} EVENTS</span></div>
@@ -90,12 +90,12 @@ export function renderInvestigationWorkspace(view: WorkspaceView): string {
       <section class="work-panel work-wide" aria-label="Independent verification">
         <div class="work-panel-head"><div><span class="work-eyebrow">03 / EVALUATION</span><h2>Independent verification</h2></div><span class="work-tag">NON_AI · RECORDED BY SERVICE</span></div>
         ${countView}
-        <div class="work-action-row">${evaluation ? '<button type="button" class="pill-btn" data-action="verification">View verification details</button>' : '<span class="work-small">Verification controls appear after the service reports a completed evaluation.</span>'}<button type="button" class="pill-btn" data-action="compare">Compare results</button><button type="button" class="pill-btn" data-action="reports">Reports &amp; exports</button></div>
+        <div class="work-action-row">${verification?.evaluation ? '<button type="button" class="pill-btn" data-action="verification">View verification details</button>' : '<span class="work-small">Detailed verification unlocks when the service returns its verification record.</span>'}<button type="button" class="pill-btn" data-action="compare">Compare results</button>${run?.status === 'completed' ? '<button type="button" class="pill-btn" data-action="report">Open sanitized report</button>' : ''}<button type="button" class="pill-btn" data-action="reports">Reports &amp; exports</button></div>
       </section>
       <section class="work-panel" aria-label="Generated candidate status">
         <div class="work-panel-head"><div><span class="work-eyebrow">04 / OUTPUT</span><h2>Candidate &amp; lineage</h2></div><span class="work-tag">SCOPE-BOUND</span></div>
         ${versions}
-        <div class="work-action-row"><button type="button" class="pill-btn" data-action="candidate">Inspect available candidate</button>${run?.status === 'completed' ? '<button type="button" class="pill-btn" data-action="export">Download integrity bundle</button>' : ''}</div>
+        <div class="work-action-row">${repair?.versions.length ? '<button type="button" class="pill-btn" data-action="candidate">Inspect available candidate</button>' : '<span class="work-small">No candidate lineage is exposed for inspection yet.</span>'}${run?.status === 'completed' ? '<button type="button" class="pill-btn" data-action="export">Download integrity bundle</button>' : ''}</div>
         <p class="work-small">Private candidate source, sealed evaluator cases and credentials are not exposed by this service. Preview shows only authorized data.</p>
       </section>
       <section class="work-panel" aria-label="Investigation notes">
