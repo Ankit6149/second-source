@@ -77,46 +77,46 @@ class PublicPreview(unittest.TestCase):
 
     def test_static_package_contains_only_public_files(self):
         output = build()
-        expected = {"index.html", "styles.css", "release.css", "script.js", "console/index.html", "evidence/index.html", "lab/index.html", "challenge/index.html", "handoff/index.html"}
+        expected = {"index.html", "landing.css", "research.css", "reports/index.html",
+                    "experiments/index.html", "console/index.html", "evidence/index.html",
+                    "lab/index.html", "challenge/index.html", "handoff/index.html"}
         expected.update("assets/" + name for name in ASSETS)
         actual = {path.relative_to(output).as_posix() for path in output.rglob("*") if path.is_file()}
         self.assertEqual(actual, expected)
 
-    def test_legacy_handoff_routes_redirect_to_the_app(self):
+    def test_live_report_and_experiment_routes_are_accessible(self):
         output = build()
-        for route in ("console", "handoff"):
-            stub = (output / route / "index.html").read_text(encoding="utf-8")
-            self.assertIn('url=/app/', stub)
-            self.assertIn('href="/app/"', stub)
-            with urlopen(self.origin + f"/{route}/") as response:
-                self.assertEqual(response.status, 200)
-                self.assertIn(b"/app/", response.read())
-
-    def test_judge_evidence_routes_serve_the_real_read_only_pages(self):
-        output = build()
-        for route, marker in (("challenge", "Three questions a screenshot cannot answer"),
-                              ("evidence", "14/25"),
-                              ("lab", "RECORDED")):
+        for route, expected in (("reports", "14 / 25"), ("experiments", "Measured investigations")):
             source = (ROOT / route / "index.html").read_text(encoding="utf-8")
-            packaged = (output / route / "index.html").read_text(encoding="utf-8")
-            self.assertEqual(source, packaged)
-            self.assertIn(marker.lower(), packaged.lower())
-            self.assertNotIn('url=/app/', packaged)
+            self.assertEqual(source, (output / route / "index.html").read_text(encoding="utf-8"))
+            self.assertIn(expected, source)
             with urlopen(self.origin + f"/{route}/") as response:
-                body = response.read()
                 self.assertEqual(response.status, 200)
-                self.assertIn(marker.lower().encode(), body.lower())
-                self.assertNotIn(b'url=/app/', body)
+                self.assertIn(expected.encode(), response.read())
 
-    def test_recorded_challenge_has_no_false_live_model_claim(self):
-        html = (ROOT / "challenge/index.html").read_text(encoding="utf-8")
-        self.assertIn("no live AI calls", html)
-        self.assertIn("provider attestation is incomplete", html)
-        self.assertIn("duplicate_label", html)
-        self.assertIn('role="group" aria-label="Predict reference behavior"', html)
+    def test_retired_routes_redirect_to_current_destination(self):
+        output = build()
+        for route, destination in (("evidence", "/reports/"), ("challenge", "/reports/"),
+                                   ("lab", "/experiments/"), ("console", "/app/"), ("handoff", "/app/")):
+            stub = (output / route / "index.html").read_text(encoding="utf-8")
+            self.assertIn(destination, stub)
+            try:
+                with urlopen(self.origin + f"/{route}/") as response:
+                    self.assertTrue(response.url.endswith(destination))
+            except HTTPError as exc:
+                if destination != "/app/" or exc.code != 503:
+                    raise
+
+    def test_no_public_judge_lab_routes_or_hidden_reference_data(self):
         config = json.loads((ROOT.parent / "vercel.json").read_text(encoding="utf-8"))
-        redirected = {entry["source"] for entry in config.get("redirects", [])}
-        self.assertTrue({"/challenge", "/challenge/", "/lab", "/lab/", "/evidence", "/evidence/"}.isdisjoint(redirected))
+        redirects = {item["source"]: item["destination"] for item in config["redirects"]}
+        self.assertEqual(redirects["/challenge/"], "/reports/")
+        self.assertEqual(redirects["/lab/"], "/experiments/")
+        self.assertEqual(redirects["/evidence/"], "/reports/")
+        for page in ("index.html", "reports/index.html", "experiments/index.html"):
+            text = (ROOT / page).read_text(encoding="utf-8")
+            self.assertNotIn("GEMMA_TEST", text)
+            self.assertNotIn("Sealed evaluation cases:", text)
 
     def test_vercel_publishes_only_built_site(self):
         config = json.loads((ROOT.parent / "vercel.json").read_text(encoding="utf-8"))

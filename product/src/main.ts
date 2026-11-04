@@ -2,7 +2,8 @@
 import './design.css';
 import './product.css';
 import './workspace.css';
-import { createIcons, PanelLeft, PanelLeftClose, SquarePen, FolderOpen, SwatchBook, ChevronUp, ArrowUp, ShieldCheck, FileText, ListChecks, Download, CircleHelp, X, Play, Square, RefreshCw, Clock, Check, AlertTriangle, LogIn, LogOut, Link, FlaskConical, MessageSquare, ExternalLink, Search, GitBranch, Puzzle, Plus } from 'lucide';
+import './ux-polish.css';
+import { createIcons, PanelLeft, PanelLeftClose, SquarePen, FolderOpen, SwatchBook, ChevronUp, ArrowUp, ShieldCheck, FileText, ListChecks, Download, CircleHelp, X, Play, Square, RefreshCw, Clock, Check, AlertTriangle, LogIn, LogOut, Link, FlaskConical, MessageSquare, ExternalLink, Search, GitBranch, Puzzle, Plus, LayoutDashboard, Settings, ArrowLeft } from 'lucide';
 import type { Session } from '@supabase/supabase-js';
 import { auth, observeSession, signIn, signOut } from './auth';
 import { Api, ApiError, validatedOrigin, type Target, type Investigation, type Run, type RunEvent, type Verification } from './api';
@@ -17,7 +18,7 @@ import { checkEngine, createEngineInvestigation, getEngineInvestigation, engineC
 import { SCOREBOARD, SOURCE_OPTIONS, OUTCOME_LABEL, buildManifest, buildReadme, buildReportHtml, buildReportMarkdown, runOutcome, stageIndex } from './workbench';
 import { renderInvestigationWorkspace } from './investigation_workspace';
 
-const icons = { PanelLeft, PanelLeftClose, SquarePen, FolderOpen, SwatchBook, ChevronUp, ArrowUp, ShieldCheck, FileText, ListChecks, Download, CircleHelp, X, Play, Square, RefreshCw, Clock, Check, AlertTriangle, LogIn, LogOut, Link, FlaskConical, MessageSquare, ExternalLink, Search, GitBranch, Puzzle, Plus };
+const icons = { PanelLeft, PanelLeftClose, SquarePen, FolderOpen, SwatchBook, ChevronUp, ArrowUp, ShieldCheck, FileText, ListChecks, Download, CircleHelp, X, Play, Square, RefreshCw, Clock, Check, AlertTriangle, LogIn, LogOut, Link, FlaskConical, MessageSquare, ExternalLink, Search, GitBranch, Puzzle, Plus, LayoutDashboard, Settings, ArrowLeft };
 const icon = (name: string) => `<i data-lucide="${name}" aria-hidden="true"></i>`;
 const esc = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c] || c));
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -97,7 +98,7 @@ function account() {
 
 function composer() {
   const hint = detectReference(state.draft);
-  return `<form class="composer" id="composer"><div id="draftContext"><div class="detection" id="detection" ${hint ? '' : 'hidden'}>${hint ? `${icon('link')} <span><strong>${esc(hint.label)}</strong><br><small>${esc(hint.description)}</small></span>` : ''}</div></div><label class="sr-only" for="promptInput">Describe the software behavior you want to investigate</label><textarea rows="2" id="promptInput" maxlength="4000" placeholder="${state.selected ? 'Add a private investigation note (not an AI command)…' : 'Describe a workflow question (saved as a local note only)…'}">${esc(state.draft)}</textarea><div class="composer-lower"><div class="tool-row"><button class="tool-icon" type="button" disabled title="Attachments are not supported yet" aria-label="Attachments unavailable">${icon('plus')}</button><button class="small-tool" type="button" data-action="select-target">${icon('flask-conical')} Choose a supported target</button></div><div class="send-area"><span class="kbd-help">Shift + Enter for new line</span><button class="send-btn" type="submit" aria-label="Send message">${icon('arrow-up')}</button></div></div></form>`;
+  return `<form class="composer" id="composer"><div id="draftContext"><div class="detection" id="detection" ${hint ? '' : 'hidden'}>${hint ? `${icon('link')} <span><strong>${esc(hint.label)}</strong><br><small>${esc(hint.description)}</small></span>` : ''}</div></div><label class="sr-only" for="promptInput">Private workspace notes</label><textarea rows="2" id="promptInput" maxlength="4000" placeholder="${state.selected ? 'Add a note for this investigation…' : 'Quick note (saved in this tab, not sent to AI)…'}">${esc(state.draft)}</textarea><div class="composer-lower"><div class="tool-row"><button class="tool-icon" type="button" disabled title="Attachments are not supported yet" aria-label="Attachments unavailable">${icon('plus')}</button><button class="small-tool" type="button" data-action="select-target">${icon('flask-conical')} Choose a supported target</button></div><div class="send-area"><span class="kbd-help">Shift + Enter for new line</span><button class="send-btn" type="submit" aria-label="Send message">${icon('arrow-up')}</button></div></div></form>`;
 }
 
 function enginePanel() {
@@ -110,14 +111,14 @@ function enginePanel() {
   } else if (engineState.status === 'unavailable') {
     body = `<p class="component-note">Local engine not running. Start it with <code>python scripts/investigation_engine.py</code>, then check again. Nothing is faked while it is offline: no run can be started from here.</p><button class="pill-btn" data-action="engine-check">${icon('refresh-cw')} Check again</button>`;
   } else if (!rec) {
-    body = `<p>Runs the real deterministic pipeline against a disposable local reference: probe \u2192 compile \u2192 scored comparison. No model is called.</p><div class="response-actions"><button class="pill-btn primary" data-action="engine-run">${icon('play')} Run Vikunja rebuild (NON_AI)</button><button class="pill-btn" data-action="engine-run-fb">${icon('play')} Run File Browser rebuild (NON_AI)</button></div>`;
+    body = `<p>Runs the real deterministic pipeline against a disposable local Vikunja reference: probe → compile → public conformance. No model is called.</p><button class="pill-btn primary" data-action="engine-run">${icon('play')} Run live investigation (NON_AI)</button>`;
   } else if (rec.status === 'running') {
     body = `<p>Running… stage: <strong>${esc(rec.stage)}</strong> (investigation ${esc(rec.id)}). This page refreshes itself; do not start another run meanwhile.</p>`;
   } else if (rec.status === 'failed') {
     body = `<p class="component-note">Investigation ${esc(rec.id)} failed: ${esc(rec.error || 'unknown error')}</p><button class="pill-btn" data-action="engine-run">${icon('play')} Run again</button>`;
   } else {
     body = `<p>Investigation <strong>${esc(rec.id)}</strong> completed against a fresh local reference.</p>
-      <div class="artifact"><div class="artifact-top"><div class="artifact-symbol">${icon('file-text')}</div><div><strong>${esc(engineTargetLabel(rec.target))} \u00b7 EVIDENCE_COMPILED (NON_AI)</strong><small>${rec.observations ? `${rec.observations.count} observations · ${esc(rec.observations.sha256.slice(0, 19))}…` : ''}</small></div><span class="artifact-tag">completed</span></div>
+      <div class="artifact"><div class="artifact-top"><div class="artifact-symbol">${icon('file-text')}</div><div><strong>Vikunja v2.4.0 · EVIDENCE_COMPILED (NON_AI)</strong><small>${rec.observations ? `${rec.observations.count} observations · ${esc(rec.observations.sha256.slice(0, 19))}…` : ''}</small></div><span class="artifact-tag">completed</span></div>
       <div class="artifact-bottom">Compiled routes: ${rec.compiled ? rec.compiled.routes.map(esc).join(' · ') : '—'}<br>Public-ladder conformance: <strong>${rec.public_conformance ? `${rec.public_conformance.passed}/${rec.public_conformance.total}` : '—'}</strong> (stateful public probe sequence; not the held-out score). Held-out: not run by the engine — evaluator-side only.</div></div>
       <div class="response-actions"><a class="pill-btn" href="${engineCandidateUrl(rec.id)}" download>${icon('download')} Download candidate spec</a><button class="pill-btn" data-action="engine-run">${icon('play')} Run again</button></div>`;
   }
@@ -137,9 +138,7 @@ async function refreshEngine() {
   engineState.status = await checkEngine() ? 'available' : 'unavailable';
   render();
 }
-function engineTargetLabel(target: string): string {
-  return target === 'filebrowser-v1' ? 'File Browser v2.63.23' : 'Vikunja v2.4.0';
-}
+function engineTargetLabel(target: string): string { return target === 'filebrowser-v1' ? 'File Browser v2.63.23' : 'Vikunja v2.4.0'; }
 async function runEngineInvestigation(target = 'vikunja-v1') {
   try {
     engineState.record = await createEngineInvestigation(target);
@@ -159,11 +158,19 @@ async function runEngineInvestigation(target = 'vikunja-v1') {
   }
 }
 
-function storySections() {
-  return `<section class="story"><h2>The problem</h2><p class="story-lede">Teams depend on software they can run but cannot see inside. Documentation drifts, vendors disappear, and the rules that matter live only in behavior. Second Source watches the software work, writes down every rule it can prove, and rebuilds an independent implementation you can run, test, and keep.</p><ol class="story-steps"><li><strong>Observe.</strong> We probe the real software and record exact behavior: fields, defaults, errors, permissions, state changes.</li><li><strong>Reason.</strong> Our compiler transcribes observed facts without guessing. Muse Spark reasons only about what is still unknown, one bounded decision at a time, and every proposal is checked against the observations.</li><li><strong>Rebuild and prove.</strong> You get runnable code plus a scored comparison: what matches, what differs, what remains unknown. Nothing is merged into one blended claim.</li></ol><h2>What you get</h2><div class="story-outputs"><span>R runnable candidate code (ZIP)</span><span>Technical report (Markdown + HTML)</span><span>Evidence manifest (JSON)</span><span>Verification scores and divergences</span><span>Full experiment record with provenance</span></div><p class="story-proof">Measured today: Vikunja frozen 6/6 and extended 6/6; File Browser 7/7; AI alone 2/6 without the evidence engine. Full tables under Reports &amp; exports.</p></section>`;
-}
 function renderHome() {
-  return `<section class="empty-home"><h1>Understand how software <em>really works.</em></h1><p>Second Source observes software you own or are authorized to study, infers its hidden rules from behavior, builds an independent candidate, and scores that candidate against the reference — without seeing its source.</p><div class="home-evidence"><span class="prov-pill prov-model-authored">REAL_MODEL · Model-authored</span><p><strong>14/25</strong> — a genuine muse-spark-1.3 candidate for the owned ledger, independently scored on a sealed 25-case suite. Recorded evidence only: no live model inference runs in this app, and REAL_MODEL and NON_AI scores are never merged.</p><button class="pill-btn primary" type="button" data-action="research">Read the research record</button>${state.session ? '' : `<button class="pill-btn" type="button" data-action="account">${icon('log-in')} Sign in with Google</button>`}</div><div class="suggestion-row"><button class="suggestion" data-suggestion="Understand how the owned ledger handles repeated inputs.">${icon('search')} Understand behavior</button><button class="suggestion" data-suggestion="Compare the owned ledger with a scoped candidate.">${icon('git-branch')} Compare versions</button><button class="suggestion" data-suggestion="Explore how the owned ledger workflow could be reconstructed.">${icon('puzzle')} Reconstruct a workflow</button></div><p class="home-note">${state.session ? state.target ? (state.targets.length > 1 ? 'Available here: owned ledger and HTTP task-workflow NON_AI fixtures.' : 'Available here: the owned ledger NON_AI fixture.') : 'No supported target is currently available.' : 'Signed out: the research record above is open to everyone. Sign in only to save investigations against a connected service.'}</p></section>` + storySections() + enginePanel();
+  const available = state.session ? (state.target ? (state.targets.length > 1 ? "Available here: owned ledger and HTTP task-workflow controls." : "Available here: owned ledger control.") : "Connected service has no supported target.") : "Signed out: reports and experiments remain public; sign in to save a connected investigation.";
+  return `<section class="empty-home calm-home" aria-label="Start a new investigation">
+    <div class="ux-page-label">SECOND SOURCE / WORKSPACE</div>
+    <h1>Learn the rules a screen cannot show.</h1>
+    <p>Choose an authorized reference. Follow the evidence, inspect the candidate, and measure what actually matches.</p>
+    <div class="home-actions">
+      <button class="pill-btn primary" type="button" data-action="select-target">${icon("flask-conical")} New investigation</button>
+      <button class="pill-btn" type="button" data-action="reports">${icon("file-text")} View reports</button>
+    </div>
+    <p class="home-rule"><strong>REAL_MODEL 14/25</strong> Historical Muse ledger result · 11 failures recorded · not a live model call. <button class="pill-btn quiet" type="button" data-action="research">See evidence</button></p>
+    <p class="home-note">${esc(available)}</p>
+  </section>`;
 }
 function controls() {
   if (!state.session) return `<p class="component-note">Use Sign in in the application header to start an authorized investigation. Public research remains accessible.</p>`;
@@ -187,7 +194,7 @@ function eventName(event: RunEvent) {
 function investigationCard() {
   const run = state.run;
   const line = !state.session
-    ? 'Sign in, then tell me what you would like to investigate.'
+    ? 'Sign in to start an authorized investigation. Your notes remain private to this tab.'
     : !state.selected
       ? 'Choose a supported target to get started.'
       : !run
@@ -220,7 +227,14 @@ function library() {
 function showroom() {
   return `<section class="single-page"><h1>Component showroom</h1><p>The v0.8 design language, presented separately from investigation data.</p><section class="system-section"><h2>Buttons and states</h2><div class="system-controls"><button class="pill-btn primary" data-action="sample-toast">Primary action</button><button class="pill-btn" data-action="sample-dialog">Open dialog</button><button class="pill-btn quiet" data-action="sample-toast">Quiet action</button><button class="pill-btn" disabled>Unavailable</button></div></section><section class="system-section"><h2>Inputs and status</h2><label for="showcaseInput">Reference</label><input id="showcaseInput" class="control-field" placeholder="A URL or software name"><div class="system-states"><span class="status-pill">Completed</span><span class="status-pill warn">Needs review</span><span class="status-pill fail">Failed</span><span class="status-pill muted">Unavailable</span></div></section><section class="system-section"><h2>Feedback</h2><p class="inline-note">These are component examples, not investigation results.</p><div class="skeleton" aria-label="Loading example"></div></section></section>`;
 }
+let lastRenderedView: typeof state.view | null = null;
+const viewTrail: (typeof state.view)[] = [];
 function render() {
+  if (lastRenderedView !== null && lastRenderedView !== state.view) {
+    viewTrail.push(lastRenderedView);
+    if (viewTrail.length > 12) viewTrail.shift();
+  }
+  lastRenderedView = state.view;
   const content = el('content');
   const active = document.activeElement instanceof HTMLElement && content.contains(document.activeElement) ? document.activeElement : null;
   const focusedAction = active?.dataset.action;
@@ -231,7 +245,12 @@ function render() {
   el('topAccountLabel').textContent = state.session ? 'Account' : 'Sign in';
   el('topAccountButton').setAttribute('aria-label', state.session ? 'Open account window' : 'Open sign-in window');
   el('connectionLabel').textContent = !auth ? 'Sign-in not configured' : !apiOrigin ? (state.session ? 'Signed in \u00b7 backend offline' : 'Backend offline') : state.session ? 'Signed in · NON_AI only' : 'Sign in to start';
-  el('topName').textContent = state.view === 'library' ? 'Your work' : state.view === 'system' ? 'Component showroom' : state.selected?.title || 'Second Source';
+  el('topName').textContent = state.view === 'library' ? 'Investigations' : state.view === 'compare' ? 'Experiments' : state.view === 'reports' ? 'Reports' : state.view === 'settings' ? 'Settings' : state.selected?.title || 'Second Source';
+  el('topBackButton').hidden = state.view === 'home';
+  document.querySelectorAll<HTMLButtonElement>('.side-nav [data-action]').forEach(button => {
+    const view = button.dataset.action === 'experiments' ? 'compare' : button.dataset.action;
+    if (view === state.view) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
+  });
   el('history').innerHTML = state.investigations.slice(0, 12).map(item => `<button class="history-item ${item.investigation_id === state.selected?.investigation_id ? 'active' : ''}" data-investigation="${esc(item.investigation_id)}">${icon('message-square')}<span class="history-title">${esc(item.title)}</span></button>`).join('');
   const message = state.error ? `<div class="inline-note error" role="alert">${icon('alert-triangle')}<span>${esc(state.error)}</span>${state.selected && state.session ? '<button class="pill-btn quiet" data-action="refresh">Check status</button>' : ''}<button class="quiet-dismiss" data-action="dismiss-error" aria-label="Dismiss error">Ã—</button></div>` : '';
   const polling = state.pollError ? `<div class="inline-note error" role="status">${icon('alert-triangle')}<span>${esc(state.pollError)}</span><button class="pill-btn quiet" data-action="refresh">Check status</button></div>` : '';
@@ -429,17 +448,43 @@ function compareView() {
   } else if (engineState.status === 'unknown') {
     right = `<p>Checking for the local rebuild engine\u2026</p><button class="pill-btn" type="button" data-action="engine-check">${icon('refresh-cw')} Check again</button>`;
   } else {
-    right = `<p>Rebuild a real application from behavior: probe a fresh reference, compile the evidence, then score the candidate. No model is called (NON_AI).</p><div class="response-actions"><button class="pill-btn primary" type="button" data-action="engine-run">${icon('play')} Run Vikunja rebuild</button><button class="pill-btn" type="button" data-action="engine-run-fb">${icon('play')} Run File Browser rebuild</button></div>`;
+    right = `<p>Choose a supported reference. The local engine probes, compiles, and evaluates it. These are real NON_AI controls; no model is called.</p><div class="ux-action-row"><button class="pill-btn primary" type="button" data-action="engine-run">${icon('play')} Rebuild Vikunja</button><button class="pill-btn" type="button" data-action="engine-run-fb">${icon('play')} Rebuild File Browser</button></div>`;
   }
-  return `<section class="single-page"><h1>Compare</h1><p>Two real rebuilds, side by side. Held-out and sealed cases are never shown.</p>${outcomeBanner()}<div class="compare-grid"><section><h2>Software 1 \u00b7 selected investigation</h2>${left}</section><section><h2>Software 2 \u00b7 ${esc(engineTargetLabel(rec?.target || 'vikunja-v1'))} rebuild</h2>${right}</section></div><div class="response-actions"><button class="pill-btn" data-action="candidate">${icon('search')} Candidate preview</button><button class="pill-btn" data-action="verification">${icon('list-checks')} Verification</button></div></section>`;
+  return `<section class="single-page ux-page" aria-label="Experiments">
+    <p class="ux-page-label">LIVE LOCAL CONTROLS</p><h1>Experiments</h1>
+    <p class="ux-page-lead">Two independently executed software controls. Inspect the actual outcomes side by side; no hidden cases or model inference are shown as a live run.</p>
+    <div class="ux-two-panels">
+      <section><span class="ux-panels-meta">01 / OWNED HTTP TASK WORKFLOW</span><h2>Selected investigation</h2>${left}</section>
+      <section><span class="ux-panels-meta">02 / ${esc(engineTargetLabel(rec?.target || "vikunja-v1")).toUpperCase()}</span><h2>Probe → compile → check</h2>${right}</section>
+    </div>
+    <div class="ux-section"><h2>Inspect what was built</h2><p>Candidate specifications and verification are available only when the real service has returned them.</p>
+      <div class="ux-action-row"><button class="pill-btn" data-action="candidate" ${orchCandidate || v?.repair ? "" : "disabled"}>Candidate preview</button><button class="pill-btn" data-action="verification" ${v?.evaluation ? "" : "disabled"}>Verification details</button><button class="pill-btn" data-action="reports">Measured reports</button><a class="pill-btn" target="_blank" rel="noopener noreferrer" href="https://second-source-alpha.vercel.app/experiments/">Explore historical experiments ↗</a></div>
+    </div>
+  </section>`;
 }
 
 function scoreboardHtml() {
   return SCOREBOARD.map(g => `<section class="score-card"><h2>${esc(g.target)}</h2><div class="score-rows">${g.rows.map(r => `<div class="score-row"><span class="score-method">${esc(r.method)}</span><span class="prov-pill">${esc(r.provenance)}</span><span class="score-num">Frozen <strong>${esc(r.frozen)}</strong></span><span class="score-num">Extended <strong>${esc(r.extended)}</strong></span><span class="score-status">${esc(r.status)}</span></div>`).join('')}</div></section>`).join('');
 }
 function reportsView() {
-  const ready = state.run?.status === 'completed';
-  return `<section class="single-page"><h1>Reports &amp; exports</h1><h2>Comparison scoreboard</h2><p>Same target, three ways: AI alone, AI with our evidence engine, and the engine alone. Held-out cases are never shown. Unmeasured means unmeasured, never zero.</p>${scoreboardHtml()}<h2>Go deeper</h2><div class="system-controls"><button class="pill-btn" type="button" data-action="compare">Compare reference vs candidate</button><button class="pill-btn" type="button" data-action="research">Research record</button></div><h2>Downloads for the selected run</h2><p>Generated from the sanitized backend report for the selected run. If a download fails, the error is shown and nothing is retried silently.</p>${outcomeBanner()}${ready ? `<div class="response-actions"><button class="pill-btn primary" data-action="export">${icon('download')} ZIP integrity bundle</button><button class="pill-btn" data-action="download-md">${icon('download')} report.md</button><button class="pill-btn" data-action="download-html">${icon('download')} report.html</button><button class="pill-btn" data-action="download-json">${icon('download')} report.json</button><button class="pill-btn" data-action="download-manifest">${icon('download')} manifest.json</button><button class="pill-btn" data-action="download-readme">${icon('download')} README.md</button></div>` : `<p class="component-note">${state.run ? `Exports unlock when the run completes (current: ${esc(state.run.status)}).` : 'Select or complete an investigation first — there is nothing to export yet.'}</p><button class="pill-btn" type="button" disabled aria-disabled="true" title="Complete a run to enable exports">Exports unavailable</button>`}<p class="component-note">ZIP is the backend integrity bundle (hash-checked). MD/HTML/JSON/README/manifest are built in your browser from the same sanitized report — no new data is invented.</p></section>`;
+  const ready = state.run?.status === "completed";
+  return `<section class="single-page ux-page" aria-label="Reports">
+    <p class="ux-page-label">RESEARCH & EVIDENCE</p><h1>Reports</h1>
+    <p class="ux-page-lead">Read independently measured results, inspect their limitations, and export only verified data from your selected run.</p>
+    <div class="ux-stat-grid">
+      <div class="ux-stat primary"><span>REAL_MODEL · LEDGER</span><strong>14 / 25</strong><small>Genuine Muse candidate · historical sealed evaluation</small></div>
+      <div class="ux-stat"><span>NON_AI · OWNED HTTP</span><strong>30 / 30</strong><small>Bounded local control · no model called</small></div>
+      <div class="ux-stat"><span>NON_AI · VIKUNJA</span><strong>11 / 19</strong><small>Local public conformance · eight divergences</small></div>
+    </div>
+    <section class="ux-section"><h2>Research record</h2><p>A detailed external report documents methodologies, actual failures, comparison tables and reproducibility. Scores from unrelated suites are never combined.</p>
+      <div class="ux-action-row"><a class="pill-btn primary" target="_blank" rel="noopener noreferrer" href="https://second-source-alpha.vercel.app/reports/">Open detailed reports ↗</a><button class="pill-btn" type="button" data-action="research">Muse ledger evidence</button><button class="pill-btn" type="button" data-action="experiments">Experiments & comparison</button></div>
+      <details class="ux-details ux-expand"><summary>Show the full benchmark register</summary>${scoreboardHtml()}</details>
+    </section>
+    <section class="ux-section"><h2>Selected investigation</h2><p>These exports are generated from your own sanitized service result. They become available only after the run completes.</p>${outcomeBanner()}
+      ${ready ? `<div class="ux-action-row"><button class="pill-btn primary" data-action="export">${icon("download")} ZIP integrity bundle</button><button class="pill-btn" data-action="download-md">Report · MD</button><button class="pill-btn" data-action="download-html">Report · HTML</button><button class="pill-btn" data-action="download-json">Report · JSON</button><details class="ux-details ux-expand"><summary>More export formats</summary><div class="ux-action-row"><button class="pill-btn" data-action="download-manifest">Manifest · JSON</button><button class="pill-btn" data-action="download-readme">README · MD</button></div></details></div>` : `<p class="ux-setup">${state.run ? `The selected run is ${esc(state.run.status)}. Exports unlock on completion.` : "No completed investigation selected. Start a supported, authorized run to create exportable evidence."}</p><button class="pill-btn" disabled aria-disabled="true">Exports unavailable</button>`}
+      <p class="component-note">ZIP is a backend hash-checked bundle; other formats are generated in this browser from the same sanitized report, with no invented records.</p>
+    </section>
+  </section>`;
 }
 function settingsView() {
   return `<section class="single-page"><h1>Settings</h1><dl class="report-meta"><dt>Service</dt><dd>${apiOrigin ? esc(apiOrigin) : 'Not configured for this deployment'}</dd><dt>Account</dt><dd>${state.session ? 'Signed in' : 'Not signed in'}</dd><dt>Connection</dt><dd>${!apiOrigin || !auth ? 'Service not configured' : state.session ? 'Signed in · NON_AI only' : 'Sign in to start'}</dd><dt>Motion</dt><dd>Reduced-motion preference is respected (animations disabled when your system requests it).</dd></dl><div class="response-actions"><button class="pill-btn" data-action="account">${icon('log-in')} Account</button><button class="pill-btn" data-action="clear-notes">${icon('x')} Clear tab notes</button></div><p class="component-note">Notes live only in this browser tab and are cleared on sign-out. No browser setting here can enable real-model or browser/motion execution.</p></section>`;
@@ -654,6 +699,8 @@ document.addEventListener('click', event => {
   const action = target.dataset.action;
   if (action === 'download-orch-artifact' && target.dataset.artifactId) { void downloadOrchestrationArtifact(target.dataset.artifactId); return; }
   if (action === 'new') { ++state.epoch; stopPolling(); state.executing = false; state.busy = false; state.view = 'home'; state.selected = null; state.run = null; state.events = []; state.verification = null; state.orch = null; state.messages = []; state.pollError = ''; state.executionError = null; state.uncertain = false; state.actionUncertain = null; sessionStorage.removeItem('ss-selected-investigation'); render(); }
+  else if (action === 'back') { state.view = viewTrail.pop() ?? 'home'; lastRenderedView = state.view; render(); }
+  else if (action === 'home') { state.view = 'home'; render(); }
   else if (action === 'library') { state.view = 'library'; render(); }
   else if (action === 'account') account();
   else if (action === 'sign-in') { void signIn().catch(setError); }
@@ -667,7 +714,7 @@ document.addEventListener('click', event => {
   else if (action === 'engine-run') void runEngineInvestigation();
   else if (action === 'engine-run-fb') void runEngineInvestigation('filebrowser-v1');
   else if (action === 'candidate') showCandidate();
-  else if (action === 'compare') { state.view = 'compare'; render(); }
+  else if (action === 'compare' || action === 'experiments') { state.view = 'compare'; render(); }
   else if (action === 'reports') { state.view = 'reports'; render(); }
   else if (action === 'settings') { state.view = 'settings'; render(); }
   else if (action === 'clear-notes') { state.messages = []; state.draft = ''; sessionStorage.removeItem('ss-product-draft'); if (state.ownerId) clearOwnerNotes(sessionStorage, state.ownerId); toast('Tab notes cleared.'); render(); }
