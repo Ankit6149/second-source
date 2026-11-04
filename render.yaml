@@ -7,7 +7,7 @@ services:
     autoDeployTrigger: "off"
     buildCommand: pip install -r requirements-deploy.txt
     startCommand: python -m second_source.backend.serve_cloud
-    healthCheckPath: /health/ready
+    healthCheckPath: /health/live
     maxShutdownDelaySeconds: 120
     envVars:
       - key: PYTHON_VERSION
@@ -21,6 +21,6 @@ services:
       - key: SECOND_SOURCE_STORAGE_SERVER_KEY
         sync: false
       - key: SECOND_SOURCE_CORS_ORIGINS
-        value: '[]'
+        value: '["https://second-source-alpha.vercel.app"]'
       - key: SECOND_SOURCE_ENABLE_MOCK_EXECUTION
         value: 'false'
