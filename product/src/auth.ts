@@ -2,7 +2,7 @@ import { createClient, type Session, type SupabaseClient } from '@supabase/supab
 import { validatedOrigin } from './api';
 
 const projectOrigin = 'https://jpqcqqbzriizxhigvjki.supabase.co';
-const authUrl = validatedOrigin(import.meta.env.VITE_SUPABASE_URL || '');
+const authUrl = validatedOrigin(import.meta.env.VITE_SUPABASE_URL || '') || projectOrigin;
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
 
 // Only the dedicated project and a publishable key are valid browser settings.
