@@ -26,42 +26,12 @@
   ],
   "redirects": [
     {
-      "source": "/challenge",
-      "destination": "/app/",
-      "permanent": true
-    },
-    {
-      "source": "/lab",
-      "destination": "/app/",
-      "permanent": true
-    },
-    {
-      "source": "/evidence",
-      "destination": "/app/",
-      "permanent": true
-    },
-    {
       "source": "/console",
       "destination": "/app/",
       "permanent": true
     },
     {
       "source": "/handoff",
-      "destination": "/app/",
-      "permanent": true
-    },
-    {
-      "source": "/challenge/",
-      "destination": "/app/",
-      "permanent": true
-    },
-    {
-      "source": "/lab/",
-      "destination": "/app/",
-      "permanent": true
-    },
-    {
-      "source": "/evidence/",
       "destination": "/app/",
       "permanent": true
     },
