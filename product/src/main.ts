@@ -3,7 +3,7 @@ import './design.css';
 import './product.css';
 import './workspace.css';
 import './ux-polish.css';
-import { createIcons, PanelLeft, PanelLeftClose, SquarePen, FolderOpen, SwatchBook, ChevronUp, ArrowUp, ShieldCheck, FileText, ListChecks, Download, CircleHelp, X, Play, Square, RefreshCw, Clock, Check, AlertTriangle, LogIn, LogOut, Link, FlaskConical, MessageSquare, ExternalLink, Search, GitBranch, Puzzle, Plus } from 'lucide';
+import { createIcons, PanelLeft, PanelLeftClose, SquarePen, FolderOpen, SwatchBook, ChevronUp, ArrowUp, ShieldCheck, FileText, ListChecks, Download, CircleHelp, X, Play, Square, RefreshCw, Clock, Check, AlertTriangle, LogIn, LogOut, Link, FlaskConical, MessageSquare, ExternalLink, Search, GitBranch, Puzzle, Plus, LayoutDashboard, Settings, ArrowLeft } from 'lucide';
 import type { Session } from '@supabase/supabase-js';
 import { auth, observeSession, signIn, signOut } from './auth';
 import { Api, ApiError, validatedOrigin, type Target, type Investigation, type Run, type RunEvent, type Verification } from './api';
@@ -18,7 +18,7 @@ import { checkEngine, createEngineInvestigation, getEngineInvestigation, engineC
 import { SCOREBOARD, SOURCE_OPTIONS, OUTCOME_LABEL, buildManifest, buildReadme, buildReportHtml, buildReportMarkdown, runOutcome, stageIndex } from './workbench';
 import { renderInvestigationWorkspace } from './investigation_workspace';
 
-const icons = { PanelLeft, PanelLeftClose, SquarePen, FolderOpen, SwatchBook, ChevronUp, ArrowUp, ShieldCheck, FileText, ListChecks, Download, CircleHelp, X, Play, Square, RefreshCw, Clock, Check, AlertTriangle, LogIn, LogOut, Link, FlaskConical, MessageSquare, ExternalLink, Search, GitBranch, Puzzle, Plus };
+const icons = { PanelLeft, PanelLeftClose, SquarePen, FolderOpen, SwatchBook, ChevronUp, ArrowUp, ShieldCheck, FileText, ListChecks, Download, CircleHelp, X, Play, Square, RefreshCw, Clock, Check, AlertTriangle, LogIn, LogOut, Link, FlaskConical, MessageSquare, ExternalLink, Search, GitBranch, Puzzle, Plus, LayoutDashboard, Settings, ArrowLeft };
 const icon = (name: string) => `<i data-lucide="${name}" aria-hidden="true"></i>`;
 const esc = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c] || c));
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -193,7 +193,7 @@ function eventName(event: RunEvent) {
 function investigationCard() {
   const run = state.run;
   const line = !state.session
-    ? 'Sign in, then tell me what you would like to investigate.'
+    ? 'Sign in to start an authorized investigation. Your notes remain private to this tab.'
     : !state.selected
       ? 'Choose a supported target to get started.'
       : !run
@@ -457,7 +457,7 @@ function compareView() {
       <section><span class="ux-panels-meta">02 / VIKUNJA V2.4.0</span><h2>Probe → compile → check</h2>${right}</section>
     </div>
     <div class="ux-section"><h2>Inspect what was built</h2><p>Candidate specifications and verification are available only when the real service has returned them.</p>
-      <div class="ux-action-row"><button class="pill-btn" data-action="candidate">Candidate preview</button><button class="pill-btn" data-action="verification">Verification details</button><button class="pill-btn" data-action="reports">Measured reports</button><a class="pill-btn" target="_blank" rel="noopener noreferrer" href="https://second-source-alpha.vercel.app/experiments/">Explore historical experiments ↗</a></div>
+      <div class="ux-action-row"><button class="pill-btn" data-action="candidate" ${orchCandidate || v?.repair ? "" : "disabled"}>Candidate preview</button><button class="pill-btn" data-action="verification" ${v?.evaluation ? "" : "disabled"}>Verification details</button><button class="pill-btn" data-action="reports">Measured reports</button><a class="pill-btn" target="_blank" rel="noopener noreferrer" href="https://second-source-alpha.vercel.app/experiments/">Explore historical experiments ↗</a></div>
     </div>
   </section>`;
 }

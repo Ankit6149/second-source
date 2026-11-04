@@ -30,7 +30,7 @@ test('composer stays outside history and sending creates a local note without a 
     input.dispatchEvent(new window.Event('input', { bubbles: true }));
     composer.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
     assert.match(doc.querySelector('#content').textContent, /Investigate a workflow/);
-    assert.match(doc.querySelector('#content').textContent, /Sign in, then tell me what you would like to investigate\./);
+    assert.match(doc.querySelector('#content').textContent, /Sign in to start an authorized investigation/);
     assert.doesNotMatch(doc.querySelector('#content').textContent, /Scope [a-f0-9]{6}|genuine backend events|does not yet save conversations/);
     assert.equal(doc.querySelector('#promptInput'), input);
     assert.equal(input.value, '');
@@ -53,23 +53,20 @@ test('unconfigured sign-in and target selection explain their unavailable state'
   } finally { window.happyDOM.abort(); }
 });
 
-test('suggestion populates the composer and keyboard submission preserves it', () => {
+test('clean home keeps note editing but no prefilled AI-sounding suggestions', () => {
   const window = workspace();
   try {
     const doc = window.document;
-    assert.match(doc.querySelector('h1').textContent, /Understand how software really works/);
-    assert.deepEqual([...doc.querySelectorAll('[data-suggestion]')].map(button => button.textContent.trim()),
-      ['Understand behavior', 'Compare versions', 'Reconstruct a workflow']);
-    doc.querySelector('[data-suggestion]').click();
+    assert.match(doc.querySelector('h1').textContent, /Learn the rules a screen cannot show/);
+    assert.equal(doc.querySelectorAll('[data-suggestion]').length, 0);
     const input = doc.querySelector('#promptInput');
-    assert.match(input.value, /owned ledger/);
-    assert.equal(doc.activeElement, input);
-    input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true, cancelable: true }));
-    assert.match(input.value, /owned ledger/);
+    assert.match(input.placeholder, /Quick note/);
+    input.value = 'My observation about the reference';
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
     input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
     assert.equal(doc.querySelector('#promptInput'), input);
     assert.equal(input.value, '');
-    assert.match(doc.querySelector('#content').textContent, /owned ledger/);
+    assert.match(doc.querySelector('#content').textContent, /My observation about the reference/);
   } finally { window.happyDOM.abort(); }
 });
 
@@ -92,10 +89,10 @@ test('signed-out home shows what it does, the REAL_MODEL evidence, and one resea
   try {
     const doc = window.document;
     const home = doc.querySelector('.empty-home');
-    assert.match(home.textContent, /observes software you own or are authorized to study/i);
+    assert.match(home.textContent, /Follow the evidence/i);
     assert.match(home.textContent, /REAL_MODEL/);
     assert.match(home.textContent, /14\/25/);
-    assert.match(home.textContent, /never merged/i);
+    assert.match(home.textContent, /not a live model call/i);
     assert.match(home.textContent, /Signed out:/);
     const cta = home.querySelector('[data-action="research"]');
     assert.ok(cta, 'research record is the clear signed-out action');
@@ -110,9 +107,29 @@ test('navigation is slim and the retired showroom route lands home', () => {
   try {
     const doc = window.document;
     const nav = [...doc.querySelectorAll('.side-nav .nav-item')].map(n => n.textContent.trim());
-    assert.deepEqual(nav, ['Your work', 'Reports & exports', 'Settings']);
+    assert.deepEqual(nav, ['Overview', 'Investigations', 'Reports', 'Experiments', 'Settings']);
     assert.doesNotMatch(doc.querySelector('#content').textContent, /component showroom/i);
-    assert.match(doc.querySelector('#content').textContent, /Understand how software/);
+    assert.match(doc.querySelector('#content').textContent, /Learn the rules a screen cannot show/);
+  } finally { window.happyDOM.abort(); }
+});
+
+test('Reports and Experiments navigation preserves a real back path', () => {
+  const window = workspace();
+  try {
+    const doc = window.document;
+    const back = doc.querySelector('#topBackButton');
+    assert.equal(back.hidden, true);
+    doc.querySelector('.side-nav [data-action="reports"]').click();
+    assert.match(doc.querySelector('#content').textContent, /Research record/);
+    assert.equal(back.hidden, false);
+    assert.equal(doc.querySelector('.side-nav [data-action="reports"]').getAttribute('aria-current'), 'page');
+    doc.querySelector('.side-nav [data-action="experiments"]').click();
+    assert.match(doc.querySelector('#content').textContent, /Probe/);
+    back.click();
+    assert.match(doc.querySelector('#content').textContent, /Research record/);
+    back.click();
+    assert.match(doc.querySelector('#content').textContent, /Learn the rules a screen cannot show/);
+    assert.equal(back.hidden, true);
   } finally { window.happyDOM.abort(); }
 });
 
@@ -123,8 +140,8 @@ test('compare shows the second software rebuild panel honestly', () => {
     doc.querySelector('[data-action="reports"]').click();
     doc.querySelector('[data-action="compare"]').click();
     const text = doc.querySelector('#content').textContent;
-    assert.match(text, /Software 1/);
-    assert.match(text, /Software 2 \u00b7 Vikunja v2\.4\.0 rebuild/);
+    assert.match(text, /OWNED HTTP TASK WORKFLOW/);
+    assert.match(text, /VIKUNJA V2\.4\.0/);
     assert.match(text, /nothing is simulated/i);
     assert.equal(doc.querySelector('[data-action="engine-run"]'), null);
   } finally { window.happyDOM.abort(); }
