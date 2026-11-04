@@ -95,6 +95,30 @@ def _check_cancelled(rec: dict) -> None:
         raise _Cancelled()
 
 
+def _persist_completed_record(rec: dict) -> None:
+    """Durably retain the selected local candidate after engine restarts."""
+    with _STATE_LOCK:
+        RUNS.mkdir(parents=True, exist_ok=True)
+        stored = {k: copy.deepcopy(v) for k, v in rec.items()
+                  if not k.startswith("_")}
+        spec = rec.get("_spec")
+        if spec is not None:
+            raw = json.dumps(spec, indent=1, default=str).encode("utf-8")
+            artifact = RUNS / f"{rec['id']}-candidate.json"
+            with artifact.open("wb") as stream:
+                stream.write(raw)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.chmod(artifact, 0o600)
+            stored["candidate_artifact"] = {
+                "sha256": hashlib.sha256(raw).hexdigest(),
+                "size_bytes": len(raw),
+                "provenance": rec.get("compiled", {}).get("provenance", "UNSPECIFIED")}
+        (RUNS / f"{rec['id']}.json").write_text(
+            json.dumps(stored, indent=1, default=str), encoding="utf-8")
+        _prune_locked()
+
+
 def _prune_locked() -> None:
     """Bound temporary state; caller must hold _STATE_LOCK."""
     while len(INVESTIGATIONS) > MAX_INVESTIGATIONS:
@@ -316,13 +340,7 @@ def _run_gitea(rec: dict) -> None:
                 proc.terminate()
             except Exception:
                 pass
-        with _STATE_LOCK:
-            stored = {k: copy.deepcopy(v) for k, v in rec.items()
-                      if not k.startswith("_")}
-            RUNS.mkdir(parents=True, exist_ok=True)
-            (RUNS / f"{rec['id']}.json").write_text(
-                json.dumps(stored, indent=1, default=str), encoding="utf-8")
-            _prune_locked()
+        _persist_completed_record(rec)
 
 
 def _run_filebrowser(rec: dict) -> None:
@@ -418,13 +436,7 @@ def _run_filebrowser(rec: dict) -> None:
                 proc.terminate()
             except Exception:
                 pass
-        with _STATE_LOCK:
-            stored = {k: copy.deepcopy(v) for k, v in rec.items()
-                      if not k.startswith("_")}
-            RUNS.mkdir(parents=True, exist_ok=True)
-            (RUNS / f"{rec['id']}.json").write_text(
-                json.dumps(stored, indent=1), encoding="utf-8")
-            _prune_locked()
+        _persist_completed_record(rec)
 
 
 def run_investigation(inv_id: str) -> None:
@@ -525,13 +537,7 @@ def run_investigation(inv_id: str) -> None:
     finally:
         if proc is not None:
             mx.stop_reference(proc, workdir)
-        with _STATE_LOCK:
-            stored = {k: copy.deepcopy(v) for k, v in rec.items()
-                      if not k.startswith("_")}
-            RUNS.mkdir(parents=True, exist_ok=True)
-            (RUNS / f"{inv_id}.json").write_text(
-                json.dumps(stored, indent=1), encoding="utf-8")
-            _prune_locked()
+        _persist_completed_record(rec)
 
 
 def public_view(rec: dict) -> dict:
@@ -682,6 +688,12 @@ def candidate(inv_id: str):
     with _STATE_LOCK:
         rec = INVESTIGATIONS.get(inv_id)
         spec = copy.deepcopy(rec.get("_spec")) if rec else None
+    if spec is None:
+        saved = RUNS / f"{inv_id}-candidate.json"
+        if saved.exists():
+            if saved.stat().st_size > 2_000_000:
+                raise HTTPException(409, "candidate artifact exceeds download limit")
+            spec = json.loads(saved.read_text(encoding="utf-8"))
     if spec is None:
         raise HTTPException(409, "candidate not available")
     return JSONResponse(spec, headers={
