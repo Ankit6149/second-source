@@ -61,7 +61,7 @@ dialog p,dialog li{color:var(--secondary);line-height:1.7}
 .score-num strong{color:var(--accent)}
 .score-status{color:var(--secondary);font-size:13px}
 
-.story{max-width:760px;margin:36px auto 4px;text-align:left}
+.story{width:100%;max-width:820px;margin:28px auto 4px;text-align:left;padding:0 8px}
 .story h2{margin:22px 0 8px}
 .story-lede{font-size:16px;line-height:1.55;color:var(--secondary)}
 .story-steps{margin:12px 0 0 18px;display:grid;gap:8px;line-height:1.5}
