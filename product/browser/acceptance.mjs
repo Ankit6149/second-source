@@ -96,7 +96,7 @@ try {
         holdOldPoll = false; oldPollSeen(); await oldPollMayFinish;
         return route.fulfill({ status: 200, headers: { ...cors, 'content-type': 'application/json', 'x-ss-test-response': 'old-poll' }, body: JSON.stringify(queuedSnapshot) });
       }
-      if (req.method() === 'POST' && url.pathname.endsWith('/execute')) {
+      if (req.method() === 'POST' && /^\/v1\/runs\/[^/]+\/execute$/.test(url.pathname)) {
         if (refuseNextExecution) { refuseNextExecution = false; refusedExecutions++; return route.fulfill({ status: 429, headers: cors, body: '{"code":"RATE_LIMITED"}' }); }
         if (holdSyntheticExecution) {
           holdSyntheticExecution = false;
@@ -115,7 +115,7 @@ try {
       const response = await fetch(`http://127.0.0.1:${port}${url.pathname}${url.search}`, {
         method: req.method(), headers, body: req.postDataBuffer() || undefined,
       });
-      if (loseExecutionAck && req.method() === 'POST' && url.pathname.endsWith('/execute')) {
+      if (loseExecutionAck && req.method() === 'POST' && /^\/v1\/runs\/[^/]+\/execute$/.test(url.pathname)) {
         loseExecutionAck = false; lostAcknowledgements++; await response.arrayBuffer(); return route.abort('failed');
       }
       const responseHeaders = Object.fromEntries(response.headers); delete responseHeaders['content-encoding'];
@@ -142,7 +142,7 @@ try {
   assert.equal(await page.locator('#sidebar').evaluate(el => el.inert), true);
   assert.equal(await page.getByRole('button', { name: 'Toggle navigation' }).getAttribute('aria-expanded'), 'false');
   await page.getByRole('button', { name: 'Toggle navigation' }).click();
-  await page.locator('[data-action="account"]').click();
+  await page.locator('.topbar [data-action="account"]').click();
   assert.match(await page.locator('dialog').innerText(), /sign in to save/i);
   await page.keyboard.press('Escape'); assert.equal(await page.locator('dialog').isVisible(), false);
   const composer = page.locator('#promptInput');
@@ -179,7 +179,7 @@ try {
   holdList = true; await switchPage.getByRole('button', { name: 'Create investigation' }).click();
   await Promise.race([listRequested, new Promise((_, reject) => setTimeout(() => reject(new Error('Delayed investigation list was not requested')), 15000))]);
   console.log('Testing session switch with a delayed investigation list.');
-  await switchPage.locator('[data-action="account"]').click(); await switchPage.getByRole('button', { name: 'Sign out' }).click();
+  await switchPage.locator('.topbar [data-action="account"]').click(); await switchPage.getByRole('button', { name: 'Sign out' }).click();
   await switchPage.getByText('Not signed in', { exact: true }).waitFor();
   const listResponse = switchPage.waitForResponse(response => response.headers()['x-ss-test-response'] === 'delayed-list');
   releaseList(); await (await listResponse).finished(); await switchPage.evaluate(() => new Promise(resolve => setTimeout(resolve, 0)));

@@ -65,7 +65,7 @@ test('workspace controls drive an authorized NON_AI investigation through the lo
         const url = new URL(typeof input === 'string' ? input : input.url);
         if (url.origin !== 'https://backend.test') throw new Error('External transport forbidden');
         const method = options?.method || 'GET';
-        if (method === 'POST' && url.pathname.endsWith('/execute')) {
+        if (method === 'POST' && /^\/v1\/runs\/[^/]+\/execute$/.test(url.pathname)) {
           executions++;
           if (loseExecuteAck) {
             loseExecuteAck = false;
@@ -107,7 +107,7 @@ test('workspace controls drive an authorized NON_AI investigation through the lo
       const button = doc.querySelector('[data-action="execute"]'); return button && !button.disabled ? button : null;
     }, 'queued run')).click();
     const warning = await until(() => [...doc.querySelectorAll('.inline-note')].find(item => item.textContent.includes('status may be out of date')), 'stale-status warning');
-    assert.equal(executions, 1);
+    assert.equal(executions, 1, 'a run execute request must not be duplicated');
     warning.querySelector('[data-action="refresh"]').click();
     await until(() => !doc.querySelector('#content').textContent.includes('status may be out of date'), 'progress recovery');
     (await until(() => doc.querySelector('[data-action="verification"]'), 'completed run', 200_000)).click();
