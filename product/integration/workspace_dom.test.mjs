@@ -98,6 +98,23 @@ test('workspace controls drive an authorized NON_AI investigation through the lo
     doc.querySelector('[data-target-id="owned-ledger-v1"]').click();
     doc.querySelector('#scopeConsent').checked = true;
     doc.querySelector('[data-action="create"]').click();
+    const constructed = await until(() => {
+      const panel = doc.querySelector('.orch-inspector');
+      return panel?.textContent.includes('candidate.json') ? panel : null;
+    }, 'actual scope-derived candidate and artifact manifest', 30_000);
+    assert.match(constructed.textContent, /NON_AI/);
+    assert.match(constructed.textContent, /structural checks/);
+    assert.match(constructed.textContent, /candidate\.json/);
+    constructed.querySelector('[data-action="candidate"]').click();
+    assert.match(doc.querySelector('dialog').textContent, /SCOPE-DERIVED SPECIFICATION/);
+    assert.match(doc.querySelector('dialog').textContent, /source_observations_sha256/);
+    doc.querySelector('[data-action="close-dialog"]').click();
+    constructed.querySelector('[data-action="download-orch-artifact"]').click();
+    await until(() => exported, 'actual candidate download');
+    const candidateFile = JSON.parse(Buffer.from(await exported.arrayBuffer()).toString());
+    assert.equal(candidateFile.provenance, 'NON_AI');
+    assert.ok(candidateFile.candidate_id && Array.isArray(candidateFile.routes));
+    exported = undefined;
     (await until(() => doc.querySelector('[data-action="authorize"]'), 'created investigation')).click();
     doc.querySelector('#scopeConsent').checked = true;
     doc.querySelector('[data-action="confirm-authorization"]').click();
